@@ -1,7 +1,6 @@
 import { usePage, router } from '@inertiajs/react';
 import React from 'react';
 import { toast } from 'react-toastify';
-import { Inertia } from '@inertiajs/inertia';
 
 const ProductoOferta = ({ nombre, precio, imagen, unidades, descuento, producto }) => {
   const { auth } = usePage().props;
@@ -28,6 +27,12 @@ const ProductoOferta = ({ nombre, precio, imagen, unidades, descuento, producto 
             }
         );
     };
+
+  const placeholderImg = "/img/placeholder.svg";
+  const imagenValida =
+    typeof imagen === "string" && imagen.trim() !== "" && !imagen.includes("undefined");
+  const imageSrc = imagenValida ? `/storage/productos/${imagen}` : placeholderImg;
+
   return (
     <div className="flex flex-col w-full max-w-sm mx-auto">
       {/* Header Oferta */}
@@ -44,7 +49,7 @@ const ProductoOferta = ({ nombre, precio, imagen, unidades, descuento, producto 
       >
         <div className="w-full h-48 md:h-56 overflow-hidden rounded-t-md">
           <img
-            src={`storage/productos/${imagen}`}
+            src={imageSrc}
             alt={nombre}
             className="w-full h-full object-cover transform transition-transform duration-300 hover:scale-105"
           />

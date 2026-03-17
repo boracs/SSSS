@@ -21,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
-        
+
         // Registramos el alias 'admin' para nuestro middleware de seguridad
         $middleware->alias([
             'admin' => VerificarAdmin::class, // Usa el import de arriba

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Carbon;
 
 class User extends Authenticatable
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'email',
         'telefono',
         'numeroTaquilla',
+        'credits_balance',
         'password',
         'fecha_vencimiento_cuota',
         'id_plan_vigente',
@@ -89,6 +91,32 @@ class User extends Authenticatable
     public function planVigente(): BelongsTo
     {
         return $this->belongsTo(PlanTaquilla::class, 'id_plan_vigente');
+    }
+
+    // ===================================
+    // ACADEMIA: CRÉDITOS Y CLASES
+    // ===================================
+
+    public function lessons(): BelongsToMany
+    {
+        return $this->belongsToMany(Lesson::class, 'lesson_user')
+            ->withPivot(['credits_locked', 'status', 'cancelled_at', 'surf_trip_confirmed'])
+            ->withTimestamps();
+    }
+
+    public function lessonEnrollments(): HasMany
+    {
+        return $this->hasMany(LessonUser::class, 'user_id');
+    }
+
+    public function creditTransactions(): HasMany
+    {
+        return $this->hasMany(CreditTransaction::class, 'user_id');
+    }
+
+    public function staffAssignments(): HasMany
+    {
+        return $this->hasMany(StaffAssignment::class, 'user_id');
     }
 
     // ===================================

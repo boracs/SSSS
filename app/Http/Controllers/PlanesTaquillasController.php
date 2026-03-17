@@ -188,7 +188,8 @@ public function registrarPago(Request $request)
     try {
         $validatedData = $request->validate([
             'plan_id' => 'required|exists:planes_taquilla,id',
-            'monto_pagado' => 'required|numeric|min:0',
+            // El frontend NO es fuente de verdad del precio. Si lo envía, solo se usa para comparar.
+            'monto_pagado' => 'nullable|numeric|min:0',
             'referencia_pago_externa' => 'required|string|max:255',
         ]);
     } catch (ValidationException $e) {
@@ -202,6 +203,22 @@ public function registrarPago(Request $request)
     try {
         // Obtener plan
         $plan = PlanTaquilla::findOrFail($validatedData['plan_id']);
+        $precioRealPlan = (float) $plan->precio_total;
+
+        // Blindaje: si el cliente envía monto, debe coincidir con el real.
+        if (array_key_exists('monto_pagado', $validatedData) && $validatedData['monto_pagado'] !== null) {
+            $montoCliente = (float) $validatedData['monto_pagado'];
+            $epsilon = 0.01;
+            if (abs($montoCliente - $precioRealPlan) > $epsilon) {
+                return response()->json([
+                    'success' => false,
+                    'mensaje' => 'Discrepancia detectada en el importe del pago.',
+                    'errores' => [
+                        'monto_pagado' => ['El importe no coincide con el precio real del plan.'],
+                    ],
+                ], 422);
+            }
+        }
 
         // --- CALCULAR FECHA DE INICIO ---
         // Obtenemos el último pago del usuario, aunque esté vencido
@@ -226,7 +243,8 @@ public function registrarPago(Request $request)
         $pago = PagoCuota::create([
             'user_id' => $user->id,
             'id_plan_pagado' => $plan->id,
-            'monto_pagado' => $validatedData['monto_pagado'],
+            // Fuente de verdad: precio en BD.
+            'monto_pagado' => $precioRealPlan,
             'referencia_pago_externa' => $validatedData['referencia_pago_externa'],
             'periodo_inicio' => $fechaInicio,
             'periodo_fin' => $fechaFin,

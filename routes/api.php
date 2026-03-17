@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatbotController; // Asegúrate de tener esta importación
 
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\PlanesTaquillasController;
 
 /*
@@ -32,22 +33,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 
 
-/*taquillas */ 
-
-// Agrupamos las rutas de taquilla, requieren autenticación
+// Rutas bajo autenticación (admin/taquilla y disponibilidad)
 Route::middleware(['auth'])->group(function () {
-    
-    // ADMINPANEL  
-    // 1. Ruta principal: Muestra la lista de planes y el estado de lso usuarios si estana ctivo ....m uestra el panel de admin
     Route::get('/taquilla', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
-    
-    //cLIENTPANEL
-    // 2. Ruta para la vista del cliente/usuario regular donde ve su plan activo y su histortial de pagos 
-    Route::get('/taquilla', [PlanesTaquillasController::class, 'ClientIndex'])
-        ->name('taquilla.index.client');
-
-    
-    
+    Route::get('/bookings/check-availability', [AdminBookingController::class, 'checkAvailability']);
 });
 
 

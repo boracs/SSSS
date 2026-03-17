@@ -1,22 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Pedido;
 use App\Models\Producto;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
-use Carbon\Carbon; //para manejar fechas formatearlas...
-use Illuminate\Support\Facades\DB; // para manejar transacciones (beginTransaction, commit, rollBack) son metodos de la clase DB
+use Inertia\Response as InertiaResponse;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
 class PedidoController extends Controller
 {
-
-
-
-
-public function crear(Request $request)
-{
+    public function crear(Request $request): \Illuminate\Http\RedirectResponse
+    {
     //VALIDACIÓN
     $request->validate([
         'productos' => ['required', 'array', 'min:1'],
@@ -34,15 +35,13 @@ public function crear(Request $request)
         return back()->with('error', 'Debes iniciar sesión para realizar un pedido.');
     }
 
-    $totalCarrito = 0;
-    // Usamos el validador de Laravel, aunque aquí se mantiene la lógica original
-    $fechaEntrega = $request->input('fecha_entrega') 
-        ? Carbon::createFromFormat('d/m/Y', $request->input('fecha_entrega'))->format('Y-m-d') 
+    $totalCarrito = 0.0;
+    $fechaEntrega = $request->input('fecha_entrega')
+        ? Carbon::createFromFormat('d/m/Y', $request->input('fecha_entrega'))->format('Y-m-d')
         : null;
 
-    DB::beginTransaction();      
+    DB::beginTransaction();
     try {
-        // Crear el pedido (con precio_total inicializado a 0)
         $pedido = Pedido::create([
             'id_usuario' => $user->id,
             'precio_total' => 0,
@@ -54,38 +53,33 @@ public function crear(Request $request)
         foreach ($productosCarrito as $producto) {
             $prod = Producto::find($producto['id']);
 
-            // 2. Manejo de errores de producto no existente
             if (!$prod) {
                 DB::rollBack();
-                // Usamos withErrors para enviar el mensaje a Inertia/React
                 return back()->withErrors(['general' => "El producto con ID {$producto['id']} no existe."]);
             }
 
-            // 3. Manejo de errores de stock
             if ($prod->unidades < $producto['cantidad']) {
                 DB::rollBack();
-                // Usamos withErrors para stock insuficiente
                 return back()->withErrors(['stock' => "No hay stock suficiente para el producto '{$prod->nombre}'. Tal vez se ha agotado recientemente."]);
             }
 
-            // Calcular precio y subtotal
-            $precioConDescuento = $prod->precio - ($prod->precio * ($prod->descuento / 100));
-            $subtotal = $precioConDescuento * $producto['cantidad'];
+            $precioBase = (float) $prod->precio;
+            $descuento = (float) $prod->descuento;
+            $precioConDescuento = $precioBase - ($precioBase * ($descuento / 100));
+            $subtotal = $precioConDescuento * (int) $producto['cantidad'];
             $totalCarrito += $subtotal;
 
-            // Adjuntar producto al pedido
             $pedido->productos()->attach($prod->id, [
-                'cantidad' => $producto['cantidad'],
-                'descuento_aplicado' => $prod->descuento,
-                'precio_pagado' => $precioConDescuento,
+                'cantidad' => (int) $producto['cantidad'],
+                'descuento_aplicado' => $descuento,
+                'precio_pagado' => round($precioConDescuento, 2),
             ]);
 
             // Reducir stock
             $prod->decrement('unidades', $producto['cantidad']);
         }
 
-        // Actualizar precio total del pedido
-        $pedido->update(['precio_total' => $totalCarrito]);
+        $pedido->update(['precio_total' => round($totalCarrito, 2)]);
 
         // 4. Vaciar carrito del usuario (CRUCIAL para la sincronización de Inertia)
         // Esto garantiza que el carrito compartido ($user->carrito() en HandleInertiaRequests) 
@@ -105,16 +99,15 @@ public function crear(Request $request)
     // Esto es temporal. NO expongas mensajes técnicos al usuario final.
     $errorMessage = 'Error técnico: ' . $e->getMessage() . ' en la línea ' . $e->getLine();
     
-    // Registra el error completo en el log de Laravel (Storage/logs/laravel.log)
-    \Log::error("Fallo al crear el pedido para el usuario {$user->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+    Log::error("Fallo al crear el pedido para el usuario {$user->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
     // Devuelve el mensaje técnico para verlo en el frontend/consola
     return back()->withErrors(['general' => $errorMessage]);
     }
 }
 
-public function mostrarPedido($id_pedido)
-{
+    public function mostrarPedido(int $id_pedido): InertiaResponse
+    {
     $query = Pedido::where('id', $id_pedido)->with('productos');
 
     // Si no es admin, solo puede ver sus propios pedidos
@@ -130,8 +123,8 @@ public function mostrarPedido($id_pedido)
 }
 
 
-     public function mostrarPedidos()
-{
+    public function mostrarPedidos(): InertiaResponse
+    {
     $user_id = auth()->id();
     
     // Obtener los pedidos con sus productos y los datos de la tabla pivote, ordenados por id descendente
@@ -169,9 +162,8 @@ public function mostrarPedido($id_pedido)
 
 //---------------------------------------------------------------------------------------------///////////////////////////////////////////////
 
-// Componente para gestionar los filtros
-public function index(Request $request)
-{
+    public function index(Request $request): InertiaResponse
+    {
     // Recoger los filtros de la solicitud
     $pagado = $request->input('pagado', ''); // Valor por defecto si no se pasa el filtro
     $entregado = $request->input('entregado', ''); // Valor por defecto si no se pasa el filtro
@@ -209,9 +201,8 @@ public function index(Request $request)
     // Obtener los pedidos con la paginación (5 pedidos por página)
     $pedidos = $query->paginate(5);
     
-    // Verifica si realmente hay pedidos
     if ($pedidos->isEmpty()) {
-        Log::info("No se encontraron pedidos.");
+        Log::info('No se encontraron pedidos.');
     }
     
     // Contar el número total de pedidos
@@ -260,7 +251,7 @@ public function index(Request $request)
 
 
 
-    public function applyFilter(Request $request)
+    public function applyFilter(Request $request): InertiaResponse
     {
         // Recoger los filtros enviados desde el frontend
         $pagado = $request->input('pagado'); // Puede ser '1', '0', o ''
@@ -378,28 +369,21 @@ public function toggleEntregado($id)
 }
 
  */
-// esto em da error tthis.resolve componetne is not a function 
-public function togglePagado($id)
-{
-    $pedido = Pedido::findOrFail($id);
-    $pedido->pagado = !$pedido->pagado;
-    $pedido->save();
+    public function togglePagado(int $id): \Illuminate\Http\RedirectResponse
+    {
+        $pedido = Pedido::findOrFail($id);
+        $pedido->pagado = !$pedido->pagado;
+        $pedido->save();
+        return back()->with('success', 'El estado de pago ha sido actualizado.');
+    }
 
-    // ⭐️ CAMBIO: Devuelve una redirección hacia atrás. 
-    // Inertia intercepta esto y recarga los props de la página (incluyendo la lista de pedidos).
-    return back()->with('success', 'El estado de pago ha sido actualizado.'); 
-}
-
-public function toggleEntregado($id)
-{
-    $pedido = Pedido::findOrFail($id);
-    $pedido->entregado = !$pedido->entregado;
-    $pedido->save();
-
-    // ⭐️ CAMBIO: Devolvemos una redirección hacia atrás.
-    // Inertia intercepta esto y recarga los props de la página con los datos actualizados.
-    return back()->with('success', 'El estado de entrega ha sido actualizado.');
-}
+    public function toggleEntregado(int $id): \Illuminate\Http\RedirectResponse
+    {
+        $pedido = Pedido::findOrFail($id);
+        $pedido->entregado = !$pedido->entregado;
+        $pedido->save();
+        return back()->with('success', 'El estado de entrega ha sido actualizado.');
+    }
 
 
 

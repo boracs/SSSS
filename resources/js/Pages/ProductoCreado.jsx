@@ -1,12 +1,12 @@
 import React from 'react';
-import { Inertia } from '@inertiajs/inertia';
+import { router } from '@inertiajs/react';
 import Layout1 from '../layouts/Layout1';
 
 const ProductoCreadoExitosamente = () => {
   // Función para redirigir al usuario a la lista de productos o a otra página
   const handleRedirigir = () => {
     // Redirigir a la página de lista de productos
-    Inertia.get('/productos');
+    router.get('/productos');
   };
 console.log(productos);
   return (

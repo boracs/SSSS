@@ -1,77 +1,67 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use App\Models\Carrito;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 use App\Models\Producto;
-use Illuminate\Support\Facades\Redirect; //es apra redireccionar con mensajes
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\DB;
 
 class CarritoController extends Controller
 {
-    /**
-     * Muestra el carrito del usuario.
-     *
-     * @return \Inertia\Response
-     */
+    /** Muestra el carrito del usuario. Cálculos en tipos numéricos; formateo en vista. */
+    public function index(): InertiaResponse
+    {
+        $user = auth()->user();
 
+        $carrito = Carrito::where('id_usuario', $user->id)
+            ->with(['productos' => function ($query) {
+                $query->select('productos.id', 'productos.nombre', 'productos.precio', 'productos.descuento')
+                    ->withPivot('cantidad');
+            }])
+            ->get();
 
+        if ($carrito->isEmpty()) {
+            return Inertia::render('Carrito', [
+                'productos' => [],
+                'total' => 0,
+                'message' => 'Tu carrito está vacío.',
+            ]);
+        }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        $productos = $carrito->flatMap(function ($item) {
+            return $item->productos->map(function ($producto) {
+                $cantidad = (int) $producto->pivot->cantidad;
+                $descuento = (float) $producto->descuento;
+                $precioBase = (float) $producto->precio;
+                $precioConDescuento = $precioBase - ($precioBase * ($descuento / 100));
+                $subtotal = $precioConDescuento * $cantidad;
 
-     public function index()
-        {
-    $user = auth()->user();
+                return [
+                    'id' => $producto->id,
+                    'nombre' => $producto->nombre,
+                    'precio' => $precioConDescuento,
+                    'cantidad' => $cantidad,
+                    'subtotal' => round($subtotal, 2),
+                    'descuento' => $descuento,
+                ];
+            });
+        });
 
-    // Obtener los productos del carrito con la cantidad y el descuento desde la tabla pivote
-    $carrito = Carrito::where('id_usuario', $user->id)
-        ->with(['productos' => function ($query) {
-            $query->select('productos.id', 'productos.nombre', 'productos.precio', 'productos.descuento')
-                ->withPivot('cantidad'); // Esto accede a la cantidad desde la tabla pivote
-        }])
-        ->get();
+        $total = $productos->reduce(function (float $acc, array $producto): float {
+            return $acc + (float) $producto['subtotal'];
+        }, 0.0);
 
-    // Verificar si el carrito está vacío
-    if ($carrito->isEmpty()) {
         return Inertia::render('Carrito', [
-            'productos' => [],
-            'total' => 0,
-            'message' => 'Tu carrito está vacío.',
+            'productos' => $productos->values()->all(),
+            'total' => round($total, 2),
         ]);
     }
 
-    // Procesar los productos en el carrito y calcular el subtotal con descuento
-    $productos = $carrito->flatMap(function ($item) {
-        return $item->productos->map(function ($producto) use ($item) {
-            $cantidad = $producto->pivot->cantidad;
-            $descuento = $producto->descuento; // Descuento del producto
-            $precioConDescuento = $producto->precio - ($producto->precio * ($descuento / 100)); // Aplicamos el descuento
-            $subtotal = $precioConDescuento * $cantidad;
-
-            return [
-                'id' => $producto->id,
-                'nombre' => $producto->nombre,
-                'precio' => $precioConDescuento, // Mostramos el precio con descuento
-                'cantidad' => $cantidad,
-                'subtotal' => number_format($subtotal, 2),
-                'descuento' => $descuento, // Enviamos el descuento para mostrarlo en el frontend
-            ];
-        });
-    });
-
-    // Calcular el total sumando todos los subtotales
-    $total = $productos->reduce(function ($acc, $producto) {
-        return $acc + $producto['subtotal'];
-    }, 0);
-
-    return Inertia::render('Carrito', [
-        'productos' => $productos,
-        'total' => number_format($total, 2),
-    ]);
-}
-
 
 
 
@@ -80,8 +70,8 @@ class CarritoController extends Controller
 
 
 
-public function agregarAlCarrito($productoId)
-{
+    public function agregarAlCarrito(int $productoId): \Illuminate\Http\RedirectResponse
+    {
     $user = auth()->user();
 
     try {
@@ -145,11 +135,7 @@ public function agregarAlCarrito($productoId)
 
 
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
- public function eliminarProducto($productoId)
+    public function eliminarProducto(int $productoId): \Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
         $carrito = Carrito::where('id_usuario', $user->id)->first();
@@ -172,97 +158,6 @@ public function agregarAlCarrito($productoId)
 
         return Redirect::back()->with('error', 'Producto no encontrado en el carrito.');
     }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-/////realziar pedido/////////////
-
-
-
- public function crear(Request $request): \Illuminate\Http\RedirectResponse
-    {
-        // 1. VALIDACIÓN
-        // Usamos validate() para que Laravel gestione la respuesta de error 422 (onError en Inertia)
-        $request->validate([
-            'productos' => 'required|array',
-            'productos.*.id' => 'required|integer|exists:productos,id',
-            'productos.*.cantidad' => 'required|integer|min:1',
-            'total' => 'required|numeric|min:0.01',
-        ]);
-        
-        $productosEnPedido = $request->input('productos');
-        $totalFinal = $request->input('total');
-        $user = $request->user(); // Mejor práctica: usar el helper de Request
-
-        try {
-            // 🛡️ INICIO DE LA TRANSACCIÓN (Garantía de atomicidad)
-            DB::beginTransaction();
-
-            // 2. VERIFICACIÓN CRÍTICA DE STOCK Y PREPARACIÓN DE DATOS
-            $productosParaAdjuntar = [];
-            
-            foreach ($productosEnPedido as $item) {
-                // Bloqueamos el producto. ¡CRÍTICO! Esto evita que dos usuarios compren la última unidad a la vez.
-                $producto = Producto::lockForUpdate()->find($item['id']);
-
-                if (!$producto || $producto->unidades < $item['cantidad']) {
-                    DB::rollBack();
-                    
-                    // ❌ RESPUESTA DE ERROR: Usamos back() para que Inertia muestre el Toast.
-                    $nombreProducto = $producto ? $producto->nombre : 'desconocido';
-                    return back()->with('error', "No hay stock suficiente para el producto '{$nombreProducto}'. Stock disponible: {$producto->unidades}.");
-                }
-
-                // Descontar stock (Operación de escritura crítica)
-                $producto->unidades -= $item['cantidad'];
-                $producto->save();
-                
-                // Preparar datos para la tabla pivote
-                $productosParaAdjuntar[$item['id']] = [
-                    'cantidad' => $item['cantidad'],
-                    'precio_unitario' => $item['precio'], 
-                    'descuento' => $item['descuento'] ?? 0, // Si lo pasas, es buena práctica registrarlo
-                ];
-            }
-
-            // 3. CREACIÓN DEL PEDIDO
-            $pedido = Pedido::create([
-                'id_usuario' => $user->id,
-                'total' => $totalFinal,
-                'estado' => 'completado', 
-            ]);
-
-            // 4. ADJUNTAR PRODUCTOS
-            $pedido->productos()->attach($productosParaAdjuntar);
-
-            // 5. VACIAR EL CARRITO (Limpieza)
-            // Asumimos que la relación 'carrito' está definida en el modelo User, o usamos el modelo Carrito
-            Carrito::where('id_usuario', $user->id)->delete(); 
-
-            DB::commit(); // ✅ COMMIT: Confirmar todos los cambios
-
-            // 6. RESPUESTA DE ÉXITO FINAL
-            // Redirección explícita a la página de confirmación, como solicitaste.
-             return Inertia::location(route('pedido.confirmacion')); 
-          
-
-        } catch (\Exception $e) {
-            // ❌ ROLLBACK: Deshacer todos los cambios ante cualquier error imprevisto (DB, etc.)
-            DB::rollBack();
-            
-            \Log::error('Error FATAL al crear el pedido: ' . $e->getMessage()); 
-            
-            // 7. RESPUESTA DE ERROR GENÉRICA (Vuelve al carrito)
-            return back()->with('error', 'Ocurrió un error inesperado al procesar el pedido. Intenta de nuevo. (Ref: ' . $e->getMessage() . ')');
-        }
-    }
-
-
 
 }
 

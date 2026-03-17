@@ -1,41 +1,57 @@
 
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Inertia } from '@inertiajs/inertia';
+import { router } from '@inertiajs/react';
 
 const CartContext = createContext();
 
 export const CartProvider = ({ children, initialCartCount = 0, userId }) => {
     const [cartCount, setCartCount] = useState(initialCartCount);
     const [cartProducts, setCartProducts] = useState([]); // Aquí almacenamos los productos del carrito
+    const [cartLoadError, setCartLoadError] = useState(null);
 
     // Función para actualizar el carrito
     const updateCartCount = (count) => {
         setCartCount(count);
     };
 
-    // Función para cargar los productos del carrito desde la base de datos usando Inertia
+    /**
+     * Carga del carrito (ruta unificada: /carrito).
+     *
+     * Importante: /carrito es una ruta Inertia que renderiza la página del carrito.
+     * Para evitar que la app "salte" de pantalla desde el header/layout, NO se ejecuta
+     * automáticamente al montar. Se deja disponible para invocarla explícitamente.
+     */
     const loadCart = () => {
-        console.log('Productos en el carrito:', cartProducts);
-        Inertia.get(`/cart/${userId}`, {}, {
-            onSuccess: (response) => {
-                const { totalCount, products } = response.props; // Asegúrate de que la respuesta tenga estos valores
-                setCartCount(totalCount);
-                setCartProducts(products);
-            },
-            onError: (error) => {
-                console.error("Error al cargar el carrito", error);
-            }
-        });
+        try {
+            setCartLoadError(null);
+            router.get(route('carrito'), {}, {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: (page) => {
+                    setCartLoadError(null);
+                    const productos = page?.props?.productos ?? [];
+                    setCartProducts(productos);
+                    setCartCount(Array.isArray(productos) ? productos.length : 0);
+                },
+                onError: (error) => {
+                    console.error('Error al cargar el carrito', error);
+                    setCartLoadError('No se pudo cargar el carrito.');
+                },
+            });
+        } catch (e) {
+            console.error('Fallo inesperado al cargar el carrito', e);
+            setCartLoadError('Fallo inesperado al cargar el carrito.');
+        }
     };
 
     useEffect(() => {
-        if (userId) {
-            loadCart(); // Cargar los productos cuando el componente se monta
-        }
+        // Evitamos auto-navegación desde Layout/Menu.
+        // Si más adelante se implementa un endpoint JSON (p.ej. /api/carrito/resumen),
+        // aquí podría reactivarse una carga no intrusiva.
     }, [userId]);
 
     return (
-        <CartContext.Provider value={{ cartCount, updateCartCount, cartProducts }}>
+        <CartContext.Provider value={{ cartCount, updateCartCount, cartProducts, loadCart, cartLoadError }}>
             {children}
         </CartContext.Provider>
     );

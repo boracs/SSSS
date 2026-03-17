@@ -57,46 +57,71 @@ const Producto = ({
         typeof producto.imagenPrincipal === "string" &&
         !producto.imagenPrincipal.includes("undefined")
             ? `/storage/${producto.imagenPrincipal}`
-            : "/img/placeholder.jpg";
+            : "/img/placeholder.svg";
 
     return (
         <div>
             <div
-                className="max-w-xs mx-auto bg-white border border-gray-200 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 cursor-pointer p-2"
+                // 💡 Tarjeta: Cambiamos a un color oscuro (slate-800) con bordes y sombras de alto contraste.
+                className="max-w-xs w-full bg-slate-800 border border-gray-700 rounded-2xl shadow-3xl overflow-hidden hover:shadow-4xl hover:shadow-emerald-500/40 transition-all duration-500 cursor-pointer p-5 group"
                 onClick={() => handleVerProducto(producto.id)}
             >
-                <div className="w-full overflow-hidden">
+                <div className="w-full overflow-hidden relative rounded-xl">
                     <img
                         src={imageSource} // Usando la fuente de imagen defensiva
                         alt={producto.nombre}
-                        className="w-full h-40 object-cover cursor-pointer"
+                        // 💡 AJUSTE: Aseguramos que la imagen use 'block' para eliminar espacios extraños y la hacemos crecer.
+                        className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105 block"
                     />
+                    {descuento > 0 && (
+                        // Etiqueta de descuento más moderna y visible en la imagen
+                        <div className="absolute top-2 right-2 bg-pink-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full shadow-lg">
+                            -{parseInt(descuento)}% OFF
+                        </div>
+                    )}
                 </div>
-                <div className="p-2">
-                    <h2 className="text-lg font-semibold text-gray-800 truncate">
-                        {nombre}
-                    </h2>
-                    <div className="flex items-center justify-between mt-1">
-                        <p className="text-sm font-medium text-gray-600">
-                            {precio} €
-                        </p>
-                        {descuento > 0 && (
-                            <div className="text-right">
-                                <p className="text-xs text-red-500 font-semibold">
-                                    {parseInt(descuento)}% OFF
+                <div
+                    // 💡 AJUSTE DE ALTURA: min-h-[140px] asegura que haya suficiente espacio para el contenido variable.
+                    // Usamos 'flex flex-col justify-between' para que el botón siempre quede abajo.
+                    className="p-2 pt-4 flex flex-col min-h-[140px] justify-between"
+                >
+                    <div>
+                        {" "}
+                        {/* Contenedor para Título y Precios */}
+                        <h2
+                            // 💡 CORRECCIÓN: 'text-left' para asegurar alineación a la izquierda si el contenedor padre
+                            // tiene 'text-center' y forzamos el límite a 2 líneas para estabilidad.
+                            className="text-2xl font-extrabold text-white tracking-tight mb-1 overflow-hidden h-14 line-clamp-2 text-left"
+                        >
+                            {nombre}
+                        </h2>
+                        {/* BLOQUE DE PRECIOS */}
+                        <div className="flex items-center justify-between mt-2">
+                            {descuento > 0 ? (
+                                <div className="flex flex-col text-left">
+                                    {/* Precio Original (tachado y sutil) */}
+                                    <p className="text-base font-medium text-gray-400 line-through">
+                                        {precio} €
+                                    </p>
+                                    {/* Precio Final (el más destacado, usando un color techie: emerald) */}
+                                    <p className="text-3xl font-extrabold text-emerald-400 tracking-tight">
+                                        {(
+                                            precio -
+                                            (descuento / 100) * precio
+                                        ).toFixed(2)}{" "}
+                                        €
+                                    </p>
+                                </div>
+                            ) : (
+                                // Precio base sin descuento
+                                <p className="text-3xl font-extrabold text-indigo-400 text-left">
+                                    {precio} €
                                 </p>
-                                <p className="text-sm font-bold text-green-600">
-                                    {(
-                                        precio -
-                                        (descuento / 100) * precio
-                                    ).toFixed(2)}{" "}
-                                    €
-                                </p>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
-                    <div className="mt-2">
+                    <div className="mt-6">
                         {user ? (
                             tieneTaquilla ? (
                                 /* 🏆 1. ESTADO HABILITADO (Logueado y con Taquilla) 🏆 */
@@ -107,21 +132,13 @@ const Producto = ({
                                     }}
                                     disabled={unidades === 0}
                                     className={`
-                    w-full py-2.5 rounded-lg font-bold transition-all duration-200 shadow-md text-white
-                    
-                    ${
-                        unidades === 0
-                            ? "bg-gray-400 cursor-not-allowed shadow-none" // AGOTADO
-                            : // 💡 CAMBIO DE COLOR: Gris Pizarra (Slate) más profesional y tranquilo
-                              "bg-slate-600 hover:bg-slate-700 focus:ring-4 focus:ring-slate-300 shadow-slate-400/50"
-                    }
-                    
-                    ${
-                        unidades > 0
-                            ? "transform active:scale-[0.96] active:shadow-sm" // EFECTO CHULO AL CLICAR
-                            : ""
-                    }
-                `}
+                                    w-full py-3.5 rounded-xl font-extrabold transition-all duration-300 shadow-xl text-white flex items-center justify-center tracking-wider
+                                    ${
+                                        unidades === 0
+                                            ? "bg-gray-600 cursor-not-allowed shadow-none" // AGOTADO
+                                            : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.97] shadow-emerald-500/50" // COMPRA ACTIVA
+                                    }
+                                `}
                                 >
                                     {unidades === 0
                                         ? "AGOTADO"
@@ -131,14 +148,14 @@ const Producto = ({
                                 /* ⚠️ 2. ESTADO DESHABILITADO (Logueado pero sin Taquilla) ⚠️ */
                                 <button
                                     onClick={(e) => e.stopPropagation()}
-                                    // Mantener el color neutro para la advertencia
-                                    className="w-full py-2.5 rounded-lg font-bold bg-slate-500 text-white cursor-not-allowed relative group shadow-md"
+                                    className="w-full py-3.5 rounded-xl font-extrabold bg-amber-600 text-white cursor-not-allowed relative group shadow-md opacity-90 tracking-wider"
                                     disabled
                                 >
-                                    <span className="opacity-75">
+                                    <span className="opacity-100">
                                         Taquilla Requerida
                                     </span>
-                                    <span className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] w-max max-w-xs text-center text-xs text-gray-700 bg-gray-100 rounded-lg p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
+                                    {/* Tooltip: Perfecto para el tema oscuro */}
+                                    <span className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] w-max max-w-xs text-center text-xs text-white bg-slate-900 rounded-lg p-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 whitespace-nowrap">
                                         Debes tener una taquilla asignada para
                                         poder comprar ofertas
                                     </span>
@@ -148,13 +165,14 @@ const Producto = ({
                             /* 🚫 3. ESTADO DESHABILITADO (No Logueado) 🚫 */
                             <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-full py-2.5 rounded-lg font-bold bg-gray-400 text-gray-700 cursor-not-allowed relative group shadow-md"
+                                className="w-full py-3.5 rounded-xl font-extrabold bg-gray-700 text-gray-300 cursor-not-allowed relative group shadow-inner tracking-wider"
                                 disabled
                             >
-                                <span className="opacity-75">
+                                <span className="opacity-90">
                                     Iniciar Sesión
                                 </span>
-                                <span className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] w-max max-w-xs text-center text-xs text-gray-700 bg-gray-100 rounded-lg p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20">
+                                {/* Tooltip: Perfecto para el tema oscuro */}
+                                <span className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] w-max max-w-xs text-center text-xs text-white bg-slate-900 rounded-lg p-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 whitespace-nowrap">
                                     Debes estar logueado para agregar productos
                                     al carrito
                                 </span>

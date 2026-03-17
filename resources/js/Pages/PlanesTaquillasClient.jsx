@@ -132,6 +132,26 @@ export default function PlanesTaquillasClient({
             return;
         }
 
+        // Validación simple: plan_id debe ser numérico
+        if (Number.isNaN(Number(planSeleccionado))) {
+            setAlerta({
+                tipo: "error",
+                mensaje: "El plan seleccionado no es válido.",
+            });
+            return;
+        }
+
+        // Validación simple: referencia con formato numérico (evita basura/typos)
+        // Ajusta el patrón si tu referencia bancaria admite letras.
+        if (!/^\d{4,}$/.test(referencia.trim())) {
+            setAlerta({
+                tipo: "error",
+                mensaje:
+                    "La referencia debe ser numérica y tener al menos 4 dígitos.",
+            });
+            return;
+        }
+
         const plan = planes.find((p) => p.id == planSeleccionado);
         if (!plan) return;
 
@@ -207,7 +227,6 @@ export default function PlanesTaquillasClient({
                         body: JSON.stringify({
                             plan_id: confirmacion.plan.id,
                             referencia_pago_externa: referencia,
-                            monto_pagado: confirmacion.plan.precio_total,
                         }),
                         credentials: "include",
                     });

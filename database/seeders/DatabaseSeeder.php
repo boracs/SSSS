@@ -11,6 +11,7 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Faker\Factory as Faker;
+use Database\Seeders\PriceSchemaSeeder; 
 
 class DatabaseSeeder extends Seeder
 {
@@ -103,7 +104,12 @@ class DatabaseSeeder extends Seeder
         }
 
         // ===============================
-        // 5️⃣ Crear admin fijo
+        // 5️⃣ Esquemas de precio para tablas de surf
+        // ===============================
+        $this->call(PriceSchemaSeeder::class);
+
+        // ===============================
+        // 6️⃣ Crear admin fijo
         // ===============================
         User::create([
             'nombre' => 'admin',
@@ -117,7 +123,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // ===============================
-        // 6️⃣ Crear pedidos y carritos
+        // 7️⃣ Crear pedidos y carritos
         // ===============================
         foreach ($users as $user) {
             $pedido = Pedido::factory()->create(['id_usuario' => $user->id]);

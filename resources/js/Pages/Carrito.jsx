@@ -170,7 +170,7 @@ const Carrito = () => {
                                                 €
                                             </p>
                                             <p className="text-gray-500">
-                                                Subtotal: {producto.subtotal} €
+                                                Subtotal: {new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(producto.subtotal))} €
                                             </p>
                                             <button
                                                 onClick={() =>

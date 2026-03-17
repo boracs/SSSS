@@ -1,5 +1,4 @@
-import { Inertia } from '@inertiajs/inertia';
-import { usePage } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import React, { useState, useEffect } from 'react';
 import Layout1 from '../layouts/Layout1'; // Asegúrate de que tienes tu layout
 
@@ -36,8 +35,8 @@ const AsignarTaquilla = () => {
 
         setIsSubmitting(true);
 
-        // Enviar datos con Inertia
-        Inertia.post(route('asignar.taquilla'), {
+        // Enviar datos con router de Inertia
+        router.post(route('asignar.taquilla'), {
             usuario_id: usuarioId,
             numero_taquilla: numeroTaquilla
         }, {

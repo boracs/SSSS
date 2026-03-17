@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Events\SoloStudentLocked;
+use App\Listeners\SendSoloStudentNotification;
+use App\Models\Lesson;
+use App\Observers\LessonObserver;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -35,6 +40,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Lesson::observe(LessonObserver::class);
+        Event::listen(SoloStudentLocked::class, SendSoloStudentNotification::class);
         Vite::prefetch(concurrency: 3);
         Inertia::setRootView('app');
     }

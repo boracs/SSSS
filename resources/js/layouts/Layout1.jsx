@@ -1,49 +1,49 @@
-import React from 'react';
-import Menu_principal from '../components/Menu_principal';
-import Titulo from '../components/Titulo';
-import Footer from '../components/Footer';
-import { CartProvider } from '../Contexts//cartContext';
-// 💡 Asegúrate de que esta ruta relativa sea correcta y que el archivo exista.
-import Chatbot from '../components/Chatbot.jsx'; 
-import { usePage } from '@inertiajs/react'; 
-
+import React, { useState, useEffect } from "react";
+import Menu_principal from "../components/Menu_principal";
+import Titulo from "../components/Titulo";
+import Footer from "../components/Footer";
+import BrandBanner from "../components/BrandBanner";
+import { CartProvider } from "../Contexts//cartContext";
+import Chatbot from "../components/Chatbot.jsx";
+import { usePage } from "@inertiajs/react";
 
 const Layout1 = ({ children, header }) => {
-    
-    // 1. Obtener las props globales de Inertia
-    const { props } = usePage();
-    const user = props.auth?.user; 
-    
-    // 2. Determinar el estado de autenticación y rol
-    const loggedIn = !!user; 
-    
-    // ASUMIMOS que el rol está en user.role y que 'admin' es el valor.
-    // 💡 Ajusta user.role === 'admin' a la lógica de tu backend.
-    const isAdmin = user && user.role === 'admin'; 
+    const { props, url } = usePage();
+    const user = props.auth?.user;
 
-    // 3. Condición de Renderizado: Mostrar si NO es un administrador
+    const loggedIn = !!user;
+    const isAdmin = user && user.role === "admin";
     const shouldRenderChatbot = !isAdmin;
-    
+
+    const isHome = url === "/" || url === "";
+    const [scrolled, setScrolled] = useState(false);
+    useEffect(() => {
+        const onScroll = () => setScrolled(window.scrollY > 24);
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+    const headerSolid = true;
+
     return (
-        <div className='layout_1'>
+        <div className="min-h-screen flex flex-col bg-brand-bg text-slate-900">
             <Titulo />
-            <header className="">
-                {header ||      
-                    <CartProvider > 
-                        <Menu_principal /> 
+
+            {/* Banner de marca (gradiente) + menú único para todos */}
+            <BrandBanner />
+            <header className="sticky top-0 z-header w-full border-b border-slate-200/60 bg-white/95 shadow-sm backdrop-blur-md transition-all duration-300 ease-out">
+                {header || (
+                    <CartProvider>
+                        <Menu_principal headerVariant={headerSolid ? "solid" : "hero"} />
                     </CartProvider>
-                } 
+                )}
             </header>
-            
-            <main>{children}</main>
-            
+
+            <main className="flex-1">{children}</main>
+
             <Footer />
-            
-            {/* 4. RENDERIZADO CONDICIONAL DEL CHATBOT */}
+
             {shouldRenderChatbot && <Chatbot loggedIn={loggedIn} />}
-            
         </div>
     );
 };
-
 export default Layout1;

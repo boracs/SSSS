@@ -32,8 +32,21 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
 
+            // Útil para handshakes/depuración desde el frontend (también para invitados)
+            'csrf' => csrf_token(),
+
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()
+                    ? [
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name ?? $request->user()->nombre,
+                        'nombre' => $request->user()->nombre,
+                        'apellido' => $request->user()->apellido,
+                        'email' => $request->user()->email,
+                        'role' => $request->user()->role ?? 'user',
+                        'numeroTaquilla' => $request->user()->numeroTaquilla,
+                    ]
+                    : null,
             ],
 
             // 🔥 Flash messages

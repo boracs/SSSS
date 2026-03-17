@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\PlanesTaquillasController;
 use App\Http\Controllers\TiendaController;
@@ -8,6 +10,8 @@ use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\Pag_principalController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Rentals\SurfboardController as RentalsSurfboardController;
+use App\Http\Controllers\Rentals\BookingController as RentalsBookingController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\VerificarAdmin;
@@ -22,7 +26,7 @@ Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('l
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
 Route::post('/register', [RegisteredUserController::class, 'store']);
-//PAGINA PRINCIPAL
+// PAGINA PRINCIPAL (ruta pública, sin middleware auth)
 Route::get('/', [Pag_principalController::class, 'index'])->name('Pag_principal');
 //NOSOTROS
 Route::get('/nosotros', function () { return Inertia::render('Nosotros');})->name('nosotros');
@@ -42,16 +46,44 @@ Route::get('/servicios/surf-skate', function () {return Inertia::render('Servici
 Route::get('/servicios/surf-trips', function () { return Inertia::render('Servicios_SurfTrips');})->name('servicios.surfTrips'); 
 Route::get('/servicios/fotos', function () { return Inertia::render('Servicios_Fotos');})->name('servicios.fotografia'); 
 
+// ==========================
+// ACADEMIA (clases con créditos)
+// ==========================
+Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Academy\LessonController::class, 'index'])->name('lessons.index');
+    Route::post('/lessons/{lesson}/enroll', [\App\Http\Controllers\Academy\LessonController::class, 'enroll'])->name('lessons.enroll');
+    Route::post('/lessons/{lesson}/cancel', [\App\Http\Controllers\Academy\LessonController::class, 'cancel'])->name('lessons.cancel');
+    Route::post('/lessons/{lesson}/confirm-surf-trip', [\App\Http\Controllers\Academy\LessonController::class, 'confirmSurfTrip'])->name('lessons.confirm-surf-trip');
+});
+
+// ==========================
+// ALQUILER DE TABLAS (público)
+// ==========================
+// Catálogo accesible por cualquier usuario/visitante. La reserva se crea vía POST (CSRF) con datos de cliente.
+Route::prefix('tablas-alquiler')->name('rentals.')->group(function () {
+    Route::get('/', [RentalsSurfboardController::class, 'index'])->name('surfboards.index');
+    Route::get('/{category}', [RentalsSurfboardController::class, 'index'])
+        ->whereIn('category', ['soft', 'hard'])
+        ->name('surfboards.index.category');
+    Route::get('/tabla/{surfboard}', [RentalsSurfboardController::class, 'show'])->name('surfboards.show');
+
+    Route::get('/check-availability', [RentalsBookingController::class, 'checkAvailability'])->name('bookings.check-availability');
+    Route::post('/reservar', [RentalsBookingController::class, 'store'])->name('bookings.store');
+});
+
 
 
 
 /////USUARIO REGISTRADO SIN TAQUILLA ASIGNADA////////////
 
 Route::middleware('auth')->group(function () {
-    Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // PEDIDOS (disponible para cualquier usuario autenticado)
+    Route::get('/pedidos', [PedidoController::class, 'mostrarPedidos'])->name('pedidos');
+    Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
 });
 
 
@@ -73,10 +105,8 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     // Redirigir GET a la ruta del carrito para evitar errores al refrescar la página
     Route::get('/carrito/agregar/{id}', function ($id) { return redirect()->route('carrito'); });
     
-    // PEDIDOS (REQUIERE TAQUILLA)
-    Route::get('/pedidos', [PedidoController::class, 'mostrarPedidos'])->name('pedidos');
+    // PEDIDOS (acciones que requieren taquilla)
     Route::post('/crear-pedido', [PedidoController::class, 'crear'])->name('crear.pedido');
-    Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
     // La ruta de confirmación de pedido se gestionaría dentro del POST de 'crear-pedido'
     
     // CLIENT PANEL DE TAQUILLAS (REQUIERE TAQUILLA)
@@ -132,7 +162,29 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
              // 1. Ruta principaPLANES TAQUILLASl: Muestra la lista de planes y el estado de lso usuarios si estana ctivo ....m uestra el panel de admin
             Route::get('/taquilla/admin/index', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
             //MSOTRAR NOMBRE Y CORRREO DEL USUARIO QUE CORREPSONDE AL CLCIAR EL OJO
-            Route::get('/admin/usuarios/{id}/contacto', [PlanesTaquillasController::class, 'obtenerContactoUsuario']) ->name('admin.usuario.contacto');});
+            Route::get('/admin/usuarios/{id}/contacto', [PlanesTaquillasController::class, 'obtenerContactoUsuario']) ->name('admin.usuario.contacto');
+
+        // Surfboards y reservas (prefijo /admin)
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::resource('surfboards', AdminSurfboardController::class)->except(['show']);
+            Route::get('bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
+            Route::post('bookings', [AdminBookingController::class, 'store'])->name('bookings.store');
+            Route::get('bookings/check-availability', [AdminBookingController::class, 'checkAvailability'])->name('bookings.check-availability');
+            Route::post('bookings/mark-expired', [AdminBookingController::class, 'markExpired'])->name('bookings.mark-expired');
+            Route::patch('bookings/{booking}/confirm-payment', [AdminBookingController::class, 'confirmPayment'])->name('bookings.confirm-payment');
+            Route::patch('bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
+        });
+
+        // Academia: Consola Comandante
+        Route::prefix('admin/academy')->name('admin.academy.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Admin\AcademyController::class, 'index'])->name('index');
+            Route::post('lessons', [\App\Http\Controllers\Admin\AcademyController::class, 'store'])->name('lessons.store');
+            Route::post('lessons/{lesson}/optimal-waves', [\App\Http\Controllers\Admin\AcademyController::class, 'toggleOptimalWaves'])->name('lessons.optimal-waves');
+            Route::post('lessons/{lesson}/surf-trip', [\App\Http\Controllers\Admin\AcademyController::class, 'triggerSurfTrip'])->name('lessons.surf-trip');
+            Route::post('lessons/{lesson}/cancel-mal-mar', [\App\Http\Controllers\Admin\AcademyController::class, 'cancelMalMar'])->name('lessons.cancel-mal-mar');
+            Route::post('staff/assign', [\App\Http\Controllers\Admin\AcademyController::class, 'assignStaff'])->name('staff.assign');
+        });
+});
 
 
 

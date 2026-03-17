@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
+import { usePage } from "@inertiajs/react";
 import {
     MessageCircle,
     Send,
@@ -14,76 +15,87 @@ import {
     Clock,
     User,
 } from "lucide-react";
-import { initializeApp } from "firebase/app";
-import {
-    getAuth,
-    signInAnonymously,
-    onAuthStateChanged,
-    signInWithCustomToken,
-} from "firebase/auth";
-import {
-    getFirestore,
-    collection,
-    query,
-    onSnapshot,
-    addDoc,
-    serverTimestamp,
-    doc,
-    orderBy,
-    setDoc,
-} from "firebase/firestore";
+// import { initializeApp } from "firebase/app";
+// import {
+//     getAuth,
+//     signInAnonymously,
+//     onAuthStateChanged,
+//     signInWithCustomToken,
+// } from "firebase/auth";
+// import {
+//     getFirestore,
+//     collection,
+//     query,
+//     onSnapshot,
+//     addDoc,
+//     serverTimestamp,
+//     doc,
+//     orderBy,
+//     setDoc,
+// } from "firebase/firestore";
 import ReactMarkdown from "react-markdown";
 
-// --- CONFIGURACIÓN DE FIREBASE (Uso de variables globales de Canvas) ---
-const firebaseConfig =
-    typeof __firebase_config !== "undefined"
-        ? JSON.parse(__firebase_config)
-        : {};
-const initialAuthToken =
-    typeof __initial_auth_token !== "undefined" ? __initial_auth_token : null;
-const MASTER_APP_ID =
-    typeof __app_id !== "undefined" ? __app_id : "default-app-id";
+// // --- CONFIGURACIÓN DE FIREBASE (Uso de variables globales de Canvas) ---
+// const firebaseConfig =
+//     typeof __firebase_config !== "undefined"
+//         ? JSON.parse(__firebase_config)
+//         : {};
+// const initialAuthToken =
+//     typeof __initial_auth_token !== "undefined" ? __initial_auth_token : null;
+// const MASTER_APP_ID =
+//     typeof __app_id !== "undefined" ? __app_id : "default-app-id";
 
-// --- CONSTANTES ---
+// // --- CONSTANTES ---
 const ANONYMOUS_USER_ID_KEY = "chatbot_anon_id";
 const LOCAL_CHAT_KEY = "chatbot_local_history_";
 
-// --- INICIALIZACIÓN DE FIREBASE COMO SINGLETON ---
-const firebaseInstances = {
-    app: null,
-    db: null,
-    auth: null,
-};
+// // --- INICIALIZACIÓN DE FIREBASE COMO SINGLETON ---
+// const firebaseInstances = {
+//     app: null,
+//     db: null,
+//     auth: null,
+// };
 
-const initializeFirebase = () => {
-    // Si la configuración de Firebase está vacía, no inicializamos Firebase.
-    if (Object.keys(firebaseConfig).length === 0) {
-        return { app: null, db: null, auth: null };
-    }
+// const initializeFirebase = () => {
+//     // Si la configuración de Firebase está vacía, no inicializamos Firebase.
+//     if (Object.keys(firebaseConfig).length === 0) {
+//         return { app: null, db: null, auth: null };
+//     }
 
-    if (firebaseInstances.app) {
-        return firebaseInstances;
-    }
+//     if (firebaseInstances.app) {
+//         return firebaseInstances;
+//     }
 
-    try {
-        firebaseInstances.app = initializeApp(firebaseConfig);
-        firebaseInstances.db = getFirestore(firebaseInstances.app);
-        firebaseInstances.auth = getAuth(firebaseInstances.app);
-    } catch (error) {
-        console.error(
-            "Error al inicializar Firebase. Cayendo a LocalStorage:",
-            error
-        );
-        return { app: null, db: null, auth: null };
-    }
-    return firebaseInstances;
-};
+//     try {
+//         firebaseInstances.app = initializeApp(firebaseConfig);
+//         firebaseInstances.db = getFirestore(firebaseInstances.app);
+//         firebaseInstances.auth = getAuth(firebaseInstances.app);
+//     } catch (error) {
+//         console.error(
+//             "Error al inicializar Firebase. Cayendo a LocalStorage:",
+//             error
+//         );
+//         return { app: null, db: null, auth: null };
+//     }
+//     return firebaseInstances;
+// };
 
-const { db, auth } = initializeFirebase();
-const IS_FIREBASE_CONFIGURED = !!db;
+// const { db, auth } = initializeFirebase();
+// const IS_FIREBASE_CONFIGURED = !!db;
+
+// --- STUBS SIN FIREBASE: chat local y Firebase desactivado temporalmente ---
+const firebaseConfig = {};
+const initialAuthToken = null;
+const MASTER_APP_ID = "default-app-id";
+const db = null;
+const auth = null;
+const IS_FIREBASE_CONFIGURED = false;
 
 // --- HOOK PERSONALIZADO: useChatbot ---
 const useChatbot = () => {
+    const { props } = usePage();
+    const laravelUserId = props?.auth?.user?.id;
+
     const [isOpen, setIsOpen] = useState(false);
     const [view, setView] = useState("chat");
     const [messages, setMessages] = useState([]);
@@ -132,7 +144,7 @@ const useChatbot = () => {
         try {
             localStorage.setItem(
                 LOCAL_CHAT_KEY + anonId,
-                JSON.stringify(currentMessages)
+                JSON.stringify(currentMessages),
             );
         } catch (error) {
             console.error("Error guardando chat local:", error);
@@ -142,6 +154,14 @@ const useChatbot = () => {
     // EFECTO 1: Gestión de la autenticación y el userId
     useEffect(() => {
         if (!IS_FIREBASE_CONFIGURED || !auth) {
+            // Si el usuario está autenticado en Laravel, usar su ID para evitar 403 en el backend.
+            if (laravelUserId != null) {
+                setUserId(String(laravelUserId));
+                setIsLoggedIn(true);
+                setMessages([]);
+                setIsAuthReady(true);
+                return;
+            }
             // Modo LocalStorage/Anónimo: Usar ID persistente del navegador.
             const anonId = getOrCreateAnonId();
             setUserId(anonId);
@@ -161,7 +181,7 @@ const useChatbot = () => {
             } catch (error) {
                 console.error(
                     "Error signing in with Firebase. Falling back to anon ID:",
-                    error
+                    error,
                 );
                 const anonId = getOrCreateAnonId();
                 setUserId(anonId);
@@ -189,7 +209,7 @@ const useChatbot = () => {
 
         setupAuth();
         return () => unsubscribe();
-    }, []);
+    }, [laravelUserId]);
 
     // EFECTO 2: Suscripción a mensajes de chat (Firebase) o guardado (Local)
     useEffect(() => {
@@ -209,7 +229,7 @@ const useChatbot = () => {
                 MASTER_APP_ID,
                 "users",
                 currentUserId,
-                "chat_messages"
+                "chat_messages",
             );
             const q = query(chatRef, orderBy("createdAt", "asc"));
 
@@ -232,9 +252,9 @@ const useChatbot = () => {
                 (error) => {
                     console.error(
                         "Error al escuchar mensajes de Firestore:",
-                        error
+                        error,
                     );
-                }
+                },
             );
             return () => unsubscribe();
         }
@@ -252,7 +272,7 @@ const useChatbot = () => {
 
         const artifactsRef = collection(
             db,
-            `artifacts/${MASTER_APP_ID}/public/data/user_artifacts`
+            `artifacts/${MASTER_APP_ID}/public/data/user_artifacts`,
         );
         const q = query(artifactsRef, orderBy("createdAt", "desc"));
 
@@ -277,9 +297,9 @@ const useChatbot = () => {
             (error) => {
                 console.error(
                     "Error al escuchar artefactos de Firestore:",
-                    error
+                    error,
                 );
-            }
+            },
         );
         return () => unsubscribe();
     }, [isAuthReady]);
@@ -303,7 +323,7 @@ const useChatbot = () => {
         } catch (error) {
             console.error(
                 "Error al intentar guardar artefactos en el backend:",
-                error
+                error,
             );
         }
     };
@@ -346,7 +366,7 @@ const useChatbot = () => {
                     MASTER_APP_ID,
                     "users",
                     userId,
-                    "chat_messages"
+                    "chat_messages",
                 );
                 await addDoc(chatRef, {
                     ...userMessage,
@@ -391,7 +411,7 @@ const useChatbot = () => {
                     MASTER_APP_ID,
                     "users",
                     userId,
-                    "chat_messages"
+                    "chat_messages",
                 );
                 await addDoc(chatRef, {
                     ...botMessage,
@@ -414,19 +434,19 @@ const useChatbot = () => {
                 setRetryAfterSeconds(waitTime);
                 setIsRateLimited(true);
                 setApiError(
-                    `Has excedido el límite de mensajes. Por favor, espera ${waitTime} segundos.`
+                    `Has excedido el límite de mensajes. Por favor, espera ${waitTime} segundos.`,
                 );
                 // 🚨 AÑADE ESTE BLOQUE 🚨
             } else if (error.response?.status === 403) {
                 setApiError(
-                    "Error de seguridad: Tu ID de sesión no coincide con tu usuario autenticado. Recarga la página."
+                    "Error de seguridad: Tu ID de sesión no coincide con tu usuario autenticado. Recarga la página.",
                 );
                 // 🚨 FIN DEL BLOQUE AÑADIDO 🚨
             } else {
                 setApiError(
                     `Error de comunicación (${
                         error.response?.status || "network"
-                    }). Maider no pudo responder.`
+                    }). Maider no pudo responder.`,
                 );
             }
         } finally {
@@ -549,7 +569,7 @@ const Chatbot = () => {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 bg-indigo-600 text-white rounded-full p-4 shadow-xl hover:bg-indigo-700 transition duration-300 transform hover:scale-110 z-50"
+                className="fixed bottom-6 right-6 bg-indigo-600 text-white rounded-full p-4 shadow-xl hover:bg-indigo-700 transition duration-300 transform hover:scale-110 z-[200]"
                 aria-label="Abrir Chatbot"
             >
                 <MessageCircle className="h-7 w-7" />
@@ -560,7 +580,7 @@ const Chatbot = () => {
     // Pantalla de carga mientras se conecta la autenticación de Firebase
     if (IS_FIREBASE_CONFIGURED && !isAuthReady) {
         return (
-            <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col justify-center items-center bg-gray-50 rounded-xl shadow-2xl z-50 p-4">
+            <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col justify-center items-center bg-gray-50 rounded-xl shadow-2xl z-[200] p-4">
                 <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
                 <p className="mt-4 text-gray-600">
                     Conectando servicio de autenticación...
@@ -667,7 +687,7 @@ const Chatbot = () => {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col bg-gray-50 rounded-xl shadow-2xl z-50 overflow-hidden border border-gray-300 transition-all duration-300">
+        <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col bg-gray-50 rounded-xl shadow-2xl z-[200] overflow-hidden border border-gray-300 transition-all duration-300">
             {/* Encabezado y Pestañas */}
             <div className="bg-indigo-600 text-white shadow-md border-b border-indigo-700">
                 <div className="flex justify-between items-center p-4">

@@ -1,8 +1,48 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@600;700;800&family=Poppins:wght@400;500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*Animación para notificación flotante de elimiar producto*/
+body {
+  @apply bg-brand-bg text-slate-700 leading-relaxed;
+  font-family: "Inter", "Poppins", system-ui, sans-serif;
+}
+
+h1, h2, h3, h4, .font-heading {
+  font-family: "Inter", "Montserrat", system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+:root {
+  --s4-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --z-header: 70;
+  --z-dropdown: 80;
+  --z-modal: 90;
+  --z-toast: 999;
+}
+
+.transition-s4 {
+  transition: all var(--s4-transition);
+}
+
+.z-header { z-index: var(--z-header); }
+.z-dropdown { z-index: var(--z-dropdown); }
+.z-modal { z-index: var(--z-modal); }
+.z-toast { z-index: var(--z-toast); }
+
+.glass-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hero-wave-mask {
+  clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%);
+}
+
+/* Animación para notificación flotante de eliminar producto */
 @keyframes fade-in-down {
   0% {
     opacity: 0;
@@ -16,4 +56,44 @@
 
 .animate-fade-in-down {
   animation: fade-in-down 0.3s ease-out;
+}
+
+/* Capas de z-index centralizadas: toasts > modales > header */
+.toast-container-premium,
+.Toastify__toast-container {
+  z-index: 999 !important;
+}
+
+.toast-elite {
+  border-radius: 0.75rem; /* rounded-xl */
+  box-shadow: 0 4px 12px rgba(13, 35, 77, 0.08);
+  border: 1px solid rgba(13, 35, 77, 0.06);
+}
+
+/* Inputs: estado de foco claro (Deep Ocean) */
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
+}
+
+/* Clase utilitaria para inputs con foco consistente */
+.input-focus-ring {
+  @apply rounded-xl border border-slate-300 transition-shadow duration-200;
+}
+.input-focus-ring:focus {
+  @apply border-brand-action outline-none ring-2 ring-brand-action/20;
+}
+
+/* Botones: Primary (lleno), Secondary (outline), Ghost (solo texto). transition-all duration-300 */
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-xl bg-brand-deep px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 hover:bg-brand-deep/90 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center rounded-xl border-2 border-brand-deep bg-transparent px-4 py-2.5 text-sm font-semibold text-brand-deep transition-all duration-300 hover:bg-brand-deep/5 focus:outline-none focus:ring-2 focus:ring-brand-accent focus:ring-offset-2;
+}
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-brand-deep transition-all duration-300 hover:bg-slate-100 focus:outline-none;
 }

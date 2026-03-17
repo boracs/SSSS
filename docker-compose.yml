@@ -1,0 +1,47 @@
+services:
+  # Servidor de Aplicación (PHP + Node para Vite)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mas_que_surf_app
+    container_name: mas_que_surf_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8000:8000"
+      - "5173:5173" # Puerto para Vite (Hot Reload)
+    networks:
+      - surf-network
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # Base de Datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mas_que_surf_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+    ports:
+      - "5001:3306" # Mapea el 5001 de tu Windows al 3306 del contenedor
+    volumes:
+      - surf-db-data:/var/lib/mysql
+    networks:
+      - surf-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
+      retries: 3
+      timeout: 5s
+
+networks:
+  surf-network:
+    driver: bridge
+
+volumes:
+  surf-db-data:

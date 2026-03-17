@@ -1,6 +1,7 @@
 import Layout1 from "../layouts/Layout1";
 import { Link, router } from "@inertiajs/react";
 import React, { useRef, useState, useEffect } from "react";
+import ProductoGestor from "../components/ProductoGestor";
 
 export default function Productos({ productos: productosIniciales }) {
     // Renombramos la prop 'productos' que viene del backend como 'productosIniciales' Esto evita conflictos de nombres con el estado interno que vamos a crear.
@@ -17,8 +18,6 @@ export default function Productos({ productos: productosIniciales }) {
         imagenes: [], // Contiene URLs (al cargar) o objetos File (al seleccionar nuevos archivos)
         imagenes_ids: [],
     });
-
-    // resto de tu código
 
     // Carga inicial y reset de estado
     useEffect(() => {
@@ -291,76 +290,23 @@ export default function Productos({ productos: productosIniciales }) {
 
     return (
         <Layout1>
-            <div className="flex flex-col lg:flex-row p-4 space-y-4 lg:space-y-0 lg:space-x-4">
-                <div className="flex-1 lg:w-full overflow-auto p-3 border rounded-lg shadow-sm bg-white">
+            <div className=" bg-[#111826]   flex flex-col lg:flex-row p-4 space-y-4 lg:space-y-0 lg:space-x-4">
+                <div className=" bg-[#111826] flex-1 lg:w-full overflow-auto p-6 ">
                     <h2 className="text-xl font-semibold mb-3">Productos</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-12">
                         {productos
                             .sort((a, b) => a.nombre.localeCompare(b.nombre))
                             .map((producto) => (
-                                <div
+                                <ProductoGestor
                                     key={producto.id}
-                                    className={`flex flex-col items-center p-3 border rounded-lg shadow-sm cursor-pointer hover:shadow-md transition-shadow duration-200 ${
-                                        producto.unidades < 5
-                                            ? "bg-red-200"
-                                            : ""
-                                    } max-w-[200px] relative`}
-                                    onClick={() =>
-                                        handleProductoClick(producto)
+                                    producto={producto}
+                                    // Pasamos el ID del seleccionado para que el hijo sepa si debe mostrar el overlay oscuro
+                                    productoSeleccionadoId={
+                                        productoSeleccionado?.id
                                     }
-                                >
-                                    {/* Capa de oscuridad aplicada si el producto está seleccionado */}
-                                    {productoSeleccionado &&
-                                        productoSeleccionado.id ===
-                                            producto.id && (
-                                            <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg"></div>
-                                        )}
-
-                                    {producto.eliminado === 1 && (
-                                        <div className="absolute inset-0 bg-black bg-opacity-10 rounded-lg"></div>
-                                    )}
-
-                                    <img
-                                        src={
-                                            productos.find(
-                                                (p) => p.id === producto.id
-                                            )?.imagen_principal ||
-                                            "/img/placeholder.jpg"
-                                        }
-                                        alt={producto.nombre}
-                                        className={`w-24 h-24 object-cover rounded-lg mb-2 ${
-                                            producto.eliminado === 1
-                                                ? "opacity-50"
-                                                : ""
-                                        }`}
-                                    />
-
-                                    <p className="text-center text-sm font-medium text-blue-600">
-                                        {producto.nombre}
-                                    </p>
-                                    <div className="text-center text-sm text-gray-600">
-                                        <p>
-                                            Cantidad:{" "}
-                                            <span className="font-semibold">
-                                                {producto.unidades}
-                                            </span>
-                                        </p>
-                                        <p>
-                                            Precio:{" "}
-                                            <span className="font-semibold text-green-600">
-                                                ${producto.precio}
-                                            </span>
-                                        </p>
-                                        {producto.descuento > 0 && (
-                                            <p>
-                                                Descuento:{" "}
-                                                <span className="font-semibold text-red-600">
-                                                    {producto.descuento}%
-                                                </span>
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
+                                    // Pasamos el handler para que el hijo pueda notificar el clic
+                                    onClick={handleProductoClick}
+                                />
                             ))}
                     </div>
 
