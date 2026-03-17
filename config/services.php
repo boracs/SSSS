@@ -42,4 +42,10 @@ return [
         // El controlador lo buscará con Config::get('services.gemini.key')
         'key' => env('GEMINI_API_KEY'),
     ],
+
+    'academy' => [
+        'bizum_number' => env('ACADEMY_BIZUM_NUMBER', '[BIZUM_NUMBER]'),
+        'iban' => env('ACADEMY_IBAN', '[IBAN]'),
+        'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
+    ],
 ];

@@ -8,6 +8,7 @@ import { createInertiaApp } from "@inertiajs/react";
 import { createRoot } from "react-dom/client";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import AuthenticatedLayout from "./layouts/AuthenticatedLayout";
 
 // Obtenemos el nombre de la app desde las variables de entorno
 const appName = import.meta.env.VITE_APP_NAME || "Laravel";
@@ -26,8 +27,12 @@ createInertiaApp({
             throw new Error(`No se encontró la página: ${name}`);
         }
 
-        // Obtenemos el componente real (cada página define su layout en .layout si lo necesita)
+        // Layout por defecto (Single Source of Truth): AuthenticatedLayout
+        // Si una página define page.layout, se respeta.
         const page = module.default;
+        if (!page.layout) {
+            page.layout = (pageNode) => <AuthenticatedLayout>{pageNode}</AuthenticatedLayout>;
+        }
 
         return page;
     },

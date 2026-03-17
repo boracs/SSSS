@@ -50,13 +50,15 @@ const Producto = ({
     };
 
     // Lógica para determinar la fuente de la imagen.
-    // Usamos una comprobación más robusta para asegurar que la imagenPrincipal es una cadena válida
-    // y no contiene la subcadena 'undefined' que causaba el error 403.
+    // Acepta URL absoluta (backend con asset()) o ruta relativa; evita 403 usando la URL que envía Laravel.
+    const raw = producto.imagenPrincipal ?? producto.imagen_principal;
     const imageSource =
-        producto.imagenPrincipal &&
-        typeof producto.imagenPrincipal === "string" &&
-        !producto.imagenPrincipal.includes("undefined")
-            ? `/storage/${producto.imagenPrincipal}`
+        raw &&
+        typeof raw === "string" &&
+        !raw.includes("undefined")
+            ? raw.startsWith("http")
+                ? raw
+                : raw.startsWith("/") ? raw : `/storage/${raw.replace(/^\/+/, "")}`
             : "/img/placeholder.svg";
 
     return (

@@ -1,6 +1,5 @@
 import React, { useMemo } from "react";
 import { Head, Link } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
 import EmptyState from "../../../components/EmptyState";
 import SafeImage from "../../../components/SafeImage";
 
@@ -155,5 +154,3 @@ export default function Index({ surfboards, category }) {
         </>
     );
 }
-
-Index.layout = (page) => <Layout1>{page}</Layout1>;

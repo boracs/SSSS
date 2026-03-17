@@ -1,5 +1,5 @@
 import React from 'react';
-import { usePage } from '@inertiajs/react';
+import { usePage, Link } from '@inertiajs/react';
 import Layout1 from '../layouts/Layout1';
 
 const MostrarPedidos = () => {
@@ -46,9 +46,9 @@ const MostrarPedidos = () => {
                                     <p className="text-sm text-gray-600">Estado: {pedido.pagado ? 'Pagado' : 'Pendiente'} - {pedido.entregado ? 'Entregado' : 'No entregado'}</p>
 
                                     <div className="mt-6">
-                                        <a href={`/mostrar-pedido/${pedido.id}`} className="text-blue-600 hover:underline">
+                                        <Link href={route('mostrar.pedido', pedido.id)} className="text-blue-600 hover:underline">
                                             Ver detalles del pedido
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             ))

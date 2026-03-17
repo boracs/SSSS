@@ -51,6 +51,8 @@ Route::get('/servicios/fotos', function () { return Inertia::render('Servicios_F
 // ==========================
 Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Academy\LessonController::class, 'index'])->name('lessons.index');
+    Route::post('/lessons/{lesson}/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestLesson'])->name('lessons.request');
+    Route::post('/lessons/{lesson}/upload-proof', [\App\Http\Controllers\Academy\LessonController::class, 'uploadProof'])->name('lessons.upload-proof');
     Route::post('/lessons/{lesson}/enroll', [\App\Http\Controllers\Academy\LessonController::class, 'enroll'])->name('lessons.enroll');
     Route::post('/lessons/{lesson}/cancel', [\App\Http\Controllers\Academy\LessonController::class, 'cancel'])->name('lessons.cancel');
     Route::post('/lessons/{lesson}/confirm-surf-trip', [\App\Http\Controllers\Academy\LessonController::class, 'confirmSurfTrip'])->name('lessons.confirm-surf-trip');
@@ -179,10 +181,15 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
         Route::prefix('admin/academy')->name('admin.academy.')->group(function () {
             Route::get('/', [\App\Http\Controllers\Admin\AcademyController::class, 'index'])->name('index');
             Route::post('lessons', [\App\Http\Controllers\Admin\AcademyController::class, 'store'])->name('lessons.store');
+            Route::put('lessons/{lesson}', [\App\Http\Controllers\Admin\AcademyController::class, 'update'])->name('lessons.update');
             Route::post('lessons/{lesson}/optimal-waves', [\App\Http\Controllers\Admin\AcademyController::class, 'toggleOptimalWaves'])->name('lessons.optimal-waves');
             Route::post('lessons/{lesson}/surf-trip', [\App\Http\Controllers\Admin\AcademyController::class, 'triggerSurfTrip'])->name('lessons.surf-trip');
             Route::post('lessons/{lesson}/cancel-mal-mar', [\App\Http\Controllers\Admin\AcademyController::class, 'cancelMalMar'])->name('lessons.cancel-mal-mar');
             Route::post('staff/assign', [\App\Http\Controllers\Admin\AcademyController::class, 'assignStaff'])->name('staff.assign');
+            Route::post('enrollments/{enrollmentId}/confirm', [\App\Http\Controllers\Admin\AcademyController::class, 'confirmEnrollment'])->name('enrollments.confirm');
+            Route::post('enrollments/{enrollmentId}/reactivate', [\App\Http\Controllers\Admin\AcademyController::class, 'reactivateEnrollment'])->name('enrollments.reactivate');
+            Route::get('enrollments/{enrollmentId}/proof', [\App\Http\Controllers\Admin\AcademyController::class, 'showProof'])->name('enrollments.proof');
+            Route::post('enrollments/bulk-delete-stale', [\App\Http\Controllers\Admin\AcademyController::class, 'bulkDeleteStale'])->name('enrollments.bulk-delete-stale');
         });
 });
 

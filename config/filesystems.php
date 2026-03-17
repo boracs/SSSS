@@ -37,6 +37,12 @@ return [
             'throw' => false,
         ],
 
+        'lesson_proofs' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/lesson-proofs'),
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

@@ -31,7 +31,11 @@ const ProductoOferta = ({ nombre, precio, imagen, unidades, descuento, producto 
   const placeholderImg = "/img/placeholder.svg";
   const imagenValida =
     typeof imagen === "string" && imagen.trim() !== "" && !imagen.includes("undefined");
-  const imageSrc = imagenValida ? `/storage/productos/${imagen}` : placeholderImg;
+  const imageSrc = imagenValida
+    ? imagen.startsWith("http") || imagen.startsWith("/")
+      ? imagen
+      : `/storage/productos/${imagen.replace(/^productos\/?/, "")}`
+    : placeholderImg;
 
   return (
     <div className="flex flex-col w-full max-w-sm mx-auto">

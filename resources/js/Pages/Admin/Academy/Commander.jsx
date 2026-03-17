@@ -1,7 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+
+const STALE_HOURS = 48;
+function isStale(createdAt) {
+    if (!createdAt) return false;
+    const d = new Date(createdAt);
+    return (Date.now() - d.getTime()) > STALE_HOURS * 60 * 60 * 1000;
+}
 
 const LEVEL_OPTIONS = [
     { value: "iniciacion", label: "Iniciación" },
@@ -11,6 +17,7 @@ const LEVEL_OPTIONS = [
 export default function Commander({ lessons = [], selectedDate, staff = [] }) {
     const [date, setDate] = useState(selectedDate);
     const [showNewLesson, setShowNewLesson] = useState(false);
+    const [staleSelected, setStaleSelected] = useState([]);
     const [newLesson, setNewLesson] = useState({
         startTime: "10:00",
         endTime: "11:30",
@@ -62,13 +69,36 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         }, { preserveScroll: true });
     };
 
+    const confirmEnrollment = (enrollmentId) => {
+        router.post(route("admin.academy.enrollments.confirm", enrollmentId), {}, { preserveScroll: true });
+    };
+
+    const bulkDeleteStale = () => {
+        if (staleSelected.length === 0) return;
+        router.post(route("admin.academy.enrollments.bulk-delete-stale"), { ids: staleSelected }, { preserveScroll: true, onSuccess: () => setStaleSelected([]) });
+    };
+
+    const staleEnrollments = useMemo(() => {
+        const out = [];
+        lessons.forEach((l) => {
+            (l.enrollments || []).forEach((e) => {
+                if (e.status === "pending" && isStale(e.created_at)) out.push(e);
+            });
+        });
+        return out;
+    }, [lessons]);
+
+    const toggleStale = (id) => {
+        setStaleSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+
     const getStaffForRole = (lesson, role) => {
         const s = lesson.staff?.find((x) => x.role === role);
         return s?.user?.id ?? "";
     };
 
     return (
-        <AuthenticatedLayout>
+        <>
             <Head title="Consola Comandante · Academia" />
             <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
                 <Breadcrumbs
@@ -89,6 +119,35 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                 {flash?.success && (
                     <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
                         {flash.success}
+                    </div>
+                )}
+
+                {staleEnrollments.length > 0 && (
+                    <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                        <p className="text-sm font-semibold text-rose-800">Solicitudes pendientes &gt;48h</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                            {staleEnrollments.map((e) => (
+                                <label key={e.id} className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={staleSelected.includes(e.id)}
+                                        onChange={() => toggleStale(e.id)}
+                                        className="rounded border-slate-300"
+                                    />
+                                    <span className="text-sm text-rose-900">
+                                        #{e.id} · {e.user?.nombre ?? "Cliente"} · {e.created_at ? new Date(e.created_at).toLocaleString("es-ES") : "—"}
+                                    </span>
+                                </label>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={bulkDeleteStale}
+                                disabled={staleSelected.length === 0}
+                                className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 disabled:opacity-50"
+                            >
+                                Eliminar seleccionados ({staleSelected.length})
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -209,6 +268,64 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         <p className="mt-1 text-xs text-slate-500">
                                             {lesson.enrollments?.length ?? 0} / {lesson.max_slots} plazas
                                         </p>
+                                        {(lesson.enrollments?.length ?? 0) > 0 && (
+                                            <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Inscripciones</p>
+                                                {lesson.enrollments.map((e) => {
+                                                    const stale = e.status === "pending" && isStale(e.created_at);
+                                                    const hasProof = !!e.has_proof;
+                                                    return (
+                                                        <div
+                                                            key={e.id}
+                                                            className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm ${stale ? "bg-rose-100 text-rose-900" : e.status === "expired" ? "bg-slate-100 text-slate-600" : hasProof ? "bg-sky-50 text-slate-800 ring-1 ring-sky-200/60 shadow-sm" : "bg-slate-50 text-slate-700"}`}
+                                                        >
+                                                            <span className="flex items-center gap-1.5">
+                                                                {hasProof && (
+                                                                    <span className="rounded bg-sky-100 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-sky-700">
+                                                                        Pago subido
+                                                                    </span>
+                                                                )}
+                                                                {lesson.is_private ? "Cliente" : (e.user?.nombre ?? "—")}
+                                                                {hasProof && (
+                                                                    <a
+                                                                        href={route("admin.academy.enrollments.proof", e.id)}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex rounded p-1 text-sky-600 hover:bg-sky-100"
+                                                                        title="Ver comprobante"
+                                                                    >
+                                                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                        </svg>
+                                                                    </a>
+                                                                )}
+                                                            </span>
+                                                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-slate-200 text-slate-700">{e.status}</span>
+                                                            <span className="text-xs opacity-80">{e.created_at ? new Date(e.created_at).toLocaleString("es-ES") : ""}</span>
+                                                            {e.status === "pending" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => confirmEnrollment(e.id)}
+                                                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all ${hasProof ? "bg-emerald-600 ring-2 ring-emerald-400 ring-offset-1 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                                                                >
+                                                                    Confirmar
+                                                                </button>
+                                                            )}
+                                                            {e.status === "expired" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => router.post(route("admin.academy.enrollments.reactivate", e.id), {}, { preserveScroll: true })}
+                                                                    className="rounded-lg bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600"
+                                                                >
+                                                                    Reactivar 1h extra
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         <button
@@ -284,6 +401,6 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                     )}
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 }

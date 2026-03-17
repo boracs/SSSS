@@ -138,7 +138,7 @@ const Menu_Principal = ({ headerVariant = "solid" }) => {
                                 </div>
                             </ToggleMenu>
                             <Link href={route("admin.bookings.index")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                                Reservas
+                                Reserva de tablas
                             </Link>
                         </>
                     )}
@@ -287,7 +287,7 @@ const Menu_Principal = ({ headerVariant = "solid" }) => {
                                 </div>
                             </ToggleMenu>
                             <Link href={route("admin.bookings.index")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                Reservas
+                                Reserva de tablas
                             </Link>
                         </>
                     )}

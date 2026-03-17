@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AcademyController extends Controller
@@ -37,10 +40,15 @@ class AcademyController extends Controller
                 'is_surf_trip' => $l->is_surf_trip,
                 'is_optimal_waves' => $l->is_optimal_waves,
                 'status' => $l->status,
+                'is_private' => (bool) ($l->is_private ?? false),
                 'enrollments' => $l->enrollments->map(fn ($e) => [
                     'id' => $e->id,
                     'user_id' => $e->user_id,
-                    'user' => $e->user ? ['id' => $e->user->id, 'nombre' => $e->user->nombre ?? $e->user->name] : null,
+                    'status' => $e->status,
+                    'party_size' => (int) ($e->party_size ?? 1),
+                    'created_at' => $e->created_at?->toIso8601String(),
+                    'has_proof' => ! empty($e->payment_proof_path),
+                    'user' => $l->is_private ? null : ($e->user ? ['id' => $e->user->id, 'nombre' => $e->user->nombre ?? $e->user->name] : null),
                 ]),
                 'staff' => $l->staffAssignments->map(fn ($s) => [
                     'role' => $s->role,
@@ -132,6 +140,8 @@ class AcademyController extends Controller
             'ends_at' => 'required|date|after:starts_at',
             'level' => 'in:iniciacion,pro',
             'max_slots' => 'integer|min:1|max:12',
+            'description' => 'nullable|string|max:500',
+            'location' => 'nullable|string|max:150',
         ]);
 
         Lesson::create([
@@ -139,7 +149,97 @@ class AcademyController extends Controller
             'ends_at' => $validated['ends_at'],
             'level' => $validated['level'] ?? Lesson::LEVEL_INICIACION,
             'max_slots' => $validated['max_slots'] ?? 6,
+            'description' => $validated['description'] ?? null,
+            'location' => $validated['location'] ?? 'Zurriola',
         ]);
         return back()->with('success', 'Clase creada.');
+    }
+
+    /**
+     * Actualizar clase (description, location, etc.).
+     */
+    public function update(Request $request, Lesson $lesson)
+    {
+        $validated = $request->validate([
+            'description' => 'nullable|string|max:500',
+            'location' => 'nullable|string|max:150',
+            'internal_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $lesson->update(array_filter($validated, fn ($v) => $v !== null));
+        return back()->with('success', 'Clase actualizada.');
+    }
+
+    /**
+     * Confirmar solicitud (pending → confirmed). Admin comprueba pago.
+     */
+    public function confirmEnrollment(int $enrollmentId)
+    {
+        $enrollment = LessonUser::with('user', 'lesson')->findOrFail($enrollmentId);
+        if ($enrollment->status !== LessonUser::STATUS_PENDING) {
+            return back()->with('error', 'Solo se pueden confirmar solicitudes pendientes.');
+        }
+        $enrollment->update([
+            'status' => LessonUser::STATUS_CONFIRMED,
+            'confirmed_at' => now(),
+        ]);
+        if ($enrollment->user && $enrollment->user->email) {
+            Mail::to($enrollment->user->email)->send(new ReservationConfirmedMail($enrollment, $enrollment->lesson));
+        }
+        return back()->with('success', 'Solicitud confirmada.');
+    }
+
+    /**
+     * Ver comprobante de pago (solo Admin). Archivos en storage privado.
+     */
+    public function showProof(int $enrollmentId)
+    {
+        $enrollment = LessonUser::findOrFail($enrollmentId);
+        if (empty($enrollment->payment_proof_path)) {
+            abort(404);
+        }
+        if (! Storage::disk('local')->exists($enrollment->payment_proof_path)) {
+            abort(404);
+        }
+        $path = Storage::disk('local')->path($enrollment->payment_proof_path);
+        $mime = Storage::disk('local')->mimeType($enrollment->payment_proof_path);
+
+        return response()->file($path, ['Content-Type' => $mime]);
+    }
+
+    /**
+     * Reactivar solicitud EXPIRED: +1h para pagar (status → PENDING, expires_at = now + 1h).
+     */
+    public function reactivateEnrollment(int $enrollmentId)
+    {
+        $enrollment = LessonUser::findOrFail($enrollmentId);
+        if ($enrollment->status !== LessonUser::STATUS_EXPIRED) {
+            return back()->with('error', 'Solo se pueden reactivar solicitudes expiradas.');
+        }
+        $enrollment->update([
+            'status' => LessonUser::STATUS_PENDING,
+            'expires_at' => Carbon::now('UTC')->addHour(),
+        ]);
+        return back()->with('success', 'Solicitud reactivada 1h más.');
+    }
+
+    /**
+     * Eliminar en lote solicitudes pendientes con más de 48h (garbage collector).
+     */
+    public function bulkDeleteStale(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer|exists:lesson_user,id',
+        ]);
+
+        $cutoff = now()->subHours(48);
+        $deleted = LessonUser::query()
+            ->whereIn('id', $validated['ids'])
+            ->where('status', LessonUser::STATUS_PENDING)
+            ->where('created_at', '<', $cutoff)
+            ->delete();
+
+        return back()->with('success', "Se eliminaron {$deleted} solicitudes antiguas.");
     }
 }

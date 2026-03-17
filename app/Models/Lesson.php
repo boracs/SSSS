@@ -11,6 +11,9 @@ class Lesson extends Model
 {
     use HasFactory;
 
+    public const TYPE_SURF = 'surf';
+    public const TYPE_SKATE = 'skate';
+
     public const LEVEL_INICIACION = 'iniciacion';
     public const LEVEL_PRO = 'pro';
     public const STATUS_SCHEDULED = 'scheduled';
@@ -21,11 +24,18 @@ class Lesson extends Model
 
     protected $fillable = [
         'title',
+        'description',
         'starts_at',
         'ends_at',
+        'type',
         'level',
         'max_slots',
+        'max_capacity',
+        'price',
+        'currency',
         'location',
+        'internal_notes',
+        'is_private',
         'is_surf_trip',
         'is_optimal_waves',
         'status',
@@ -36,15 +46,53 @@ class Lesson extends Model
     protected $casts = [
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
+        'is_private' => 'boolean',
         'is_surf_trip' => 'boolean',
         'is_optimal_waves' => 'boolean',
         'surf_trip_triggered_at' => 'datetime',
     ];
 
+    public function totalPartySize(): int
+    {
+        return (int) $this->enrollments()
+            ->whereIn('status', [
+                LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_CONFIRMED,
+                LessonUser::STATUS_ENROLLED,
+                LessonUser::STATUS_ATTENDED,
+            ])
+            ->sum('party_size');
+    }
+
+    public function monitorsRequiredFor(int $totalPartySize, bool $hasBigGroup): int
+    {
+        $maxStaff = 2;
+        if ($hasBigGroup) return $maxStaff;
+        return (int) min($maxStaff, (int) ceil(max(0, $totalPartySize) / 6));
+    }
+
+    public function hasBigGroup(): bool
+    {
+        return $this->enrollments()
+            ->whereIn('status', [
+                LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_CONFIRMED,
+                LessonUser::STATUS_ENROLLED,
+                LessonUser::STATUS_ATTENDED,
+            ])
+            ->where('party_size', '>=', 7)
+            ->exists();
+    }
+
+    public function isStaffFullFor(int $totalPartySize, bool $hasBigGroup): bool
+    {
+        return $this->monitorsRequiredFor($totalPartySize, $hasBigGroup) >= 2;
+    }
+
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'lesson_user')
-            ->withPivot(['credits_locked', 'status', 'cancelled_at', 'surf_trip_confirmed'])
+            ->withPivot(['party_size', 'credits_locked', 'status', 'cancelled_at', 'confirmed_at', 'surf_trip_confirmed'])
             ->withTimestamps();
     }
 
@@ -78,6 +126,30 @@ class Lesson extends Model
     public function enrolledCount(): int
     {
         return $this->enrollments()->whereIn('status', ['enrolled', 'attended'])->count();
+    }
+
+    /** Número de inscripciones en estado PENDING (pendientes de validar pago). */
+    public function getPendingCountAttribute(): int
+    {
+        return $this->enrollments()->where('status', LessonUser::STATUS_PENDING)->count();
+    }
+
+    /** Número de inscripciones confirmadas (confirmed + enrolled + attended). */
+    public function getConfirmedCountAttribute(): int
+    {
+        return $this->enrollments()
+            ->whereIn('status', [
+                LessonUser::STATUS_CONFIRMED,
+                LessonUser::STATUS_ENROLLED,
+                LessonUser::STATUS_ATTENDED,
+            ])
+            ->count();
+    }
+
+    /** Total de alumnos activos (pendientes + confirmados). */
+    public function getTotalStudentsAttribute(): int
+    {
+        return $this->pending_count + $this->confirmed_count;
     }
 
     public function isSoloStudent(): bool
