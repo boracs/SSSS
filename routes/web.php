@@ -52,7 +52,10 @@ Route::get('/servicios/fotos', function () { return Inertia::render('Servicios_F
 Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Academy\LessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons/{lesson}/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestLesson'])->name('lessons.request');
+    Route::get('/particular/availability', [\App\Http\Controllers\Academy\LessonController::class, 'privateAvailability'])->name('private.availability');
+    Route::post('/particular/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestPrivateLesson'])->name('private.request');
     Route::post('/lessons/{lesson}/upload-proof', [\App\Http\Controllers\Academy\LessonController::class, 'uploadProof'])->name('lessons.upload-proof');
+    Route::post('/lessons/{lesson}/manual-confirm-payment', [\App\Http\Controllers\Academy\LessonController::class, 'confirmManualPayment'])->name('lessons.manual-confirm-payment');
     Route::post('/lessons/{lesson}/enroll', [\App\Http\Controllers\Academy\LessonController::class, 'enroll'])->name('lessons.enroll');
     Route::post('/lessons/{lesson}/cancel', [\App\Http\Controllers\Academy\LessonController::class, 'cancel'])->name('lessons.cancel');
     Route::post('/lessons/{lesson}/confirm-surf-trip', [\App\Http\Controllers\Academy\LessonController::class, 'confirmSurfTrip'])->name('lessons.confirm-surf-trip');
@@ -175,6 +178,10 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
             Route::post('bookings/mark-expired', [AdminBookingController::class, 'markExpired'])->name('bookings.mark-expired');
             Route::patch('bookings/{booking}/confirm-payment', [AdminBookingController::class, 'confirmPayment'])->name('bookings.confirm-payment');
             Route::patch('bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
+            Route::post('bookings/{booking}/approve-proof', [AdminBookingController::class, 'approveProof'])->name('bookings.approve-proof');
+            Route::post('bookings/{booking}/reject-proof', [AdminBookingController::class, 'rejectProof'])->name('bookings.reject-proof');
+            Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');
+            Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
         });
 
         // Academia: Consola Comandante
@@ -185,8 +192,12 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
             Route::post('lessons/{lesson}/optimal-waves', [\App\Http\Controllers\Admin\AcademyController::class, 'toggleOptimalWaves'])->name('lessons.optimal-waves');
             Route::post('lessons/{lesson}/surf-trip', [\App\Http\Controllers\Admin\AcademyController::class, 'triggerSurfTrip'])->name('lessons.surf-trip');
             Route::post('lessons/{lesson}/cancel-mal-mar', [\App\Http\Controllers\Admin\AcademyController::class, 'cancelMalMar'])->name('lessons.cancel-mal-mar');
+            Route::post('lessons/{lesson}/cancel', [\App\Http\Controllers\Admin\AcademyController::class, 'cancelLesson'])->name('lessons.cancel');
+            Route::post('lessons/cancel-batch', [\App\Http\Controllers\Admin\AcademyController::class, 'cancelBatch'])->name('lessons.cancel-batch');
             Route::post('staff/assign', [\App\Http\Controllers\Admin\AcademyController::class, 'assignStaff'])->name('staff.assign');
             Route::post('enrollments/{enrollmentId}/confirm', [\App\Http\Controllers\Admin\AcademyController::class, 'confirmEnrollment'])->name('enrollments.confirm');
+            Route::post('enrollments/{enrollmentId}/resend-confirmation', [\App\Http\Controllers\Admin\AcademyController::class, 'resendConfirmation'])->name('enrollments.resend-confirmation');
+            Route::post('enrollments/{enrollmentId}/reject', [\App\Http\Controllers\Admin\AcademyController::class, 'rejectEnrollmentProof'])->name('enrollments.reject');
             Route::post('enrollments/{enrollmentId}/reactivate', [\App\Http\Controllers\Admin\AcademyController::class, 'reactivateEnrollment'])->name('enrollments.reactivate');
             Route::get('enrollments/{enrollmentId}/proof', [\App\Http\Controllers\Admin\AcademyController::class, 'showProof'])->name('enrollments.proof');
             Route::post('enrollments/bulk-delete-stale', [\App\Http\Controllers\Admin\AcademyController::class, 'bulkDeleteStale'])->name('enrollments.bulk-delete-stale');

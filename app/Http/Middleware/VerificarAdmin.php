@@ -17,11 +17,13 @@ class VerificarAdmin
     public function handle(Request $request, Closure $next): Response
     {
         // 1. Verifica si hay un usuario autenticado
-        if (!auth()->check()) {
-            // Si no está autenticado (no hay token válido), devuelve 401 Unauthorized
-            return response()->json([
-                'message' => 'No autenticado. Por favor, inicia sesión.'
-            ], 401);
+        if (! auth()->check()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'No autenticado. Por favor, inicia sesión.',
+                ], 401);
+            }
+            return redirect()->route('login');
         }
 
         // 2. Verifica si el usuario autenticado tiene el rol 'admin'
@@ -29,10 +31,13 @@ class VerificarAdmin
             return $next($request);
         }
 
-        // 3. Si está autenticado pero no es admin, devuelve 403 Forbidden
-        // Este es el error correcto para el acceso denegado en una API.
-        return response()->json([
-            'message' => 'Acceso denegado. Se requiere rol de administrador.'
-        ], 403);
+        // 3. Si está autenticado pero no es admin, denegar acceso.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Acceso denegado. Se requiere rol de administrador.',
+            ], 403);
+        }
+
+        abort(403, 'Acceso denegado. Se requiere rol de administrador.');
     }
 }

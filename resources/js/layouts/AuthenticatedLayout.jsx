@@ -13,7 +13,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const shouldRenderChatbot = !isAdmin;
 
     return (
-        <div className="flex min-h-screen flex-col bg-slate-50 text-slate-900">
+        <div className="flex min-h-screen flex-col bg-transparent text-slate-900">
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />

@@ -47,5 +47,6 @@ return [
         'bizum_number' => env('ACADEMY_BIZUM_NUMBER', '[BIZUM_NUMBER]'),
         'iban' => env('ACADEMY_IBAN', '[IBAN]'),
         'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
+        'maps_url' => env('ACADEMY_MAPS_URL', 'https://maps.app.goo.gl/TuUbicacion'),
     ],
 ];

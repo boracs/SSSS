@@ -3,20 +3,22 @@
 namespace App\Mail;
 
 use App\Models\Lesson;
-use App\Models\LessonUser;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\SerializesModels;
 
-class ReservationConfirmedMail extends Mailable
+class ReservationConfirmedMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public LessonUser $enrollment,
-        public Lesson $lesson
+        public User $user,
+        public Lesson $lesson,
+        public string $googleMapsUrl
     ) {}
 
     public function envelope(): Envelope

@@ -215,6 +215,7 @@ function AccountMenu({ user, onLogout }) {
 export default function Header() {
     const { url, props } = usePage();
     const user = props?.auth?.user;
+    const submittedPaymentsCount = Number(props?.adminStats?.submittedPaymentsCount || 0);
     const isAdmin =
         !!user &&
         (String(user.role) === "admin" ||
@@ -253,6 +254,7 @@ export default function Header() {
             ? [
                   { label: "Gestor Alquileres", href: route("admin.surfboards.index") },
                   { label: "Gestor Clases", href: route("admin.academy.index") },
+                  { label: "Validar Pagos", href: route("admin.check-manager") },
                   { label: "Gestor Taquillas", href: route("asignar.taquilla.mostrar") },
                   { label: "Gestor Pedidos", href: route("gestor.pedidos") },
                   { label: "Pagos.T", href: route("taquilla.index.admin") },
@@ -376,13 +378,29 @@ export default function Header() {
                                                     href={i.href}
                                                     className="flex h-11 items-center rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent transition-all duration-300"
                                                 >
-                                                    {i.label}
+                                                    <span className="flex items-center gap-2">
+                                                        {i.label === "Validar Pagos" ? "💳" : null}
+                                                        {i.label}
+                                                    </span>
+                                                    {i.label === "Validar Pagos" && submittedPaymentsCount > 0 ? (
+                                                        <span className="ml-auto inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                            {submittedPaymentsCount}
+                                                        </span>
+                                                    ) : null}
                                                 </Link>
                                             ))}
                                         </div>
                                     </Dropdown>
                                     <HeaderLink href={route("admin.bookings.index")} active={(url || "").startsWith("/admin/bookings")}>
                                         Reserva de tablas
+                                    </HeaderLink>
+                                    <HeaderLink href={route("admin.check-manager")} active={(url || "").startsWith("/admin/check-manager")} className="gap-2">
+                                        <span>💳 Validar Pagos</span>
+                                        {submittedPaymentsCount > 0 ? (
+                                            <span className="inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                {submittedPaymentsCount}
+                                            </span>
+                                        ) : null}
                                     </HeaderLink>
                                 </>
                             )}
@@ -477,7 +495,15 @@ export default function Header() {
                                     onClick={() => setDrawerOpen(false)}
                                     className="mt-1 flex h-11 items-center rounded-xl px-3 text-sm font-medium text-brand-deep hover:bg-slate-100 transition-all duration-300"
                                 >
-                                    {i.label}
+                                    <span className="flex items-center gap-2">
+                                        {i.label === "Validar Pagos" ? "💳" : null}
+                                        {i.label}
+                                    </span>
+                                    {i.label === "Validar Pagos" && submittedPaymentsCount > 0 ? (
+                                        <span className="ml-auto inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                            {submittedPaymentsCount}
+                                        </span>
+                                    ) : null}
                                 </Link>
                             ))}
                             <Link
@@ -486,6 +512,20 @@ export default function Header() {
                                 className="mt-1 flex h-11 items-center rounded-xl px-3 text-sm font-medium text-brand-deep hover:bg-slate-100 transition-all duration-300"
                             >
                                 Reserva de tablas
+                            </Link>
+                            <Link
+                                href={route("admin.check-manager")}
+                                onClick={() => setDrawerOpen(false)}
+                                className="mt-1 flex h-11 items-center rounded-xl px-3 text-sm font-medium text-brand-deep hover:bg-slate-100 transition-all duration-300"
+                            >
+                                <span className="flex items-center gap-2">
+                                    💳 Validar Pagos
+                                </span>
+                                {submittedPaymentsCount > 0 ? (
+                                    <span className="ml-auto inline-flex min-w-[1.35rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        {submittedPaymentsCount}
+                                    </span>
+                                ) : null}
                             </Link>
                         </div>
                     )}

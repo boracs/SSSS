@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 
@@ -11,7 +11,14 @@ function isStale(createdAt) {
 
 const LEVEL_OPTIONS = [
     { value: "iniciacion", label: "Iniciación" },
-    { value: "pro", label: "Pro" },
+    { value: "intermedio", label: "Intermedio" },
+    { value: "avanzado", label: "Avanzado" },
+];
+
+const MODALITY_OPTIONS = [
+    { value: "grupal", label: "Grupal" },
+    { value: "particular", label: "Particular" },
+    { value: "semanal", label: "Semanal" },
 ];
 
 export default function Commander({ lessons = [], selectedDate, staff = [] }) {
@@ -22,9 +29,22 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         startTime: "10:00",
         endTime: "11:30",
         level: "iniciacion",
+        modality: "grupal",
         max_slots: 6,
+        weekly_start: selectedDate,
+        weekly_end: selectedDate,
     });
     const { flash } = usePage().props;
+    const [hoverBatchId, setHoverBatchId] = useState(null);
+    const [cancelChoice, setCancelChoice] = useState(null); // { lessonId, batchId }
+
+    useEffect(() => {
+        if (newLesson.modality !== "particular") return;
+        // Particular: grupo cerrado 1-6 pax
+        if (Number(newLesson.max_slots) !== 6) {
+            setNewLesson((s) => ({ ...s, max_slots: 6 }));
+        }
+    }, [newLesson.modality, newLesson.max_slots]);
 
     const go = (d) => {
         setDate(d);
@@ -43,20 +63,45 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         router.post(route("admin.academy.lessons.cancel-mal-mar", lesson.id));
     };
 
+    const cancelSingleSession = (lessonId) => {
+        router.post(route("admin.academy.lessons.cancel", lessonId), {}, { preserveScroll: true });
+    };
+    const cancelWeeklyPack = (batchId) => {
+        router.post(route("admin.academy.lessons.cancel-batch"), { batch_id: batchId }, { preserveScroll: true });
+    };
+
     const submitNewLesson = (e) => {
         e.preventDefault();
         const starts_at = `${date}T${newLesson.startTime}:00`;
         const ends_at = `${date}T${newLesson.endTime}:00`;
-        router.post(route("admin.academy.lessons.store"), {
+        const payload = {
             starts_at,
             ends_at,
             level: newLesson.level,
+            modality: newLesson.modality,
             max_slots: Number(newLesson.max_slots),
-        }, {
+        };
+        if (newLesson.modality === "semanal") {
+            payload.weekly_start = newLesson.weekly_start;
+            payload.weekly_end = newLesson.weekly_end;
+        }
+
+        router.post(route("admin.academy.lessons.store"), payload, {
             preserveScroll: true,
             onSuccess: () => {
                 setShowNewLesson(false);
-                setNewLesson({ startTime: "10:00", endTime: "11:30", level: "iniciacion", max_slots: 6 });
+                setNewLesson({
+                    startTime: "10:00",
+                    endTime: "11:30",
+                    level: "iniciacion",
+                    modality: "grupal",
+                    max_slots: 6,
+                    weekly_start: selectedDate,
+                    weekly_end: selectedDate,
+                });
+            },
+            onError: () => {
+                // No reseteamos el estado para no perder lo que escribió el admin
             },
         });
     };
@@ -69,9 +114,34 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         }, { preserveScroll: true });
     };
 
+    const duplicateLesson = (lesson) => {
+        const s = new Date(lesson.starts_at);
+        const e = new Date(lesson.ends_at);
+        const startTime = s.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+        const endTime = e.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+        setShowNewLesson(true);
+        setNewLesson((prev) => ({
+            ...prev,
+            startTime,
+            endTime,
+            level: lesson.level || "iniciacion",
+            modality: lesson.modality || (lesson.is_private ? "particular" : "grupal"),
+            max_slots: Number(lesson.max_slots || 6),
+            weekly_start: selectedDate,
+            weekly_end: selectedDate,
+        }));
+        // Deja que el admin elija el día con el selector de fecha principal.
+    };
+
     const confirmEnrollment = (enrollmentId) => {
         router.post(route("admin.academy.enrollments.confirm", enrollmentId), {}, { preserveScroll: true });
     };
+    const rejectEnrollment = (enrollmentId, adminNotes) => {
+        router.post(route("admin.academy.enrollments.reject", enrollmentId), { admin_notes: adminNotes || null }, { preserveScroll: true });
+    };
+
+    const [rejecting, setRejecting] = useState(null); // { id, name, notes }
+    const [proofViewer, setProofViewer] = useState(null); // { url, name }
 
     const bulkDeleteStale = () => {
         if (staleSelected.length === 0) return;
@@ -87,6 +157,28 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         });
         return out;
     }, [lessons]);
+
+    const activeEnrollmentStatuses = new Set(["pending", "confirmed", "enrolled", "attended"]);
+    const occupiedCount = (lesson) => {
+        const list = Array.isArray(lesson.enrollments) ? lesson.enrollments : [];
+        return list
+            .filter((e) => activeEnrollmentStatuses.has(e.status))
+            .reduce((sum, e) => sum + (Number(e.party_size) || 1), 0);
+    };
+
+    const occupancyBadge = (lesson) => {
+        const modality = lesson.modality || (lesson.is_private ? "particular" : "grupal");
+        const cap = modality === "particular" ? 6 : Number(lesson.max_slots || 6);
+        const occ = occupiedCount(lesson);
+
+        if (occ <= 0) {
+            return <span className="text-xs font-semibold text-slate-500">{occ} / {cap} plazas</span>;
+        }
+        if (occ >= cap) {
+            return <span className="text-xs font-extrabold text-rose-700">🚫 {occ} / {cap} completo</span>;
+        }
+        return <span className="text-xs font-semibold text-emerald-700">{occ} / {cap} plazas</span>;
+    };
 
     const toggleStale = (id) => {
         setStaleSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -119,6 +211,11 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                 {flash?.success && (
                     <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">
                         {flash.success}
+                    </div>
+                )}
+                {flash?.error && (
+                    <div className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800">
+                        {flash.error}
                     </div>
                 )}
 
@@ -208,6 +305,23 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                 </select>
                             </div>
                             <div>
+                                <label className="block text-sm font-medium text-slate-700">Modalidad</label>
+                                <select
+                                    value={newLesson.modality}
+                                    onChange={(e) => setNewLesson((s) => ({ ...s, modality: e.target.value }))}
+                                    className="input-focus-ring mt-1 w-full rounded-xl px-4 py-2"
+                                >
+                                    {MODALITY_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                    ))}
+                                </select>
+                                {newLesson.modality === "semanal" && (
+                                    <p className="mt-2 text-xs font-medium text-sky-600">
+                                        Se autogenerarán sesiones de Lunes a Viernes (Pack Semanal).
+                                    </p>
+                                )}
+                            </div>
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700">Plazas máx.</label>
                                 <input
                                     type="number"
@@ -215,10 +329,35 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                     max={12}
                                     value={newLesson.max_slots}
                                     onChange={(e) => setNewLesson((s) => ({ ...s, max_slots: e.target.value }))}
-                                    className="input-focus-ring mt-1 w-full rounded-xl px-4 py-2"
+                                    disabled={newLesson.modality === "particular"}
+                                    className={`input-focus-ring mt-1 w-full rounded-xl px-4 py-2 ${newLesson.modality === "particular" ? "opacity-50 cursor-not-allowed" : ""}`}
                                 />
                             </div>
                         </div>
+                        {newLesson.modality === "semanal" && (
+                            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700">Fecha inicio</label>
+                                    <input
+                                        type="date"
+                                        value={newLesson.weekly_start}
+                                        onChange={(e) => setNewLesson((s) => ({ ...s, weekly_start: e.target.value }))}
+                                        className="input-focus-ring mt-1 w-full rounded-xl px-4 py-2"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700">Fecha fin</label>
+                                    <input
+                                        type="date"
+                                        value={newLesson.weekly_end}
+                                        onChange={(e) => setNewLesson((s) => ({ ...s, weekly_end: e.target.value }))}
+                                        className="input-focus-ring mt-1 w-full rounded-xl px-4 py-2"
+                                        required
+                                    />
+                                </div>
+                            </div>
+                        )}
                         <div className="mt-4 flex gap-2">
                             <button type="submit" className="btn-primary">
                                 Crear clase
@@ -241,7 +380,14 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                         lessons.map((lesson) => (
                             <div
                                 key={lesson.id}
-                                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-300"
+                                onMouseEnter={() => setHoverBatchId(lesson.batch_id || null)}
+                                onMouseLeave={() => setHoverBatchId(null)}
+                                className={[
+                                    "rounded-2xl border border-slate-200 bg-white p-5 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out",
+                                    lesson.batch_id ? "border-l-4 border-l-sky-500" : "",
+                                    (lesson.modality === "particular" || lesson.is_private) ? "bg-amber-50/60 border-amber-200/60" : "",
+                                    (hoverBatchId && lesson.batch_id && hoverBatchId === lesson.batch_id) ? "ring-2 ring-sky-200/70 shadow-md" : "",
+                                ].join(" ")}
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-4">
                                     <div>
@@ -251,6 +397,16 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                                 minute: "2-digit",
                                             })}
                                         </span>
+                                        {lesson.batch_id && (
+                                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                                                ♾️ Semanal
+                                            </span>
+                                        )}
+                                        {(lesson.modality === "particular" || lesson.is_private) && (
+                                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                                                👤 Particular
+                                            </span>
+                                        )}
                                         <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                             {lesson.level}
                                         </span>
@@ -266,7 +422,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         )}
                                         <p className="mt-1 text-sm text-slate-600">{lesson.location}</p>
                                         <p className="mt-1 text-xs text-slate-500">
-                                            {lesson.enrollments?.length ?? 0} / {lesson.max_slots} plazas
+                                            {occupancyBadge(lesson)}
                                         </p>
                                         {(lesson.enrollments?.length ?? 0) > 0 && (
                                             <div className="mt-3 space-y-1 border-t border-slate-100 pt-3">
@@ -287,30 +443,37 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                                                 )}
                                                                 {lesson.is_private ? "Cliente" : (e.user?.nombre ?? "—")}
                                                                 {hasProof && (
-                                                                    <a
-                                                                        href={route("admin.academy.enrollments.proof", e.id)}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="inline-flex rounded p-1 text-sky-600 hover:bg-sky-100"
-                                                                        title="Ver comprobante"
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setProofViewer({ url: route("admin.academy.enrollments.proof", e.id), name: e.user?.nombre ?? "Justificante" })}
+                                                                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                                                                        title="Ver justificante"
                                                                     >
-                                                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                                        </svg>
-                                                                    </a>
+                                                                        📎 Ver
+                                                                    </button>
                                                                 )}
                                                             </span>
                                                             <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-slate-200 text-slate-700">{e.status}</span>
                                                             <span className="text-xs opacity-80">{e.created_at ? new Date(e.created_at).toLocaleString("es-ES") : ""}</span>
                                                             {e.status === "pending" && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => confirmEnrollment(e.id)}
-                                                                    className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all ${hasProof ? "bg-emerald-600 ring-2 ring-emerald-400 ring-offset-1 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
-                                                                >
-                                                                    Confirmar
-                                                                </button>
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => confirmEnrollment(e.id)}
+                                                                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-all ${hasProof ? "bg-emerald-600 ring-2 ring-emerald-400 ring-offset-1 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                                                                    >
+                                                                        Confirmar
+                                                                    </button>
+                                                                    {hasProof && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setRejecting({ id: e.id, name: e.user?.nombre ?? "Alumno", notes: "" })}
+                                                                            className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
+                                                                        >
+                                                                            Rechazar pago
+                                                                        </button>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                             {e.status === "expired" && (
                                                                 <button
@@ -330,6 +493,14 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                     <div className="flex flex-wrap gap-2">
                                         <button
                                             type="button"
+                                            onClick={() => duplicateLesson(lesson)}
+                                            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-slate-50"
+                                            title="Duplicar clase"
+                                        >
+                                            📄📄
+                                        </button>
+                                        <button
+                                            type="button"
                                             onClick={() => toggleOptimal(lesson)}
                                             className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-all duration-300 hover:bg-slate-50"
                                         >
@@ -347,10 +518,16 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         {lesson.status === "scheduled" && (
                                             <button
                                                 type="button"
-                                                onClick={() => cancelMalMar(lesson)}
+                                                onClick={() => {
+                                                    if (lesson.batch_id) {
+                                                        setCancelChoice({ lessonId: lesson.id, batchId: lesson.batch_id });
+                                                    } else {
+                                                        cancelSingleSession(lesson.id);
+                                                    }
+                                                }}
                                                 className="rounded-xl bg-rose-100 px-3 py-2 text-sm font-medium text-rose-700 transition-all duration-300 hover:bg-rose-200"
                                             >
-                                                Cancelar (Mal mar)
+                                                Cancelar
                                             </button>
                                         )}
                                     </div>
@@ -401,6 +578,105 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                     )}
                 </div>
             </div>
+            {/* Modal rechazo */}
+            {rejecting && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setRejecting(null)} aria-hidden />
+                    <div className="relative w-full max-w-lg rounded-2xl border border-white/20 bg-white p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-brand-deep">Rechazar pago</h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Motivo para {rejecting.name}. Se notificará al alumno en su panel.
+                        </p>
+                        <textarea
+                            value={rejecting.notes}
+                            onChange={(e) => setRejecting((s) => ({ ...s, notes: e.target.value }))}
+                            className="input-focus-ring mt-4 w-full rounded-xl px-4 py-3 text-sm"
+                            rows={4}
+                            placeholder="Ej: El importe del Bizum no coincide / Justificante ilegible…"
+                        />
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                            <button type="button" onClick={() => setRejecting(null)} className="btn-secondary">
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    rejectEnrollment(rejecting.id, rejecting.notes);
+                                    setRejecting(null);
+                                }}
+                                className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                            >
+                                Confirmar rechazo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Visor justificante */}
+            {proofViewer && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-2 sm:p-6">
+                    <div className="absolute inset-0 bg-slate-900/70" onClick={() => setProofViewer(null)} aria-hidden />
+                    <div className="relative h-[92vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                            <div className="text-sm font-semibold text-slate-800">{proofViewer.name}</div>
+                            <div className="flex items-center gap-2">
+                                <a
+                                    href={proofViewer.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+                                >
+                                    Abrir en pestaña
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setProofViewer(null)}
+                                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </div>
+                        <iframe title="Justificante" src={proofViewer.url} className="h-full w-full" />
+                    </div>
+                </div>
+            )}
+
+            {/* Modal decisión cancelación pack */}
+            {cancelChoice && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setCancelChoice(null)} aria-hidden />
+                    <div className="relative w-full max-w-lg rounded-2xl border border-white/20 bg-white p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-brand-deep">Cancelar clase</h3>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Esta clase es parte de un Pack Semanal. ¿Quieres cancelar solo este día o toda la semana?
+                        </p>
+                        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    cancelSingleSession(cancelChoice.lessonId);
+                                    setCancelChoice(null);
+                                }}
+                                className="btn-secondary"
+                            >
+                                Solo esta sesión
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    cancelWeeklyPack(cancelChoice.batchId);
+                                    setCancelChoice(null);
+                                }}
+                                className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-rose-700"
+                            >
+                                Cancelar toda la semana (Pack)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

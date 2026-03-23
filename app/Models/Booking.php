@@ -16,6 +16,10 @@ class Booking extends Model
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
+    public const PAYMENT_PENDING = 'pending';
+    public const PAYMENT_SUBMITTED = 'submitted';
+    public const PAYMENT_CONFIRMED = 'confirmed';
+
     protected $fillable = [
         'surfboard_id',
         'user_id',
@@ -26,6 +30,11 @@ class Booking extends Model
         'end_date',
         'expires_at',
         'status',
+        'payment_status',
+        'payment_proof_path',
+        'proof_uploaded_at',
+        'payment_method',
+        'admin_notes',
         'total_price',
         'deposit_amount',
         'payment_proof_note',
@@ -35,6 +44,7 @@ class Booking extends Model
         'start_date' => 'datetime',
         'end_date'   => 'datetime',
         'expires_at' => 'datetime',
+        'proof_uploaded_at' => 'datetime',
         'total_price' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
     ];

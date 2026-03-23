@@ -14,6 +14,7 @@ import ToggleMenu from "../components/ToggleMenu";
 const Menu_Principal = ({ headerVariant = "solid" }) => {
     const { cartCount } = useCartContext();
     const { auth } = usePage().props;
+    const submittedPaymentsCount = Number(usePage().props?.adminStats?.submittedPaymentsCount || 0);
     const isHero = headerVariant === "hero";
     const user = auth?.user;
     const isAdmin = user && String(user.role) === "admin";
@@ -35,6 +36,7 @@ const Menu_Principal = ({ headerVariant = "solid" }) => {
     const menuItemsGestores = [
         { href: "admin.surfboards.index", label: "Gestor Alquileres" },
         { href: "admin.academy.index", label: "Gestor Clases" },
+        { href: "admin.check-manager", label: "Validar Pagos" },
         { href: "asignar.taquilla.mostrar", label: "Gestor Taquillas" },
         { href: "taquilla.index.admin", label: "Pagos.T" },
         { href: "gestor.pedidos", label: "Gestor Pedidos" },
@@ -139,6 +141,14 @@ const Menu_Principal = ({ headerVariant = "solid" }) => {
                             </ToggleMenu>
                             <Link href={route("admin.bookings.index")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
                                 Reserva de tablas
+                            </Link>
+                            <Link href={route("admin.check-manager")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium inline-flex items-center gap-2`}>
+                                💳 Validar Pagos
+                                {submittedPaymentsCount > 0 && (
+                                    <span className="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        {submittedPaymentsCount}
+                                    </span>
+                                )}
                             </Link>
                         </>
                     )}
@@ -288,6 +298,14 @@ const Menu_Principal = ({ headerVariant = "solid" }) => {
                             </ToggleMenu>
                             <Link href={route("admin.bookings.index")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
                                 Reserva de tablas
+                            </Link>
+                            <Link href={route("admin.check-manager")} className="flex items-center rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
+                                <span>💳 Validar Pagos</span>
+                                {submittedPaymentsCount > 0 && (
+                                    <span className="ml-auto inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                        {submittedPaymentsCount}
+                                    </span>
+                                )}
                             </Link>
                         </>
                     )}

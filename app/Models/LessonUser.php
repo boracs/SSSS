@@ -16,17 +16,28 @@ class LessonUser extends Model
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_REFUNDED = 'refunded';
     public const STATUS_EXPIRED = 'expired';
+    public const STATUS_PENDING_EXTRA_MONITOR = 'pending_extra_monitor';
+
+    public const PAYMENT_PENDING = 'pending';
+    public const PAYMENT_SUBMITTED = 'submitted';
+    public const PAYMENT_CONFIRMED = 'confirmed';
 
     protected $fillable = [
         'lesson_id',
         'user_id',
         'party_size',
+        'quantity',
+        'age_bracket',
         'credits_locked',
         'status',
+        'payment_status',
         'cancelled_at',
         'confirmed_at',
         'expires_at',
         'payment_proof_path',
+        'proof_uploaded_at',
+        'payment_method',
+        'admin_notes',
         'surf_trip_confirmed',
     ];
 
@@ -34,6 +45,7 @@ class LessonUser extends Model
         'cancelled_at' => 'datetime',
         'confirmed_at' => 'datetime',
         'expires_at' => 'datetime',
+        'proof_uploaded_at' => 'datetime',
     ];
 
     public function lesson(): BelongsTo

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Booking;
+use App\Models\LessonUser;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -55,6 +57,24 @@ class HandleInertiaRequests extends Middleware
                 'error'   => $request->session()->get('error'),
                 'payment_lesson_id' => $request->session()->get('payment_lesson_id'),
             ],
+
+            'adminStats' => function () use ($request) {
+                $user = $request->user();
+                if (! $user || ($user->role ?? null) !== 'admin') {
+                    return null;
+                }
+
+                $lessonSubmitted = LessonUser::query()
+                    ->where('payment_status', LessonUser::PAYMENT_SUBMITTED)
+                    ->count();
+                $rentalSubmitted = Booking::query()
+                    ->where('payment_status', Booking::PAYMENT_SUBMITTED)
+                    ->count();
+
+                return [
+                    'submittedPaymentsCount' => $lessonSubmitted + $rentalSubmitted,
+                ];
+            },
         ];
     }
 }

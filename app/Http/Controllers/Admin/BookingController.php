@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Storage;
 
 class BookingController extends Controller
 {
@@ -97,6 +98,7 @@ class BookingController extends Controller
             'end_date' => $end,
             'expires_at' => $expiresAt,
             'status' => Booking::STATUS_PENDING,
+            'payment_status' => Booking::PAYMENT_PENDING,
             'total_price' => $totalPrice,
             'deposit_amount' => $depositAmount,
             'payment_proof_note' => null,
@@ -162,10 +164,70 @@ class BookingController extends Controller
 
         $booking->update([
             'status' => Booking::STATUS_CONFIRMED,
+            'payment_status' => Booking::PAYMENT_CONFIRMED,
             'payment_proof_note' => $booking->payment_proof_note ?? 'Confirmado por admin ' . now()->toDateTimeString(),
         ]);
 
         return redirect()->back()->with('success', 'Reserva confirmada. Pago verificado.');
+    }
+
+    /**
+     * Aprobar comprobante desde Gestor de Comprobaciones.
+     */
+    public function approveProof(Booking $booking): RedirectResponse
+    {
+        if (($booking->payment_status ?? Booking::PAYMENT_PENDING) === Booking::PAYMENT_CONFIRMED) {
+            return redirect()->back()->with('success', 'El pago ya estaba confirmado.');
+        }
+
+        $booking->update([
+            'status' => Booking::STATUS_CONFIRMED,
+            'payment_status' => Booking::PAYMENT_CONFIRMED,
+        ]);
+
+        return redirect()->back()->with('success', 'Pago de alquiler confirmado.');
+    }
+
+    /**
+     * Rechazar comprobante desde Gestor de Comprobaciones.
+     */
+    public function rejectProof(Request $request, Booking $booking): RedirectResponse
+    {
+        $validated = $request->validate([
+            'admin_notes' => 'nullable|string|max:2000',
+        ]);
+
+        if (! empty($booking->payment_proof_path) && Storage::disk('local')->exists($booking->payment_proof_path)) {
+            Storage::disk('local')->delete($booking->payment_proof_path);
+        }
+
+        $booking->update([
+            'payment_status' => Booking::PAYMENT_PENDING,
+            'payment_proof_path' => null,
+            'proof_uploaded_at' => null,
+            'payment_method' => null,
+            'admin_notes' => $validated['admin_notes'] ?? 'Comprobante rechazado.',
+            'status' => Booking::STATUS_PENDING,
+        ]);
+
+        return redirect()->back()->with('success', 'Comprobante de alquiler rechazado.');
+    }
+
+    /**
+     * Ver comprobante de alquiler en storage privado.
+     */
+    public function showProof(Booking $booking)
+    {
+        if (empty($booking->payment_proof_path)) {
+            abort(404);
+        }
+        if (! Storage::disk('local')->exists($booking->payment_proof_path)) {
+            abort(404);
+        }
+        $path = Storage::disk('local')->path($booking->payment_proof_path);
+        $mime = Storage::disk('local')->mimeType($booking->payment_proof_path);
+
+        return response()->file($path, ['Content-Type' => $mime]);
     }
 
     /**

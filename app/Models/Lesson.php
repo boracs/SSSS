@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Lesson extends Model
 {
@@ -15,7 +16,14 @@ class Lesson extends Model
     public const TYPE_SKATE = 'skate';
 
     public const LEVEL_INICIACION = 'iniciacion';
+    public const LEVEL_INTERMEDIO = 'intermedio';
+    public const LEVEL_AVANZADO = 'avanzado';
+    // Backward-compat (DB ya no lo acepta; útil para mapear legacy)
     public const LEVEL_PRO = 'pro';
+
+    public const MODALITY_PARTICULAR = 'particular';
+    public const MODALITY_GRUPAL = 'grupal';
+    public const MODALITY_SEMANAL = 'semanal';
     public const STATUS_SCHEDULED = 'scheduled';
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
@@ -28,6 +36,8 @@ class Lesson extends Model
         'starts_at',
         'ends_at',
         'type',
+        'modality',
+        'batch_id',
         'level',
         'max_slots',
         'max_capacity',
@@ -57,11 +67,12 @@ class Lesson extends Model
         return (int) $this->enrollments()
             ->whereIn('status', [
                 LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
                 LessonUser::STATUS_CONFIRMED,
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
             ])
-            ->sum('party_size');
+            ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
     }
 
     public function monitorsRequiredFor(int $totalPartySize, bool $hasBigGroup): int
@@ -76,11 +87,12 @@ class Lesson extends Model
         return $this->enrollments()
             ->whereIn('status', [
                 LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
                 LessonUser::STATUS_CONFIRMED,
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
             ])
-            ->where('party_size', '>=', 7)
+            ->whereRaw('COALESCE(quantity, party_size, 1) >= 7')
             ->exists();
     }
 

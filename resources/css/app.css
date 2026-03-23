@@ -5,7 +5,8 @@
 @tailwind utilities;
 
 body {
-  @apply bg-slate-50 text-slate-700 leading-relaxed;
+  background-color: #E2E8F0; /* slate-200 */
+  @apply text-slate-700 leading-relaxed;
   font-family: "Inter", "Poppins", system-ui, sans-serif;
 }
 
