@@ -7,7 +7,7 @@ const Carrito = () => {
     // 1. Obtener los props y el objeto flash directamente de usePage()
     // Inertia se encarga de que estos props se actualicen automáticamente después de las visitas.
     const { props } = usePage();
-    const { productos = [], total = 0, flash } = props;
+    const { productos = [], total = 0, flash, canCheckout = false } = props;
 
     // Estado local para el mensaje de notificación (Toast)
     const [mensajeToast, setMensajeToast] = useState("");
@@ -202,12 +202,24 @@ const Carrito = () => {
 
                             <div className="mt-6 text-center">
                                 {productos.length > 0 && (
-                                    <button
-                                        onClick={abrirModalConfirmacionPedido}
-                                        className="px-6 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition duration-150 shadow-md"
-                                    >
-                                        Realizar Pedido
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={abrirModalConfirmacionPedido}
+                                            disabled={!canCheckout}
+                                            className={`px-6 py-3 rounded-lg font-bold transition duration-150 shadow-md ${
+                                                canCheckout
+                                                    ? "bg-green-500 text-white hover:bg-green-600"
+                                                    : "bg-slate-300 text-slate-600 cursor-not-allowed"
+                                            }`}
+                                        >
+                                            Realizar Pedido
+                                        </button>
+                                        {!canCheckout ? (
+                                            <p className="mt-3 text-sm font-medium text-amber-700">
+                                                Solo los usuarios con taquilla pueden comprar productos físicos.
+                                            </p>
+                                        ) : null}
+                                    </>
                                 )}
                             </div>
                         </div>

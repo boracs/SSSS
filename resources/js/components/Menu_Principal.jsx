@@ -1,318 +1,320 @@
-import React, { useState } from "react";
-import { usePage, Link, router } from "@inertiajs/react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import React, { useMemo, useState } from "react";
+import { Link, usePage } from "@inertiajs/react";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
-    faShoppingCart,
-    faUser,
-    faBars,
-} from "@fortawesome/free-solid-svg-icons"; // Íconos
-import { ChevronDownIcon } from "@heroicons/react/24/solid"; // Ícono de flecha
-import Dropdown from "../components/Dropdown";
-import { useCartContext } from "../../js/Contexts/cartContext";
-import ToggleMenu from "../components/ToggleMenu";
+    AcademicCapIcon,
+    BanknotesIcon,
+    BuildingStorefrontIcon,
+    ShoppingCartIcon,
+    CreditCardIcon,
+    ShoppingBagIcon,
+    WrenchScrewdriverIcon,
+    UsersIcon,
+} from "@heroicons/react/24/outline";
 
-const Menu_Principal = ({ headerVariant = "solid" }) => {
-    const { cartCount } = useCartContext();
-    const { auth } = usePage().props;
-    const submittedPaymentsCount = Number(usePage().props?.adminStats?.submittedPaymentsCount || 0);
-    const isHero = headerVariant === "hero";
+function cx(...parts) {
+    return parts.filter(Boolean).join(" ");
+}
+
+function NavLinkItem({ href, children, onClick, active = false }) {
+    return (
+        <Link
+            href={href}
+            onClick={onClick}
+            className={cx(
+                "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-all duration-200",
+                active ? "bg-slate-100 text-brand-deep" : "text-brand-deep/90 hover:bg-slate-100 hover:text-brand-accent"
+            )}
+        >
+            {children}
+        </Link>
+    );
+}
+
+function Dropdown({ label, badge = 0, children }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/90 hover:bg-slate-100 hover:text-brand-accent"
+            >
+                {label}
+                {badge > 0 ? (
+                    <span className="inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                        {badge}
+                    </span>
+                ) : null}
+                <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
+            </button>
+            <div
+                className={cx(
+                    "absolute right-0 top-full z-50 w-80 pt-2 transition-all",
+                    open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95"
+                )}
+            >
+                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const Menu_Principal = () => {
+    const { auth, adminStats } = usePage().props;
     const user = auth?.user;
-    const isAdmin = user && String(user.role) === "admin";
-    const hasTaquilla = user && Number(user.numeroTaquilla) > 0;
-    const [menuOpen, setMenuOpen] = useState(false);
+    const isAdmin = !!user && String(user?.role) === "admin";
+    const isVip = user?.is_vip === true || String(user?.is_vip) === "1";
+    const hasActiveLocker =
+        user?.has_locker === true ||
+        String(user?.has_locker) === "1" ||
+        user?.has_active_locker === true ||
+        String(user?.has_active_locker) === "1";
+    const pendingBonosCount = Number(adminStats?.pendingBonosCount || 0);
+    const pendingPaymentsGlobalCount = Number(adminStats?.pendingPaymentsGlobalCount || 0);
+    const pendingRentalsCount = Number(adminStats?.pendingRentalsCount || 0);
 
-    const toggleMenu = () => {
-        setMenuOpen(!menuOpen);
-    };
+    const [mobileOpen, setMobileOpen] = useState(false);
 
-    // Servicios: un solo dropdown (Alquiler Material, Clases de Surf, Tienda) para mantener menú en una línea
-    const menuItemsServicios = [
-        { href: "rentals.surfboards.index", label: "Alquiler Material" },
-        { href: user ? "academy.lessons.index" : "servicios.surf", label: "Clases de Surf" },
-        { href: "tienda", label: "Tienda" },
-    ];
+    const links = useMemo(() => {
+        const publicLinks = !isAdmin ? [
+            { label: "Home", href: route("Pag_principal") },
+            { label: "Nosotros", href: route("nosotros") },
+            { label: "Alquilar Tabla", href: route("rentals.surfboards.index") },
+            { label: user ? "Reservar Clases" : "Clases", href: user ? route("academy.lessons.index") : route("servicios.surf") },
+            { label: "Contacto", href: route("contacto") },
+            ...(!user ? [{ label: "Tienda", href: route("tienda") }] : []),
+        ] : [];
 
-    // Admin: Gestores (un solo dropdown)
-    const menuItemsGestores = [
-        { href: "admin.surfboards.index", label: "Gestor Alquileres" },
-        { href: "admin.academy.index", label: "Gestor Clases" },
-        { href: "admin.check-manager", label: "Validar Pagos" },
-        { href: "asignar.taquilla.mostrar", label: "Gestor Taquillas" },
-        { href: "taquilla.index.admin", label: "Pagos.T" },
-        { href: "gestor.pedidos", label: "Gestor Pedidos" },
-    ];
+        const studentLinks = user && !isAdmin ? [
+            { label: "Tienda", href: route("tienda") },
+            { label: "Mis Reservas", href: route("my-reservations.index") },
+            { label: "Perfil", href: route("profile.edit") },
+        ] : [];
 
-    const handleLogout = async () => {
-        try {
-            // Logout directo por Axios para no depender del estado de Inertia
-            await window?.axios?.post?.(route("logout"));
-        } catch {
-            // Si hay error (incl. 419), forzamos salida igual
-        } finally {
-            window.location.href = "/";
-        }
-    };
+        const vipLinks = user && !isAdmin && isVip ? [
+            { label: "⭐ Mis Bonos / Comprar", href: route("bonos.index") },
+        ] : [];
 
-    const navBg = isHero ? "bg-transparent" : "bg-white/95 shadow-sm border-b border-slate-200/60";
-    const textLink = isHero ? "text-white/90 hover:text-brand-accent" : "text-brand-deep/90 hover:text-brand-accent";
-    const textLogo = isHero ? "text-white group-hover:text-brand-accent" : "text-brand-deep group-hover:text-brand-accent";
-    const logoBadge = "bg-brand-accent text-white";
-    const lineBg = isHero ? "bg-white/20" : "bg-slate-200/60";
+        const adminDirect = isAdmin ? [
+            { label: "Gestor de Pedidos", href: route("gestor.pedidos"), icon: ShoppingBagIcon },
+            { label: "Usuarios VIP", href: route("admin.users.index"), icon: UsersIcon },
+            { label: "Pagos", href: route("admin.payments.global"), icon: CreditCardIcon, badge: pendingPaymentsGlobalCount },
+        ] : [];
+
+        const classesModule = isAdmin ? [
+            { label: "Gestor de Clases", href: route("admin.academy.index"), icon: AcademicCapIcon },
+            { label: "Packs de Bonos", href: route("admin.bonos.index"), icon: CreditCardIcon },
+        ] : [];
+
+        const rentalsModule = isAdmin ? [
+            { label: "Inventario de Tablas", href: route("admin.surfboards.index"), icon: BuildingStorefrontIcon },
+        ] : [];
+
+        const adminClientView = isAdmin ? [
+            { label: "Clases", href: route("academy.lessons.index"), icon: AcademicCapIcon },
+            { label: "Alquiler de Tablas", href: route("rentals.surfboards.index"), icon: BuildingStorefrontIcon },
+            { label: "Tienda", href: route("tienda"), icon: ShoppingBagIcon },
+        ] : [];
+
+        const lockersModule = isAdmin ? [
+            { label: "Asignador", href: route("asignar.taquilla.mostrar"), icon: WrenchScrewdriverIcon },
+            { label: "Estado de Pagos", href: route("taquilla.index.admin"), icon: BanknotesIcon },
+        ] : [];
+
+        return { publicLinks, studentLinks, vipLinks, adminDirect, classesModule, rentalsModule, lockersModule, adminClientView };
+    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount]);
 
     return (
-        <nav className={`${navBg} transition-all duration-300 ease-out`}>
-            <div className={`w-full h-px ${lineBg}`} />
-            <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-                {/* Logo / Marca S4 */}
-                <Link
-                    href={route("Pag_principal")}
-                    className="flex items-center gap-2 group"
-                >
-                    <span className={`inline-flex h-8 w-8 items-center justify-center rounded-full font-heading text-sm font-extrabold tracking-[0.15em] ${logoBadge}`}>
-                        S4
-                    </span>
-                    <span className={`font-heading text-lg sm:text-xl font-semibold tracking-tight transition-s4 truncate max-w-[10rem] sm:max-w-none ${textLogo}`}>
-                        San Sebastian Surf School
-                    </span>
+        <nav className="border-b border-slate-200/60 bg-white/95">
+            <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+                <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent text-sm font-extrabold text-white">S4</span>
+                    <span className="font-heading text-lg font-semibold text-brand-deep">San Sebastian Surf School</span>
                 </Link>
 
-                {/* Menú desktop: una sola línea (flex-nowrap), Servicios y Gestores agrupados */}
-                <div className="hidden lg:flex lg:flex-nowrap lg:items-center lg:gap-4 xl:gap-5 shrink min-w-0">
-                    <Link href={route("Pag_principal")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                        Inicio
-                    </Link>
-                    <Link href={route("nosotros")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                        Nosotros
-                    </Link>
-                    <ToggleMenu menuItems={menuItemsServicios}>
-                        <div className="flex items-center gap-0.5 cursor-pointer group shrink-0">
-                            <span className={`${textLink} whitespace-nowrap text-sm font-medium`}>Servicios</span>
-                            <ChevronDownIcon className={`w-4 h-4 shrink-0 ${isHero ? "text-white/80" : "text-brand-deep/80"}`} />
-                        </div>
-                    </ToggleMenu>
-                    {(!user || !isAdmin) && (
-                        <Link href={route("contacto")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                            Contacto
-                        </Link>
-                    )}
-                    {user && !isAdmin && (
+                <div className="hidden lg:flex items-center gap-1">
+                    {links.publicLinks.map((l) => (
+                        <NavLinkItem key={l.label} href={l.href}>{l.label}</NavLinkItem>
+                    ))}
+                    {links.studentLinks.map((l) => (
+                        <NavLinkItem key={l.label} href={l.href}>{l.label}</NavLinkItem>
+                    ))}
+                    {links.vipLinks.map((l) => (
+                        <NavLinkItem key={l.label} href={l.href}>{l.label}</NavLinkItem>
+                    ))}
+                    {user && !isAdmin && hasActiveLocker ? (
+                        <NavLinkItem href={route("carrito")}>
+                            <ShoppingCartIcon className="h-4 w-4" />
+                            <span>Carrito</span>
+                        </NavLinkItem>
+                    ) : null}
+
+                    {isAdmin ? (
                         <>
-                            <Link href={route("pedidos")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                                Pedidos
-                            </Link>
-                            {hasTaquilla && (
-                                <Link href={route("taquillas.index.client")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                                    Pago.T
-                                </Link>
-                            )}
-                            {hasTaquilla ? (
-                                <Link href={route("carrito")} className={`flex items-center gap-1.5 shrink-0 ${textLink} text-sm font-medium`}>
-                                    <FontAwesomeIcon icon={faShoppingCart} className="shrink-0" />
-                                    <span className="whitespace-nowrap">Carrito</span>
-                                    {cartCount > 0 && (
-                                        <span className="bg-brand-accent text-white text-xs rounded-full px-1.5 py-0.5 min-w-[1.25rem] text-center">
-                                            {cartCount}
-                                        </span>
-                                    )}
-                                </Link>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className={`flex items-center shrink-0 ${isHero ? "text-white/60" : "text-slate-400"} cursor-not-allowed relative group text-sm font-medium`}
-                                    disabled
-                                    title="Necesitas una taquilla para acceder al carrito"
-                                >
-                                    <FontAwesomeIcon icon={faShoppingCart} className="mr-1" />
-                                    <span className="whitespace-nowrap">Carrito</span>
-                                </button>
-                            )}
+                            {links.adminDirect.map((l) => {
+                                const Icon = l.icon;
+                                return (
+                                    <NavLinkItem key={l.label} href={l.href}>
+                                        <Icon className="h-4 w-4" />
+                                        <span>{l.label}</span>
+                                        {l.badge > 0 ? (
+                                            <span className="inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                {l.badge}
+                                            </span>
+                                        ) : null}
+                                    </NavLinkItem>
+                                );
+                            })}
+
+                            <Dropdown label="Módulo Clases" badge={0}>
+                                {links.classesModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </Dropdown>
+                            <Dropdown label="Módulo Alquileres" badge={pendingRentalsCount}>
+                                {links.rentalsModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </Dropdown>
+                            <Dropdown label="Gestor Taquillas" badge={0}>
+                                {links.lockersModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </Dropdown>
+                            <Dropdown label="Vista Cliente" badge={0}>
+                                {links.adminClientView.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </Dropdown>
                         </>
-                    )}
-                    {isAdmin && (
-                        <>
-                            <Link href={route("mostrar.productos")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                                Productos
-                            </Link>
-                            <ToggleMenu menuItems={menuItemsGestores}>
-                                <div className="flex items-center gap-0.5 cursor-pointer group shrink-0">
-                                    <span className={`${textLink} whitespace-nowrap text-sm font-medium`}>Gestores</span>
-                                    <ChevronDownIcon className={`w-4 h-4 shrink-0 ${isHero ? "text-white/80" : "text-brand-deep/80"}`} />
-                                </div>
-                            </ToggleMenu>
-                            <Link href={route("admin.bookings.index")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium`}>
-                                Reserva de tablas
-                            </Link>
-                            <Link href={route("admin.check-manager")} className={`${textLink} shrink-0 whitespace-nowrap text-sm font-medium inline-flex items-center gap-2`}>
-                                💳 Validar Pagos
-                                {submittedPaymentsCount > 0 && (
-                                    <span className="inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        {submittedPaymentsCount}
-                                    </span>
-                                )}
-                            </Link>
-                        </>
-                    )}
+                    ) : null}
                 </div>
 
-                {/* Menú de Cuenta (Login/Register o Perfil) */}
-                <div className="flex items-center space-x-4">
-                    {user ? (
-                        <Dropdown>
-                            <Dropdown.Trigger>
-                                <span className="inline-flex rounded-md">
-                                    <span className={`mx-5 text-lg font-extrabold ${isHero ? "text-white" : "text-brand-deep"}`}>
-                                        ! Hola{" "}
-                                        <span className={isHero ? "text-green-300" : "text-brand-accent"}>
-                                            {user.nombre}...
-                                        </span>{" "}
-                                        ¡
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className="inline-flex items-center rounded-md border border-transparent bg-brand-accent px-3 py-2 text-sm font-medium leading-4 text-white hover:bg-brand-accent/90 transition-all duration-300 focus:outline-none"
-                                    >
-                                        <FontAwesomeIcon
-                                            icon={faUser}
-                                            className="mr-2"
-                                        />
-                                        {user.name || "Mi cuenta"}
-                                        <ChevronDownIcon className="-me-0.5 ms-2 h-4 w-4" />
-                                    </button>
-                                </span>
-                            </Dropdown.Trigger>
-                            <Dropdown.Overlay />
-                            <Dropdown.Content>
-                                <Dropdown.Action
-                                    onClick={() =>
-                                        router.get(route("profile.edit"))
-                                    }
-                                >
-                                    Perfil
-                                </Dropdown.Action>
-                                <Dropdown.Action
-                                    onClick={handleLogout}
-                                >
-                                    Cerrar sesión
-                                </Dropdown.Action>
-                            </Dropdown.Content>
-                        </Dropdown>
-                    ) : (
-                        <Dropdown>
-                            <Dropdown.Trigger>
-                                <span className="inline-flex rounded-md">
-                                    <button
-                                        type="button"
-                                        className="inline-flex items-center rounded-md border border-transparent bg-brand-accent px-3 py-2 text-sm font-medium leading-4 text-white hover:bg-brand-accent/90 transition-all duration-300 focus:outline-none"
-                                    >
-                                        <FontAwesomeIcon icon={faUser} className="mr-2" />
-                                        Cuenta
-                                        <ChevronDownIcon className="-me-0.5 ms-2 h-4 w-4" />
-                                    </button>
-                                </span>
-                            </Dropdown.Trigger>
-                            <Dropdown.Overlay />
-                            <Dropdown.Content>
-                                <Dropdown.Action
-                                    onClick={() =>
-                                        router.get(route("login"))
-                                    }
-                                >
-                                    Login
-                                </Dropdown.Action>
-                                <Dropdown.Action
-                                    onClick={() =>
-                                        router.get(route("register"))
-                                    }
-                                >
-                                    Register
-                                </Dropdown.Action>
-                            </Dropdown.Content>
-                        </Dropdown>
-                    )}
-                </div>
-
-                {/* ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// */}
-                {/* ////////////////////////////////////////////MENU MOVIL DESPLEGABLE///////////////////////////////////////////////////////// */}
-                {/* ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// */}
-                {/* Menú desplegable en dispositivos móviles */}
-
-                {/* Menú hamburguesa para móviles */}
-                <button
-                    onClick={toggleMenu}
-                    className="lg:hidden flex flex-col space-y-1.5 p-2 focus:outline-none"
-                >
-                    <FontAwesomeIcon
-                        icon={faBars}
-                        className={`w-6 h-6 ${isHero ? "text-white hover:text-brand-accent" : "text-brand-deep hover:text-brand-accent"} transition-s4`}
-                    />
+                <button type="button" onClick={() => setMobileOpen((v) => !v)} className="lg:hidden rounded-xl p-2 hover:bg-slate-100" aria-label="Abrir menú">
+                    <svg className="h-6 w-6 text-brand-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
                 </button>
             </div>
 
-            <div className={`lg:hidden ${menuOpen ? "block" : "hidden"} border-t border-slate-200/60 bg-brand-deep shadow-lg`}>
-                <div className="px-4 py-3 space-y-1">
-                    <Link href={route("Pag_principal")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                        Inicio
-                    </Link>
-                    <Link href={route("nosotros")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                        Nosotros
-                    </Link>
-                    <ToggleMenu menuItems={menuItemsServicios}>
-                        <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 cursor-pointer">
-                            <span>Servicios</span>
-                            <ChevronDownIcon className="w-4 h-4" />
-                        </div>
-                    </ToggleMenu>
-                    <Link href={route("contacto")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                        Contacto
-                    </Link>
-                    {user && !isAdmin && (
-                        <>
-                            <Link href={route("pedidos")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                Pedidos
+            {mobileOpen ? (
+                <div className="border-t border-slate-200/60 bg-brand-deep px-4 py-3 lg:hidden">
+                    <div className="space-y-1">
+                        {links.publicLinks.map((l) => (
+                            <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                {l.label}
                             </Link>
-                            {hasTaquilla && (
-                                <Link href={route("taquillas.index.client")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                    Pago.T
-                                </Link>
-                            )}
-                            {hasTaquilla ? (
-                                <Link href={route("carrito")} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                    <FontAwesomeIcon icon={faShoppingCart} /> Carrito
-                                    {cartCount > 0 && <span className="bg-brand-accent text-white text-xs rounded-full px-1.5 py-0.5">{cartCount}</span>}
-                                </Link>
-                            ) : (
-                                <span className="block rounded-xl px-3 py-2 text-sm text-white/50">Carrito (requiere taquilla)</span>
-                            )}
-                        </>
-                    )}
-                    {isAdmin && (
-                        <>
-                            <Link href={route("mostrar.productos")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                Productos
+                        ))}
+                        {links.studentLinks.map((l) => (
+                            <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                {l.label}
                             </Link>
-                            <ToggleMenu menuItems={menuItemsGestores}>
-                                <div className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 cursor-pointer">
-                                    <span>Gestores</span>
-                                    <ChevronDownIcon className="w-4 h-4" />
-                                </div>
-                            </ToggleMenu>
-                            <Link href={route("admin.bookings.index")} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                Reserva de tablas
+                        ))}
+                        {links.vipLinks.map((l) => (
+                            <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                {l.label}
                             </Link>
-                            <Link href={route("admin.check-manager")} className="flex items-center rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent transition-all duration-300">
-                                <span>💳 Validar Pagos</span>
-                                {submittedPaymentsCount > 0 && (
-                                    <span className="ml-auto inline-flex min-w-[1.2rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                                        {submittedPaymentsCount}
-                                    </span>
-                                )}
+                        ))}
+                        {user && !isAdmin && hasActiveLocker ? (
+                            <Link href={route("carrito")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                <ShoppingCartIcon className="h-4 w-4" />
+                                <span>Carrito</span>
                             </Link>
-                        </>
-                    )}
+                        ) : null}
+
+                        {isAdmin ? (
+                            <>
+                                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-white/70">Admin Directo</p>
+                                {links.adminDirect.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                            {l.badge > 0 ? (
+                                                <span className="ml-auto inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    {l.badge}
+                                                </span>
+                                            ) : null}
+                                        </Link>
+                                    );
+                                })}
+
+                                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-white/70">Módulo Clases</p>
+                                {links.classesModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-white/70">Módulo Alquileres</p>
+                                {links.rentalsModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-white/70">Gestor Taquillas</p>
+                                {links.lockersModule.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                                <p className="px-3 pt-2 text-xs font-semibold uppercase tracking-wider text-white/70">Vista Cliente</p>
+                                {links.adminClientView.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </>
+                        ) : null}
+                    </div>
                 </div>
-            </div>
+            ) : null}
         </nav>
     );
 };
 
 export default Menu_Principal;
+

@@ -19,7 +19,7 @@ class Pag_principalController extends Controller
     
         if ($user) {
             // El usuario está autenticado
-            $carrito = Carrito::where('id_usuario', $user->id)->first();
+            $carrito = Carrito::where('user_id', $user->id)->first();
     
             // Comprobar si el carrito existe
             if ($carrito) {

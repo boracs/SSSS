@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CreditEngineService
 {
@@ -18,7 +19,9 @@ class CreditEngineService
      */
     public function canAffordEnrollment(User $user, Lesson $lesson): bool
     {
-        return $user->credits_balance >= 2;
+        // Fase 1 de refactor: credits_balance eliminado de users.
+        // Se permite continuar el flujo mientras se migra a Bonos Prepago.
+        return true;
     }
 
     /**
@@ -27,45 +30,9 @@ class CreditEngineService
      */
     public function runOneHourBeforeAudit(Lesson $lesson): void
     {
-        $enrolled = $lesson->enrollments()->whereIn('status', ['enrolled'])->get();
-        $count = $enrolled->count();
-
-        if ($count === 0) {
-            return;
-        }
-
-        $creditsPerStudent = $count === 1 ? 2 : 1;
-
-        foreach ($enrolled as $enrollment) {
-            $user = $enrollment->user;
-            $currentLock = (int) $enrollment->credits_locked;
-
-            if ($currentLock >= $creditsPerStudent) {
-                continue;
-            }
-
-            $toDeduct = $creditsPerStudent - $currentLock;
-            if ($user->credits_balance < $toDeduct) {
-                continue;
-            }
-
-            DB::transaction(function () use ($enrollment, $user, $lesson, $creditsPerStudent, $toDeduct) {
-                $enrollment->update(['credits_locked' => $creditsPerStudent]);
-                $user->decrement('credits_balance', $toDeduct);
-                CreditTransaction::create([
-                    'user_id' => $user->id,
-                    'amount' => -$toDeduct,
-                    'type' => CreditTransaction::TYPE_LESSON_LOCK,
-                    'lesson_id' => $lesson->id,
-                    'lesson_user_id' => $enrollment->id,
-                    'description' => $creditsPerStudent === 2 ? 'Sesión particular (1 alumno)' : 'Clase grupal',
-                ]);
-            });
-
-            if ($creditsPerStudent === 2) {
-                event(new \App\Events\SoloStudentLocked($lesson, $enrollment));
-            }
-        }
+        Log::info('CreditEngineService::runOneHourBeforeAudit desactivado temporalmente (Fase 1).', [
+            'lesson_id' => $lesson->id,
+        ]);
     }
 
     /**
@@ -73,30 +40,25 @@ class CreditEngineService
      */
     public function refundCredits(LessonUser $enrollment, string $reason = 'Mal mar'): void
     {
+        // Fase 1: se conserva trazabilidad sin tocar saldo en users.
         $credits = (int) $enrollment->credits_locked;
-        if ($credits <= 0) {
-            return;
-        }
-
-        $user = $enrollment->user;
-
-        DB::transaction(function () use ($enrollment, $user, $credits, $reason) {
+        DB::transaction(function () use ($enrollment, $credits, $reason) {
             $enrollment->update([
                 'status' => LessonUser::STATUS_REFUNDED,
                 'credits_locked' => 0,
                 'cancelled_at' => now(),
             ]);
 
-            $user->increment('credits_balance', $credits);
-
-            CreditTransaction::create([
-                'user_id' => $user->id,
-                'amount' => $credits,
-                'type' => CreditTransaction::TYPE_LESSON_REFUND,
-                'lesson_id' => $enrollment->lesson_id,
-                'lesson_user_id' => $enrollment->id,
-                'description' => $reason,
-            ]);
+            if ($credits > 0) {
+                CreditTransaction::create([
+                    'user_id' => $enrollment->user_id,
+                    'amount' => $credits,
+                    'type' => CreditTransaction::TYPE_LESSON_REFUND,
+                    'lesson_id' => $enrollment->lesson_id,
+                    'lesson_user_id' => $enrollment->id,
+                    'description' => '[LEGACY_SIN_SALDO] '.$reason,
+                ]);
+            }
         });
     }
 
@@ -127,12 +89,12 @@ class CreditEngineService
         if ($amount <= 0) {
             return;
         }
-        $user->increment('credits_balance', $amount);
+        // Fase 1: sin columna credits_balance; conservar solo auditoría.
         CreditTransaction::create([
             'user_id' => $user->id,
             'amount' => $amount,
             'type' => CreditTransaction::TYPE_PURCHASE,
-            'description' => $description,
+            'description' => '[LEGACY_SIN_SALDO] '.$description,
         ]);
     }
 }

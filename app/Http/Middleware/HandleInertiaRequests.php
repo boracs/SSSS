@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use App\Models\Booking;
 use App\Models\LessonUser;
+use App\Models\User;
+use App\Models\UserBono;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -46,7 +48,10 @@ class HandleInertiaRequests extends Middleware
                         'apellido' => $request->user()->apellido,
                         'email' => $request->user()->email,
                         'role' => $request->user()->role ?? 'user',
+                        'is_vip' => (bool) ($request->user()->is_vip ?? false),
                         'numeroTaquilla' => $request->user()->numeroTaquilla,
+                        'has_active_locker' => (bool) $request->user()->hasActiveLocker(),
+                        'has_locker' => (bool) $request->user()->hasActiveLocker(),
                     ]
                     : null,
             ],
@@ -70,9 +75,22 @@ class HandleInertiaRequests extends Middleware
                 $rentalSubmitted = Booking::query()
                     ->where('payment_status', Booking::PAYMENT_SUBMITTED)
                     ->count();
+                $bonosPending = UserBono::query()
+                    ->where('status', UserBono::STATUS_PENDING)
+                    ->count();
+                $pendingCuotas = User::query()
+                    ->whereNotNull('numeroTaquilla')
+                    ->whereNotNull('fecha_vencimiento_cuota')
+                    ->whereDate('fecha_vencimiento_cuota', '<', now()->toDateString())
+                    ->count();
 
                 return [
                     'submittedPaymentsCount' => $lessonSubmitted + $rentalSubmitted,
+                    'pendingClassesCount' => $lessonSubmitted,
+                    'pendingRentalsCount' => $rentalSubmitted,
+                    'pendingBonosCount' => $bonosPending,
+                    'pendingPaymentsGlobalCount' => $lessonSubmitted + $rentalSubmitted + $bonosPending,
+                    'pendingCuotasCount' => $pendingCuotas,
                 ];
             },
         ];

@@ -15,7 +15,7 @@ class Carrito extends Model
      * @var array<string>
      */
     protected $fillable = [
-        'id_usuario',
+        'user_id',
     ];
 
     /**
@@ -23,7 +23,7 @@ class Carrito extends Model
      */
     public function usuario()
     {
-        return $this->belongsTo(User::class, 'id_usuario');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

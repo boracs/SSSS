@@ -18,7 +18,7 @@ class CarritoController extends Controller
     {
         $user = auth()->user();
 
-        $carrito = Carrito::where('id_usuario', $user->id)
+        $carrito = Carrito::where('user_id', $user->id)
             ->with(['productos' => function ($query) {
                 $query->select('productos.id', 'productos.nombre', 'productos.precio', 'productos.descuento')
                     ->withPivot('cantidad');
@@ -30,6 +30,7 @@ class CarritoController extends Controller
                 'productos' => [],
                 'total' => 0,
                 'message' => 'Tu carrito está vacío.',
+                'canCheckout' => (bool) $user->hasActiveLocker(),
             ]);
         }
 
@@ -59,6 +60,7 @@ class CarritoController extends Controller
         return Inertia::render('Carrito', [
             'productos' => $productos->values()->all(),
             'total' => round($total, 2),
+            'canCheckout' => (bool) $user->hasActiveLocker(),
         ]);
     }
 
@@ -93,7 +95,7 @@ class CarritoController extends Controller
 
         // 3. OBTENER O CREAR CARRITO (Atomicidad: si falla, se revierte)
         // Usamos firstOrCreate para que la operación esté dentro del control transaccional
-        $carrito = Carrito::firstOrCreate(['id_usuario' => $user->id]);
+        $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
 
         $productoEnCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
         $cantidadAAgregar = 1;
@@ -138,7 +140,7 @@ class CarritoController extends Controller
     public function eliminarProducto(int $productoId): \Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
-        $carrito = Carrito::where('id_usuario', $user->id)->first();
+        $carrito = Carrito::where('user_id', $user->id)->first();
 
         if (!$carrito) {
             // Si el carrito no existe, redirigimos con un error, ya que es una petición Inertia

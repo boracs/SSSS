@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\BonoController as AdminBonoController;
+use App\Http\Controllers\Admin\PaymentValidationController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
+use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\PlanesTaquillasController;
 use App\Http\Controllers\TiendaController;
@@ -16,6 +19,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\VerificarAdmin;
 use App\Http\Middleware\VerificarTaquilla;
+use App\Http\Controllers\Client\BonoController as ClientBonoController;
+use App\Http\Controllers\User\MyReservationsController;
 
 use Inertia\Inertia;
 
@@ -61,6 +66,11 @@ Route::middleware('auth')->prefix('academia')->name('academy.')->group(function 
     Route::post('/lessons/{lesson}/confirm-surf-trip', [\App\Http\Controllers\Academy\LessonController::class, 'confirmSurfTrip'])->name('lessons.confirm-surf-trip');
 });
 
+Route::middleware('auth')->prefix('bonos')->name('bonos.')->group(function () {
+    Route::get('/', [ClientBonoController::class, 'index'])->name('index');
+    Route::post('/request-purchase', [ClientBonoController::class, 'requestPurchase'])->name('request-purchase');
+});
+
 // ==========================
 // ALQUILER DE TABLAS (público)
 // ==========================
@@ -89,6 +99,11 @@ Route::middleware('auth')->group(function () {
     // PEDIDOS (disponible para cualquier usuario autenticado)
     Route::get('/pedidos', [PedidoController::class, 'mostrarPedidos'])->name('pedidos');
     Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
+    Route::get('/mis-reservas', [MyReservationsController::class, 'index'])->name('my-reservations.index');
+    Route::post('/mis-reservas/clases/{enrollment}/upload-proof', [MyReservationsController::class, 'uploadClassProof'])->name('my-reservations.class.upload-proof');
+    Route::post('/mis-reservas/alquileres/{booking}/upload-proof', [MyReservationsController::class, 'uploadRentalProof'])->name('my-reservations.rental.upload-proof');
+    Route::post('/mis-reservas/clases/{enrollment}/cancel', [MyReservationsController::class, 'cancelClass'])->name('my-reservations.class.cancel');
+    Route::post('/mis-reservas/alquileres/{booking}/cancel', [MyReservationsController::class, 'cancelRental'])->name('my-reservations.rental.cancel');
 });
 
 
@@ -182,6 +197,17 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
             Route::post('bookings/{booking}/reject-proof', [AdminBookingController::class, 'rejectProof'])->name('bookings.reject-proof');
             Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');
             Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
+            Route::get('payments/global-dashboard', [\App\Http\Controllers\Admin\AcademyController::class, 'globalPaymentsDashboard'])->name('payments.global');
+            Route::get('payment-validation', [PaymentValidationController::class, 'index'])->name('payment-validation.index');
+            Route::post('payment-validation/{userBonoId}/confirm', [PaymentValidationController::class, 'confirm'])->name('payment-validation.confirm');
+            Route::post('payment-validation/{userBonoId}/reject', [PaymentValidationController::class, 'reject'])->name('payment-validation.reject');
+            Route::get('bonos', [AdminBonoController::class, 'index'])->name('bonos.index');
+            Route::post('bonos', [AdminBonoController::class, 'store'])->name('bonos.store');
+            Route::put('bonos/{packBono}', [AdminBonoController::class, 'update'])->name('bonos.update');
+            Route::delete('bonos/{packBono}', [AdminBonoController::class, 'destroy'])->name('bonos.destroy');
+            Route::post('bonos/assign-manual', [AdminBonoController::class, 'assignManual'])->name('bonos.assign-manual');
+            Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
+            Route::patch('users/{user}/toggle-vip', [AdminUserController::class, 'toggleVip'])->name('users.toggle-vip');
         });
 
         // Academia: Consola Comandante

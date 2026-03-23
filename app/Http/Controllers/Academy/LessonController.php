@@ -8,6 +8,8 @@ use App\Mail\RequestReceivedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\StaffAssignment;
+use App\Models\BonoConsumption;
+use App\Models\UserBono;
 use App\Services\AutoReleaseService;
 use App\Services\CreditEngineService;
 use Carbon\Carbon;
@@ -231,7 +233,7 @@ class LessonController extends Controller
             'lessonsFeed' => $feedLessons,
             'canSeeVip' => $canSeeVip,
             'optimalDates' => $optimalDates,
-            'creditsBalance' => auth()->user()?->credits_balance ?? 0,
+            'creditsBalance' => 0,
             'myEnrollmentLessonIds' => $myEnrollmentLessonIds,
             'myEnrollmentStatusByLesson' => $myEnrollmentStatusByLesson,
             'myEnrollmentExpiresAtByLesson' => $myEnrollmentExpiresAtByLesson,
@@ -704,8 +706,19 @@ class LessonController extends Controller
             return back()->with('error', 'No puedes inscribirte en una clase pasada.');
         }
 
-        if (! $this->creditEngine->canAffordEnrollment($user, $lesson)) {
-            return back()->with('error', 'Créditos insuficientes. Necesitas al menos 2.');
+        $consumedBonoId = null;
+        if ((bool) ($user->is_vip ?? false)) {
+            $vipBono = UserBono::query()
+                ->where('user_id', $user->id)
+                ->where('status', UserBono::STATUS_CONFIRMED)
+                ->where('clases_restantes', '>', 0)
+                ->orderBy('id')
+                ->first();
+
+            if (! $vipBono) {
+                return back()->with('error', 'Eres usuario VIP, pero no tienes bonos confirmados con clases disponibles.');
+            }
+            $consumedBonoId = $vipBono->id;
         }
 
         $exists = $lesson->enrollments()->where('user_id', $user->id)->whereIn('status', [LessonUser::STATUS_PENDING, LessonUser::STATUS_CONFIRMED, LessonUser::STATUS_ENROLLED, LessonUser::STATUS_ATTENDED])->exists();
@@ -728,13 +741,39 @@ class LessonController extends Controller
             return back()->with('error', 'Clase completa por capacidad.');
         }
 
-        $lesson->users()->attach($user->id, [
-            'party_size' => 1,
-            'credits_locked' => 0,
-            'status' => LessonUser::STATUS_ENROLLED,
-        ]);
+        try {
+            DB::transaction(function () use ($lesson, $user, $consumedBonoId) {
+                if ($consumedBonoId) {
+                    $vipBono = UserBono::query()->whereKey($consumedBonoId)->lockForUpdate()->first();
+                    if (! $vipBono || $vipBono->status !== UserBono::STATUS_CONFIRMED || (int) $vipBono->clases_restantes <= 0) {
+                        throw new \RuntimeException('BONO_NO_DISPONIBLE');
+                    }
+                    $vipBono->decrement('clases_restantes', 1);
+                    $vipBono->refresh();
 
-        return back()->with('success', 'Inscripción realizada. Los créditos se descontarán 1h antes.');
+                    BonoConsumption::create([
+                        'user_bono_id' => $vipBono->id,
+                        'user_id' => $user->id,
+                        'lesson_id' => $lesson->id,
+                        'remaining_after' => (int) $vipBono->clases_restantes,
+                        'consumed_at' => now(),
+                    ]);
+                }
+
+                $lesson->users()->attach($user->id, [
+                    'party_size' => 1,
+                    'credits_locked' => 0,
+                    'status' => LessonUser::STATUS_ENROLLED,
+                ]);
+            });
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() === 'BONO_NO_DISPONIBLE') {
+                return back()->with('error', 'Tu bono VIP ya no tiene clases disponibles. Actualiza y vuelve a intentarlo.');
+            }
+            throw $e;
+        }
+
+        return back()->with('success', 'Inscripción realizada correctamente.');
     }
 
     /**

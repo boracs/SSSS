@@ -15,7 +15,7 @@ class Pedido extends Model
      * @var array<string>
      */
     protected $fillable = [
-        'id_usuario',
+        'user_id',
         'precio_total',
         'pagado',
         'entregado',
@@ -26,7 +26,7 @@ class Pedido extends Model
      */
     public function usuario()
     {
-        return $this->belongsTo(User::class, 'id_usuario');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     /**

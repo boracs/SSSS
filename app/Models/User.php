@@ -21,12 +21,12 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'role',
+        'is_vip',
         'nombre',
         'apellido',
         'email',
         'telefono',
         'numeroTaquilla',
-        'credits_balance',
         'password',
         'fecha_vencimiento_cuota',
         'id_plan_vigente',
@@ -50,6 +50,7 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_vip' => 'boolean',
         'fecha_vencimiento_cuota' => 'datetime',
     ];
 
@@ -59,12 +60,12 @@ class User extends Authenticatable
 
     public function pedidos()
     {
-        return $this->hasMany(Pedido::class, 'id_usuario');
+        return $this->hasMany(Pedido::class, 'user_id');
     }
 
     public function carrito()
     {
-        return $this->hasOne(Carrito::class, 'id_usuario');
+        return $this->hasOne(Carrito::class, 'user_id');
     }
 
     public function productos()
@@ -119,6 +120,11 @@ class User extends Authenticatable
         return $this->hasMany(StaffAssignment::class, 'user_id');
     }
 
+    public function userBonos(): HasMany
+    {
+        return $this->hasMany(UserBono::class, 'user_id');
+    }
+
     // ===================================
     // ACCESORES (LOGICA DE NEGOCIO)
     // ===================================
@@ -165,5 +171,21 @@ class User extends Authenticatable
     {
         $query->whereNotNull('numeroTaquilla')
               ->whereDate('fecha_vencimiento_cuota', '<', Carbon::today());
+    }
+
+    /**
+     * Regla de negocio de tienda: solo compra finalizable con taquilla activa.
+     */
+    public function hasActiveLocker(): bool
+    {
+        if (empty($this->numeroTaquilla) || empty($this->fecha_vencimiento_cuota)) {
+            return false;
+        }
+
+        $expiresAt = $this->fecha_vencimiento_cuota instanceof Carbon
+            ? $this->fecha_vencimiento_cuota
+            : Carbon::parse((string) $this->fecha_vencimiento_cuota);
+
+        return $expiresAt->isSameDay(Carbon::today()) || $expiresAt->isFuture();
     }
 }

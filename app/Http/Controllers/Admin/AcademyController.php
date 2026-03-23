@@ -9,6 +9,7 @@ use App\Models\LessonUser;
 use App\Models\Booking;
 use App\Models\StaffAssignment;
 use App\Models\User;
+use App\Models\UserBono;
 use App\Services\AutoReleaseService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -197,6 +198,168 @@ class AcademyController extends Controller
             ],
             'googleMapsUrl' => $googleMapsUrl,
             'weeklyHealth' => $weeklyHealth,
+        ]);
+    }
+
+    /**
+     * Dashboard global de pagos (Clases + Alquileres + Bonos VIP).
+     */
+    public function globalPaymentsDashboard(Request $request)
+    {
+        $status = $request->query('status', 'all'); // all|pending|submitted|confirmed
+        $validStatuses = ['all', 'pending', 'submitted', 'confirmed'];
+        if (! in_array($status, $validStatuses, true)) {
+            $status = 'all';
+        }
+
+        $bonoStatus = $request->query('bono_status', 'all'); // all|pending_validation|pending_payment|confirmed
+        $validBonoStatuses = ['all', 'pending_validation', 'pending_payment', 'confirmed'];
+        if (! in_array($bonoStatus, $validBonoStatuses, true)) {
+            $bonoStatus = 'all';
+        }
+
+        $bonoPackId = $request->query('bono_pack_id');
+        $bonoPackId = is_numeric($bonoPackId) ? (int) $bonoPackId : null;
+
+        $lessonRows = LessonUser::query()
+            ->with(['user', 'lesson'])
+            ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
+            ->orderByDesc('created_at')
+            ->limit(400)
+            ->get()
+            ->map(function (LessonUser $e) {
+                return [
+                    'id' => $e->id,
+                    'user_name' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
+                    'user' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
+                    'email' => $e->user?->email,
+                    'phone' => $e->user?->telefono,
+                    'status' => $e->payment_status ?? LessonUser::PAYMENT_PENDING,
+                    'enrollment_status' => $e->status,
+                    'proof_url' => ! empty($e->payment_proof_path) ? route('admin.academy.enrollments.proof', $e->id) : null,
+                    'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
+                    'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
+                    'modality' => $e->lesson?->modality ?: 'grupal',
+                    'date' => $e->lesson?->starts_at?->toIso8601String(),
+                    'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y'),
+                ];
+            })
+            ->values();
+
+        $rentalRows = Booking::query()
+            ->with(['user', 'surfboard'])
+            ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
+            ->orderByDesc('created_at')
+            ->limit(400)
+            ->get()
+            ->map(function (Booking $b) {
+                return [
+                    'id' => $b->id,
+                    'user_name' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
+                    'user' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
+                    'email' => $b->user?->email,
+                    'phone' => $b->phone ?: $b->user?->telefono,
+                    'status' => $b->payment_status ?? Booking::PAYMENT_PENDING,
+                    'proof_url' => ! empty($b->payment_proof_path) ? route('admin.bookings.proof', $b->id) : null,
+                    'amount' => (float) $b->deposit_amount,
+                    'rental_name' => $b->surfboard?->name ? 'Alquiler · '.$b->surfboard->name : 'Alquiler',
+                    'date' => $b->start_date?->toIso8601String(),
+                    'date_human' => $b->start_date?->locale('es')->translatedFormat('d/m/Y'),
+                ];
+            })
+            ->values();
+
+        $bonoRows = UserBono::query()
+            ->with(['user:id,nombre,apellido,email,telefono', 'pack:id,nombre,num_clases,precio'])
+            ->when($bonoPackId, fn ($q) => $q->where('pack_id', $bonoPackId))
+            ->when($bonoStatus === 'confirmed', fn ($q) => $q->where('status', UserBono::STATUS_CONFIRMED))
+            ->when($bonoStatus === 'pending_validation', function ($q) {
+                $q->where('status', UserBono::STATUS_PENDING)
+                    ->whereNotNull('payment_proof_path');
+            })
+            ->when($bonoStatus === 'pending_payment', function ($q) {
+                $q->where('status', UserBono::STATUS_PENDING)
+                    ->whereNull('payment_proof_path');
+            })
+            ->orderByDesc('created_at')
+            ->limit(300)
+            ->get()
+            ->map(function (UserBono $row) {
+                return [
+                    'id' => $row->id,
+                    'user_name' => $row->user ? trim(($row->user->nombre ?? '').' '.($row->user->apellido ?? '')) : '—',
+                    'user' => $row->user ? trim(($row->user->nombre ?? '').' '.($row->user->apellido ?? '')) : '—',
+                    'email' => $row->user?->email,
+                    'phone' => $row->user?->telefono,
+                    'status' => $row->status,
+                    'pack_id' => (int) $row->pack_id,
+                    'pack' => $row->pack?->nombre,
+                    'num_clases' => (int) ($row->pack?->num_clases ?? 0),
+                    'amount' => (float) ($row->pack?->precio ?? 0),
+                    'has_proof' => ! empty($row->payment_proof_path),
+                    'proof_url' => $row->payment_proof_path ? Storage::url($row->payment_proof_path) : null,
+                    'created_at' => $row->created_at?->toIso8601String(),
+                    'created_at_human' => $row->created_at
+                        ? ($row->created_at->isToday()
+                            ? 'Hoy a las '.$row->created_at->format('H:i')
+                            : $row->created_at->format('d/m/Y H:i'))
+                        : null,
+                    'date_human' => $row->created_at
+                        ? ($row->created_at->isToday()
+                            ? 'Hoy a las '.$row->created_at->format('H:i')
+                            : $row->created_at->format('d/m/Y H:i'))
+                        : null,
+                ];
+            })
+            ->values();
+
+        $bonoPacks = \App\Models\PackBono::query()
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'num_clases', 'activo'])
+            ->map(fn ($p) => [
+                'id' => (int) $p->id,
+                'nombre' => $p->nombre,
+                'num_clases' => (int) $p->num_clases,
+                'activo' => (bool) $p->activo,
+            ])
+            ->values();
+
+        return Inertia::render('Admin/Payments/GlobalDashboard', [
+            'filters' => [
+                'status' => $status,
+                'bono_status' => $bonoStatus,
+                'bono_pack_id' => $bonoPackId,
+            ],
+            'lessonRows' => $lessonRows,
+            'rentalRows' => $rentalRows,
+            'bonoRows' => $bonoRows,
+            'bonoPacks' => $bonoPacks,
+            'counts' => [
+                'lessons' => [
+                    'all' => LessonUser::query()->count(),
+                    'pending' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_PENDING)->count(),
+                    'submitted' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_SUBMITTED)->count(),
+                    'confirmed' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_CONFIRMED)->count(),
+                ],
+                'rentals' => [
+                    'all' => Booking::query()->count(),
+                    'pending' => Booking::query()->where('payment_status', Booking::PAYMENT_PENDING)->count(),
+                    'submitted' => Booking::query()->where('payment_status', Booking::PAYMENT_SUBMITTED)->count(),
+                    'confirmed' => Booking::query()->where('payment_status', Booking::PAYMENT_CONFIRMED)->count(),
+                ],
+                'bonos' => [
+                    'all' => UserBono::query()->count(),
+                    'pending_validation' => UserBono::query()
+                        ->where('status', UserBono::STATUS_PENDING)
+                        ->whereNotNull('payment_proof_path')
+                        ->count(),
+                    'pending_payment' => UserBono::query()
+                        ->where('status', UserBono::STATUS_PENDING)
+                        ->whereNull('payment_proof_path')
+                        ->count(),
+                    'confirmed' => UserBono::query()->where('status', UserBono::STATUS_CONFIRMED)->count(),
+                ],
+            ],
         ]);
     }
 

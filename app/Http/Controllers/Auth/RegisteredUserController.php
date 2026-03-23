@@ -62,7 +62,7 @@ class RegisteredUserController extends Controller
 
        // Crear el carrito asociado al usuario
        $carrito = Carrito::create([
-            'id_usuario' => $user->id, // Asociamos el carrito al usuario recién creado
+            'user_id' => $user->id, // Asociamos el carrito al usuario recién creado
        ]);
 
 

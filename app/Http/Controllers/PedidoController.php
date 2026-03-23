@@ -43,7 +43,7 @@ class PedidoController extends Controller
     DB::beginTransaction();
     try {
         $pedido = Pedido::create([
-            'id_usuario' => $user->id,
+            'user_id' => $user->id,
             'precio_total' => 0,
             'pagado' => false,
             'entregado' => false,
@@ -112,7 +112,7 @@ class PedidoController extends Controller
 
     // Si no es admin, solo puede ver sus propios pedidos
     if (Auth::user()->role !== 'admin') {
-        $query->where('id_usuario', Auth::id());
+        $query->where('user_id', Auth::id());
     }
 
     $pedido = $query->firstOrFail();
@@ -128,7 +128,7 @@ class PedidoController extends Controller
     $user_id = auth()->id();
     
     // Obtener los pedidos con sus productos y los datos de la tabla pivote, ordenados por id descendente
-    $pedidos = Pedido::where('id_usuario', $user_id)
+    $pedidos = Pedido::where('user_id', $user_id)
         ->with(['productos' => function ($query) {
             $query->select('productos.id', 'nombre', 'precio') // Campos de productos
                   ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado'); // Campos de la pivote

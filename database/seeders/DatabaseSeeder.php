@@ -126,7 +126,7 @@ class DatabaseSeeder extends Seeder
         // 7️⃣ Crear pedidos y carritos
         // ===============================
         foreach ($users as $user) {
-            $pedido = Pedido::factory()->create(['id_usuario' => $user->id]);
+            $pedido = Pedido::factory()->create(['user_id' => $user->id]);
             $selectedProducts = $productos->random(rand(1, 3));
             foreach ($selectedProducts as $producto) {
                 $pedido->productos()->attach($producto->id, [
@@ -136,7 +136,7 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
 
-            $carrito = Carrito::create(['id_usuario' => $user->id]);
+            $carrito = Carrito::create(['user_id' => $user->id]);
             $selectedProducts = $productos->random(rand(1, 5));
             foreach ($selectedProducts as $producto) {
                 $carrito->productos()->attach($producto->id, ['cantidad' => rand(1, 5)]);

@@ -1,4 +1,3 @@
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head } from "@inertiajs/react";
 import DeleteUserForm from "./Partials/DeleteUserForm";
 import UpdatePasswordForm from "./Partials/UpdatePasswordForm";
@@ -7,13 +6,7 @@ import Boton_go_back from "../components/Boton_go_back";
 
 export default function Edit({ mustVerifyEmail, status }) {
     return (
-        <AuthenticatedLayout
-            header={
-                <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">
-                    Profile Management
-                </h2>
-            }
-        >
+        <>
             <Head title="Profile" />
 
             {/* Fondo y contenedor principal */}
@@ -45,6 +38,6 @@ export default function Edit({ mustVerifyEmail, status }) {
                     <Boton_go_back />
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 }

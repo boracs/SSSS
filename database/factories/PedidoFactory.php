@@ -14,7 +14,7 @@ class PedidoFactory extends Factory
     public function definition()
     {
         return [
-            'id_usuario' => User::factory(), // Relación con User, crea un usuario automáticamente
+            'user_id' => User::factory(), // Relación con User, crea un usuario automáticamente
             'precio_total' => $this->faker->randomFloat(2, 10, 100), // Precio aleatorio entre 10 y 100
             'pagado' => $this->faker->boolean, // Estado aleatorio de si está pagado o no
             'entregado' => $this->faker->boolean, // Estado aleatorio de si ha sido entregado

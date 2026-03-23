@@ -13,6 +13,7 @@
         "@heroicons/react": "^2.2.0",
         "@inertiajs/core": "^2.0.2",
         "firebase": "^12.3.0",
+        "framer-motion": "^12.38.0",
         "lucide-react": "^0.544.0",
         "react": "^19.0.0",
         "react-datepicker": "^9.1.0",
