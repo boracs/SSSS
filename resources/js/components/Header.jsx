@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import {
     AcademicCapIcon,
@@ -8,6 +8,7 @@ import {
     CreditCardIcon,
     ShoppingBagIcon,
     WrenchScrewdriverIcon,
+    MapIcon,
     UsersIcon,
     ChevronDownIcon,
 } from "@heroicons/react/24/outline";
@@ -22,8 +23,10 @@ function NavItem({ href, active, children, onClick }) {
             href={href}
             onClick={onClick}
             className={cx(
-                "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-all duration-200",
-                active ? "bg-slate-100 text-brand-deep" : "text-brand-deep/80 hover:bg-slate-100 hover:text-brand-accent"
+                "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-white transition-all duration-200",
+                active
+                    ? "bg-white/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
+                    : "hover:bg-cyan-300/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
             )}
         >
             {children}
@@ -40,8 +43,10 @@ function AdminDropdown({ label, active, badge, children }) {
                 type="button"
                 onClick={() => setOpen((v) => !v)}
                 className={cx(
-                    "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-all duration-200",
-                    active ? "bg-slate-100 text-brand-deep" : "text-brand-deep/80 hover:bg-slate-100 hover:text-brand-accent"
+                    "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-white transition-all duration-200",
+                    active
+                        ? "bg-white/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
+                        : "hover:bg-cyan-300/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
                 )}
             >
                 {label}
@@ -76,8 +81,11 @@ function AccountDropdown({ user, onLogout }) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-brand-deep hover:bg-slate-100"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-400 px-4 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110"
             >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19a4 4 0 00-8 0m8 0a4 4 0 014 4M7 19a4 4 0 00-4 4m12-8a4 4 0 100-8 4 4 0 000 8zM7 11a4 4 0 100-8 4 4 0 000 8z" />
+                </svg>
                 {displayName}
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
             </button>
@@ -151,8 +159,12 @@ export default function Header() {
     const pendingClassesCount = Number(props?.adminStats?.pendingClassesCount || 0);
     const pendingRentalsCount = Number(props?.adminStats?.pendingRentalsCount || 0);
     const pendingPaymentsGlobalCount = Number(props?.adminStats?.pendingPaymentsGlobalCount || 0);
+    const submittedLockerPaymentsCount = Number(props?.adminStats?.submittedLockerPaymentsCount || 0);
+    const cartCount = Number(props?.cart?.count || props?.cartCount || 0);
 
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(true);
+    const lastScrollYRef = useRef(0);
 
     const active = (matcher) => (typeof matcher === "function" ? matcher(url || "") : false);
 
@@ -198,12 +210,13 @@ export default function Header() {
         ] : [];
 
         const lockersModule = isAdmin ? [
-            { label: "Asignador", href: route("asignar.taquilla.mostrar"), icon: WrenchScrewdriverIcon },
-            { label: "Estado de Pagos", href: route("taquilla.index.admin"), icon: BanknotesIcon },
+            { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: submittedLockerPaymentsCount },
+            { label: "Mapa de Taquillas", href: route("asignar.taquilla.mostrar"), icon: MapIcon },
+            { label: "Configuración de Planes", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
         ] : [];
 
         return { publicLinks, studentLinks, vipLinks, adminDirect, classesModule, rentalsModule, lockersModule, adminClientView };
-    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount]);
+    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount, submittedLockerPaymentsCount]);
 
     const handleLogout = async () => {
         try {
@@ -212,12 +225,58 @@ export default function Header() {
         window.location.href = "/";
     };
 
+    useEffect(() => {
+        const onScroll = () => {
+            const currentY = window.scrollY || 0;
+            const lastY = lastScrollYRef.current;
+
+            if (currentY <= 80) {
+                setMenuVisible(true);
+                lastScrollYRef.current = currentY;
+                return;
+            }
+
+            // Reaparición inmediata: cualquier movimiento hacia arriba lo muestra.
+            if (currentY < lastY) {
+                setMenuVisible(true);
+            } else if (currentY > lastY && currentY > 140) {
+                // Bajando por debajo del umbral: ocultar.
+                setMenuVisible(false);
+            }
+
+            lastScrollYRef.current = currentY;
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+
     return (
-        <header className="sticky top-0 z-[100] border-b border-slate-200/60 bg-white/90 backdrop-blur">
+        <header className="relative z-[100] mb-[50px]">
+            <div
+                className="border-b border-emerald-500/20 px-4 py-6 sm:px-6"
+                style={{
+                    background: "linear-gradient(95deg, #071a2f 0%, #0b2a43 45%, #114d4b 100%)",
+                    fontFamily: "'Poppins', 'Montserrat', 'Inter', sans-serif",
+                }}
+            >
+                <div className="mx-auto max-w-7xl">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-lime-400">S4 - SAN SEBASTIAN SURF SCHOOL</p>
+                    <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">Domina el Cantabrico con <span className="text-emerald-400">S4</span></h1>
+                    <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
+                </div>
+            </div>
+
+            <div
+                className={cx(
+                    "sticky top-0 border-b border-cyan-950 bg-[#0f5f74] transition-transform duration-300",
+                    menuVisible ? "translate-y-0" : "-translate-y-full"
+                )}
+            >
             <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
                 <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-accent text-sm font-extrabold text-white">S4</span>
-                    <span className="hidden sm:inline font-heading text-base font-bold text-brand-deep">San Sebastian Surf School</span>
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-extrabold text-white">S4</span>
+                    <span className="hidden sm:inline text-xl font-bold leading-5 text-white">San Sebastian<br/>Surf School</span>
                 </Link>
 
                 <nav className="hidden lg:flex items-center gap-1">
@@ -273,13 +332,22 @@ export default function Header() {
                         </AdminDropdown>
                     ) : null}
                     {isAdmin ? (
-                        <AdminDropdown label="Gestor Taquillas" active={(url || "").startsWith("/taquilla") || (url || "").startsWith("/asignar-taquilla-mostrar")} badge={0}>
+                        <AdminDropdown
+                            label="Gestor Taquillas"
+                            active={(url || "").startsWith("/taquilla") || (url || "").startsWith("/asignar-taquilla-mostrar")}
+                            badge={submittedLockerPaymentsCount}
+                        >
                             {links.lockersModule.map((l) => {
                                 const Icon = l.icon;
                                 return (
                                     <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
                                         <Icon className="h-4 w-4" />
                                         <span>{l.label}</span>
+                                        {Number(l.badge || 0) > 0 ? (
+                                            <span className="ml-auto inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                {l.badge}
+                                            </span>
+                                        ) : null}
                                     </Link>
                                 );
                             })}
@@ -309,16 +377,21 @@ export default function Header() {
                         <Link
                             href={route("carrito")}
                             className={cx(
-                                "hidden lg:inline-flex h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-brand-deep hover:bg-slate-100",
-                                active((u) => u.startsWith("/carrito")) ? "bg-slate-100" : ""
+                                "relative hidden lg:inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-200/30 bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20",
+                                active((u) => u.startsWith("/carrito")) ? "bg-white/20" : ""
                             )}
                         >
                             <ShoppingCartIcon className="h-4 w-4" />
                             <span>Carrito</span>
+                            {cartCount > 0 ? (
+                                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+                                    {cartCount}
+                                </span>
+                            ) : null}
                         </Link>
                     ) : null}
                     {user ? (
-                        <div className="hidden lg:block">
+                        <div className="hidden lg:flex items-center gap-2">
                             <AccountDropdown user={user} onLogout={handleLogout} />
                         </div>
                     ) : (
@@ -332,11 +405,12 @@ export default function Header() {
                         onClick={() => setMobileOpen(true)}
                         aria-label="Abrir menú"
                     >
-                        <svg className="h-6 w-6 text-brand-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
                 </div>
+            </div>
             </div>
 
             {mobileOpen ? (

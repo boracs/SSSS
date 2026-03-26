@@ -178,6 +178,15 @@ class User extends Authenticatable
      */
     public function hasActiveLocker(): bool
     {
+        return ! empty($this->numeroTaquilla);
+    }
+
+    /**
+     * Verificación estricta para semáforos visuales (no bloqueante).
+     * true => tiene pago confirmado y fecha vigente.
+     */
+    public function isLockerPaymentUpToDate(): bool
+    {
         if (empty($this->numeroTaquilla) || empty($this->fecha_vencimiento_cuota)) {
             return false;
         }
@@ -186,6 +195,11 @@ class User extends Authenticatable
             ? $this->fecha_vencimiento_cuota
             : Carbon::parse((string) $this->fecha_vencimiento_cuota);
 
-        return $expiresAt->isSameDay(Carbon::today()) || $expiresAt->isFuture();
+        $hasConfirmedPayment = $this->pagosCuotas()
+            ->where('status', PagoCuota::STATUS_CONFIRMED)
+            ->whereDate('periodo_fin', '>=', Carbon::today())
+            ->exists();
+
+        return $hasConfirmedPayment && ($expiresAt->isSameDay(Carbon::today()) || $expiresAt->isFuture());
     }
 }

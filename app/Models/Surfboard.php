@@ -24,10 +24,15 @@ class Surfboard extends Model
         'image_url',
         'image_alt',
         'description',
+        'altura',
+        'ancho',
+        'grosor',
+        'volumen',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'volumen' => 'float',
     ];
 
     protected $appends = ['first_image_url'];

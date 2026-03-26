@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\Booking;
 use App\Models\LessonUser;
+use App\Models\PagoCuota;
 use App\Models\User;
 use App\Models\UserBono;
 use Illuminate\Http\Request;
@@ -83,6 +84,9 @@ class HandleInertiaRequests extends Middleware
                     ->whereNotNull('fecha_vencimiento_cuota')
                     ->whereDate('fecha_vencimiento_cuota', '<', now()->toDateString())
                     ->count();
+                $submittedLockerPaymentsCount = PagoCuota::query()
+                    ->where('status', PagoCuota::STATUS_SUBMITTED)
+                    ->count();
 
                 return [
                     'submittedPaymentsCount' => $lessonSubmitted + $rentalSubmitted,
@@ -91,6 +95,7 @@ class HandleInertiaRequests extends Middleware
                     'pendingBonosCount' => $bonosPending,
                     'pendingPaymentsGlobalCount' => $lessonSubmitted + $rentalSubmitted + $bonosPending,
                     'pendingCuotasCount' => $pendingCuotas,
+                    'submittedLockerPaymentsCount' => $submittedLockerPaymentsCount,
                 ];
             },
         ];

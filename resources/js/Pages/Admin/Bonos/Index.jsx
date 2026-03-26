@@ -1,5 +1,5 @@
 import { Head, router, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
     const { flash } = usePage().props;
@@ -9,8 +9,6 @@ export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
         precio: 0,
         activo: true,
     });
-    const [editingId, setEditingId] = useState(null);
-    const [editForm, setEditForm] = useState({ nombre: "", num_clases: 0, precio: 0, activo: true });
     const [assignForm, setAssignForm] = useState({ user_id: "", pack_id: "", admin_notes: "Asignación manual por admin" });
 
     const submit = (e) => {
@@ -18,30 +16,11 @@ export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
         router.post(route("admin.bonos.store"), form);
     };
 
-    const updatePack = (pack, patch) => {
-        router.put(route("admin.bonos.update", pack.id), { ...pack, ...patch });
+    const togglePack = (pack) => {
+        router.patch(route("admin.bonos.toggle-active", pack.id));
     };
 
-    const startEdit = (pack) => {
-        setEditingId(pack.id);
-        setEditForm({
-            nombre: pack.nombre ?? "",
-            num_clases: Number(pack.num_clases ?? 0),
-            precio: Number(pack.precio ?? 0),
-            activo: !!pack.activo,
-        });
-    };
-
-    const saveEdit = (packId) => {
-        router.put(route("admin.bonos.update", packId), editForm, {
-            onSuccess: () => setEditingId(null),
-        });
-    };
-
-    const removePack = (pack) => {
-        if (!confirm(`Eliminar pack "${pack.nombre}"?`)) return;
-        router.delete(route("admin.bonos.destroy", pack.id));
-    };
+    const activePacks = useMemo(() => (packs || []).filter((p) => !!p.activo), [packs]);
 
     const assignManual = (e) => {
         e.preventDefault();
@@ -83,49 +62,19 @@ export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
                         </thead>
                         <tbody>
                             {packs.map((pack) => (
-                                <tr key={pack.id} className="border-t border-slate-100">
+                                <tr key={pack.id} className={`border-t border-slate-100 transition-all ${pack.activo ? "" : "bg-slate-50 text-slate-400 opacity-50"}`}>
+                                    <td className="px-3 py-2">{pack.nombre}</td>
+                                    <td className="px-3 py-2">{pack.num_clases}</td>
+                                    <td className="px-3 py-2">{`${Number(pack.precio).toFixed(2)} €`}</td>
+                                    <td className="px-3 py-2">{pack.activo ? "Sí" : "No"}</td>
                                     <td className="px-3 py-2">
-                                        {editingId === pack.id ? (
-                                            <input className="w-full rounded border border-slate-300 px-2 py-1" value={editForm.nombre} onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))} />
-                                        ) : pack.nombre}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {editingId === pack.id ? (
-                                            <input className="w-full rounded border border-slate-300 px-2 py-1" type="number" min="1" value={editForm.num_clases} onChange={(e) => setEditForm((f) => ({ ...f, num_clases: Number(e.target.value) }))} />
-                                        ) : pack.num_clases}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {editingId === pack.id ? (
-                                            <input className="w-full rounded border border-slate-300 px-2 py-1" type="number" step="0.01" min="0" value={editForm.precio} onChange={(e) => setEditForm((f) => ({ ...f, precio: Number(e.target.value) }))} />
-                                        ) : `${Number(pack.precio).toFixed(2)} €`}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {editingId === pack.id ? (
-                                            <label className="inline-flex items-center gap-2">
-                                                <input type="checkbox" checked={editForm.activo} onChange={(e) => setEditForm((f) => ({ ...f, activo: e.target.checked }))} />
-                                                <span>{editForm.activo ? "Sí" : "No"}</span>
-                                            </label>
-                                        ) : (pack.activo ? "Sí" : "No")}
-                                    </td>
-                                    <td className="px-3 py-2 flex gap-2">
-                                        {editingId === pack.id ? (
-                                            <>
-                                                <button onClick={() => saveEdit(pack.id)} className="rounded-md bg-emerald-600 px-3 py-1 text-white" type="button">Guardar</button>
-                                                <button onClick={() => setEditingId(null)} className="rounded-md bg-slate-200 px-3 py-1 text-slate-700" type="button">Cancelar</button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button
-                                                    onClick={() => updatePack(pack, { activo: !pack.activo })}
-                                                    className="rounded-md bg-amber-500 px-3 py-1 text-white"
-                                                    type="button"
-                                                >
-                                                    {pack.activo ? "Desactivar" : "Activar"}
-                                                </button>
-                                                <button onClick={() => startEdit(pack)} className="rounded-md bg-sky-600 px-3 py-1 text-white" type="button">Editar</button>
-                                            </>
-                                        )}
-                                        <button onClick={() => removePack(pack)} className="rounded-md bg-rose-600 px-3 py-1 text-white" type="button">Eliminar</button>
+                                        <button
+                                            onClick={() => togglePack(pack)}
+                                            className={`rounded-md px-3 py-1 text-white ${pack.activo ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-600 hover:bg-emerald-700"}`}
+                                            type="button"
+                                        >
+                                            {pack.activo ? "Desactivar" : "Activar"}
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -156,7 +105,7 @@ export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
                             required
                         >
                             <option value="">Selecciona pack</option>
-                            {packs.map((p) => (
+                            {activePacks.map((p) => (
                                 <option key={p.id} value={p.id}>
                                     {p.nombre} ({p.num_clases} clases)
                                 </option>

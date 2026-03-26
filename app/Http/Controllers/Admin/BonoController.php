@@ -7,6 +7,7 @@ use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BonoController extends Controller
@@ -44,27 +45,12 @@ class BonoController extends Controller
 
     public function update(Request $request, PackBono $packBono)
     {
-        $validated = $request->validate([
-            'nombre' => 'required|string|max:120',
-            'num_clases' => 'required|integer|min:1|max:500',
-            'precio' => 'required|numeric|min:0',
-            'activo' => 'nullable|boolean',
-        ]);
-
-        $packBono->update([
-            'nombre' => $validated['nombre'],
-            'num_clases' => (int) $validated['num_clases'],
-            'precio' => $validated['precio'],
-            'activo' => (bool) ($validated['activo'] ?? false),
-        ]);
-
-        return back()->with('success', 'Pack bono actualizado.');
+        abort(403, 'Edición directa deshabilitada. Para cambiar tarifa, desactiva el pack y crea una nueva versión.');
     }
 
     public function destroy(PackBono $packBono)
     {
-        $packBono->delete();
-        return back()->with('success', 'Pack bono eliminado.');
+        abort(403, 'Eliminación física deshabilitada para preservar la integridad histórica.');
     }
 
     public function assignManual(Request $request)
@@ -81,7 +67,8 @@ class BonoController extends Controller
         }
 
         $pack = PackBono::query()->findOrFail((int) $validated['pack_id']);
-        if (! (bool) $pack->activo) {
+        $isAdmin = (string) ($request->user()?->role ?? '') === 'admin';
+        if (! (bool) $pack->activo && ! $isAdmin) {
             return back()->with('error', 'El pack seleccionado está inactivo.');
         }
 
@@ -94,6 +81,27 @@ class BonoController extends Controller
         ]);
 
         return back()->with('success', 'Bono asignado manualmente y confirmado.');
+    }
+
+    public function toggleActive(Request $request, PackBono $packBono)
+    {
+        $actor = $request->user();
+        $old = (bool) $packBono->activo;
+        $packBono->update([
+            'activo' => ! $old,
+        ]);
+
+        if ($old && ! (bool) $packBono->activo) {
+            Log::info('[PackBono] desactivado', [
+                'pack_id' => $packBono->id,
+                'pack_nombre' => $packBono->nombre,
+                'admin_id' => $actor?->id,
+                'admin_email' => $actor?->email,
+                'at' => now()->toDateTimeString(),
+            ]);
+        }
+
+        return back()->with('success', $packBono->activo ? 'Pack activado.' : 'Pack desactivado.');
     }
 }
 

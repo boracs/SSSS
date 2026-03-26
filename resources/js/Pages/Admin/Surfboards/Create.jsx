@@ -23,6 +23,10 @@ export default function Create({ priceSchemas }) {
         is_active: true,
         price_schema_id: options?.[0]?.value ? Number(options[0].value) : "",
         description: "",
+        altura: "",
+        ancho: "",
+        grosor: "",
+        volumen: "",
         image_url: "",
         image_alt: "",
         image: null,
@@ -180,6 +184,52 @@ export default function Create({ priceSchemas }) {
                             </div>
                         ) : null}
                     </label>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <label className="block">
+                            <span className="text-sm font-semibold text-slate-700">Altura</span>
+                            <input
+                                value={data.altura}
+                                onChange={(e) => setData("altura", e.target.value)}
+                                className="input-focus-ring mt-1 w-full px-4 py-2"
+                                placeholder='Ej. 6"2'
+                            />
+                            {errors.altura ? <div className="mt-1 text-xs text-rose-600">{errors.altura}</div> : null}
+                        </label>
+                        <label className="block">
+                            <span className="text-sm font-semibold text-slate-700">Ancho</span>
+                            <input
+                                value={data.ancho}
+                                onChange={(e) => setData("ancho", e.target.value)}
+                                className="input-focus-ring mt-1 w-full px-4 py-2"
+                                placeholder='Ej. 20"'
+                            />
+                            {errors.ancho ? <div className="mt-1 text-xs text-rose-600">{errors.ancho}</div> : null}
+                        </label>
+                        <label className="block">
+                            <span className="text-sm font-semibold text-slate-700">Grosor</span>
+                            <input
+                                value={data.grosor}
+                                onChange={(e) => setData("grosor", e.target.value)}
+                                className="input-focus-ring mt-1 w-full px-4 py-2"
+                                placeholder='Ej. 2"5/8'
+                            />
+                            {errors.grosor ? <div className="mt-1 text-xs text-rose-600">{errors.grosor}</div> : null}
+                        </label>
+                        <label className="block">
+                            <span className="text-sm font-semibold text-slate-700">Volumen (L)</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={data.volumen}
+                                onChange={(e) => setData("volumen", e.target.value)}
+                                className="input-focus-ring mt-1 w-full px-4 py-2"
+                                placeholder="Ej. 34.5"
+                            />
+                            {errors.volumen ? <div className="mt-1 text-xs text-rose-600">{errors.volumen}</div> : null}
+                        </label>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                         <label className="block">

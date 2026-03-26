@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import {
@@ -9,6 +9,7 @@ import {
     CreditCardIcon,
     ShoppingBagIcon,
     WrenchScrewdriverIcon,
+    MapIcon,
     UsersIcon,
 } from "@heroicons/react/24/outline";
 
@@ -75,8 +76,11 @@ const Menu_Principal = () => {
     const pendingBonosCount = Number(adminStats?.pendingBonosCount || 0);
     const pendingPaymentsGlobalCount = Number(adminStats?.pendingPaymentsGlobalCount || 0);
     const pendingRentalsCount = Number(adminStats?.pendingRentalsCount || 0);
+    const submittedLockerPaymentsCount = Number(adminStats?.submittedLockerPaymentsCount || 0);
 
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(true);
+    const lastScrollYRef = useRef(0);
 
     const links = useMemo(() => {
         const publicLinks = !isAdmin ? [
@@ -120,15 +124,45 @@ const Menu_Principal = () => {
         ] : [];
 
         const lockersModule = isAdmin ? [
-            { label: "Asignador", href: route("asignar.taquilla.mostrar"), icon: WrenchScrewdriverIcon },
-            { label: "Estado de Pagos", href: route("taquilla.index.admin"), icon: BanknotesIcon },
+            { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: submittedLockerPaymentsCount },
+            { label: "Mapa de Taquillas", href: route("asignar.taquilla.mostrar"), icon: MapIcon },
+            { label: "Configuración de Planes", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
         ] : [];
 
         return { publicLinks, studentLinks, vipLinks, adminDirect, classesModule, rentalsModule, lockersModule, adminClientView };
-    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount]);
+    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount, submittedLockerPaymentsCount]);
+
+    useEffect(() => {
+        const onScroll = () => {
+            const currentY = window.scrollY || 0;
+            const lastY = lastScrollYRef.current;
+
+            if (currentY <= 80) {
+                setMenuVisible(true);
+                lastScrollYRef.current = currentY;
+                return;
+            }
+
+            if (currentY < lastY) {
+                setMenuVisible(true);
+            } else if (currentY > lastY && currentY > 140) {
+                setMenuVisible(false);
+            }
+
+            lastScrollYRef.current = currentY;
+        };
+
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
 
     return (
-        <nav className="border-b border-slate-200/60 bg-white/95">
+        <nav
+            className={cx(
+                "sticky top-0 z-[100] border-b border-slate-200/60 bg-white/95 transition-transform duration-300",
+                menuVisible ? "translate-y-0" : "-translate-y-full"
+            )}
+        >
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
                 <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent text-sm font-extrabold text-white">S4</span>
@@ -191,13 +225,18 @@ const Menu_Principal = () => {
                                     );
                                 })}
                             </Dropdown>
-                            <Dropdown label="Gestor Taquillas" badge={0}>
+                            <Dropdown label="Gestor Taquillas" badge={submittedLockerPaymentsCount}>
                                 {links.lockersModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
                                         <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
+                                            {Number(l.badge || 0) > 0 ? (
+                                                <span className="ml-auto inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    {l.badge}
+                                                </span>
+                                            ) : null}
                                         </Link>
                                     );
                                 })}
@@ -294,6 +333,11 @@ const Menu_Principal = () => {
                                         <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
+                                            {Number(l.badge || 0) > 0 ? (
+                                                <span className="ml-auto inline-flex min-w-[1.3rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    {l.badge}
+                                                </span>
+                                            ) : null}
                                         </Link>
                                     );
                                 })}

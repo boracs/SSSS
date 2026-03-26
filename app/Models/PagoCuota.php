@@ -9,6 +9,10 @@ class PagoCuota extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SUBMITTED = 'submitted';
+    public const STATUS_CONFIRMED = 'confirmed';
+
     // ✅ Tabla correcta
     protected $table = 'pagos_cuotas';
 
@@ -17,17 +21,23 @@ class PagoCuota extends Model
         'id_plan_pagado',
         'monto_pagado',
         'referencia_pago_externa',
+        'status',
+        'payment_proof_path',
+        'proof_uploaded_at',
+        'payment_method',
+        'admin_notes',
         'periodo_inicio',
         'periodo_fin',
         'fecha_pago',
     ];
 
-   protected $casts = [
-    'periodo_inicio' => 'datetime',
-    'periodo_fin' => 'datetime',    
-    'fecha_pago' => 'datetime',     
-    'monto_pagado' => 'float',
-];
+    protected $casts = [
+        'periodo_inicio' => 'datetime',
+        'periodo_fin' => 'datetime',
+        'fecha_pago' => 'datetime',
+        'proof_uploaded_at' => 'datetime',
+        'monto_pagado' => 'float',
+    ];
 
     public function user()
     {

@@ -133,6 +133,7 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     // 2. Ruta para la vista del cliente/usuario regular donde ve su plan activo y su historial de pagos
     Route::get('/taquilla/planes', [PlanesTaquillasController::class, 'ClientIndex'])->name('taquillas.index.client');
     Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])->name('taquillas.pago.client');
+    Route::post('/taquilla/pagos/{pago}/subir-justificante', [PlanesTaquillasController::class, 'subirJustificante'])->name('taquillas.pago.upload-proof');
     Route::get('/taquilla/usuario-datos', [PlanesTaquillasController::class, 'obtenerDatosUsuario'])->name('taquillas.usuario.datos');
 });
 
@@ -163,6 +164,7 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
         Route::get('/asignar-taquilla-mostrar/{success?}/{usuario?}', [TaquillaController::class, 'showForm'])->name('asignar.taquilla.mostrar');
         //madna al contorlador que ejecuta todo esto de asignar la  taquilla y despues el cotnrolador iimprime la vista otra vez con mensaje de exito
          Route::post('/asignar-taquilla-usuario', [TaquillaController::class, 'AsignarTaquilla'])->name('asignar.taquilla');
+         Route::post('/asignar-taquilla-usuario/{user}/liberar', [TaquillaController::class, 'liberarTaquilla'])->name('asignar.taquilla.liberar');
          //muestro asignar taquilla con mensaje de exito;
 
 
@@ -181,6 +183,15 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
          // ADMINPANEL  DE TAQUILLAS Y PLANES
              // 1. Ruta principaPLANES TAQUILLASl: Muestra la lista de planes y el estado de lso usuarios si estana ctivo ....m uestra el panel de admin
             Route::get('/taquilla/admin/index', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
+            Route::post('/taquilla/admin/planes', [PlanesTaquillasController::class, 'storePlan'])->name('taquilla.planes.store');
+            Route::put('/taquilla/admin/planes/{plan}', [PlanesTaquillasController::class, 'updatePlan'])->name('taquilla.planes.update');
+            Route::patch('/taquilla/admin/planes/{plan}/toggle-active', [PlanesTaquillasController::class, 'togglePlanActive'])->name('taquilla.planes.toggle-active');
+            Route::get('/taquilla/admin/pagos/cola', [PlanesTaquillasController::class, 'colaPagos'])->name('taquilla.pagos.queue');
+            Route::post('/taquilla/admin/pagos/{pago}/confirmar', [PlanesTaquillasController::class, 'confirmarPagoTaquilla'])->name('taquilla.pagos.confirm');
+            Route::post('/taquilla/admin/pagos/{pago}/rechazar', [PlanesTaquillasController::class, 'rechazarPagoTaquilla'])->name('taquilla.pagos.reject');
+            Route::get('/taquilla/admin/pagos/{pago}/proof', [PlanesTaquillasController::class, 'showProof'])->name('taquilla.pagos.proof');
+            Route::post('/taquilla/admin/usuarios/{user}/reasignar', [PlanesTaquillasController::class, 'reassignLocker'])->name('taquilla.users.reassign');
+            Route::get('/taquilla/admin/usuarios/{user}/pagos', [PlanesTaquillasController::class, 'userPaymentHistory'])->name('taquilla.users.payments');
             //MSOTRAR NOMBRE Y CORRREO DEL USUARIO QUE CORREPSONDE AL CLCIAR EL OJO
             Route::get('/admin/usuarios/{id}/contacto', [PlanesTaquillasController::class, 'obtenerContactoUsuario']) ->name('admin.usuario.contacto');
 
@@ -203,8 +214,7 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
             Route::post('payment-validation/{userBonoId}/reject', [PaymentValidationController::class, 'reject'])->name('payment-validation.reject');
             Route::get('bonos', [AdminBonoController::class, 'index'])->name('bonos.index');
             Route::post('bonos', [AdminBonoController::class, 'store'])->name('bonos.store');
-            Route::put('bonos/{packBono}', [AdminBonoController::class, 'update'])->name('bonos.update');
-            Route::delete('bonos/{packBono}', [AdminBonoController::class, 'destroy'])->name('bonos.destroy');
+            Route::patch('bonos/{packBono}/toggle-active', [AdminBonoController::class, 'toggleActive'])->name('bonos.toggle-active');
             Route::post('bonos/assign-manual', [AdminBonoController::class, 'assignManual'])->name('bonos.assign-manual');
             Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
             Route::patch('users/{user}/toggle-vip', [AdminUserController::class, 'toggleVip'])->name('users.toggle-vip');

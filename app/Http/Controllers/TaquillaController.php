@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TaquillaController extends Controller
 {
@@ -12,36 +13,61 @@ class TaquillaController extends Controller
 
     public function showForm($success = null)
     {
-        // Obtener todos los usuarios ordenados alfabéticamente por nombre y apellido
-        $usuarios = User::orderBy('nombre')->orderBy('apellido')->get();
-    
-        // Pasar el parámetro 'success' como prop
+        $usuarios = User::query()
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->get([
+                'id',
+                'nombre',
+                'apellido',
+                'email',
+                'telefono',
+                'numeroTaquilla',
+            ]);
+
         return Inertia::render('AsignarTaquilla', [
             'usuarios' => $usuarios,
-            'success' => $success  // Pasar 'success' como parte de las props
+            'success' => $success,
         ]);
     }
 
-    // Método para asignar la taquilla
     public function AsignarTaquilla(Request $request)
-        {
-            // Validar el formulario
-            $request->validate([
-                'usuario_id' => 'required',
-                'numero_taquilla' => 'required|integer',
-            ]);
+    {
+        $request->validate([
+            'usuario_id' => 'required|integer|exists:users,id',
+            'numero_taquilla' => 'required|integer|min:1|max:9999',
+        ]);
 
-            // Buscar al usuario
-            $usuario = User::findOrFail($request->usuario_id);
+        DB::transaction(function () use ($request) {
+            $numero = (int) $request->numero_taquilla;
 
-            // Asignar la taquilla
-            $usuario->numeroTaquilla = $request->numero_taquilla;
+            $ocupante = User::query()
+                ->where('numeroTaquilla', $numero)
+                ->lockForUpdate()
+                ->first();
+            if ($ocupante && (int) $ocupante->id !== (int) $request->usuario_id) {
+                abort(422, 'Esa taquilla ya está asignada a otro usuario.');
+            }
+
+            $usuario = User::query()
+                ->whereKey((int) $request->usuario_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $usuario->numeroTaquilla = $numero;
             $usuario->save();
+        });
 
-            // Redirigir a la misma página con el mensaje de éxito usando Inertia
-            return Inertia::location(route('asignar.taquilla.mostrar') . '?success=true');
-        }
+        return back()->with('success', 'Taquilla asignada correctamente.');
+    }
 
+    public function liberarTaquilla(User $user)
+    {
+        DB::transaction(function () use ($user) {
+            $target = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $target->numeroTaquilla = null;
+            $target->save();
+        });
 
-
+        return back()->with('success', 'Taquilla liberada correctamente.');
+    }
 }
