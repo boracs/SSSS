@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\PaymentValidationController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\VipController;
+use App\Http\Controllers\Admin\VipClassManagerController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\PlanesTaquillasController;
 use App\Http\Controllers\TiendaController;
@@ -144,7 +146,7 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
 /////ADMINISTRADORES////////////
 
 //Aqui uso un midleware personalizado que sirve pàra unicamente permitir el acceso a los usuariso que son admin
- Route::middleware(['auth', VerificarAdmin::class])->group(function () { //verifico que este asutentificado y ademas que sea admin 
+ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(function () { //verifico que este asutentificado y ademas que sea admin 
          //PRODUCTOS   // Rutas para el administrador para poder modificar productos 
         Route::get('/productos', [ProductoController::class, 'mostrarProductos'])->name('mostrar.productos');
         Route::put('/productos/{id}/eliminar', [ProductoController::class, 'desactivarProducto'])->name('producto.eliminar');
@@ -218,6 +220,16 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
             Route::post('bonos/assign-manual', [AdminBonoController::class, 'assignManual'])->name('bonos.assign-manual');
             Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
             Route::patch('users/{user}/toggle-vip', [AdminUserController::class, 'toggleVip'])->name('users.toggle-vip');
+            Route::get('vips', [VipController::class, 'index'])->name('vips.index');
+            Route::post('vips/attendance-notes', [VipController::class, 'storeNote'])->name('vips.attendance-notes.store');
+            Route::get('vips/{user}/analisis', [VipController::class, 'analysis'])->name('vips.analysis');
+            Route::get('vips/{user}/whatsapp', [VipController::class, 'whatsapp'])->name('vips.whatsapp');
+            Route::get('vip-manager', [VipClassManagerController::class, 'index'])->name('vip-manager.index');
+            Route::get('vip-manager/check-availability', [VipClassManagerController::class, 'checkAvailability'])->name('vip-manager.check-availability');
+            Route::post('vip-manager/lessons', [VipClassManagerController::class, 'store'])->name('vip-manager.lessons.store');
+            Route::patch('vip-manager/lessons/{lesson}', [VipClassManagerController::class, 'update'])->name('vip-manager.lessons.update');
+            Route::delete('vip-manager/lessons/{lesson}', [VipClassManagerController::class, 'destroy'])->name('vip-manager.lessons.destroy');
+            Route::post('vip-manager/replicate-previous-week', [VipClassManagerController::class, 'replicatePreviousWeek'])->name('vip-manager.replicate-previous-week');
         });
 
         // Academia: Consola Comandante

@@ -27,12 +27,26 @@ class BonoService
 
     public function confirmBono(int $userBonoId): UserBono
     {
-        $userBono = UserBono::query()->findOrFail($userBonoId);
-        $userBono->status = UserBono::STATUS_CONFIRMED;
-        $userBono->admin_notes = trim((string) $userBono->admin_notes.' Confirmado por admin.');
-        $userBono->save();
+        return DB::transaction(function () use ($userBonoId) {
+            $userBono = UserBono::query()
+                ->with('pack:id,num_clases')
+                ->lockForUpdate()
+                ->findOrFail($userBonoId);
 
-        return $userBono;
+            if ($userBono->status === UserBono::STATUS_CONFIRMED) {
+                return $userBono;
+            }
+
+            $packSize = (int) ($userBono->pack?->num_clases ?? 0);
+
+            $userBono->status = UserBono::STATUS_CONFIRMED;
+            $userBono->debt_compensated_uc = 0;
+            $userBono->clases_restantes = $packSize;
+            $userBono->admin_notes = trim((string) $userBono->admin_notes.' Confirmado por admin.');
+            $userBono->save();
+
+            return $userBono;
+        });
     }
 
     public function rejectBono(int $userBonoId, string $reason): UserBono

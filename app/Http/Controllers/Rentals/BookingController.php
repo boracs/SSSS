@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class BookingController extends Controller
 {
@@ -43,6 +44,16 @@ class BookingController extends Controller
         $totalPrice = $this->bookingService->calculateBestPrice($schema, $start, $end);
         $depositAmount = $this->bookingService->calculateDeposit($totalPrice, 30.0);
         $expiresAt = Carbon::now()->addDays(7);
+        $hasProof = $request->hasFile('proof');
+
+        $proofPath = null;
+        if ($hasProof) {
+            $proofPath = $request->file('proof')->storeAs(
+                'payment-proofs/rentals',
+                Str::uuid()->toString().'.'.$request->file('proof')->getClientOriginalExtension(),
+                'local'
+            );
+        }
 
         $booking = Booking::create([
             'surfboard_id' => $surfboard->id,
@@ -54,6 +65,10 @@ class BookingController extends Controller
             'end_date' => $end,
             'expires_at' => $expiresAt,
             'status' => Booking::STATUS_PENDING,
+            'payment_status' => $hasProof ? Booking::PAYMENT_SUBMITTED : Booking::PAYMENT_PENDING,
+            'payment_proof_path' => $proofPath,
+            'proof_uploaded_at' => $hasProof ? now() : null,
+            'payment_method' => $data['payment_method'] ?? null,
             'total_price' => $totalPrice,
             'deposit_amount' => $depositAmount,
             'payment_proof_note' => null,
@@ -63,12 +78,16 @@ class BookingController extends Controller
             return response()->json([
                 'success' => true,
                 'booking' => $booking->fresh(),
-                'message' => 'Reserva creada en estado pendiente. El cliente dispone de 7 días para realizar el ingreso.',
+                'message' => $hasProof
+                    ? 'Reserva creada y comprobante enviado. Queda pendiente de validación manual.'
+                    : 'Reserva creada en estado pendiente. El cliente dispone de 7 días para realizar el ingreso.',
             ], 201);
         }
 
         return redirect()->back()->with([
-            'success' => 'Reserva creada (pendiente). Depósito: ' . number_format((float) $depositAmount, 2, ',', '') . ' €. Caduca en 7 días.',
+            'success' => $hasProof
+                ? 'Reserva creada y comprobante enviado correctamente. Te avisaremos tras validación.'
+                : 'Reserva creada (pendiente). Depósito: ' . number_format((float) $depositAmount, 2, ',', '') . ' €. Caduca en 7 días.',
             'booking_id' => $booking->id,
         ]);
     }

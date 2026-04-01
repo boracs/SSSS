@@ -87,6 +87,7 @@ class HandleInertiaRequests extends Middleware
                 $submittedLockerPaymentsCount = PagoCuota::query()
                     ->where('status', PagoCuota::STATUS_SUBMITTED)
                     ->count();
+                $vipRenewalAlertCount = User::query()->needsRenewal()->count();
 
                 return [
                     'submittedPaymentsCount' => $lessonSubmitted + $rentalSubmitted,
@@ -96,6 +97,7 @@ class HandleInertiaRequests extends Middleware
                     'pendingPaymentsGlobalCount' => $lessonSubmitted + $rentalSubmitted + $bonosPending,
                     'pendingCuotasCount' => $pendingCuotas,
                     'submittedLockerPaymentsCount' => $submittedLockerPaymentsCount,
+                    'vipRenewalAlertCount' => $vipRenewalAlertCount,
                 ];
             },
         ];

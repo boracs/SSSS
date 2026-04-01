@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import { toast } from "react-toastify";
 import BookingCalendar from "../../../Components/BookingCalendar";
-import Layout1 from "../../../layouts/Layout1";
 import BackButton from "../../../components/BackButton";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 
 function parseFirstImage(imageUrl) {
     if (!imageUrl) return null;
@@ -49,7 +49,16 @@ function isoDate(d) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-export default function Show({ surfboard }) {
+function Spinner({ className = "h-5 w-5" }) {
+    return (
+        <svg className={`animate-spin ${className}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden>
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+        </svg>
+    );
+}
+
+export default function Show({ surfboard, paymentIban = "[IBAN]", paymentBizumNumber = "[BIZUM_NUMBER]" }) {
     const user = usePage().props.auth?.user || null;
     const first = parseFirstImage(surfboard?.image_url);
     const pricesByDuration = useMemo(
@@ -59,6 +68,11 @@ export default function Show({ surfboard }) {
 
     const [blockedRanges, setBlockedRanges] = useState([]);
     const [isChecking, setIsChecking] = useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paymentMethod, setPaymentMethod] = useState("bizum");
+    const [proofFile, setProofFile] = useState(null);
+    const [proofName, setProofName] = useState("");
+    const [proofPreview, setProofPreview] = useState("");
     const [selected, setSelected] = useState({
         startDate: null,
         endDate: null,
@@ -72,6 +86,8 @@ export default function Show({ surfboard }) {
         client_phone: "",
         start_date: "",
         end_date: "",
+        payment_method: "bizum",
+        proof: null,
     });
 
     // cargar rangos bloqueados del mes actual + siguiente (ventana simple)
@@ -109,19 +125,24 @@ export default function Show({ surfboard }) {
             !isChecking
     );
 
-    const submit = (e) => {
+    const submitReservation = (e) => {
         e.preventDefault();
+        setData("payment_method", paymentMethod);
+        setData("proof", proofFile);
         post(route("rentals.bookings.store"), {
             preserveScroll: true,
+            forceFormData: true,
             onSuccess: () => {
-                toast.success(
-                    "Reserva creada (pendiente). Te avisaremos para completar el pago."
-                );
-                // recargar disponibilidad después de crear
+                setPaymentModalOpen(false);
+                setProofFile(null);
+                setProofName("");
+                if (proofPreview) URL.revokeObjectURL(proofPreview);
+                setProofPreview("");
+                toast.success("Reserva creada correctamente. Te avisaremos tras validación.");
                 router.reload({ only: [] });
             },
             onError: () => {
-                toast.error("No se pudo reservar. Revisa fechas y datos.");
+                toast.error("No se pudo crear la reserva o subir el comprobante.");
             },
         });
     };
@@ -198,7 +219,7 @@ export default function Show({ surfboard }) {
                                 />
                             </div>
 
-                            <form onSubmit={submit} className="mt-6 space-y-4">
+                            <div className="mt-6 space-y-4">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <label className="block">
                                         <span className="text-sm font-semibold text-slate-700">
@@ -270,21 +291,107 @@ export default function Show({ surfboard }) {
                                         Un admin confirmará el pago (o caduca a los 7 días).
                                     </div>
                                     <button
-                                        type="submit"
+                                        type="button"
                                         disabled={!canReserve}
+                                        onClick={() => setPaymentModalOpen(true)}
                                         className="inline-flex items-center justify-center rounded-xl bg-brand-action px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-brand-action/90 disabled:opacity-60"
                                     >
-                                        {processing ? "Reservando…" : "Reservar"}
+                                        Continuar al pago
                                     </button>
                                 </div>
-                            </form>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {paymentModalOpen ? (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-brand-deep/70 backdrop-blur-md" onClick={() => !processing && setPaymentModalOpen(false)} aria-hidden />
+                    <div className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/20 bg-gradient-to-br from-[#0d234d] to-[#0f2d5c] p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <h2 className="font-heading text-xl font-bold tracking-tight text-white">Instrucciones de pago</h2>
+                            <button type="button" onClick={() => !processing && setPaymentModalOpen(false)} className="rounded-xl p-2 text-white/80 hover:bg-white/10 hover:text-white" aria-label="Cerrar">
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div className="mt-4 rounded-2xl border border-white/20 bg-white/10 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-white/80">Pasos para completar tu reserva</div>
+                            <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-white/90">
+                                <li>Copia los datos de pago (Bizum o IBAN).</li>
+                                <li>Realiza el pago desde tu app bancaria.</li>
+                                <li>Sube el comprobante para validación manual.</li>
+                            </ol>
+                            <div className="mt-3 text-sm font-semibold text-white">
+                                Total a pagar: <span className="font-extrabold">{(selected.totalPrice ?? 0).toFixed(2).replace(".", ",")} €</span>
+                            </div>
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                            <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
+                                <label className="inline-flex items-center gap-2">
+                                    <input type="radio" name="payment_method_rental" value="bizum" checked={paymentMethod === "bizum"} onChange={() => setPaymentMethod("bizum")} />
+                                    Bizum
+                                </label>
+                                <label className="inline-flex items-center gap-2">
+                                    <input type="radio" name="payment_method_rental" value="transferencia" checked={paymentMethod === "transferencia"} onChange={() => setPaymentMethod("transferencia")} />
+                                    Transferencia
+                                </label>
+                            </div>
+                            <div className="rounded-xl bg-white/10 p-3 text-sm text-white/95">
+                                {paymentMethod === "bizum" ? (
+                                    <p><strong>Bizum:</strong> {paymentBizumNumber}</p>
+                                ) : (
+                                    <p><strong>IBAN:</strong> {paymentIban}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <form onSubmit={submitReservation} className="mt-4 space-y-3">
+                            <div className="rounded-2xl border border-white/20 bg-white/5 p-3">
+                                <div className="text-xs font-semibold uppercase tracking-wider text-white/70">Subir comprobante</div>
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                                    onChange={(e) => {
+                                        const f = e.target.files?.[0] || null;
+                                        setProofFile(f);
+                                        setProofName(f?.name || "");
+                                        if (proofPreview) URL.revokeObjectURL(proofPreview);
+                                        if (f && f.type?.startsWith("image/")) setProofPreview(URL.createObjectURL(f));
+                                        else setProofPreview("");
+                                    }}
+                                    className="mt-2 w-full text-sm text-white/90 file:mr-2 file:rounded-lg file:border-0 file:bg-white/20 file:px-3 file:py-2 file:text-sm file:text-white"
+                                    required
+                                    disabled={processing}
+                                />
+                                {proofPreview ? (
+                                    <img src={proofPreview} alt="Previsualización" className="mt-2 h-20 w-full rounded-xl border border-white/20 object-contain bg-white/5" />
+                                ) : proofName ? (
+                                    <div className="mt-2 text-sm font-medium text-emerald-200">{proofName}</div>
+                                ) : null}
+                            </div>
+
+                            <div className="flex gap-2">
+                                <button
+                                    type="submit"
+                                    disabled={processing || !canReserve || !proofFile}
+                                    className="inline-flex min-w-[170px] items-center justify-center gap-2 rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {processing ? (<><Spinner className="h-4 w-4" /> Procesando…</>) : "Confirmar y enviar"}
+                                </button>
+                                <button type="button" onClick={() => !processing && setPaymentModalOpen(false)} className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/20">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
         </>
     );
 }
 
-Show.layout = (page) => <Layout1>{page}</Layout1>;
+Show.layout = (page) => <AuthenticatedLayout>{page}</AuthenticatedLayout>;
 

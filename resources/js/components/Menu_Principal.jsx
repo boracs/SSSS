@@ -110,6 +110,7 @@ const Menu_Principal = () => {
 
         const classesModule = isAdmin ? [
             { label: "Gestor de Clases", href: route("admin.academy.index"), icon: AcademicCapIcon },
+            { label: "💎 Gestor de Créditos VIP", href: route("admin.vip-manager.index"), icon: AcademicCapIcon },
             { label: "Packs de Bonos", href: route("admin.bonos.index"), icon: CreditCardIcon },
         ] : [];
 
@@ -180,10 +181,16 @@ const Menu_Principal = () => {
                         <NavLinkItem key={l.label} href={l.href}>{l.label}</NavLinkItem>
                     ))}
                     {user && !isAdmin && hasActiveLocker ? (
-                        <NavLinkItem href={route("carrito")}>
-                            <ShoppingCartIcon className="h-4 w-4" />
-                            <span>Carrito</span>
-                        </NavLinkItem>
+                        <>
+                            <NavLinkItem href={route("pedidos")}>
+                                <ShoppingBagIcon className="h-4 w-4" />
+                                <span>Pedidos</span>
+                            </NavLinkItem>
+                            <NavLinkItem href={route("carrito")}>
+                                <ShoppingCartIcon className="h-4 w-4" />
+                                <span>Carrito</span>
+                            </NavLinkItem>
+                        </>
                     ) : null}
 
                     {isAdmin ? (
@@ -282,10 +289,16 @@ const Menu_Principal = () => {
                             </Link>
                         ))}
                         {user && !isAdmin && hasActiveLocker ? (
-                            <Link href={route("carrito")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
-                                <ShoppingCartIcon className="h-4 w-4" />
-                                <span>Carrito</span>
-                            </Link>
+                            <>
+                                <Link href={route("pedidos")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                    <ShoppingBagIcon className="h-4 w-4" />
+                                    <span>Pedidos</span>
+                                </Link>
+                                <Link href={route("carrito")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">
+                                    <ShoppingCartIcon className="h-4 w-4" />
+                                    <span>Carrito</span>
+                                </Link>
+                            </>
                         ) : null}
 
                         {isAdmin ? (

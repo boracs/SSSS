@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class LessonUser extends Model
 {
@@ -14,6 +15,9 @@ class LessonUser extends Model
     public const STATUS_ENROLLED = 'enrolled';
     public const STATUS_ATTENDED = 'attended';
     public const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_CANCELLED_FREE = 'cancelled_free';
+    public const STATUS_CANCELLED_LATE_LOST = 'cancelled_late_lost';
+    public const STATUS_CANCELLED_LATE_RESCUED = 'cancelled_late_rescued';
     public const STATUS_REFUNDED = 'refunded';
     public const STATUS_EXPIRED = 'expired';
     public const STATUS_PENDING_EXTRA_MONITOR = 'pending_extra_monitor';
@@ -56,5 +60,10 @@ class LessonUser extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function attendanceNotes(): MorphMany
+    {
+        return $this->morphMany(AttendanceNote::class, 'reservation');
     }
 }

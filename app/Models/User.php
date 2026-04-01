@@ -7,9 +7,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class User extends Authenticatable
@@ -123,6 +124,28 @@ class User extends Authenticatable
     public function userBonos(): HasMany
     {
         return $this->hasMany(UserBono::class, 'user_id');
+    }
+
+    public function attendanceNotes(): HasMany
+    {
+        return $this->hasMany(AttendanceNote::class, 'user_id')->orderByDesc('created_at');
+    }
+
+    public function latestAttendanceNote(): HasOne
+    {
+        return $this->hasOne(AttendanceNote::class, 'user_id')->latestOfMany();
+    }
+
+    /**
+     * VIP con bono confirmado y pocas clases restantes (alerta renovación).
+     */
+    public function scopeNeedsRenewal(Builder $query): void
+    {
+        $query->where('is_vip', true)
+            ->whereHas('userBonos', function (Builder $q) {
+                $q->where('status', UserBono::STATUS_CONFIRMED)
+                    ->where('clases_restantes', '<=', 3);
+            });
     }
 
     // ===================================

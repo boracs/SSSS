@@ -26,6 +26,8 @@ class SurfboardController extends Controller
         return Inertia::render('Rentals/Surfboards/Index', [
             'category' => $category,
             'surfboards' => $surfboards,
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
         ]);
     }
 
@@ -35,6 +37,8 @@ class SurfboardController extends Controller
 
         return Inertia::render('Rentals/Surfboards/Show', [
             'surfboard' => $surfboard,
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
         ]);
     }
 }

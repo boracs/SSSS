@@ -5,8 +5,11 @@ namespace App\Providers;
 use App\Events\SoloStudentLocked;
 use App\Listeners\SendSoloStudentNotification;
 use App\Models\Lesson;
+use App\Models\User;
 use App\Observers\LessonObserver;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
@@ -44,5 +47,14 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(SoloStudentLocked::class, SendSoloStudentNotification::class);
         Vite::prefetch(concurrency: 3);
         Inertia::setRootView('app');
+
+        Relation::morphMap([
+            'lesson_user' => \App\Models\LessonUser::class,
+            'booking' => \App\Models\Booking::class,
+        ]);
+
+        Gate::define('manage-vips', static function (?User $user): bool {
+            return $user !== null && ($user->role ?? '') === 'admin';
+        });
     }
 }
