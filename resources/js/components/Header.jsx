@@ -51,7 +51,7 @@ function MenuDropdown({ label, badge = 0, children }) {
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
             </button>
             <div className={cx("absolute right-0 top-full z-[600] w-80 pt-2 transition-all", open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95")}>
-                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-2 shadow-xl">
                     {children}
                 </div>
             </div>
@@ -73,8 +73,8 @@ function AccountDropdown({ user }) {
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
             </button>
             <div className={cx("absolute right-0 top-full z-[600] w-56 pt-2 transition-all", open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95")}>
-                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                    <Link href={route("profile.edit")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-2 shadow-xl">
+                    <Link href={route("profile.edit")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                         Perfil
                     </Link>
                     <button
@@ -103,11 +103,11 @@ function GuestAccountDropdown() {
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
             </button>
             <div className={cx("absolute right-0 top-full z-[600] w-56 pt-2 transition-all", open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95")}>
-                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
-                    <Link href={route("register")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-2 shadow-xl">
+                    <Link href={route("register")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                         Registrarse
                     </Link>
-                    <Link href={route("login")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    <Link href={route("login")} className="flex h-10 items-center rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                         Iniciar sesión
                     </Link>
                 </div>
@@ -270,7 +270,7 @@ export default function Header() {
                                 {links.adminShopModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -284,7 +284,7 @@ export default function Header() {
                                 {links.classesModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -297,7 +297,7 @@ export default function Header() {
                                 {links.rentalsModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -310,7 +310,7 @@ export default function Header() {
                                 {links.lockersModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                             {Number(l.badge || 0) > 0 ? (
@@ -326,7 +326,7 @@ export default function Header() {
                                 {links.adminClientView.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -377,25 +377,25 @@ export default function Header() {
             </div>
 
             {mobileOpen ? (
-                <div className="fixed inset-0 z-[120] bg-slate-900/40" onClick={() => setMobileOpen(false)}>
-                    <aside className="ml-auto h-full w-[85vw] max-w-sm bg-white p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 z-[120] bg-gray-950/70" onClick={() => setMobileOpen(false)}>
+                    <aside className="ml-auto h-full w-[85vw] max-w-sm border-l border-gray-700 bg-gray-800 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <div className="mb-4 flex items-center justify-between">
-                            <p className="font-semibold text-slate-800">Menú</p>
-                            <button type="button" className="rounded-lg px-3 py-1 hover:bg-slate-100" onClick={() => setMobileOpen(false)}>Cerrar</button>
+                            <p className="font-semibold text-gray-100">Menú</p>
+                            <button type="button" className="rounded-lg px-3 py-1 text-gray-200 hover:bg-gray-700" onClick={() => setMobileOpen(false)}>Cerrar</button>
                         </div>
                         <nav className="flex flex-col gap-1">
                             {links.publicLinks.map((l) => (
-                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                     {l.label}
                                 </Link>
                             ))}
                             {links.studentLinks.map((l) => (
-                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                     {l.label}
                                 </Link>
                             ))}
                             {links.vipLinks.map((l) => (
-                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                     {l.label}
                                 </Link>
                             ))}
@@ -404,7 +404,7 @@ export default function Header() {
                                     {links.adminDirect.map((l) => {
                                         const Icon = l.icon;
                                         return (
-                                            <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                            <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                                 <Icon className="h-4 w-4" />
                                                 <span>{l.label}</span>
                                                 {Number(l.badge || 0) > 0 ? (
@@ -413,15 +413,15 @@ export default function Header() {
                                             </Link>
                                         );
                                     })}
-                                    <details className="rounded-xl border border-slate-200">
-                                        <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-slate-700">
+                                    <details className="rounded-xl border border-gray-700">
+                                        <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-gray-200">
                                             Tienda
                                         </summary>
                                         <div className="pb-2">
                                             {links.adminShopModule.map((l) => {
                                                 const Icon = l.icon;
                                                 return (
-                                                    <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="mx-2 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                                    <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="mx-2 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                                         <Icon className="h-4 w-4" />
                                                         <span>{l.label}</span>
                                                     </Link>
@@ -429,15 +429,15 @@ export default function Header() {
                                             })}
                                         </div>
                                     </details>
-                                    <details className="rounded-xl border border-slate-200">
-                                        <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-slate-700">
+                                    <details className="rounded-xl border border-gray-700">
+                                        <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-gray-200">
                                             V.cliente
                                         </summary>
                                         <div className="pb-2">
                                             {links.adminClientView.map((l) => {
                                                 const Icon = l.icon;
                                                 return (
-                                                    <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="mx-2 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                                    <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="mx-2 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                                         <Icon className="h-4 w-4" />
                                                         <span>{l.label}</span>
                                                     </Link>
@@ -450,12 +450,12 @@ export default function Header() {
                             {user ? (
                                 <>
                                     {user && !isAdmin && hasActiveLocker ? (
-                                        <Link href={route("pedidos")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                        <Link href={route("pedidos")} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                             <ShoppingBagIcon className="h-4 w-4" />
                                             <span>Pedidos</span>
                                         </Link>
                                     ) : null}
-                                    <Link href={route("profile.edit")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                    <Link href={route("profile.edit")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                         Perfil
                                     </Link>
                                     <button
@@ -471,10 +471,10 @@ export default function Header() {
                                 </>
                             ) : (
                                 <>
-                                    <Link href={route("login")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                    <Link href={route("login")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                         Iniciar sesión
                                     </Link>
-                                    <Link href={route("register")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
+                                    <Link href={route("register")} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                         Registrarse
                                     </Link>
                                 </>

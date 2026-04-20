@@ -7,6 +7,7 @@ use App\Models\LessonUser;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Support\BusinessDateTime;
 
 class VipStudentPerformanceService
 {
@@ -58,7 +59,7 @@ class VipStudentPerformanceService
             $historyMapped = self::mergeLessonUsersIntoConsumptionStyleRows($user, $historyMapped, $activeBono);
         }
 
-        $lastMonth = now()->subDays(30);
+        $lastMonth = BusinessDateTime::now()->subDays(30);
         $lastMonthSessions = $historyMapped->filter(function ($h) use ($lastMonth) {
             $raw = $h['lesson']['starts_at'] ?? $h['consumed_at'] ?? null;
             return $raw ? strtotime((string) $raw) >= $lastMonth->timestamp : false;
@@ -90,7 +91,7 @@ class VipStudentPerformanceService
         }
         $lastPackExtraConsumedUc = max(0, $remainingConsumptionToAllocate);
         $estimatedWeeks = ($weeklyRate > 0) ? ((int) ceil(max($globalRemainingUc, 0) / $weeklyRate)) : null;
-        $estimatedEndDate = $estimatedWeeks ? now()->addWeeks($estimatedWeeks)->format('d/m/Y') : null;
+        $estimatedEndDate = $estimatedWeeks ? BusinessDateTime::now()->addWeeks($estimatedWeeks)->format('d/m/Y') : null;
 
         $visibleNotes = AttendanceNote::query()
             ->where('user_id', $user->id)
@@ -336,8 +337,8 @@ class VipStudentPerformanceService
             ->get()
             ->map(function (LessonUser $row) {
                 $startAt = $row->lesson?->starts_at;
-                $isWithinCancellationWindow = $startAt ? now()->diffInHours($startAt, false) <= 24 : false;
-                $canCancel = $startAt ? now()->diffInHours($startAt, false) > 24 : false;
+                $isWithinCancellationWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) <= 24 : false;
+                $canCancel = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
 
                 return [
                     'id' => $row->id,
@@ -349,7 +350,7 @@ class VipStudentPerformanceService
                     'status' => $row->status,
                     'payment_status' => $row->payment_status ?: LessonUser::PAYMENT_PENDING,
                     'created_at' => $row->created_at?->toIso8601String(),
-                    'start_time' => $startAt?->toIso8601String(),
+                    'start_time' => $startAt ? BusinessDateTime::toApi($startAt) : null,
                     'has_proof' => ! empty($row->payment_proof_path),
                     'can_cancel' => $canCancel,
                     'is_within_cancellation_window' => $isWithinCancellationWindow,
@@ -366,7 +367,7 @@ class VipStudentPerformanceService
             ->get()
             ->map(function (Booking $row) {
                 $startAt = $row->start_date;
-                $canCancel = $startAt ? now()->diffInHours($startAt, false) > 24 : false;
+                $canCancel = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
 
                 return [
                     'id' => $row->id,
@@ -375,8 +376,8 @@ class VipStudentPerformanceService
                     'status' => $row->status,
                     'payment_status' => $row->payment_status ?: Booking::PAYMENT_PENDING,
                     'created_at' => $row->created_at?->toIso8601String(),
-                    'start_time' => $startAt?->toIso8601String(),
-                    'end_time' => $row->end_date?->toIso8601String(),
+                    'start_time' => $startAt ? BusinessDateTime::toApi($startAt) : null,
+                    'end_time' => $row->end_date ? BusinessDateTime::toApi($row->end_date) : null,
                     'amount' => (float) ($row->deposit_amount ?? 0),
                     'has_proof' => ! empty($row->payment_proof_path),
                     'can_cancel' => $canCancel,
@@ -526,14 +527,14 @@ class VipStudentPerformanceService
                 'bono_name' => $activeBono?->pack?->nombre ?? 'Sin consumo UC registrado',
                 'bono_num_classes' => (int) ($activeBono?->pack?->num_clases ?? 0),
                 'bono_is_active' => (bool) $activeBono,
-                'consumed_at' => $lesson->starts_at->toIso8601String(),
+                'consumed_at' => BusinessDateTime::toApi($lesson->starts_at),
                 'remaining_after' => $activeBono ? (int) $activeBono->clases_restantes : 0,
                 'uc_cost' => $ucCost,
                 'lesson' => [
                     'id' => $lesson->id,
                     'title' => $lesson->title ?: 'Sesión de surf',
-                    'starts_at' => $lesson->starts_at->toIso8601String(),
-                    'ends_at' => $lesson->ends_at?->toIso8601String(),
+                    'starts_at' => BusinessDateTime::toApi($lesson->starts_at),
+                    'ends_at' => $lesson->ends_at ? BusinessDateTime::toApi($lesson->ends_at) : null,
                     'level' => $lesson->level ?: 'iniciacion',
                     'spot' => $lesson->location ?: 'Zurriola',
                     'monitor_note' => $lesson->internal_notes,
@@ -648,14 +649,14 @@ class VipStudentPerformanceService
                 'bono_name' => $activeBono?->pack?->nombre ?? 'Sin consumo UC registrado',
                 'bono_num_classes' => (int) ($activeBono?->pack?->num_clases ?? 0),
                 'bono_is_active' => (bool) $activeBono,
-                'consumed_at' => $lesson?->starts_at?->toIso8601String(),
+                'consumed_at' => $lesson?->starts_at ? BusinessDateTime::toApi($lesson->starts_at) : null,
                 'remaining_after' => 0,
                 'uc_cost' => $ucCost,
                 'lesson' => [
                     'id' => $lesson?->id,
                     'title' => $lesson?->title ?: 'Sesión de surf',
-                    'starts_at' => $lesson?->starts_at?->toIso8601String(),
-                    'ends_at' => $lesson?->ends_at?->toIso8601String(),
+                    'starts_at' => $lesson?->starts_at ? BusinessDateTime::toApi($lesson->starts_at) : null,
+                    'ends_at' => $lesson?->ends_at ? BusinessDateTime::toApi($lesson->ends_at) : null,
                     'level' => $lesson?->level ?: 'iniciacion',
                     'spot' => $lesson?->location ?: 'Zurriola',
                     'monitor_note' => $lesson?->internal_notes,

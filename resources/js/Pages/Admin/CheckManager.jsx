@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import { BuildingStorefrontIcon, DevicePhoneMobileIcon } from "@heroicons/react/24/outline";
+import { formatDateMadrid, formatDateTimeMadrid, formatTimeMadrid } from "../../lib/madridTime";
 
 const TAB_LESSONS = "lessons";
 const TAB_RENTALS = "rentals";
@@ -13,10 +14,10 @@ const STATUS_OPTIONS = [
 ];
 
 function statusBadge(status) {
-    if (status === "confirmed") return "bg-emerald-100 text-emerald-700";
-    if (status === "submitted") return "bg-sky-100 text-sky-700";
-    if (status === "pending_extra_monitor") return "bg-rose-100 text-rose-700";
-    return "bg-amber-100 text-amber-700";
+    if (status === "confirmed") return "bg-emerald-900/30 text-emerald-200";
+    if (status === "submitted") return "bg-sky-900/30 text-sky-200";
+    if (status === "pending_extra_monitor") return "bg-rose-900/30 text-rose-200";
+    return "bg-amber-900/30 text-amber-200";
 }
 
 function statusLabel(status) {
@@ -28,14 +29,14 @@ function statusLabel(status) {
 
 function StatCard({ title, value, icon, tone = "slate", subtitle, tooltip, emphasize = false }) {
     const toneMap = {
-        green: "border-emerald-200 bg-emerald-50 text-emerald-900",
-        red: "border-rose-200 bg-rose-50 text-rose-900",
-        amber: "border-amber-200 bg-amber-50 text-amber-900",
-        slate: "border-slate-200 bg-slate-50 text-slate-900",
+        green: "border-emerald-700 bg-emerald-900/20 text-emerald-200",
+        red: "border-rose-700 bg-rose-900/20 text-rose-200",
+        amber: "border-amber-700 bg-amber-900/20 text-amber-200",
+        slate: "border-gray-700 bg-gray-800 text-gray-100",
     };
 
     return (
-        <div className={`rounded-2xl border p-4 ${toneMap[tone] || toneMap.slate}`}>
+        <div className={`rounded-xl border p-4 ${toneMap[tone] || toneMap.slate}`}>
             <div className="flex items-center justify-between">
                 <div className="text-xs font-semibold uppercase tracking-wider opacity-80" title={tooltip || ""}>
                     {title}
@@ -55,8 +56,8 @@ function generateWhatsAppLink(row) {
     const name = row?.user || "alumno";
     const lessonName = row?.lesson_name || "Clase de Surf";
     const level = row?.level_name || null;
-    const date = row?.date_human || (row?.date ? new Date(row.date).toLocaleDateString("es-ES") : "fecha pendiente");
-    const time = row?.time_human || (row?.date ? new Date(row.date).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "--:--");
+    const date = row?.date_human || (row?.date ? formatDateMadrid(row.date) : "fecha pendiente");
+    const time = row?.time_human || (row?.date ? formatTimeMadrid(row.date) : "--:--");
     const totalStudents = Number(row?.total_students || 0) || 1;
     const monitorName = row?.monitor_name || null;
     const googleMapsUrl = row?.google_maps_url || "https://maps.app.goo.gl/TuUbicacion";
@@ -125,7 +126,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
         const headers = ["usuario", "fecha", "importe", "metodo", "estado"];
         const lines = visibleRows.map((r) => [
             `"${String(r.user || "").replaceAll('"', '""')}"`,
-            `"${r.date ? new Date(r.date).toLocaleString("es-ES") : ""}"`,
+            `"${r.date ? formatDateTimeMadrid(r.date) : ""}"`,
             Number(r.amount || 0).toFixed(2),
             `"${(r.payment_method || r.method || "").replaceAll('"', '""')}"`,
             `"${r.status || ""}"`,
@@ -218,8 +219,8 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
         <>
             <Head title="Gestor de Comprobaciones" />
             <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-                <h1 className="font-heading text-2xl font-bold tracking-tight text-brand-deep">Gestor de Comprobaciones</h1>
-                <p className="mt-1 text-sm text-slate-600">Auditoría de pagos para clases y alquileres.</p>
+                <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-100">Gestor de Comprobaciones</h1>
+                <p className="mt-1 text-sm text-gray-400">Auditoría de pagos para clases y alquileres.</p>
 
                 {flash?.success && <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800">{flash.success}</div>}
                 {flash?.error && <div className="mt-4 rounded-xl bg-rose-50 px-4 py-2 text-sm font-medium text-rose-800">{flash.error}</div>}
@@ -228,14 +229,14 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                     <button
                         type="button"
                         onClick={() => setTab(TAB_LESSONS)}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${tab === TAB_LESSONS ? "bg-[#00D1FF] text-slate-900" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${tab === TAB_LESSONS ? "bg-[#00D1FF] text-slate-900" : "bg-gray-800 text-gray-200 ring-1 ring-gray-600"}`}
                     >
                         🏄‍♂️ Clases
                     </button>
                     <button
                         type="button"
                         onClick={() => setTab(TAB_RENTALS)}
-                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${tab === TAB_RENTALS ? "bg-[#00D1FF] text-slate-900" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
+                        className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${tab === TAB_RENTALS ? "bg-[#00D1FF] text-slate-900" : "bg-gray-800 text-gray-200 ring-1 ring-gray-600"}`}
                     >
                         🚲 Alquileres
                     </button>
@@ -247,7 +248,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                             key={s.id}
                             type="button"
                             onClick={() => reloadStatus(s.id)}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ${status === s.id ? "bg-brand-deep text-white" : "bg-slate-100 text-slate-700"}`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ${status === s.id ? "bg-brand-deep text-white" : "bg-gray-800 text-gray-200"}`}
                         >
                             {s.label} {typeof countMap[s.id] === "number" ? `(${countMap[s.id]})` : ""}
                         </button>
@@ -266,11 +267,11 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                 </div>
 
                 <div className="mt-4 flex items-center justify-between">
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Weekly Health</h2>
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-gray-300">Weekly Health</h2>
                     <button
                         type="button"
                         onClick={refreshMetrics}
-                        className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                        className="rounded-lg bg-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-gray-700"
                     >
                         🔄 Refrescar
                     </button>
@@ -312,7 +313,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                             key={m.id}
                             type="button"
                             onClick={() => setMethodFilter(m.id)}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ${methodFilter === m.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ${methodFilter === m.id ? "bg-sky-600 text-white" : "bg-gray-800 text-gray-200"}`}
                         >
                             {m.label}
                         </button>
@@ -326,16 +327,16 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                     <button
                         type="button"
                         onClick={exportCsv}
-                        className="rounded-xl bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                        className="rounded-xl bg-sky-600 px-3 py-2 text-xs font-semibold text-white hover:bg-sky-700"
                     >
                         Cierre de Caja (CSV)
                     </button>
                 </div>
 
-                <div className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="mt-5 overflow-hidden rounded-xl border border-gray-700 bg-gray-800 shadow-sm">
                     <div className="max-h-[68vh] overflow-auto">
                         <table className="min-w-full text-sm">
-                            <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700">
+                            <thead className="sticky top-0 z-10 bg-gray-900 text-gray-300">
                                 <tr>
                                     <th className="px-4 py-3 text-left font-semibold">Usuario</th>
                                     <th className="px-4 py-3 text-left font-semibold">Fecha</th>
@@ -349,7 +350,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                             <tbody>
                                 {visibleRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                                        <td colSpan={7} className="px-4 py-8 text-center text-gray-400">
                                             {methodFilter === "tienda"
                                                 ? "Sin movimientos de caja presenciales hoy."
                                                 : "No hay registros para este filtro."}
@@ -359,19 +360,19 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                     visibleRows.map((r) => (
                                         <tr
                                             key={r.id}
-                                            className={`border-t border-slate-100 transition-all duration-300 ${r.requires_second_monitor ? "animate-pulse bg-amber-50/60 ring-1 ring-rose-300" : ""} ${dismissing[`${tab}-${r.id}`] ? "scale-[0.99] opacity-0" : "opacity-100"}`}
+                                            className={`border-t border-gray-700 transition-all duration-300 ${r.requires_second_monitor ? "animate-pulse bg-amber-900/20 ring-1 ring-rose-700" : ""} ${dismissing[`${tab}-${r.id}`] ? "scale-[0.99] opacity-0" : "opacity-100"}`}
                                         >
-                                            <td className="px-4 py-3 font-medium text-slate-800">{r.user}</td>
-                                            <td className="px-4 py-3 text-slate-600">{r.date ? new Date(r.date).toLocaleString("es-ES") : "—"}</td>
-                                            <td className="px-4 py-3 text-slate-700">
+                                            <td className="px-4 py-3 font-medium text-gray-100">{r.user}</td>
+                                            <td className="px-4 py-3 text-gray-300">{r.date ? formatDateTimeMadrid(r.date) : "—"}</td>
+                                            <td className="px-4 py-3 text-gray-200">
                                                 <div>{Number(r.amount || 0).toFixed(2)} €</div>
                                                 {r.occupancy_label ? (
-                                                    <div className={`mt-0.5 text-xs ${r.requires_second_monitor ? "font-semibold text-rose-700" : "text-slate-500"}`}>
+                                                    <div className={`mt-0.5 text-xs ${r.requires_second_monitor ? "font-semibold text-rose-300" : "text-gray-400"}`}>
                                                         Ocupación: {r.occupancy_label}
                                                     </div>
                                                 ) : null}
                                             </td>
-                                            <td className="px-4 py-3 text-slate-700">
+                                            <td className="px-4 py-3 text-gray-200">
                                                 {(r.payment_method || r.method) === "tienda" ? (
                                                     <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
                                                         <BuildingStorefrontIcon className="h-3.5 w-3.5" />
@@ -405,7 +406,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                             W
                                                         </a>
                                                     ) : (
-                                                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-400" title="Sin teléfono">
+                                                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-700 text-gray-300" title="Sin teléfono">
                                                             ○
                                                         </span>
                                                     )}
@@ -423,14 +424,14 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                             <button
                                                                 type="button"
                                                                 onClick={() => openSupport(r)}
-                                                                className={`inline-flex cursor-help items-center rounded-full px-2 py-0.5 text-xs font-semibold ${r.status === "confirmed" && r.enrollment_status === "confirmed" ? "bg-rose-100 text-rose-700 hover:bg-rose-200" : "pointer-events-none bg-slate-100 text-slate-400 opacity-50"}`}
+                                                                className={`inline-flex cursor-help items-center rounded-full px-2 py-0.5 text-xs font-semibold ${r.status === "confirmed" && r.enrollment_status === "confirmed" ? "bg-rose-900/30 text-rose-200 hover:bg-rose-900/40" : "pointer-events-none bg-gray-700 text-gray-400 opacity-50"}`}
                                                                 title={r.status === "confirmed" && r.enrollment_status === "confirmed" ? (r.email_error || "Fallo al enviar email") : "Disponible solo para reservas confirmadas"}
                                                             >
                                                                 📧⚠️
                                                             </button>
                                                         )
                                                     ) : (
-                                                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-500" title="Sin dato de email">
+                                                        <span className="inline-flex items-center rounded-full bg-gray-700 px-2 py-0.5 text-xs font-semibold text-gray-300" title="Sin dato de email">
                                                             📧—
                                                         </span>
                                                     )}
@@ -442,18 +443,18 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                         <button
                                                             type="button"
                                                             onClick={() => setPreview({ url: r.proof_url, name: r.user })}
-                                                            className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                                                            className="rounded-xl bg-gray-700 px-2 py-1 text-xs font-semibold text-gray-100 hover:bg-gray-600"
                                                             title="Ver comprobante"
                                                         >
                                                             🖼️
                                                         </button>
                                                     ) : (
-                                                        <span className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-400">—</span>
+                                                        <span className="rounded-xl bg-gray-700 px-2 py-1 text-xs text-gray-400">—</span>
                                                     )}
                                                     <button
                                                         type="button"
                                                         onClick={() => approve(r)}
-                                                        className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                        className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
                                                     >
                                                         Aprobar
                                                     </button>
@@ -461,7 +462,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                         <>
                                                             <a
                                                                 href={route("admin.academy.index", { date: r.date ? new Date(r.date).toISOString().slice(0, 10) : undefined })}
-                                                                className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
+                                                                className="rounded-xl bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
                                                             >
                                                                 ➕ Añadir Monitor de Refuerzo
                                                             </a>
@@ -470,7 +471,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                                     href={r.extra_monitor_whatsapp_url}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                                    className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
                                                                 >
                                                                     WhatsApp Refuerzo
                                                                 </a>
@@ -480,7 +481,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                     <button
                                                         type="button"
                                                         onClick={() => setRejecting({ id: r.id, notes: "" })}
-                                                        className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
+                                                        className="rounded-xl bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
                                                     >
                                                         Rechazar
                                                     </button>
@@ -497,11 +498,11 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
 
             {preview && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/70" onClick={() => setPreview(null)} aria-hidden />
-                    <div className="relative h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-                            <div className="text-sm font-semibold text-slate-800">{preview.name}</div>
-                            <button type="button" onClick={() => setPreview(null)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800">
+                    <div className="absolute inset-0 bg-gray-950/80" onClick={() => setPreview(null)} aria-hidden />
+                    <div className="relative h-[90vh] w-full max-w-5xl overflow-hidden rounded-xl border border-gray-700 bg-gray-800 shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-gray-700 px-4 py-3">
+                            <div className="text-sm font-semibold text-gray-100">{preview.name}</div>
+                            <button type="button" onClick={() => setPreview(null)} className="rounded-xl bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700">
                                 Cerrar
                             </button>
                         </div>
@@ -512,9 +513,9 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
 
             {rejecting && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setRejecting(null)} aria-hidden />
-                    <div className="relative w-full max-w-lg rounded-2xl border border-white/20 bg-white p-5 shadow-xl">
-                        <h3 className="font-heading text-lg font-bold text-brand-deep">Rechazar comprobante</h3>
+                    <div className="absolute inset-0 bg-gray-950/70" onClick={() => setRejecting(null)} aria-hidden />
+                    <div className="relative w-full max-w-lg rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-gray-100">Rechazar comprobante</h3>
                         <textarea
                             value={rejecting.notes}
                             onChange={(e) => setRejecting((s) => ({ ...s, notes: e.target.value }))}
@@ -534,16 +535,16 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
 
             {supportModal && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setSupportModal(null)} aria-hidden />
-                    <div className="relative w-full max-w-lg rounded-2xl border border-white/20 bg-white p-5 shadow-xl">
-                        <h3 className="font-heading text-lg font-bold text-brand-deep">Gestión de Error de Envío</h3>
-                        <p className="mt-2 text-sm text-slate-600">
-                            Alumno: <span className="font-semibold text-slate-800">{supportModal.user}</span>
+                    <div className="absolute inset-0 bg-gray-950/70" onClick={() => setSupportModal(null)} aria-hidden />
+                    <div className="relative w-full max-w-lg rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-gray-100">Gestión de Error de Envío</h3>
+                        <p className="mt-2 text-sm text-gray-300">
+                            Alumno: <span className="font-semibold text-gray-100">{supportModal.user}</span>
                         </p>
-                        <p className="mt-2 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                        <p className="mt-2 rounded-xl bg-rose-900/30 px-3 py-2 text-xs text-rose-200">
                             Error técnico: {supportModal.email_error || "No disponible"}
                         </p>
-                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                        <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-gray-400">
                             Email del alumno
                         </label>
                         <input
@@ -565,7 +566,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                 type="button"
                                 disabled={resendingId === supportModal.enrollment_id || supportModal.status !== "confirmed" || supportModal.enrollment_status !== "confirmed"}
                                 onClick={() => resendConfirmation(false)}
-                                className="rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-200 disabled:opacity-60"
+                                className="rounded-xl bg-gray-700 px-4 py-2.5 text-sm font-semibold text-gray-100 hover:bg-gray-600 disabled:opacity-60"
                             >
                                 Reintentar con email actual
                             </button>
@@ -578,7 +579,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                 Corregir y Reenviar
                             </button>
                         </div>
-                        <p className="mt-3 text-xs text-slate-500">
+                        <p className="mt-3 text-xs text-gray-400">
                             Historial: Se han realizado {extractAttempts(supportModal.admin_notes)} intentos de contacto para este alumno.
                         </p>
                     </div>

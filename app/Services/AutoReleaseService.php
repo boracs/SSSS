@@ -36,8 +36,8 @@ class AutoReleaseService
                     continue;
                 }
 
-                $startsAt = Carbon::parse($lesson->starts_at)->utc();
-                $createdAt = Carbon::parse($enrollment->created_at)->utc();
+                $startsAt = $lesson->starts_at->copy()->utc();
+                $createdAt = $enrollment->created_at->copy()->utc();
 
                 $isLastMinute = $startsAt->lte($now->copy()->addHours(4));
                 $graceMinutes = $isLastMinute ? 30 : 120;

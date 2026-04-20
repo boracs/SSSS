@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Academy;
 
 use App\Http\Controllers\Controller;
-use App\Mail\ReservationConfirmedMail;
 use App\Mail\RequestReceivedMail;
+use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
-use App\Models\StaffAssignment;
 use App\Services\AutoReleaseService;
+use App\Services\AvailabilityService;
 use App\Services\CreditEngineService;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +24,8 @@ class LessonController extends Controller
 {
     public function __construct(
         protected CreditEngineService $creditEngine,
-        protected AutoReleaseService $autoReleaseService
+        protected AutoReleaseService $autoReleaseService,
+        protected AvailabilityService $availabilityService
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -36,14 +38,14 @@ class LessonController extends Controller
     public function index(Request $request)
     {
         $date = $request->has('date')
-            ? Carbon::parse($request->input('date'))
-            : Carbon::today();
+            ? BusinessDateTime::parseInAppTimezone((string) $request->input('date'))->startOfDay()
+            : BusinessDateTime::today();
 
         $month = $request->has('month')
-            ? Carbon::parse($request->input('month'))->startOfMonth()
+            ? BusinessDateTime::parseInAppTimezone((string) $request->input('month'))->startOfMonth()
             : $date->copy()->startOfMonth();
 
-        $now = Carbon::now('UTC');
+        $now = BusinessDateTime::now();
         $rangeStart = $month->copy()->startOfMonth()->startOfDay();
         $rangeEnd = $month->copy()->endOfMonth()->endOfDay();
 
@@ -57,6 +59,7 @@ class LessonController extends Controller
             ->get(['id', 'starts_at', 'type', 'is_private', 'level', 'modality'])
             ->filter(function (Lesson $l) use ($canSeeVip) {
                 $isVip = (bool) ($l->is_private ?? false);
+
                 return $canSeeVip ? true : ! $isVip;
             });
 
@@ -138,6 +141,7 @@ class LessonController extends Controller
                 $confirmed = (int) ($l->confirmed_count ?? 0);
                 $ageBrackets = $l->enrollments?->pluck('age_bracket')->filter()->unique()->values() ?? collect();
                 $partyTotal = (int) ($l->enrollments?->sum(fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1)) ?? ($pending + $confirmed));
+
                 return [
                     'id' => $l->id,
                     'date' => $l->starts_at->format('Y-m-d'),
@@ -147,8 +151,8 @@ class LessonController extends Controller
                     'batch_id' => $l->batch_id,
                     'title' => $l->is_private ? null : $l->title,
                     'description' => $l->description,
-                    'starts_at' => $l->starts_at->toIso8601String(),
-                    'ends_at' => $l->ends_at->toIso8601String(),
+                    'starts_at' => BusinessDateTime::toApi($l->starts_at),
+                    'ends_at' => BusinessDateTime::toApi($l->ends_at),
                     'level' => $l->level,
                     'location' => $l->location ?? 'Zurriola',
                     'pending_count' => $pending,
@@ -172,7 +176,7 @@ class LessonController extends Controller
             ->where('is_optimal_waves', true)
             ->distinct()
             ->pluck('starts_at')
-            ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
+            ->map(fn ($d) => BusinessDateTime::parseInAppTimezone((string) $d)->format('Y-m-d'))
             ->unique()
             ->values()
             ->toArray();
@@ -188,10 +192,10 @@ class LessonController extends Controller
                 ->where('user_id', auth()->id())
                 ->where(function ($q) {
                     $q->whereIn('status', ['pending', 'confirmed', 'enrolled', 'attended'])
-                      ->orWhere(function ($q2) {
-                          $q2->where('status', LessonUser::STATUS_CANCELLED)
-                             ->where('cancelled_at', '>=', now()->subDays(14));
-                      });
+                        ->orWhere(function ($q2) {
+                            $q2->where('status', LessonUser::STATUS_CANCELLED)
+                                ->where('cancelled_at', '>=', BusinessDateTime::now()->subDays(14));
+                        });
                 })
                 ->get(['id', 'lesson_id', 'status', 'expires_at', 'payment_proof_path', 'admin_notes']);
             $myEnrollmentLessonIds = $enrollments->pluck('lesson_id')->toArray();
@@ -217,7 +221,7 @@ class LessonController extends Controller
                 $pendingSurfTripLesson = [
                     'id' => $pending->lesson->id,
                     'is_surf_trip' => true,
-                    'starts_at' => $pending->lesson->starts_at->toIso8601String(),
+                    'starts_at' => BusinessDateTime::toApi($pending->lesson->starts_at),
                 ];
             }
         }
@@ -253,77 +257,48 @@ class LessonController extends Controller
     {
         $validated = $request->validate([
             'date' => 'required|date',
+            'duration_minutes' => 'nullable|integer|min:30|max:300',
         ]);
 
-        $day = Carbon::parse($validated['date'])->startOfDay();
-        $today = Carbon::today();
+        $day = BusinessDateTime::parseInAppTimezone((string) $validated['date'])->startOfDay();
+        $today = BusinessDateTime::today();
         if ($day->lt($today)) {
             return response()->json(['date' => $day->format('Y-m-d'), 'slots' => []]);
         }
 
-        $dayStart = $day->copy()->startOfDay();
-        $dayEnd = $day->copy()->endOfDay();
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        if ($durationMinutes < 60 || $durationMinutes % 15 !== 0) {
+            return response()->json([
+                'date' => $day->format('Y-m-d'),
+                'slots' => [],
+                'message' => 'La duración debe ser de al menos 1 hora y en múltiplos de 15.',
+            ], 422);
+        }
 
-        $lessons = Lesson::query()
-            ->where('status', Lesson::STATUS_SCHEDULED)
-            ->whereBetween('starts_at', [$dayStart, $dayEnd])
-            ->with(['enrollments', 'staffAssignments'])
-            ->get();
-
-        // Generar slots (inicio cada 30 min) de 08:00 a 19:00 (90 min de duración)
+        // Generar slots (inicio cada 15 min) de 08:00 a 19:00.
         $slots = [];
         $cursor = $day->copy()->setTime(8, 0);
         $lastStart = $day->copy()->setTime(19, 0);
         while ($cursor->lte($lastStart)) {
             $slotStart = $cursor->copy();
-            $slotEnd = $cursor->copy()->addMinutes(90);
+            $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
 
             // Solo futuro (hoy: no permitir horarios pasados)
-            if ($slotEnd->lessThanOrEqualTo(now())) {
+            if ($slotEnd->lessThanOrEqualTo(BusinessDateTime::now())) {
                 $cursor->addMinutes(30);
+
                 continue;
             }
 
-            $overlapping = $lessons->filter(function (Lesson $l) use ($slotStart, $slotEnd) {
-                $ls = Carbon::parse($l->starts_at);
-                $le = Carbon::parse($l->ends_at);
-                return $ls->lt($slotEnd) && $le->gt($slotStart);
-            });
-
-            // Regla a): 2 clases distintas en ese tramo => no disponible
-            if ($overlapping->count() >= 2) {
-                $cursor->addMinutes(30);
-                continue;
-            }
-
-            $monitorsUsed = 0;
-            foreach ($overlapping as $l) {
-                // Regla c): si hay 2 monitores explícitamente asignados
-                $explicitMonitors = $l->staffAssignments->where('role', StaffAssignment::ROLE_MONITOR)->count();
-                if ($explicitMonitors >= 2) {
-                    $monitorsUsed = 2;
-                    break;
-                }
-
-                $partyTotal = (int) $l->totalPartySize();
-                $hasBig = $l->hasBigGroup() || $partyTotal >= 7;
-                // Regla b): grupal con >=7 consume 2 monitores
-                if (($l->modality ?? null) === Lesson::MODALITY_GRUPAL && $partyTotal >= 7) {
-                    $monitorsUsed = 2;
-                    break;
-                }
-
-                $monitorsUsed = max($monitorsUsed, $l->monitorsRequiredFor($partyTotal, $hasBig));
-            }
-
-            if ($monitorsUsed < 2) {
+            $availability = $this->availabilityService->evaluate($slotStart, $slotEnd, 1);
+            if ($availability['allowed']) {
                 $slots[] = [
                     'start' => $slotStart->format('H:i'),
                     'end' => $slotEnd->format('H:i'),
                 ];
             }
 
-            $cursor->addMinutes(30);
+            $cursor->addMinutes(15);
         }
 
         return response()->json([
@@ -346,15 +321,26 @@ class LessonController extends Controller
         $validated = $request->validate([
             'date' => 'required|date',
             'start' => 'required|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|min:30|max:300',
         ]);
 
-        $day = Carbon::parse($validated['date']);
-        if ($day->startOfDay()->lt(Carbon::today())) {
+        $day = BusinessDateTime::parseInAppTimezone((string) $validated['date'])->startOfDay();
+        if ($day->lt(BusinessDateTime::today())) {
             return back()->with('error', 'No puedes solicitar una fecha pasada.');
         }
 
-        $startsAt = Carbon::parse($validated['date'].' '.$validated['start'], config('app.timezone'));
-        $endsAt = $startsAt->copy()->addMinutes(90);
+        $startsAt = BusinessDateTime::parseInAppTimezone($validated['date'].' '.$validated['start']);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        if ($durationMinutes < 60 || $durationMinutes % 15 !== 0) {
+            return back()->with('error', 'La duración debe ser de al menos 1 hora y en múltiplos de 15.');
+        }
+        if (((int) $startsAt->minute % 15) !== 0) {
+            return back()->with('error', 'La hora de inicio debe estar en intervalos de 15 minutos.');
+        }
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+        if (((int) $endsAt->minute % 15) !== 0) {
+            return back()->with('error', 'La hora de fin debe estar en intervalos de 15 minutos.');
+        }
 
         $lesson = Lesson::create([
             'starts_at' => $startsAt,
@@ -394,8 +380,8 @@ class LessonController extends Controller
             ->with('payment_lesson_id', $lesson->id)
             ->with('payment_lesson_payload', [
                 'id' => $lesson->id,
-                'starts_at' => $lesson->starts_at->toIso8601String(),
-                'ends_at' => $lesson->ends_at->toIso8601String(),
+                'starts_at' => BusinessDateTime::toApi($lesson->starts_at),
+                'ends_at' => BusinessDateTime::toApi($lesson->ends_at),
                 'level' => $lesson->level,
                 'modality' => $lesson->modality,
                 'location' => $lesson->location ?? 'Zurriola',
@@ -428,7 +414,7 @@ class LessonController extends Controller
         $requestExtraMonitor = (bool) ($validated['request_extra_monitor'] ?? false);
         $ageBracket = $validated['age_bracket'] ?? null;
 
-        if ($lesson->starts_at && Carbon::parse($lesson->starts_at)->lt(now())) {
+        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
             return back()->with('error', 'No puedes solicitar una clase pasada.');
         }
 
@@ -516,6 +502,7 @@ class LessonController extends Controller
                         'payment_status' => LessonUser::PAYMENT_PENDING,
                         'expires_at' => Carbon::now('UTC')->addHours(2),
                     ])->save();
+
                     return $existing;
                 }
 
@@ -555,6 +542,7 @@ class LessonController extends Controller
                     ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
                 $capacity = (int) ($lesson->max_capacity ?? $lesson->max_slots ?? 6);
                 $available = max(0, $capacity - $currentTotal);
+
                 return back()
                     ->with('error', "Solo quedan {$available} plazas aseguradas. Al ser un grupo mayor, excederemos el cupo de 6 alumnos y necesitaremos asignar un segundo monitor para garantizar la calidad y seguridad. ¿Desea que comprobemos si es posible solicitar otro monitor para su grupo?")
                     ->with('extra_monitor_offer', [
@@ -601,7 +589,7 @@ class LessonController extends Controller
             ->where('status', LessonUser::STATUS_PENDING)
             ->firstOrFail();
 
-        if ($lesson->starts_at && Carbon::parse($lesson->starts_at)->lt(now())) {
+        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
             return back()->with('error', 'No puedes subir un comprobante para una clase pasada.');
         }
 
@@ -620,7 +608,7 @@ class LessonController extends Controller
         $path = $file->store($dir, 'local');
         $enrollment->update([
             'payment_proof_path' => $path,
-            'proof_uploaded_at' => now(),
+            'proof_uploaded_at' => BusinessDateTime::now(),
             'payment_method' => $request->input('payment_method'),
             'payment_status' => LessonUser::PAYMENT_SUBMITTED,
         ]);
@@ -663,7 +651,7 @@ class LessonController extends Controller
         $enrollment->update([
             'status' => LessonUser::STATUS_CONFIRMED,
             'payment_status' => LessonUser::PAYMENT_CONFIRMED,
-            'confirmed_at' => now(),
+            'confirmed_at' => BusinessDateTime::now(),
             'expires_at' => null,
             // Prioridad contable a tienda: evitar doble contabilización con comprobante digital.
             'payment_method' => 'tienda',
@@ -700,7 +688,7 @@ class LessonController extends Controller
             return back()->with('error', 'Debes iniciar sesión.');
         }
 
-        if ($lesson->starts_at && Carbon::parse($lesson->starts_at)->lt(now())) {
+        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
             return back()->with('error', 'No puedes inscribirte en una clase pasada.');
         }
 
@@ -748,12 +736,14 @@ class LessonController extends Controller
         if (in_array($enrollment->status, [LessonUser::STATUS_PENDING, LessonUser::STATUS_CONFIRMED], true)) {
             $enrollment->update([
                 'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => now(),
+                'cancelled_at' => BusinessDateTime::now(),
             ]);
+
             return back()->with('success', 'Solicitud cancelada.');
         }
 
         $this->creditEngine->cancelByStudent($enrollment);
+
         return back()->with('success', 'Inscripción cancelada.');
     }
 
@@ -772,6 +762,7 @@ class LessonController extends Controller
         if (! $confirmed) {
             $this->creditEngine->refundCredits($enrollment, 'Reembolso: no asistencia a playa secundaria');
         }
+
         return back()->with('success', $confirmed ? 'Asistencia confirmada.' : 'Reembolso solicitado.');
     }
 }

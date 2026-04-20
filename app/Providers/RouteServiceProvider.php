@@ -19,6 +19,17 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        RateLimiter::for('contact-form', function (Request $request) {
+            $email = strtolower(trim((string) $request->input('email', '')));
+            $emailKey = $email !== '' ? $email : 'no-email';
+            $ip = (string) $request->ip();
+
+            return [
+                Limit::perMinute(3)->by("contact:ip-email:{$ip}:{$emailKey}"),
+                Limit::perMinute(10)->by("contact:ip:{$ip}"),
+            ];
+        });
+
         $this->routes(function () {
             // Carga las rutas API: Aplica el middleware 'api' y el prefijo '/api'
             Route::middleware('api')

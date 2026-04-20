@@ -7,6 +7,8 @@ use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Models\User;
+use App\Services\AvailabilityService;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,17 +26,21 @@ class VipClassManagerController extends Controller
         LessonUser::STATUS_PENDING_EXTRA_MONITOR,
     ];
 
+    public function __construct(
+        private readonly AvailabilityService $availabilityService
+    ) {}
+
     public function index(Request $request)
     {
-        $month = (string) $request->query('month', now()->format('Y-m'));
+        $month = (string) $request->query('month', BusinessDateTime::now()->format('Y-m'));
         [$year, $m] = array_pad(array_map('intval', explode('-', $month)), 2, 0);
         if ($year < 2000 || $m < 1 || $m > 12) {
-            $year = (int) now()->format('Y');
-            $m = (int) now()->format('m');
+            $year = (int) BusinessDateTime::now()->format('Y');
+            $m = (int) BusinessDateTime::now()->format('m');
             $month = sprintf('%04d-%02d', $year, $m);
         }
 
-        $start = Carbon::create($year, $m, 1)->startOfMonth()->startOfDay();
+        $start = Carbon::create($year, $m, 1, 0, 0, 0, BusinessDateTime::businessTimezone())->startOfMonth()->startOfDay();
         $end = $start->copy()->endOfMonth()->endOfDay();
 
         $lessons = Lesson::query()
@@ -50,7 +56,14 @@ class VipClassManagerController extends Controller
                 $monitor = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_MONITOR);
                 $photographer = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_FOTOGRAFO);
                 $occupancy = (int) $lesson->enrollments()->whereIn('status', ['pending', 'confirmed', 'enrolled', 'attended'])->count();
-                $capacity = (int) ($lesson->max_capacity ?? $lesson->max_slots ?? 0);
+                $dynamic = $this->availabilityService->evaluate($lesson->starts_at, $lesson->ends_at, 1, (int) $lesson->id);
+                $capacity = (int) ($dynamic['max_capacity'] ?? ($lesson->max_capacity ?? $lesson->max_slots ?? 0));
+                if ((int) ($lesson->max_capacity ?? 0) !== $capacity || (int) ($lesson->max_slots ?? 0) !== $capacity) {
+                    $lesson->update([
+                        'max_capacity' => $capacity,
+                        'max_slots' => $capacity,
+                    ]);
+                }
                 $students = $lesson->enrollments
                     ->whereIn('status', self::ACTIVE_ENROLLMENT_STATUSES)
                     ->map(function (LessonUser $enrollment) {
@@ -63,8 +76,8 @@ class VipClassManagerController extends Controller
                 return [
                     'id' => (int) $lesson->id,
                     'title' => $lesson->title ?: 'Clase VIP',
-                    'starts_at' => $lesson->starts_at?->toIso8601String(),
-                    'ends_at' => $lesson->ends_at?->toIso8601String(),
+                    'starts_at' => $lesson->starts_at ? BusinessDateTime::toApi($lesson->starts_at) : null,
+                    'ends_at' => $lesson->ends_at ? BusinessDateTime::toApi($lesson->ends_at) : null,
                     'level' => $lesson->level,
                     'location' => $lesson->location ?: 'Zurriola',
                     'status' => $lesson->status,
@@ -94,22 +107,62 @@ class VipClassManagerController extends Controller
         $validated = $request->validate([
             'date' => 'required|date_format:Y-m-d',
             'time' => 'required|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|in:60,90',
             'exclude_lesson_id' => 'nullable|integer|exists:lessons,id',
         ]);
 
-        [$rangeStart, $rangeEnd] = $this->resolveWindow($validated['date'], $validated['time']);
+        $startsAt = $this->parseVipFormDateTime($validated['date'], $validated['time']);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return response()->json([
+                'range_start' => BusinessDateTime::toApi($startsAt),
+                'range_end' => BusinessDateTime::toApi($endsAt),
+                'overlapping_classes' => 0,
+                'max_capacity' => 0,
+                'is_staff_exhausted' => true,
+                'staff' => ['available' => [], 'occupied' => []],
+                'message' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ], 422);
+        }
+        $minDuration = 60;
+        if ($startsAt->diffInMinutes($endsAt) < $minDuration) {
+            return response()->json([
+                'range_start' => BusinessDateTime::toApi($startsAt),
+                'range_end' => BusinessDateTime::toApi($endsAt),
+                'overlapping_classes' => 0,
+                'max_capacity' => 0,
+                'is_staff_exhausted' => true,
+                'staff' => ['available' => [], 'occupied' => []],
+                'message' => 'La duración mínima de una sesión es de 1 hora.',
+            ], 422);
+        }
         $excludeLessonId = (int) ($validated['exclude_lesson_id'] ?? 0);
-        $availability = $this->computeAvailability($rangeStart, $rangeEnd, $excludeLessonId);
+        $availability = $this->availabilityService->evaluate(
+            $startsAt,
+            $endsAt,
+            1,
+            $excludeLessonId
+        );
+        $rangeStart = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_start']);
+        $rangeEnd = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_end']);
         $staffAvailability = $this->computeStaffAvailability($rangeStart, $rangeEnd, $excludeLessonId);
 
-        return response()->json([
-            'range_start' => $rangeStart->toIso8601String(),
-            'range_end' => $rangeEnd->toIso8601String(),
-            'overlapping_classes' => $availability['overlapping_classes'],
+        $payload = [
+            'range_start' => BusinessDateTime::toApi($rangeStart),
+            'range_end' => BusinessDateTime::toApi($rangeEnd),
+            'overlapping_classes' => count($availability['conflicts']),
             'max_capacity' => $availability['max_capacity'],
+            'peak_monitors_used' => $availability['peak_monitors_used'] ?? null,
+            'occupied_lesson_ids' => $availability['occupied_lesson_ids'] ?? [],
             'is_staff_exhausted' => $availability['max_capacity'] === 0,
             'staff' => $staffAvailability,
-        ]);
+            'message' => $availability['max_capacity'] === 0
+                ? 'No quedan monitores disponibles en este horario (se requiere disponibilidad 15 min antes y 15 min después).'
+                : null,
+        ];
+
+        return response()->json($payload, $availability['max_capacity'] === 0 ? 422 : 200);
     }
 
     public function store(Request $request)
@@ -117,6 +170,7 @@ class VipClassManagerController extends Controller
         $validated = $request->validate([
             'date' => 'required|date_format:Y-m-d',
             'time' => 'required|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|in:60,90',
             'level' => 'required|in:iniciacion,intermedio,avanzado',
             'monitor_id' => 'nullable|integer|exists:users,id',
             'has_photographer' => 'nullable|boolean',
@@ -125,16 +179,36 @@ class VipClassManagerController extends Controller
             'max_capacity' => 'required|integer|in:0,6,12',
         ]);
 
-        [$rangeStart, $rangeEnd] = $this->resolveWindow($validated['date'], $validated['time']);
-        $availability = $this->computeAvailability($rangeStart, $rangeEnd, 0);
+        $startsAt = $this->parseVipFormDateTime($validated['date'], $validated['time']);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+        if ($this->isCalendarDayBeforeTodayInMadrid($startsAt)) {
+            return back()->withErrors([
+                'date' => 'No se pueden crear clases VIP en fechas pasadas.',
+            ])->withInput();
+        }
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return back()->withErrors([
+                'time' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ])->withInput();
+        }
+        $minDuration = 60;
+        if ($startsAt->diffInMinutes($endsAt) < $minDuration) {
+            return back()->withErrors([
+                'time' => 'La duración mínima de una sesión es de 1 hora.',
+            ])->withInput();
+        }
+        $projectedPartySize = ((int) ($validated['max_capacity'] ?? 6)) >= 7 ? 7 : 1;
+        $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize, 0);
+        $rangeStart = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_start']);
+        $rangeEnd = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_end']);
         $staffAvailability = $this->computeStaffAvailability($rangeStart, $rangeEnd, 0);
-        if ($availability['max_capacity'] === 0) {
-            return back()->withErrors(['time' => 'No se puede crear: no hay monitores disponibles en esa franja (15 min antes + 90 min + 15 min después).'])->withInput();
+        if (! $availability['allowed']) {
+            return back()->withErrors([
+                'time' => $this->availabilityService->buildConflictMessage($availability),
+            ])->withInput();
         }
         $this->assertSelectedStaffIsAvailable($validated, $staffAvailability);
-
-        $startsAt = Carbon::parse($validated['date'].' '.$validated['time']);
-        $endsAt = $startsAt->copy()->addMinutes(90);
 
         $lesson = Lesson::create([
             'title' => 'VIP '.strtoupper((string) $validated['level']),
@@ -154,6 +228,7 @@ class VipClassManagerController extends Controller
         ]);
 
         $this->syncVipStaffAssignments($lesson, $validated);
+        $this->rebalanceVipCapacitiesForDate($startsAt);
 
         return back()->with('success', 'Clase VIP creada correctamente (consume 1 crédito por reserva).');
     }
@@ -165,6 +240,7 @@ class VipClassManagerController extends Controller
         $validated = $request->validate([
             'date' => 'required|date_format:Y-m-d',
             'time' => 'required|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|in:60,90',
             'level' => 'required|in:iniciacion,intermedio,avanzado',
             'monitor_id' => 'nullable|integer|exists:users,id',
             'has_photographer' => 'nullable|boolean',
@@ -173,23 +249,36 @@ class VipClassManagerController extends Controller
             'max_capacity' => 'required|integer|in:0,6,12',
         ]);
 
-        [$rangeStart, $rangeEnd] = $this->resolveWindow($validated['date'], $validated['time']);
-        $availability = $this->computeAvailability($rangeStart, $rangeEnd, (int) $lesson->id);
-        $staffAvailability = $this->computeStaffAvailability($rangeStart, $rangeEnd, (int) $lesson->id);
-        if ($availability['overlapping_classes'] > 2) {
-            return response()->json([
-                'message' => 'Overbooking de staff: demasiadas clases en la franja seleccionada.',
-            ], 422);
+        $startsAt = $this->parseVipFormDateTime($validated['date'], $validated['time']);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+        if ($this->wouldMoveFutureLessonToPastDay($lesson, $startsAt)) {
+            return back()->withErrors([
+                'time' => 'No se puede mover la clase a una fecha pasada.',
+            ])->withInput();
         }
-        if ($availability['max_capacity'] === 0) {
-            return response()->json([
-                'message' => 'No se puede guardar: no hay monitores disponibles en esa franja (15 min antes + 90 min + 15 min después).',
-            ], 422);
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return back()->withErrors([
+                'time' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ])->withInput();
+        }
+        $minDuration = 60;
+        if ($startsAt->diffInMinutes($endsAt) < $minDuration) {
+            return back()->withErrors([
+                'time' => 'La duración mínima de una sesión es de 1 hora.',
+            ])->withInput();
+        }
+        $projectedPartySize = ((int) ($validated['max_capacity'] ?? 6)) >= 7 ? 7 : 1;
+        $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize, (int) $lesson->id);
+        $rangeStart = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_start']);
+        $rangeEnd = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_end']);
+        $staffAvailability = $this->computeStaffAvailability($rangeStart, $rangeEnd, (int) $lesson->id);
+        if (! $availability['allowed']) {
+            return back()->withErrors([
+                'time' => $this->availabilityService->buildConflictMessage($availability),
+            ])->withInput();
         }
         $this->assertSelectedStaffIsAvailable($validated, $staffAvailability);
-
-        $startsAt = Carbon::parse($validated['date'].' '.$validated['time']);
-        $endsAt = $startsAt->copy()->addMinutes(90);
 
         $lesson->update([
             'title' => 'VIP '.strtoupper((string) $validated['level']),
@@ -206,6 +295,7 @@ class VipClassManagerController extends Controller
         ]);
 
         $this->syncVipStaffAssignments($lesson, $validated);
+        $this->rebalanceVipCapacitiesForDate($startsAt);
 
         return back()->with('success', 'Clase VIP actualizada correctamente.');
     }
@@ -226,13 +316,15 @@ class VipClassManagerController extends Controller
                     'lesson_id' => $lesson->id,
                     'affected_users' => $affectedUserIds,
                     'virtual_credit_refund_uc' => 1,
-                    'at' => now()->toDateTimeString(),
+                    'at' => BusinessDateTime::now()->toDateTimeString(),
                 ]);
             }
 
+            $startsAt = $lesson->starts_at;
             LessonUser::query()->where('lesson_id', $lesson->id)->delete();
             StaffAssignment::query()->where('lesson_id', $lesson->id)->delete();
             $lesson->delete();
+            $this->rebalanceVipCapacitiesForDate($startsAt);
         });
 
         return back()->with('success', 'Clase VIP eliminada y consumos asociados revertidos.');
@@ -240,7 +332,7 @@ class VipClassManagerController extends Controller
 
     public function replicatePreviousWeek(Request $request): JsonResponse
     {
-        $today = now();
+        $today = BusinessDateTime::now();
         $prevStart = $today->copy()->startOfWeek()->subWeek();
         $prevEnd = $today->copy()->startOfWeek()->subWeek()->endOfWeek();
         $targetStart = $today->copy()->startOfWeek();
@@ -259,11 +351,12 @@ class VipClassManagerController extends Controller
                 ->addDays($offsetDays)
                 ->setTime($prevLesson->starts_at->hour, $prevLesson->starts_at->minute);
             $newEnd = $newStart->copy()->addMinutes(90);
-            [$rangeStart, $rangeEnd] = [$newStart->copy()->subMinutes(15), $newStart->copy()->addMinutes(105)];
-            $availability = $this->computeAvailability($rangeStart, $rangeEnd, 0);
-            if ($availability['max_capacity'] === 0) {
+            $availability = $this->availabilityService->evaluate($newStart, $newEnd, 1, 0);
+            if (! $availability['allowed']) {
                 continue;
             }
+            $rangeStart = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_start']);
+            $rangeEnd = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_end']);
 
             $lesson = Lesson::create([
                 'title' => $prevLesson->title,
@@ -300,6 +393,8 @@ class VipClassManagerController extends Controller
             $created++;
         }
 
+        $this->rebalanceVipCapacitiesForDate(BusinessDateTime::now());
+
         return response()->json([
             'created' => $created,
             'source_lessons' => (int) $previousLessons->count(),
@@ -331,29 +426,6 @@ class VipClassManagerController extends Controller
                 ->where('role', StaffAssignment::ROLE_FOTOGRAFO)
                 ->delete();
         }
-    }
-
-    private function resolveWindow(string $date, string $time): array
-    {
-        $start = Carbon::parse($date.' '.$time);
-        return [$start->copy()->subMinutes(15), $start->copy()->addMinutes(105)];
-    }
-
-    private function computeAvailability(Carbon $rangeStart, Carbon $rangeEnd, int $excludeLessonId = 0): array
-    {
-        $overlappingCount = Lesson::query()
-            ->where('status', '!=', Lesson::STATUS_CANCELLED)
-            ->when($excludeLessonId > 0, fn ($q) => $q->where('id', '!=', $excludeLessonId))
-            ->where('starts_at', '<', $rangeEnd)
-            ->where('ends_at', '>', $rangeStart)
-            ->count();
-
-        $maxCapacity = $overlappingCount >= 2 ? 0 : ($overlappingCount === 1 ? 6 : 12);
-
-        return [
-            'overlapping_classes' => (int) $overlappingCount,
-            'max_capacity' => (int) $maxCapacity,
-        ];
     }
 
     private function buildStaffCatalog()
@@ -410,5 +482,59 @@ class VipClassManagerController extends Controller
             abort(422, 'El fotógrafo seleccionado está ocupado en la franja de 120 minutos.');
         }
     }
-}
 
+    private function parseVipFormDateTime(string $date, string $time): Carbon
+    {
+        return BusinessDateTime::parseInAppTimezone($date.' '.$time);
+    }
+
+    private function isCalendarDayBeforeTodayInMadrid(Carbon $startsAt): bool
+    {
+        $today = BusinessDateTime::today();
+        $day = $startsAt->copy()->timezone(BusinessDateTime::businessTimezone())->startOfDay();
+
+        return $day->lt($today);
+    }
+
+    /**
+     * Impide pasar una clase que aún es hoy o futura a un día ya cerrado; se sigue pudiendo editar clases históricas.
+     */
+    private function wouldMoveFutureLessonToPastDay(Lesson $lesson, Carbon $newStartsAt): bool
+    {
+        $today = BusinessDateTime::today();
+        $newDay = $newStartsAt->copy()->timezone(BusinessDateTime::businessTimezone())->startOfDay();
+        if ($newDay->gte($today)) {
+            return false;
+        }
+        $oldDay = $lesson->starts_at->copy()->timezone(BusinessDateTime::businessTimezone())->startOfDay();
+
+        return $oldDay->gte($today);
+    }
+
+    private function isQuarterMinute(Carbon $value): bool
+    {
+        return ((int) $value->minute % 15) === 0;
+    }
+
+    private function rebalanceVipCapacitiesForDate(Carbon $date): void
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+
+        Lesson::query()
+            ->where('modality', 'vip')
+            ->where('status', Lesson::STATUS_SCHEDULED)
+            ->whereBetween('starts_at', [$start, $end])
+            ->get(['id', 'starts_at', 'ends_at', 'max_slots', 'max_capacity'])
+            ->each(function (Lesson $lesson): void {
+                $evaluation = $this->availabilityService->evaluate($lesson->starts_at, $lesson->ends_at, 1, (int) $lesson->id);
+                $capacity = (int) ($evaluation['max_capacity'] ?? 0);
+                if ((int) ($lesson->max_slots ?? 0) !== $capacity || (int) ($lesson->max_capacity ?? 0) !== $capacity) {
+                    $lesson->update([
+                        'max_slots' => $capacity,
+                        'max_capacity' => $capacity,
+                    ]);
+                }
+            });
+    }
+}

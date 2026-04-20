@@ -34,8 +34,8 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
-    
-   // ====================================================================
+
+    // ====================================================================
     // 💡 AGREGADO PARA GEMINI
     // ====================================================================
     'gemini' => [
@@ -48,5 +48,11 @@ return [
         'iban' => env('ACADEMY_IBAN', '[IBAN]'),
         'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
         'maps_url' => env('ACADEMY_MAPS_URL', 'https://maps.app.goo.gl/TuUbicacion'),
+        /** Reloj de pared de la escuela (columnas naive starts_at/ends_at); independiente de APP_TIMEZONE. */
+        'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
+    ],
+
+    'contact_form' => [
+        'to' => env('CONTACT_FORM_TO', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
     ],
 ];

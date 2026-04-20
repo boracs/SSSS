@@ -3,17 +3,24 @@ import { Head, Link, router, usePage } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
 import SurfTripFab from "../../components/SurfTripFab";
 import PaymentModal from "../../components/PaymentModal";
+import {
+    formatLongDateLabelMadrid,
+    formatMonthYearMadridFromYearMonth,
+    formatTimeMadrid,
+    todayYmdInMadrid,
+    toYmdInMadrid,
+} from "../../lib/madridTime";
 
 function SkeletonCard() {
     return (
-        <div className="animate-pulse rounded-xl border border-slate-100 bg-white p-3 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-            <div className="h-4 w-20 rounded-full bg-slate-200" />
-            <div className="mt-2 h-5 w-3/4 rounded bg-slate-200" />
+        <div className="animate-pulse rounded-xl border border-gray-700 bg-gray-800 p-3 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+            <div className="h-4 w-20 rounded-full bg-gray-700" />
+            <div className="mt-2 h-5 w-3/4 rounded bg-gray-700" />
             <div className="mt-2 flex gap-1.5">
-                <div className="h-7 w-7 rounded-full bg-slate-200" />
-                <div className="h-7 w-7 rounded-full bg-slate-200" />
+                <div className="h-7 w-7 rounded-full bg-gray-700" />
+                <div className="h-7 w-7 rounded-full bg-gray-700" />
             </div>
-            <div className="mt-2 h-1.5 w-full rounded-full bg-slate-200" />
+            <div className="mt-2 h-1.5 w-full rounded-full bg-gray-700" />
         </div>
     );
 }
@@ -52,13 +59,13 @@ function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) 
 
     return (
         <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60" onClick={onClose} aria-hidden />
-            <div className="relative w-full max-w-lg rounded-2xl border border-white/20 bg-white p-5 shadow-xl">
-                <h3 className="font-heading text-lg font-bold text-brand-deep">Reserva grupal</h3>
-                <p className="mt-1 text-sm text-slate-600">Configura tu grupo antes de pagar.</p>
+            <div className="absolute inset-0 bg-gray-950/70" onClick={onClose} aria-hidden />
+            <div className="relative w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
+                <h3 className="font-heading text-lg font-bold text-gray-100">Reserva grupal</h3>
+                <p className="mt-1 text-sm text-gray-400">Configura tu grupo antes de pagar.</p>
 
                 <div className="mt-4">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Cantidad (1-6)</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-400">Cantidad (1-6)</label>
                     <input
                         type="number"
                         min={1}
@@ -70,7 +77,7 @@ function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) 
                 </div>
 
                 <div className="mt-4">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-slate-600">Rango de Edad del Grupo</label>
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-400">Rango de Edad del Grupo</label>
                     <select
                         value={ageBracket}
                         onChange={(e) => setAgeBracket(e.target.value)}
@@ -83,18 +90,18 @@ function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) 
                 </div>
 
                 {ageConflict && (
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                    <div className="mt-3 rounded-xl border border-amber-700 bg-amber-900/30 px-3 py-2 text-xs font-medium text-amber-200">
                         Este grupo ya cuenta con alumnos de otra franja. Por seguridad y autonomía, te sugerimos buscar una sesión compatible o contactarnos.
                     </div>
                 )}
 
                 {requestExtra && (
-                    <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
+                    <div className="mt-3 rounded-xl border border-sky-700 bg-sky-900/30 px-3 py-2 text-xs font-medium text-sky-200">
                         ¡Sois un gran grupo! Superamos el límite de 6 alumnos por monitor. Si confirmas, solicitaremos un segundo monitor de refuerzo para vuestra seguridad. El precio no cambia y la calidad mejora.
                     </div>
                 )}
 
-                <p className="mt-3 text-xs text-slate-500">
+                <p className="mt-3 text-xs text-gray-400">
                     El precio se mantiene, pero al ser un grupo mayor, el servicio mejorará con atención personalizada de dos monitores tras nuestra confirmación.
                 </p>
 
@@ -116,7 +123,7 @@ function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) 
 
 function LessonCard({ lesson, isEnrolled, enrollmentStatus, creditsBalance, onShowPayment, hasProof = false }) {
     const startsAt = new Date(lesson.starts_at);
-    const timeStr = startsAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = formatTimeMadrid(startsAt);
     const hasFotografo = !!lesson.fotografo;
     const occupied = lesson.party_size_total ?? lesson.enrolled_count;
     const maxSlots = lesson.max_slots ?? 0;
@@ -124,29 +131,29 @@ function LessonCard({ lesson, isEnrolled, enrollmentStatus, creditsBalance, onSh
     const isFullByStaff = !!lesson.is_full_by_staff;
 
     return (
-        <article className="cursor-pointer rounded-xl border border-slate-200/60 bg-slate-50/50 p-3 backdrop-blur-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-white hover:shadow-md">
+        <article className="cursor-pointer rounded-xl border border-gray-700 bg-gray-800/80 p-3 backdrop-blur-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md">
             <div className="flex flex-wrap items-start justify-between gap-1">
                 <span
                     className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                         lesson.level === "pro"
                             ? "bg-gradient-to-r from-brand-deep/90 to-brand-accent/80 text-white"
-                            : "bg-slate-100 text-slate-700"
+                            : "bg-gray-700 text-gray-200"
                     }`}
                 >
                     {lesson.level === "pro" ? "Pro" : "Iniciación"}
                 </span>
-                <span className="text-xs font-medium text-slate-500">{timeStr}</span>
+                <span className="text-xs font-medium text-gray-400">{timeStr}</span>
             </div>
 
-            <p className="mt-2 font-heading text-base font-bold tracking-tight text-brand-deep">
+            <p className="mt-2 font-heading text-base font-bold tracking-tight text-gray-100">
                 {isPrivate ? "CLASE PRIVADA" : (lesson.title || `Clase ${timeStr}`)}
             </p>
-            <p className="mt-0.5 text-xs text-slate-600">{lesson.location}</p>
+            <p className="mt-0.5 text-xs text-gray-400">{lesson.location}</p>
 
             <div className="mt-2 flex items-center gap-1.5">
                 {lesson.monitor && (
                     <span
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-deep/10 text-xs font-bold text-brand-deep"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-900/30 text-xs font-bold text-sky-200"
                         title={`Monitor: ${lesson.monitor.nombre}`}
                     >
                         {(lesson.monitor.nombre || "M").charAt(0)}
@@ -161,7 +168,7 @@ function LessonCard({ lesson, isEnrolled, enrollmentStatus, creditsBalance, onSh
                     </span>
                 ) : (
                     <span
-                        className="inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-slate-500"
+                        className="inline-flex items-center gap-0.5 rounded-full bg-gray-700 px-1.5 py-0.5 text-gray-300"
                         title="Sesión sin fotos"
                     >
                         <CameraSlashIcon className="h-3.5 w-3.5" />
@@ -228,7 +235,7 @@ function LessonCard({ lesson, isEnrolled, enrollmentStatus, creditsBalance, onSh
                         Solicitar clase
                     </button>
                 ) : (
-                    <span className="text-sm text-slate-500">
+                    <span className="text-sm text-gray-400">
                         {isFullByStaff ? "Completo (staff)" : "Clase completa"}
                     </span>
                 )}
@@ -265,6 +272,14 @@ function startOfMonth(d) {
 }
 function addMonths(d, n) {
     return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
+function addDaysToYmd(ymdStr, days) {
+    const [y, m, d] = String(ymdStr || "").split("-").map(Number);
+    if (!y || !m || !d) return ymdStr;
+    const base = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    base.setUTCDate(base.getUTCDate() + Number(days || 0));
+    return `${base.getUTCFullYear()}-${String(base.getUTCMonth() + 1).padStart(2, "0")}-${String(base.getUTCDate()).padStart(2, "0")}`;
 }
 
 function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMonth, dayStats = {}, mySignalsByDate = {} }) {
@@ -322,7 +337,7 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
         cells.push({ key, inMonth, dayNum, dateStr: key, stats });
     }
 
-    const title = monthStart.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+    const title = formatMonthYearMadridFromYearMonth(monthStart.getFullYear(), monthStart.getMonth() + 1);
     const week = ["L", "M", "X", "J", "V", "S", "D"];
 
     const labelFor = (p) => {
@@ -347,15 +362,15 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
     };
 
     return (
-        <div ref={wrapRef} className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div ref={wrapRef} className="relative rounded-2xl border border-white/5 bg-slate-900 p-4 shadow-[0_14px_34px_rgba(2,6,23,0.45)]">
             {hover && (
                 <div
-                    className="pointer-events-none absolute z-[200] w-[220px] rounded-lg bg-slate-900/90 p-3 text-white shadow-lg backdrop-blur-sm"
+                    className="pointer-events-none absolute z-[200] w-[220px] rounded-lg bg-gray-900/95 p-3 text-white shadow-lg backdrop-blur-sm"
                     style={{ left: hover.left, top: hover.top }}
                     role="tooltip"
                 >
                     <div
-                        className={`absolute left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-slate-900/90 ${hover.placeBelow ? "-top-1" : "-bottom-1"}`}
+                        className={`absolute left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-gray-900/95 ${hover.placeBelow ? "-top-1" : "-bottom-1"}`}
                         aria-hidden
                     />
                     <div className="space-y-1">
@@ -373,25 +388,25 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                 <button
                     type="button"
                     onClick={() => onNavigateMonth(-1)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 transition-all duration-300"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-200 transition-all duration-300 hover:bg-slate-800"
                     aria-label="Mes anterior"
                 >
                     ←
                 </button>
-                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-600">
+                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-300">
                     {title}
                 </h2>
                 <button
                     type="button"
                     onClick={() => onNavigateMonth(1)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-slate-100 transition-all duration-300"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-200 transition-all duration-300 hover:bg-slate-800"
                     aria-label="Mes siguiente"
                 >
                     →
                 </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-7 gap-1 text-xs font-semibold text-slate-500">
+            <div className="mt-3 grid grid-cols-7 gap-1 text-xs font-bold uppercase tracking-widest text-slate-500">
                 {week.map((w) => (
                     <div key={w} className="text-center">{w}</div>
                 ))}
@@ -431,11 +446,11 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                             onFocus={(e) => showTooltip(c.dateStr, e.currentTarget, "cell")}
                             onBlur={hideTooltip}
                             className={[
-                                "relative h-11 rounded-xl text-sm font-medium transition-all duration-200 ease-in-out",
-                                disabled ? "text-slate-300" : "cursor-pointer text-slate-700 hover:scale-[1.05] hover:bg-white hover:shadow-md",
+                                "relative h-11 rounded-xl border text-sm font-medium transition-all duration-300 ease-in-out",
+                                disabled ? "border-slate-900 text-slate-700" : "cursor-pointer border-slate-800 text-slate-200 hover:-translate-y-0.5 hover:border-slate-700 hover:bg-slate-800/80",
                                 selected
-                                    ? "bg-[#00D1FF] text-slate-900 ring-2 ring-white/60 shadow-[0_10px_25px_rgba(0,209,255,0.4)]"
-                                    : "bg-slate-50 border border-slate-100 hover:border-slate-200",
+                                    ? "bg-blue-600 text-white ring-4 ring-blue-600/20 shadow-[0_8px_20px_rgba(37,99,235,0.35)]"
+                                    : "bg-slate-900",
                             ].join(" ")}
                         >
                             <span className="absolute left-2 top-2 text-xs">{c.inMonth ? c.dayNum : ""}</span>
@@ -462,25 +477,15 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                                     {c.stats?.count_by_type?.semanal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
                                     {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-amber-600/50" />}
                                 </div>
-                                {/* Desktop: micro-pills (alto sagrado) */}
-                                <div className="relative hidden w-full items-end gap-1 sm:flex">
-                                    {/* Bridge semanal por debajo */}
-                                    {hasWeekly && (
-                                        <span
-                                            className={[
-                                                "absolute -bottom-[2px] h-[3px] rounded-full bg-sky-500",
-                                                connectLeft ? "-left-1" : "left-0.5",
-                                                connectRight ? "-right-1" : "right-0.5",
-                                            ].join(" ")}
-                                            aria-hidden
-                                        />
-                                    )}
-                                    {pills.map((p, pIdx) => (
-                                        <span key={pIdx} className={`relative z-10 h-[3px] flex-1 rounded-full ${pillClass(p.t, p.vip)}`} />
-                                    ))}
+                                {/* Desktop: dots sutiles por tipo */}
+                                <div className="hidden w-full items-center justify-center gap-1.5 sm:flex">
+                                    {c.stats?.count_by_type?.particular > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />}
+                                    {c.stats?.count_by_type?.grupal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                                    {c.stats?.count_by_type?.semanal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />}
+                                    {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-amber-600/50" />}
                                     {overflow > 0 && (
                                         <span
-                                            className="ml-auto cursor-pointer text-[9px] font-semibold text-slate-400"
+                                            className="ml-1 cursor-pointer text-[9px] font-semibold text-slate-400"
                                             onMouseEnter={(e) => {
                                                 e.stopPropagation();
                                                 showTooltip(c.dateStr, e.currentTarget.closest("button"), "overflow");
@@ -496,14 +501,14 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                 })}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
+            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
                     <span className="h-2 w-2 rounded-full bg-sky-500" /> Disponible
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
                     <span className="h-2 w-2 rounded-full bg-amber-500" /> Solicitud enviada
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 ring-1 ring-slate-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
                     <span className="h-2 w-2 rounded-full bg-slate-400" /> Completo (staff)
                 </span>
             </div>
@@ -514,9 +519,9 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
 const DESCRIPTION_FALLBACK = "Sesión técnica de surf sin descripción adicional.";
 
 const LevelStyleMap = {
-    iniciacion: "bg-emerald-100 text-emerald-700",
-    intermedio: "bg-sky-100 text-sky-700",
-    avanzado: "bg-rose-100 text-rose-700",
+    iniciacion: "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+    intermedio: "border border-sky-500/20 bg-sky-500/10 text-sky-400",
+    avanzado: "border border-rose-500/20 bg-rose-500/10 text-rose-400",
 };
 
 const ModalityMap = {
@@ -529,6 +534,18 @@ function levelLabel(level) {
     if (level === "avanzado") return "Avanzado";
     if (level === "intermedio") return "Intermedio";
     return "Iniciación";
+}
+
+function isVipLesson(lesson) {
+    if (!lesson) return false;
+    return (
+        lesson.is_vip === true ||
+        String(lesson.is_vip) === "1" ||
+        lesson.vip === true ||
+        String(lesson.vip) === "1" ||
+        String(lesson.modality || "").toLowerCase() === "vip" ||
+        String(lesson.level || "").toLowerCase() === "vip"
+    );
 }
 
 function ClassStackCard({
@@ -546,7 +563,7 @@ function ClassStackCard({
     onOpenGroupBooking = null,
 }) {
     const startsAt = new Date(lesson.starts_at);
-    const timeStr = startsAt.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const timeStr = formatTimeMadrid(startsAt);
     const locationLabel = lesson.location || "Zurriola";
     const description = lesson.description?.trim() || DESCRIPTION_FALLBACK;
     const price = lesson.price != null ? Number(lesson.price) : null;
@@ -563,27 +580,27 @@ function ClassStackCard({
     return (
         <article
             className={[
-                "rounded-xl border border-slate-200/60 p-3 transition-all duration-200 ease-in-out",
-                isClosed ? "bg-slate-100 text-slate-500 opacity-90" : "cursor-pointer bg-white hover:-translate-y-0.5 hover:shadow-md",
+                "rounded-2xl border border-slate-800 bg-slate-800/40 p-4 transition-all duration-300 ease-in-out",
+                isClosed ? "text-slate-400 opacity-90" : "cursor-pointer hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-md",
                 weeklyJoinTop ? "rounded-t-none" : "",
                 weeklyJoinBottom ? "rounded-b-none" : "",
                 (modality === "semanal" && (weeklyJoinTop || weeklyJoinBottom)) ? "border-l-4 border-l-sky-400" : "",
             ].join(" ")}
         >
-            <div className="-mx-3 -mt-3 mb-2 flex flex-wrap items-start justify-between gap-2 rounded-t-xl border-b border-slate-100 bg-slate-50 px-3 py-2">
+            <div className="-mx-4 -mt-4 mb-3 flex flex-wrap items-start justify-between gap-2 rounded-t-2xl border-b border-slate-800 bg-slate-900/80 px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                    <span className="font-semibold text-slate-900">{timeStr}</span>
-                    <span className="text-slate-400">|</span>
+                    <span className="font-semibold text-slate-100">{timeStr}</span>
+                    <span className="text-slate-700">|</span>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${levelStyle}`}>
                         {levelLabel(level)}
                     </span>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                    <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-200">
                         {modalityMeta.icon} {modalityMeta.label}
                     </span>
-                    <span className="text-slate-500">· {locationLabel}</span>
+                    <span className="text-slate-400">· {locationLabel}</span>
                 </div>
                 {price != null && (
-                    <span className="text-sm font-bold text-slate-900">
+                    <span className="text-sm font-bold text-slate-100">
                         {price.toFixed(0)}€
                     </span>
                 )}
@@ -598,31 +615,34 @@ function ClassStackCard({
                     GRUPO CERRADO
                 </div>
             )}
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+            <p className="mt-1 text-sm leading-relaxed text-slate-300">
                 {description}
             </p>
             {enrollmentStatus === "cancelled" && enrollmentAdminNotes && (
-                <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800">
+                <div className="mt-3 rounded-xl border border-rose-700 bg-rose-900/30 px-3 py-2 text-sm font-medium text-rose-200">
                     Pago rechazado: {enrollmentAdminNotes}
                 </div>
             )}
             {enrollmentStatus === "pending" && enrollmentHasProof && (
-                <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-800">
+                <div className="mt-3 rounded-xl border border-sky-700 bg-sky-900/30 px-3 py-2 text-sm font-medium text-sky-200">
                     Verificando tu pago...
                 </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                <span className="inline-flex items-center gap-1 text-emerald-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                     Confirmados {lesson.confirmed_count ?? 0}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700">
+                <span className="inline-flex items-center gap-1 text-slate-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                     Pendientes {lesson.pending_count ?? 0}
                 </span>
-                <span className="inline-flex items-center rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700">
+                <span className="inline-flex items-center gap-1 text-slate-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
                     Total {lesson.total_students ?? 0}
                 </span>
                 {canOfferReinforcement && (
-                    <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
+                    <span className="inline-flex items-center gap-1 text-rose-300">
                         🔥 ¡Casi lleno! Refuerzo disponible
                     </span>
                 )}
@@ -634,7 +654,7 @@ function ClassStackCard({
                         onClick={() => onOpenGroupBooking?.(lesson)}
                         disabled={isProcessing}
                         className={[
-                            "w-full rounded-lg bg-sky-600 px-4 py-2 font-bold text-white transition-colors hover:bg-sky-700",
+                            "w-full rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white transition-all duration-300 ease-in-out hover:bg-sky-700",
                             "disabled:opacity-70 disabled:cursor-not-allowed hover:disabled:bg-sky-600",
                         ].join(" ")}
                     >
@@ -663,21 +683,16 @@ function ClassStackCard({
 }
 
 function ClassStack({ dateStr, lessons, onRequestEmptyDay, onCreateClassUrl }) {
-    const pretty = new Date(dateStr + "T12:00:00").toLocaleDateString("es-ES", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-    });
+    const pretty = formatLongDateLabelMadrid(dateStr);
 
     if (!lessons || lessons.length === 0) {
         return (
-            <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-700">
+            <div className="rounded-2xl border border-gray-700 bg-gray-800 p-6 shadow-[0_8px_30px_rgba(0,0,0,0.25)]">
+                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-gray-300">
                     Class-Stack · {pretty}
                 </h2>
-                <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center">
-                    <p className="text-sm font-medium text-slate-600">
+                <div className="mt-4 rounded-2xl border border-gray-700 bg-gray-900 p-6 text-center">
+                    <p className="text-sm font-medium text-gray-300">
                         No hay clases programadas para este día.
                     </p>
                     {onCreateClassUrl ? (
@@ -698,12 +713,12 @@ function ClassStack({ dateStr, lessons, onRequestEmptyDay, onCreateClassUrl }) {
     }
 
     return (
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl">
-            <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-700">
+        <div className="rounded-2xl border border-gray-700 bg-gray-800 p-4 shadow-xl">
+            <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-gray-300">
                 Class-Stack · {pretty}
             </h2>
             <div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">
-                <div className="rounded-xl bg-slate-50 p-3">
+                <div className="rounded-xl bg-gray-900 p-3">
                     {lessons.map((l) => (
                         <div key={l.id} className="mb-4 last:mb-0">
                             <ClassStackCard lesson={l} />
@@ -749,17 +764,23 @@ export default function AcademyIndex({
         currentUser.is_admin === true ||
         String(currentUser.is_admin) === "1"
     );
+    const isVipUser = !!currentUser && (
+        currentUser.is_vip === true ||
+        String(currentUser.is_vip) === "1" ||
+        String(currentUser.role) === "vip" ||
+        String(currentUser.role_id) === "vip" ||
+        Number(currentUser.role_id) === 3
+    );
 
     const feedLessons = useMemo(() => (Array.isArray(lessonsFeed) ? lessonsFeed : []), [lessonsFeed]);
 
-    // Oferta pública: ocultar particulares salvo que el alumno tenga una inscripción propia en esa clase.
+    // Oferta pública: exclusión total de particulares.
     const visibleFeedLessons = useMemo(() => {
         return feedLessons.filter((l) => {
             const modality = l.modality || (l.is_private ? "particular" : "grupal");
-            if (modality !== "particular") return true;
-            return !!myEnrollmentStatusByLesson?.[l.id];
+            return modality !== "particular";
         });
-    }, [feedLessons, myEnrollmentStatusByLesson]);
+    }, [feedLessons]);
 
     const mySignalsByDate = useMemo(() => {
         const out = {};
@@ -777,22 +798,43 @@ export default function AcademyIndex({
         }
         return out;
     }, [feedLessons, myEnrollmentStatusByLesson, myEnrollmentHasProofByLesson, myEnrollmentAdminNotesByLesson]);
-    const [modalityFilter, setModalityFilter] = useState("all"); // all | particular | grupal | semanal
+    const [modalityFilter, setModalityFilter] = useState("all"); // all | grupal | semanal | vip
+    const [futureDaysWindow, setFutureDaysWindow] = useState(0);
+    const [vipCalendarNotice, setVipCalendarNotice] = useState(false);
 
     const filteredFeedLessons = useMemo(() => {
         const base = visibleFeedLessons;
-        if (modalityFilter === "all") return base;
-        return base.filter((l) => (l.modality || (l.is_private ? "particular" : "grupal")) === modalityFilter);
-    }, [visibleFeedLessons, modalityFilter]);
+        const today = todayYmdInMadrid();
+
+        if (modalityFilter === "vip") {
+            return base.filter((l) => {
+                const d = l.date || (l.starts_at ? toYmdInMadrid(l.starts_at) : null);
+                return !!d && d >= today && isVipLesson(l);
+            });
+        }
+
+        const end = addDaysToYmd(date, futureDaysWindow);
+        return base.filter((l) => {
+            const modality = l.modality || (l.is_private ? "particular" : "grupal");
+            const d = l.date || (l.starts_at ? toYmdInMadrid(l.starts_at) : null);
+            if (!d) return false;
+            if (d < date || d > end) return false;
+            if (modalityFilter === "all") return true;
+            return modality === modalityFilter;
+        });
+    }, [visibleFeedLessons, modalityFilter, date, futureDaysWindow]);
 
     const [showPrivateModal, setShowPrivateModal] = useState(false);
     const [privateDate, setPrivateDate] = useState(() => selectedDate);
+    const [privateDurationMode, setPrivateDurationMode] = useState("preset");
+    const [privateDurationMinutes, setPrivateDurationMinutes] = useState(90);
+    const [privateManualMinutes, setPrivateManualMinutes] = useState(90);
     const [privateSlots, setPrivateSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [selectedPrivateSlot, setSelectedPrivateSlot] = useState(null);
 
     const [miniMonth, setMiniMonth] = useState(() => selectedDate);
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayYmdInMadrid();
     const miniMonthStart = useMemo(() => startOfMonth(new Date((miniMonth || selectedDate) + "T12:00:00")), [miniMonth, selectedDate]);
     const miniMonthEnd = useMemo(() => new Date(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1, 0), [miniMonthStart]);
     const miniFirstDow = useMemo(() => (miniMonthStart.getDay() + 6) % 7, [miniMonthStart]); // lunes=0
@@ -812,7 +854,10 @@ export default function AcademyIndex({
         setLoadingSlots(true);
         setSelectedPrivateSlot(null);
         try {
-            const res = await fetch(route("academy.private.availability", { date: d }), { headers: { Accept: "application/json" } });
+            const durationMinutes = privateDurationMode === "manual"
+                ? Math.max(30, Number(privateManualMinutes || 90))
+                : Number(privateDurationMinutes || 90);
+            const res = await fetch(route("academy.private.availability", { date: d, duration_minutes: durationMinutes }), { headers: { Accept: "application/json" } });
             const json = await res.json();
             setPrivateSlots(Array.isArray(json.slots) ? json.slots : []);
         } catch (e) {
@@ -837,12 +882,6 @@ export default function AcademyIndex({
     const feedWrapRef = useRef(null);
     const dayRefMap = useRef({});
     const [highlightDay, setHighlightDay] = useState(null);
-    const todayDateOnly = useMemo(() => {
-        const d = new Date();
-        d.setHours(0, 0, 0, 0);
-        return d;
-    }, []);
-
     const submitGroupBooking = (lesson, payload) => {
         if (!lesson?.id) return;
         setProcessingId(lesson.id);
@@ -911,14 +950,14 @@ export default function AcademyIndex({
     return (
         <Layout1>
             <Head title="Academia · Clases" />
-            <div className="mx-auto max-w-7xl px-4 pt-28 pb-6 sm:px-6">
+            <div className="mx-auto max-w-7xl bg-slate-950 px-4 pb-6 pt-28 sm:px-6">
                 <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="font-heading text-2xl font-bold tracking-tight text-brand-deep">
+                        <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-100">
                             Clases de surf
                         </h1>
-                        <p className="mt-1 text-sm text-slate-600">
-                            Tu saldo: <strong className="text-brand-deep">{creditsBalance} créditos</strong>
+                        <p className="mt-1 text-sm text-gray-400">
+                            Tu saldo: <strong className="text-sky-300">{creditsBalance} créditos</strong>
                         </p>
                     </div>
                     <Link
@@ -935,11 +974,11 @@ export default function AcademyIndex({
                             setShowPrivateModal(true);
                             loadPrivateSlots(privateDate);
                         }}
-                        className="rounded-2xl bg-gradient-to-r from-amber-400 to-yellow-300 px-5 py-3 text-sm font-extrabold text-slate-900 shadow-md transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:shadow-lg"
+                        className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-semibold text-amber-950 shadow-lg shadow-amber-500/10 transition-all duration-300 ease-in-out hover:brightness-110"
                     >
                         Solicitar Clase Particular
                     </button>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-gray-400">
                         Clases particulares no se muestran en la oferta pública.
                     </p>
                 </div>
@@ -962,7 +1001,13 @@ export default function AcademyIndex({
                                 monthDate={monthDate}
                                 selectedDate={date}
                                 onSelectDay={(d) => {
+                                    if (modalityFilter === "vip") {
+                                        setVipCalendarNotice(true);
+                                        return;
+                                    }
+                                    setVipCalendarNotice(false);
                                     setDate(d);
+                                    setFutureDaysWindow(0);
                                     scrollToDay(d);
                                 }}
                                 onNavigateMonth={navigateMonth}
@@ -973,27 +1018,35 @@ export default function AcademyIndex({
                     </aside>
 
                     <main className="flex-1 lg:w-[70%]">
-                        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xl">
+                        <div className="rounded-2xl border border-white/5 bg-slate-900 p-4 shadow-[0_16px_40px_rgba(2,6,23,0.45)]">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-slate-700">
+                                <h2 className="font-heading text-sm font-bold uppercase tracking-wider text-gray-300">
                                     Class-Stack
                                 </h2>
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-slate-950 p-1">
                                     {[
                                         { id: "all", label: "Todas" },
-                                        { id: "particular", label: "Particulares" },
                                         { id: "grupal", label: "Grupales" },
                                         { id: "semanal", label: "Semanales" },
+                                        ...(isVipUser ? [{ id: "vip", label: "Clases VIP" }] : []),
                                     ].map((f) => (
                                         <button
                                             key={f.id}
                                             type="button"
-                                            onClick={() => setModalityFilter(f.id)}
+                                            onClick={() => {
+                                                setModalityFilter(f.id);
+                                                if (f.id === "vip") {
+                                                    setVipCalendarNotice(false);
+                                                    return;
+                                                }
+                                                setFutureDaysWindow(0);
+                                                setVipCalendarNotice(false);
+                                            }}
                                             className={[
-                                                "rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ease-in-out",
+                                                "rounded-lg border-b-2 border-transparent px-3 py-1.5 text-xs font-semibold transition-all duration-300 ease-in-out",
                                                 modalityFilter === f.id
-                                                    ? "bg-[#00D1FF] text-slate-900 shadow-[0_10px_25px_rgba(0,209,255,0.25)]"
-                                                    : "bg-slate-100 text-slate-600 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm",
+                                                    ? "bg-slate-900 text-sky-300 border-b-sky-400"
+                                                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60",
                                             ].join(" ")}
                                         >
                                             {f.label}
@@ -1001,23 +1054,28 @@ export default function AcademyIndex({
                                     ))}
                                 </div>
                             </div>
+                            {modalityFilter === "vip" && (
+                                <p className="mt-3 text-xs text-slate-400">
+                                    Mostrando clases VIP desde hoy en adelante.
+                                </p>
+                            )}
+                            {vipCalendarNotice && modalityFilter === "vip" && (
+                                <p className="mt-2 text-xs text-amber-300">
+                                    El filtro VIP ignora el día del calendario. Cambia a "Todas" para ver un día concreto.
+                                </p>
+                            )}
                             <div ref={feedWrapRef} className="mt-4 max-h-[70vh] overflow-y-auto pr-1">
                                 {dayKeys.length === 0 ? (
-                                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6 text-center text-slate-600">
-                                        No hay clases futuras programadas.
+                                    <div className="rounded-2xl border border-gray-700 bg-gray-900 p-6 text-center text-gray-300">
+                                        No hay clases disponibles para estos criterios. Prueba otra fecha.
                                     </div>
                                 ) : (
-                                    <div className="rounded-xl bg-slate-50 p-3">
+                                    <div className="rounded-xl bg-slate-950 p-3">
                                         {(() => {
                                             const batchIndex = {};
                                             let prevLesson = null;
                                             return dayKeys.map((dayStr) => {
-                                                const pretty = new Date(dayStr + "T12:00:00").toLocaleDateString("es-ES", {
-                                                    weekday: "long",
-                                                    day: "numeric",
-                                                    month: "long",
-                                                    year: "numeric",
-                                                }).toUpperCase();
+                                                const pretty = formatLongDateLabelMadrid(dayStr).toUpperCase();
                                                 const isHot = highlightDay === dayStr;
                                                 const lessons = feedByDay[dayStr] || [];
 
@@ -1029,11 +1087,11 @@ export default function AcademyIndex({
                                                         }}
                                                         className="mb-6 last:mb-0 scroll-mt-4"
                                                     >
-                                                        <div className="sticky top-0 z-10 -mx-3 mb-3 border-b border-slate-200 bg-slate-50/95 px-3 py-2 backdrop-blur">
+                                                        <div className="sticky top-0 z-10 -mx-3 mb-3 border-b border-slate-800 bg-slate-950/95 px-3 py-2 backdrop-blur">
                                                             <div
                                                                 className={[
-                                                                    "inline-flex rounded-lg px-2 py-1 text-xs font-extrabold tracking-wider text-slate-800 transition-all duration-200",
-                                                                    isHot ? "ring-2 ring-brand-accent/50 bg-white shadow-sm" : "bg-white/70 ring-1 ring-slate-200/60",
+                                                                    "inline-flex rounded-lg px-2 py-1 text-xs font-extrabold tracking-wider text-slate-100 transition-all duration-300",
+                                                                    isHot ? "bg-slate-900 ring-2 ring-sky-500/45 shadow-sm" : "bg-slate-900/80 ring-1 ring-slate-700",
                                                                 ].join(" ")}
                                                             >
                                                                 {pretty}
@@ -1043,10 +1101,7 @@ export default function AcademyIndex({
                                                             {lessons.map((l, idx) => {
                                                                 const modality = l.modality || (l.is_private ? "particular" : "grupal");
                                                                 const isClosed = modality === "particular" && Number(l.total_students || 0) >= 6;
-                                                                const startsAt = new Date(l.starts_at);
-                                                                const dateFloor = new Date(startsAt);
-                                                                dateFloor.setHours(0, 0, 0, 0);
-                                                                const isFutureOrToday = dateFloor.getTime() >= todayDateOnly.getTime();
+                                                                const isFutureOrToday = toYmdInMadrid(l.starts_at) >= todayYmdInMadrid();
                                                                 const maxSlots = Number(l.max_slots ?? 0);
                                                                 const totalStudents = Number(l.total_students ?? 0);
                                                                 const hasFreeSlots = maxSlots > 0 ? totalStudents < maxSlots : true;
@@ -1094,6 +1149,17 @@ export default function AcademyIndex({
                                         })()}
                                     </div>
                                 )}
+                                {modalityFilter !== "vip" && (
+                                    <div className="mt-4 flex justify-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => setFutureDaysWindow((prev) => prev + 10)}
+                                            className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 transition-all duration-300 ease-in-out hover:bg-slate-800"
+                                        >
+                                            Ver clases de los próximos 10 días
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </main>
@@ -1139,19 +1205,19 @@ export default function AcademyIndex({
 
             {showPrivateModal && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-slate-900/60" onClick={() => setShowPrivateModal(false)} aria-hidden />
-                    <div className="relative w-full max-w-2xl rounded-2xl border border-white/20 bg-white p-6 shadow-2xl">
+                    <div className="absolute inset-0 bg-gray-950/70" onClick={() => setShowPrivateModal(false)} aria-hidden />
+                    <div className="relative w-full max-w-2xl rounded-2xl border border-gray-700 bg-gray-800 p-6 shadow-2xl">
                         <div className="flex items-start justify-between gap-4">
                             <div>
-                                <h3 className="font-heading text-lg font-bold text-brand-deep">Solicitar clase particular</h3>
-                                <p className="mt-1 text-sm text-slate-600">
+                                <h3 className="font-heading text-lg font-bold text-gray-100">Solicitar clase particular</h3>
+                                <p className="mt-1 text-sm text-gray-400">
                                     Elige fecha y un tramo de 1.5h con al menos 1 monitor libre.
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={() => setShowPrivateModal(false)}
-                                className="rounded-xl bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
+                                className="rounded-xl bg-sky-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-700"
                             >
                                 Cerrar
                             </button>
@@ -1159,30 +1225,30 @@ export default function AcademyIndex({
 
                         <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700">Fecha</label>
-                                <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <label className="block text-sm font-semibold text-gray-300">Fecha</label>
+                                <div className="mt-2 rounded-2xl border border-gray-700 bg-gray-900 p-3">
                                     <div className="flex items-center justify-between">
                                         <button
                                             type="button"
                                             onClick={() => setMiniMonth(ymd(addMonths(miniMonthStart, -1)))}
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white transition-all duration-200 ease-in-out"
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-gray-100 hover:bg-gray-700 transition-all duration-200 ease-in-out"
                                             aria-label="Mes anterior"
                                         >
                                             ←
                                         </button>
-                                        <div className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
-                                            {miniMonthStart.toLocaleDateString("es-ES", { month: "long", year: "numeric" })}
+                                        <div className="text-xs font-extrabold uppercase tracking-wider text-gray-300">
+                                            {formatMonthYearMadridFromYearMonth(miniMonthStart.getFullYear(), miniMonthStart.getMonth() + 1)}
                                         </div>
                                         <button
                                             type="button"
                                             onClick={() => setMiniMonth(ymd(addMonths(miniMonthStart, 1)))}
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white transition-all duration-200 ease-in-out"
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-gray-100 hover:bg-gray-700 transition-all duration-200 ease-in-out"
                                             aria-label="Mes siguiente"
                                         >
                                             →
                                         </button>
                                     </div>
-                                    <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] font-bold text-slate-500">
+                                    <div className="mt-2 grid grid-cols-7 gap-1 text-[10px] font-bold text-gray-400">
                                         {["L", "M", "X", "J", "V", "S", "D"].map((w) => (
                                             <div key={w} className="text-center">{w}</div>
                                         ))}
@@ -1202,8 +1268,8 @@ export default function AcademyIndex({
                                                     }}
                                                     className={[
                                                         "h-10 rounded-xl text-xs font-semibold transition-all duration-200 ease-in-out",
-                                                        disabled ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-700 hover:-translate-y-0.5 hover:shadow-sm",
-                                                        selected ? "bg-[#00D1FF] text-slate-900 shadow-[0_10px_25px_rgba(0,209,255,0.25)]" : "ring-1 ring-slate-200/70",
+                                                        disabled ? "bg-gray-800 text-gray-600 cursor-not-allowed" : "bg-gray-800 text-gray-200 hover:-translate-y-0.5 hover:shadow-sm",
+                                                        selected ? "bg-[#00D1FF] text-slate-900 shadow-[0_10px_25px_rgba(0,209,255,0.25)]" : "ring-1 ring-gray-600/70",
                                                     ].join(" ")}
                                                 >
                                                     {c.inMonth ? c.dayNum : ""}
@@ -1211,18 +1277,55 @@ export default function AcademyIndex({
                                             );
                                         })}
                                     </div>
-                                    <p className="mt-2 text-xs text-slate-600">
-                                        Seleccionado: <span className="font-semibold text-slate-800">{privateDate}</span>
+                                    <p className="mt-2 text-xs text-gray-400">
+                                        Seleccionado: <span className="font-semibold text-gray-200">{privateDate}</span>
                                     </p>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700">Horario (1.5h)</label>
-                                <div className="mt-2 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                <label className="block text-sm font-semibold text-gray-300">Horario disponible</label>
+                                <div className="mt-2 rounded-2xl border border-gray-700 bg-gray-900 p-3">
+                                    <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                        <select
+                                            value={privateDurationMode === "manual" ? "manual" : String(privateDurationMinutes)}
+                                            onChange={(e) => {
+                                                const v = e.target.value;
+                                                if (v === "manual") {
+                                                    setPrivateDurationMode("manual");
+                                                } else {
+                                                    setPrivateDurationMode("preset");
+                                                    setPrivateDurationMinutes(Number(v));
+                                                }
+                                                loadPrivateSlots(privateDate);
+                                            }}
+                                            className="input-focus-ring w-full rounded-xl px-3 py-2 text-sm"
+                                        >
+                                            <option value="60">1 hora</option>
+                                            <option value="90">1,5 horas</option>
+                                            <option value="120">2 horas</option>
+                                            <option value="manual">Manual</option>
+                                        </select>
+                                        {privateDurationMode === "manual" ? (
+                                            <select
+                                                value={privateManualMinutes}
+                                                onChange={(e) => {
+                                                    setPrivateManualMinutes(Number(e.target.value || 90));
+                                                    loadPrivateSlots(privateDate);
+                                                }}
+                                                className="input-focus-ring w-full rounded-xl px-3 py-2 text-sm"
+                                            >
+                                                {Array.from({ length: 18 }, (_, i) => 45 + (i * 15)).map((m) => (
+                                                    <option key={m} value={m}>{m} min</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div />
+                                        )}
+                                    </div>
                                     {loadingSlots ? (
-                                        <p className="text-sm text-slate-600">Cargando disponibilidad…</p>
+                                        <p className="text-sm text-gray-300">Cargando disponibilidad…</p>
                                     ) : privateSlots.length === 0 ? (
-                                        <p className="text-sm text-slate-600">No hay huecos disponibles para ese día.</p>
+                                        <p className="text-sm text-gray-300">No hay huecos disponibles para ese día.</p>
                                     ) : (
                                         <div className="flex flex-wrap gap-2">
                                             {privateSlots.map((s) => {
@@ -1235,7 +1338,7 @@ export default function AcademyIndex({
                                                         onClick={() => setSelectedPrivateSlot(s)}
                                                         className={[
                                                             "rounded-full px-3 py-1 text-xs font-semibold transition-all duration-200 ease-in-out",
-                                                            active ? "bg-[#00D1FF] text-slate-900" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:-translate-y-0.5 hover:shadow-sm",
+                                                            active ? "bg-[#00D1FF] text-slate-900" : "bg-gray-800 text-gray-200 ring-1 ring-gray-600 hover:-translate-y-0.5 hover:shadow-sm",
                                                         ].join(" ")}
                                                     >
                                                         {s.start}–{s.end}
@@ -1256,7 +1359,10 @@ export default function AcademyIndex({
                                 type="button"
                                 disabled={!selectedPrivateSlot}
                                 onClick={() => {
-                                    router.post(route("academy.private.request"), { date: privateDate, start: selectedPrivateSlot.start }, { preserveScroll: true });
+                                    const durationMinutes = privateDurationMode === "manual"
+                                        ? Math.max(30, Number(privateManualMinutes || 90))
+                                        : Number(privateDurationMinutes || 90);
+                                    router.post(route("academy.private.request"), { date: privateDate, start: selectedPrivateSlot.start, duration_minutes: durationMinutes }, { preserveScroll: true });
                                     setShowPrivateModal(false);
                                 }}
                                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"

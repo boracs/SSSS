@@ -24,7 +24,7 @@ function NavLinkItem({ href, children, onClick, active = false }) {
             onClick={onClick}
             className={cx(
                 "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-all duration-200",
-                active ? "bg-slate-100 text-brand-deep" : "text-brand-deep/90 hover:bg-slate-100 hover:text-brand-accent"
+                active ? "bg-gray-700 text-gray-100" : "text-gray-200 hover:bg-gray-700 hover:text-sky-300"
             )}
         >
             {children}
@@ -39,7 +39,7 @@ function Dropdown({ label, badge = 0, children }) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/90 hover:bg-slate-100 hover:text-brand-accent"
+                className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700 hover:text-sky-300"
             >
                 {label}
                 {badge > 0 ? (
@@ -55,7 +55,7 @@ function Dropdown({ label, badge = 0, children }) {
                     open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95"
                 )}
             >
-                <div className="rounded-2xl border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="rounded-2xl border border-gray-700 bg-gray-800 p-2 shadow-xl">
                     {children}
                 </div>
             </div>
@@ -160,14 +160,14 @@ const Menu_Principal = () => {
     return (
         <nav
             className={cx(
-                "sticky top-0 z-[100] border-b border-slate-200/60 bg-white/95 transition-transform duration-300",
+                "sticky top-0 z-[100] border-b border-gray-700 bg-gray-900/95 transition-transform duration-300",
                 menuVisible ? "translate-y-0" : "-translate-y-full"
             )}
         >
             <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
                 <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
                     <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-brand-accent text-sm font-extrabold text-white">S4</span>
-                    <span className="font-heading text-lg font-semibold text-brand-deep">San Sebastian Surf School</span>
+                    <span className="font-heading text-lg font-semibold text-gray-100">San Sebastian Surf School</span>
                 </Link>
 
                 <div className="hidden lg:flex items-center gap-1">
@@ -214,7 +214,7 @@ const Menu_Principal = () => {
                                 {links.classesModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700 hover:text-sky-300">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -225,7 +225,7 @@ const Menu_Principal = () => {
                                 {links.rentalsModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700 hover:text-sky-300">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -236,7 +236,7 @@ const Menu_Principal = () => {
                                 {links.lockersModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700 hover:text-sky-300">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                             {Number(l.badge || 0) > 0 ? (
@@ -252,7 +252,7 @@ const Menu_Principal = () => {
                                 {links.adminClientView.map((l) => {
                                     const Icon = l.icon;
                                     return (
-                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-brand-deep/80 hover:bg-slate-50 hover:text-brand-accent">
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700 hover:text-sky-300">
                                             <Icon className="h-4 w-4" />
                                             <span>{l.label}</span>
                                         </Link>
@@ -263,15 +263,15 @@ const Menu_Principal = () => {
                     ) : null}
                 </div>
 
-                <button type="button" onClick={() => setMobileOpen((v) => !v)} className="lg:hidden rounded-xl p-2 hover:bg-slate-100" aria-label="Abrir menú">
-                    <svg className="h-6 w-6 text-brand-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button type="button" onClick={() => setMobileOpen((v) => !v)} className="lg:hidden rounded-xl p-2 text-gray-100 hover:bg-gray-700" aria-label="Abrir menú">
+                    <svg className="h-6 w-6 text-gray-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
             </div>
 
             {mobileOpen ? (
-                <div className="border-t border-slate-200/60 bg-brand-deep px-4 py-3 lg:hidden">
+                <div className="border-t border-gray-700 bg-gray-900 px-4 py-3 lg:hidden">
                     <div className="space-y-1">
                         {links.publicLinks.map((l) => (
                             <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-white hover:bg-white/10 hover:text-brand-accent">

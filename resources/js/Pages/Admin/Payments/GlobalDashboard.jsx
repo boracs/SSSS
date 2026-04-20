@@ -252,10 +252,10 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
     return (
         <>
             <Head title="Pagos · Dashboard Global" />
-            <div className="mx-auto max-w-7xl p-6 space-y-5">
+            <div className="mx-auto max-w-7xl space-y-5 p-6 text-gray-200">
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold text-slate-900">Pagos · Dashboard Global</h1>
-                    <span className="rounded-full bg-rose-600 px-3 py-1 text-xs font-bold text-white">
+                    <h1 className="text-2xl font-bold text-white">Pagos · Dashboard Global</h1>
+                    <span className="rounded-full bg-red-900/50 px-3 py-1 text-xs font-bold text-red-200 ring-1 ring-red-500/40">
                         Pendientes: {tabBadge.classes + tabBadge.rentals + tabBadge.bonos}
                     </span>
                 </div>
@@ -344,10 +344,10 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                     </div>
                 ) : null}
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
                     <div className="max-h-[68vh] overflow-auto">
                         <table className="min-w-full text-sm">
-                            <thead className="sticky top-0 bg-slate-50 text-slate-700">
+                            <thead className="sticky top-0 bg-gray-800 text-gray-200">
                                 <tr>
                                     <th className="px-4 py-3 text-left">Usuario</th>
                                     <th className="px-4 py-3 text-left">Detalle</th>
@@ -360,19 +360,19 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                             <tbody>
                                 {activeRows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Sin resultados para este filtro.</td>
+                                        <td colSpan={6} className="px-4 py-8 text-center text-gray-400">Sin resultados para este filtro.</td>
                                     </tr>
                                 ) : activeRows.map((row) => (
-                                    <tr key={row.id} className="border-t border-slate-100">
-                                        <td className="px-4 py-3">{row.user}</td>
-                                        <td className="px-4 py-3">
+                                    <tr key={row.id} className="border-t border-gray-700 text-gray-100">
+                                        <td className="px-4 py-3 text-gray-100">{row.user}</td>
+                                        <td className="px-4 py-3 text-gray-200">
                                             {tab === TAB_CLASSES ? `${row.lesson_name || "Clase"} · ${row.modality || "grupal"}` : null}
                                             {tab === TAB_RENTALS ? (row.rental_name || "Alquiler") : null}
                                             {tab === TAB_BONOS ? `${row.pack || "Bono"} (${row.num_clases || 0} clases)` : null}
                                         </td>
-                                        <td className="px-4 py-3">{row.created_at_human || row.date_human || "—"}</td>
-                                        <td className="px-4 py-3 font-semibold">{Number(row.amount || 0).toFixed(2)} €</td>
-                                        <td className="px-4 py-3">{statusLabel(row.status)}</td>
+                                        <td className="px-4 py-3 text-gray-300">{row.created_at_human || row.date_human || "—"}</td>
+                                        <td className="px-4 py-3 font-semibold text-white">{Number(row.amount || 0).toFixed(2)} €</td>
+                                        <td className="px-4 py-3 text-gray-200">{statusLabel(row.status)}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex justify-end gap-2">
                                                 {row.proof_url ? (
@@ -382,7 +382,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         className={`rounded-lg px-2 py-1 text-xs font-semibold ${
                                                             tab === TAB_BONOS && bonoStatus === "pending_validation"
                                                                 ? "bg-sky-600 text-white hover:bg-sky-700"
-                                                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                                                : "bg-gray-700 text-gray-100 hover:bg-gray-600"
                                                         }`}
                                                     >
                                                         Ver comprobante
@@ -393,7 +393,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         <button
                                                             type="button"
                                                             onClick={() => setContactModal({ channel: "whatsapp", row })}
-                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs font-bold text-white shadow transition-all hover:scale-105 hover:bg-emerald-600"
+                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white shadow transition-all hover:scale-105 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300/70"
                                                             title="Contactar por WhatsApp"
                                                         >
                                                             <WhatsAppIcon className="h-3.5 w-3.5" />
@@ -401,7 +401,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         <button
                                                             type="button"
                                                             onClick={() => setContactModal({ channel: "email", row })}
-                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-white shadow transition-all hover:scale-105 hover:bg-sky-700"
+                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white shadow transition-all hover:scale-105 hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-300/70"
                                                             title="Enviar Email"
                                                         >
                                                             <EnvelopeIcon className="h-3.5 w-3.5" />

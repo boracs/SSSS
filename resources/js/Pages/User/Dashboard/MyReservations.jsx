@@ -185,17 +185,17 @@ function BonoWallet({ performanceData = null }) {
     const stats = resolvedStats || {};
 
     return (
-        <div className="relative overflow-hidden rounded-3xl border border-white/40 bg-gradient-to-br from-sky-500/25 via-white/60 to-indigo-500/25 p-5 shadow-xl backdrop-blur-md">
+        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-5 shadow-xl backdrop-blur-md">
             <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-300/30 blur-2xl" />
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                         Elite Surf Club Wallet
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-slate-900">
+                    <h3 className="mt-1 text-xl font-bold text-white">
                         {resolvedPackName || "Sin créditos activos"}
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-gray-300">
                         {resolvedPrediction
                             ? resolvedPrediction.replace(
                                   "Al ritmo actual, tus créditos durarán hasta el",
@@ -204,38 +204,38 @@ function BonoWallet({ performanceData = null }) {
                             : "Sin predicción disponible."}
                     </p>
                     {bono && totalNum > 0 ? (
-                        <p className="mt-1 text-xs font-medium text-slate-500">
+                        <p className="mt-1 text-xs font-medium text-gray-400">
                             Créditos disponibles hoy:{" "}
                             <span
-                                className={`tabular-nums font-semibold ${remainingNum < 0 ? "text-red-600" : "text-slate-700"}`}
+                                className={`tabular-nums font-semibold ${remainingNum < 0 ? "text-red-300" : "text-gray-200"}`}
                             >
                                 {remainingNum}
                             </span>
-                            <span className="ml-2 text-slate-400">|</span>
+                            <span className="ml-2 text-gray-500">|</span>
                             <span className="ml-2">
                                 Total comprados:{" "}
-                                <span className="tabular-nums text-slate-700">
+                                <span className="tabular-nums text-gray-200">
                                     {totalNum}
                                 </span>
                             </span>
                         </p>
                     ) : null}
                     {bono && lastPackTotal > 0 ? (
-                        <div className="mt-2 rounded-lg border border-slate-200/70 bg-white/65 px-2.5 py-2 text-[11px] leading-relaxed text-slate-600">
+                        <div className="mt-2 rounded-lg border border-gray-700 bg-gray-800/70 px-2.5 py-2 text-[11px] leading-relaxed text-gray-300">
                             <p>
                                 Última recarga:{" "}
-                                <span className="font-semibold text-slate-800">
+                                <span className="font-semibold text-gray-100">
                                     {bono.sku || "—"}
                                 </span>
                                 {" · "}
-                                <span className="tabular-nums font-semibold text-slate-800">
+                                <span className="tabular-nums font-semibold text-gray-100">
                                     {lastPackTotal}
                                 </span>{" "}
                                 créditos
                             </p>
                             <p>
                                 Consumidos de esta recarga:{" "}
-                                <span className="tabular-nums font-semibold text-slate-800">
+                                <span className="tabular-nums font-semibold text-gray-100">
                                     {lastPackConsumed}
                                 </span>
                                 /
@@ -243,12 +243,12 @@ function BonoWallet({ performanceData = null }) {
                                     {lastPackTotal}
                                 </span>
                                 {" · "}Disponible de esta recarga:{" "}
-                                <span className="tabular-nums font-semibold text-slate-800">
+                                <span className="tabular-nums font-semibold text-gray-100">
                                     {lastPackAvailable}
                                 </span>
                             </p>
                             {lastPackExtraConsumed > 0 ? (
-                                <p className="text-amber-700">
+                                <p className="text-amber-300">
                                     Consumo adicional tras agotar esta recarga:{" "}
                                     <span className="tabular-nums font-semibold">
                                         {lastPackExtraConsumed}
@@ -291,7 +291,7 @@ function BonoWallet({ performanceData = null }) {
                             y="60"
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className={`${isOverdrawn ? "fill-red-600" : "fill-slate-900"} font-semibold`}
+                            className={`${isOverdrawn ? "fill-red-300" : "fill-white"} font-semibold`}
                             style={{
                                 fontSize: "28px",
                                 fontFeatureSettings: '"tnum"',
@@ -302,18 +302,18 @@ function BonoWallet({ performanceData = null }) {
                         </text>
                     </svg>
                     <div className="mt-4 w-full max-w-[12rem] text-center">
-                        <p className="text-xs font-medium text-slate-600">
+                        <p className="text-xs font-medium text-gray-400">
                             Indicador de Créditos
                         </p>
                         {totalNum > 0 ? (
-                            <p className="mt-2 tabular-nums text-[11px] font-normal leading-relaxed text-slate-500">
+                            <p className="mt-2 tabular-nums text-[11px] font-normal leading-relaxed text-gray-400">
                                 Saldo actual: {remainingNum} de {totalNum}{" "}
                                 créditos · Consumidos:{" "}
                                 {Math.max(0, totalNum - remainingNum)}
                             </p>
                         ) : null}
                         {isOverdrawn ? (
-                            <p className="mt-1 text-[11px] font-semibold text-red-600">
+                            <p className="mt-1 text-[11px] font-semibold text-red-300">
                                 Créditos Adelantados: {Math.abs(remainingNum)}
                             </p>
                         ) : null}
@@ -321,21 +321,21 @@ function BonoWallet({ performanceData = null }) {
                 </div>
             </div>
             <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-                <div className="rounded-xl bg-white/60 p-3">
-                    <p className="text-xs text-slate-500">Total Surfeado</p>
-                    <p className="font-semibold text-slate-900">
+                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
+                    <p className="text-xs text-gray-500">Total Surfeado</p>
+                    <p className="font-semibold text-gray-100">
                         {Number(stats.total_surfed_hours || 0).toFixed(1)} h
                     </p>
                 </div>
-                <div className="rounded-xl bg-white/60 p-3">
-                    <p className="text-xs text-slate-500">Ratio Solo/Grupal</p>
-                    <p className="font-semibold text-slate-900">
+                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
+                    <p className="text-xs text-gray-500">Ratio Solo/Grupal</p>
+                    <p className="font-semibold text-gray-100">
                         {Number(stats.solo_ratio_percent || 0)}% solo
                     </p>
                 </div>
-                <div className="rounded-xl bg-white/60 p-3">
-                    <p className="text-xs text-slate-500">Progreso de Nivel</p>
-                    <p className="font-semibold text-slate-900">
+                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
+                    <p className="text-xs text-gray-500">Progreso de Nivel</p>
+                    <p className="font-semibold text-gray-100">
                         {stats.level_progress || "Iniciación"}
                     </p>
                 </div>
@@ -741,8 +741,8 @@ function AttendanceHeatmap({
                 : "";
         const hasData = (c.entries?.length || 0) > 0;
         const heat = hasData
-            ? "bg-white border-slate-300"
-            : "bg-slate-100 border-slate-200";
+            ? "bg-gray-900 border-gray-600"
+            : "bg-gray-800 border-gray-700";
         const day = new Date(c.iso);
         const pulse = "";
         return `${base} ${outside} ${selected} ${heat} ${pulse}`;
@@ -750,7 +750,7 @@ function AttendanceHeatmap({
 
     return (
         <div
-            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
         >
@@ -758,7 +758,7 @@ function AttendanceHeatmap({
                 <button
                     type="button"
                     onClick={() => goMonth(-1)}
-                    className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700"
+                    className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-200"
                 >
                     ◀
                 </button>
@@ -769,7 +769,7 @@ function AttendanceHeatmap({
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: direction > 0 ? -24 : 24, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="text-sm font-semibold capitalize text-slate-900"
+                        className="text-sm font-semibold capitalize text-white"
                     >
                         {monthLabel}
                     </motion.p>
@@ -777,13 +777,13 @@ function AttendanceHeatmap({
                 <button
                     type="button"
                     onClick={() => goMonth(1)}
-                    className="rounded-lg bg-slate-100 px-3 py-1 text-sm text-slate-700"
+                    className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-200"
                 >
                     ▶
                 </button>
             </div>
 
-            <div className="mb-2 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <div className="mb-2 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">
                 {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
                     <span key={d}>{d}</span>
                 ))}
@@ -861,8 +861,8 @@ function AttendanceHeatmap({
                         <span
                             className={`absolute left-1 top-1 z-10 rounded-md px-1 py-0.5 text-[11px] tabular-nums ${
                                 c.entries?.length
-                                    ? "bg-white/85 text-slate-800 shadow-sm"
-                                    : "text-slate-500/70"
+                                    ? "bg-gray-100 text-gray-900 shadow-sm"
+                                    : "text-gray-400/80"
                             }`}
                         >
                             {c.dayNumber}
@@ -871,7 +871,7 @@ function AttendanceHeatmap({
                 ))}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-white/40 bg-white/60 p-4 backdrop-blur-xl">
+            <div className="mt-4 rounded-2xl border border-gray-700 bg-gray-800/70 p-4 backdrop-blur-xl">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={selectedDate || "empty"}
@@ -881,7 +881,7 @@ function AttendanceHeatmap({
                         transition={{ duration: 0.2 }}
                     >
                         {isLoadingMonth ? (
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-gray-300">
                                 Cargando actividad del mes...
                             </p>
                         ) : selectedData || selectedEntries.length > 1 ? (
@@ -904,8 +904,8 @@ function AttendanceHeatmap({
                                                     ? "border-red-600 bg-red-600 text-white"
                                                     : "border-amber-600 bg-amber-500 text-white";
                                                 const inactiveCls = isPremium
-                                                    ? "border-red-200 bg-red-50 text-red-800"
-                                                    : "border-amber-200 bg-amber-50 text-amber-800";
+                                                    ? "border-red-500/30 bg-red-500/15 text-red-200"
+                                                    : "border-amber-500/30 bg-amber-500/15 text-amber-100";
                                                 return (
                                                     <button
                                                         key={`entry-${idx}`}
@@ -929,7 +929,7 @@ function AttendanceHeatmap({
                                                             />
                                                         ) : (
                                                             <PencilSquareIcon
-                                                                className="ml-1.5 h-4 w-4 text-slate-600"
+                                                                className="ml-1.5 h-4 w-4 text-gray-300"
                                                                 aria-hidden
                                                             />
                                                         )}
@@ -941,11 +941,11 @@ function AttendanceHeatmap({
                                 ) : null}
                                 {selectedData ? (
                                     <>
-                                        <p className="font-semibold text-slate-900">
+                                        <p className="font-semibold text-gray-100">
                                             {selectedData.lesson?.title ||
                                                 "Sesión"}
                                         </p>
-                                        <p className="text-sm text-slate-600">
+                                        <p className="text-sm text-gray-300">
                                             {selectedData.lesson?.starts_at
                                                 ? new Date(
                                                       selectedData.lesson
@@ -956,44 +956,44 @@ function AttendanceHeatmap({
                                             {selectedData.lesson?.spot ||
                                                 "Spot por confirmar"}
                                         </p>
-                                        <p className="text-sm text-slate-600">
+                                        <p className="text-sm text-gray-300">
                                             Nivel:{" "}
                                             {selectedData.lesson?.level ||
                                                 "iniciacion"}
                                         </p>
-                                        <p className="text-sm text-slate-600">
+                                        <p className="text-sm text-gray-300">
                                             Monitor:{" "}
                                             {selectedData.note?.monitor_name ||
                                                 "Por asignar"}
                                         </p>
                                         <div className="mt-2">
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                                                 Crew
                                             </p>
                                             {Array.isArray(selectedData.crew) &&
                                             selectedData.crew.length > 0 ? (
-                                                <p className="text-sm text-slate-700">
+                                                <p className="text-sm text-gray-200">
                                                     {selectedData.crew
                                                         .map((c) => c.name)
                                                         .join(", ")}
                                                 </p>
                                             ) : (
-                                                <p className="text-sm text-slate-600">
+                                                <p className="text-sm text-gray-300">
                                                     Solo tú
                                                 </p>
                                             )}
                                         </div>
                                         {selectedData.note?.text ? (
-                                            <div className="mt-4 flex gap-3 rounded-xl border border-sky-200/90 bg-sky-50 p-4 shadow-sm ring-1 ring-sky-100">
+                                            <div className="mt-4 flex gap-3 rounded-xl border border-sky-500/35 bg-sky-900/25 p-4 shadow-sm ring-1 ring-sky-500/25">
                                                 <TrophyIcon
-                                                    className="h-8 w-8 shrink-0 text-sky-600"
+                                                    className="h-8 w-8 shrink-0 text-sky-300"
                                                     aria-hidden
                                                 />
                                                 <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-800">
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-200">
                                                         Mensaje del coach
                                                     </p>
-                                                    <p className="mt-1.5 text-sm font-medium leading-relaxed text-sky-950">
+                                                    <p className="mt-1.5 text-sm font-medium leading-relaxed text-sky-100">
                                                         {selectedData.note
                                                             .monitor_name ||
                                                             "Monitor"}
@@ -1004,7 +1004,7 @@ function AttendanceHeatmap({
                                             </div>
                                         ) : selectedData.lesson
                                               ?.monitor_note ? (
-                                            <p className="mt-3 rounded-lg bg-sky-50/90 p-3 text-xs text-sky-900 ring-1 ring-sky-100">
+                                            <p className="mt-3 rounded-lg bg-sky-900/25 p-3 text-xs text-sky-100 ring-1 ring-sky-500/25">
                                                 Progreso:{" "}
                                                 {
                                                     selectedData.lesson
@@ -1016,7 +1016,7 @@ function AttendanceHeatmap({
                                 ) : null}
                             </>
                         ) : (
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-gray-300">
                                 Día libre. ¡Buen momento para estirar o revisar
                                 la previsión de olas!
                             </p>
@@ -1026,7 +1026,7 @@ function AttendanceHeatmap({
                 {isAdminAnalysisMode &&
                 targetUserIdForApi &&
                 typeof renderAdminFeedback === "function" ? (
-                    <div className="mt-4 border-t border-slate-200/90 pt-4">
+                    <div className="mt-4 border-t border-gray-700 pt-4">
                         {renderAdminFeedback(selectedData, selectedLessonId)}
                     </div>
                 ) : null}
@@ -1349,7 +1349,7 @@ function MyReservationsView() {
                     </>
                 ) : null}
 
-                <h1 className="text-2xl font-bold text-slate-900">
+                <h1 className="text-2xl font-bold text-white">
                     {isAdminView ? "Modo análisis" : "Mis Reservas"}
                 </h1>
 
@@ -1458,8 +1458,8 @@ function MyReservationsView() {
                                         : null
                                 }
                             />
-                            <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                                <p className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                            <div className="lg:col-span-2 rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
+                                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
                                     Extracto de Movimientos de Crédito
                                 </p>
                                 {!historyLoaded ? (
@@ -1502,11 +1502,11 @@ function MyReservationsView() {
                                                     },
                                                 );
                                             }}
-                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
+                                            className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-200 shadow-sm hover:bg-gray-700"
                                         >
                                             {historyLoading ? (
                                                 <span className="inline-flex items-center gap-2">
-                                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-400 border-t-transparent" />
+                                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
                                                     Cargando...
                                                 </span>
                                             ) : (
@@ -1562,7 +1562,7 @@ function MyReservationsView() {
                                             </div>
                                         ) : null}
                                         <table className="min-w-full text-sm">
-                                            <thead className="bg-slate-50 text-slate-600">
+                                            <thead className="bg-gray-800 text-gray-200">
                                                 <tr>
                                                     <th className="px-3 py-2 text-left">
                                                         Fecha
@@ -1581,7 +1581,7 @@ function MyReservationsView() {
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="bg-white">
+                                            <tbody className="bg-gray-900 text-gray-100">
                                                 {consumptionHistoryRows.map(
                                                     (h) => {
                                                         const tone =
@@ -1610,7 +1610,7 @@ function MyReservationsView() {
                                                                         ?.title ||
                                                                         "Sesión"}
                                                                 </td>
-                                                                <td className="px-3 py-2 text-[11px] font-semibold text-slate-600">
+                                                                <td className="px-3 py-2 text-[11px] font-semibold text-gray-300">
                                                                     {h.bono_sku ||
                                                                         "—"}
                                                                 </td>
@@ -1625,7 +1625,7 @@ function MyReservationsView() {
                                                                             : "Consumo: 1 Crédito"}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 py-2 tabular-nums font-medium text-slate-900">
+                                                                <td className="px-3 py-2 tabular-nums font-medium text-white">
                                                                     {
                                                                         h.remaining_after
                                                                     }

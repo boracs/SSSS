@@ -1,134 +1,180 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import { useForm, usePage } from '@inertiajs/react';
+import { Loader2, Mail, MessageSquareText, UserRound } from 'lucide-react';
 
 const ContactForm = () => {
-  const [formData, setFormData] = useState({
+  const [focusedField, setFocusedField] = useState(null);
+  const [formStatus, setFormStatus] = useState(null);
+  const { flash } = usePage().props;
+  const { data, setData, post, processing, errors, reset } = useForm({
     name: '',
     email: '',
     message: '',
+    website: '',
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formStatus, setFormStatus] = useState(null);
+  useEffect(() => {
+    if (flash?.success) {
+      setFormStatus(flash.success);
+    }
+  }, [flash?.success]);
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setData(name, value);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
-    // Simulación de envío de formulario
-    setTimeout(() => {
-      setIsSubmitting(false);
-      setFormStatus('Formulario enviado con éxito.');
-      setFormData({
-        name: '',
-        email: '',
-        message: '',
-      });
-    }, 2000);
+    setFormStatus(null);
+    post(route('contacto.store'), {
+      preserveScroll: true,
+      onSuccess: () => {
+        reset('name', 'email', 'message', 'website');
+      },
+    });
   };
 
+  const inputBaseClass =
+    'peer w-full rounded-xl bg-white/55 pl-11 pr-4 pb-3 pt-6 text-slate-800 placeholder-transparent outline-none ring-1 ring-inset ring-slate-300/50 transition-all duration-300 backdrop-blur-sm focus:ring-2 focus:ring-orange-500/70 focus:shadow-[0_0_0_4px_rgba(249,115,22,0.18)]';
+
+  const textareaBaseClass = `${inputBaseClass} min-h-40 resize-y`;
+
   return (
-    <div className="max-w-lg mx-auto bg-white p-8 rounded-xl shadow-2xl border border-gray-100 transform ">
-      <h2 className="text-4xl font-bold text-center text-orange-500 mb-8 animate-pulse">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="mx-auto w-full max-w-xl rounded-3xl border border-white/20 bg-white/70 p-6 shadow-[0_20px_40px_-18px_rgba(15,23,42,0.45),0_10px_20px_-12px_rgba(15,23,42,0.3),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-md sm:p-8"
+    >
+      <h2
+        className="mb-8 bg-gradient-to-r from-orange-500 via-amber-400 to-orange-600 bg-clip-text text-center font-['Inter','Geist',ui-sans-serif] text-4xl font-bold text-transparent"
+        style={{ letterSpacing: '-0.02em' }}
+      >
         ¡Hablemos!
       </h2>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-            Nombre
-          </label>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <input
+          type="text"
+          name="website"
+          value={data.website}
+          onChange={handleChange}
+          autoComplete="off"
+          tabIndex={-1}
+          className="hidden"
+          aria-hidden="true"
+        />
+
+        <div className="relative">
+          <UserRound className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500 transition-colors peer-focus:text-orange-500" />
           <input
             type="text"
             id="name"
             name="name"
-            value={formData.name}
+            value={data.name}
             onChange={handleChange}
+            onFocus={() => setFocusedField('name')}
+            onBlur={() => setFocusedField(null)}
             required
-            placeholder="Tu nombre"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-200"
+            placeholder="Nombre"
+            className={inputBaseClass}
           />
+          <motion.label
+            htmlFor="name"
+            className="pointer-events-none absolute left-11 text-slate-500"
+            animate={
+              focusedField === 'name' || data.name
+                ? { y: -17, scale: 0.86, color: '#f97316' }
+                : { y: -1, scale: 1, color: '#64748b' }
+            }
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            style={{ transformOrigin: 'left center', top: '1.5rem' }}
+          >
+            Nombre
+          </motion.label>
+          {errors.name && <p className="mt-2 text-sm font-medium text-red-600">{errors.name}</p>}
         </div>
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-            Correo electrónico
-          </label>
+        <div className="relative">
+          <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-500 transition-colors peer-focus:text-orange-500" />
           <input
             type="email"
             id="email"
             name="email"
-            value={formData.email}
+            value={data.email}
             onChange={handleChange}
+            onFocus={() => setFocusedField('email')}
+            onBlur={() => setFocusedField(null)}
             required
-            placeholder="Tu correo electrónico"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-200"
+            placeholder="Correo electrónico"
+            className={inputBaseClass}
           />
+          <motion.label
+            htmlFor="email"
+            className="pointer-events-none absolute left-11 text-slate-500"
+            animate={
+              focusedField === 'email' || data.email
+                ? { y: -17, scale: 0.86, color: '#f97316' }
+                : { y: -1, scale: 1, color: '#64748b' }
+            }
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            style={{ transformOrigin: 'left center', top: '1.5rem' }}
+          >
+            Correo electrónico
+          </motion.label>
+          {errors.email && <p className="mt-2 text-sm font-medium text-red-600">{errors.email}</p>}
         </div>
 
-        <div>
-          <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-            Mensaje
-          </label>
+        <div className="relative">
+          <MessageSquareText className="pointer-events-none absolute left-3 top-7 h-5 w-5 text-slate-500 transition-colors peer-focus:text-orange-500" />
           <textarea
             id="message"
             name="message"
-            value={formData.message}
+            value={data.message}
             onChange={handleChange}
+            onFocus={() => setFocusedField('message')}
+            onBlur={() => setFocusedField(null)}
             required
-            placeholder="Tu mensaje"
             rows="5"
-            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition duration-200"
-          ></textarea>
+            placeholder="Mensaje"
+            className={textareaBaseClass}
+          />
+          <motion.label
+            htmlFor="message"
+            className="pointer-events-none absolute left-11 text-slate-500"
+            animate={
+              focusedField === 'message' || data.message
+                ? { y: -17, scale: 0.86, color: '#f97316' }
+                : { y: -1, scale: 1, color: '#64748b' }
+            }
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
+            style={{ transformOrigin: 'left center', top: '1.5rem' }}
+          >
+            Mensaje
+          </motion.label>
+          {errors.message && <p className="mt-2 text-sm font-medium text-red-600">{errors.message}</p>}
         </div>
 
-        <button
+        <motion.button
           type="submit"
-          disabled={isSubmitting}
-          className="w-full py-3 bg-gradient-to-r from-orange-400 to-orange-600 text-white font-semibold rounded-lg hover:from-orange-500 hover:to-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition duration-200 transform hover:scale-105"
+          disabled={processing}
+          whileHover={{ y: -2, scale: 1.01 }}
+          whileTap={{ scale: 0.97 }}
+          className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 px-6 py-3 font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_24px_-12px_rgba(234,88,12,0.75)] transition-all duration-300 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.7),0_18px_28px_-16px_rgba(234,88,12,0.95)] disabled:cursor-not-allowed disabled:opacity-80"
         >
-          {isSubmitting ? (
-            <div className="flex items-center justify-center">
-              <svg
-                className="animate-spin h-5 w-5 mr-3 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              Enviando...
-            </div>
-          ) : (
-            'Enviar mensaje'
-          )}
-        </button>
+          <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_45%)] opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
+          <span className="relative flex items-center justify-center gap-2">
+            {processing && <Loader2 className="h-4 w-4 animate-spin" />}
+            {processing ? 'Enviando...' : 'Enviar mensaje'}
+          </span>
+        </motion.button>
       </form>
 
-      {formStatus && (
-        <div className="mt-6 text-center text-green-600 font-medium animate-bounce">
-          {formStatus}
-        </div>
-      )}
-    </div>
+      {errors.contact && <p className="mt-4 text-center text-sm font-medium text-red-600">{errors.contact}</p>}
+      {formStatus && <p className="mt-6 text-center font-medium text-emerald-600">{formStatus}</p>}
+    </motion.div>
   );
 };
 

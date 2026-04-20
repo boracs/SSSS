@@ -4,8 +4,7 @@ import animate from "tailwindcss-animate";
 
 /** @type {import('tailwindcss').Config} */
 export default {
-    // Activamos el modo oscuro basado en la clase .dark que añadimos al app.css
-    darkMode: ["class"],
+    darkMode: "class",
     content: [
         "./resources/js/**/*.{js,jsx,ts,tsx}",
         "./resources/css/**/*.css",
@@ -91,6 +90,13 @@ export default {
                     primary: "#0d234d",
                     accent: "#06b6d4",
                     "accent-light": "#22d3ee",
+                },
+                softdark: {
+                    base: "#111827",
+                    surface: "#1F2937",
+                    border: "#374151",
+                    text: "#E5E7EB",
+                    muted: "#9CA3AF",
                 },
             },
             // Tus Z-index originales

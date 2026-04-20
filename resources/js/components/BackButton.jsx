@@ -17,10 +17,10 @@ export default function BackButton({ href, children = "Volver atrás", className
     return (
         <Link
             href={href}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out hover:bg-slate-100 hover:text-brand-accent ${
+            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-300 ease-in-out hover:bg-gray-700 hover:text-sky-300 ${
                 scrolled
-                    ? "text-slate-500 opacity-80 hover:opacity-100"
-                    : "text-brand-deep"
+                    ? "text-gray-400 opacity-80 hover:opacity-100"
+                    : "text-gray-200"
             } ${className}`}
         >
             <svg

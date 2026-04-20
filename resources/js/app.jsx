@@ -27,6 +27,21 @@ createInertiaApp({
             throw new Error(`No se encontró la página: ${name}`);
         }
 
+        if (typeof document !== "undefined") {
+            // Excepciones cliente solicitadas en modo claro (body blanco).
+            const lightModePages = [
+                "Pag_principal",
+                "Nosotros",
+                "Productos",
+                "Academy/Index",
+                "Servicios_ClasesDeSurf",
+                "Rentals/Surfboards/Index",
+                "Rentals/Surfboards/Show",
+            ];
+            const shouldUseLightMode = lightModePages.includes(name);
+            document.documentElement.classList.toggle("dark", !shouldUseLightMode);
+        }
+
         // Layout por defecto (Single Source of Truth): AuthenticatedLayout
         // Si una página define page.layout, se respeta.
         const page = module.default;
@@ -51,7 +66,7 @@ createInertiaApp({
                     pauseOnHover={false}
                     draggable
                     limit={5}
-                    theme="light"
+                    theme="dark"
                     transition={Slide}
                     toastClassName="toast-elite"
                     className="toast-container-premium"

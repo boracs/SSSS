@@ -4,13 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ReservationConfirmedMail;
+use App\Models\Booking;
 use App\Models\Lesson;
 use App\Models\LessonUser;
-use App\Models\Booking;
 use App\Models\StaffAssignment;
 use App\Models\User;
 use App\Models\UserBono;
 use App\Services\AutoReleaseService;
+use App\Services\AvailabilityService;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +25,8 @@ use Inertia\Inertia;
 class AcademyController extends Controller
 {
     public function __construct(
-        protected AutoReleaseService $autoReleaseService
+        protected AutoReleaseService $autoReleaseService,
+        protected AvailabilityService $availabilityService
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -87,7 +90,7 @@ class AcademyController extends Controller
                 $maxSlots = (int) ($e->lesson?->max_slots ?? 6);
                 $requiresSecondMonitor = $totalStudents > 6 || $e->status === LessonUser::STATUS_PENDING_EXTRA_MONITOR;
                 $academyWa = preg_replace('/\D/', '', (string) config('services.academy.whatsapp_number', '34600000000'));
-                $waText = "¡Hola! Tenemos una solicitud de ampliación para la clase de ".($e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? 'fecha pendiente').". Grupo de ".(int) ($e->quantity ?? $e->party_size ?? 1)." personas (".($levelNameMap[$level] ?? ucfirst((string) $level))."). ¿Confirmamos segundo monitor?";
+                $waText = '¡Hola! Tenemos una solicitud de ampliación para la clase de '.($e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? 'fecha pendiente').'. Grupo de '.(int) ($e->quantity ?? $e->party_size ?? 1).' personas ('.($levelNameMap[$level] ?? ucfirst((string) $level)).'). ¿Confirmamos segundo monitor?';
 
                 return [
                     'id' => $e->id,
@@ -96,7 +99,7 @@ class AcademyController extends Controller
                     'user' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
                     'user_email' => $e->user?->email,
                     'enrollment_status' => $e->status,
-                    'date' => $e->lesson?->starts_at?->toIso8601String(),
+                    'date' => $e->lesson?->starts_at ? BusinessDateTime::toApi($e->lesson->starts_at) : null,
                     'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('l, d \\d\\e F'),
                     'time_human' => $e->lesson?->starts_at?->format('H:i'),
                     'phone' => $e->user?->telefono,
@@ -108,7 +111,7 @@ class AcademyController extends Controller
                     'max_slots' => $maxSlots,
                     'requires_second_monitor' => $requiresSecondMonitor,
                     'occupancy_label' => "{$totalStudents}/{$maxSlots}".($requiresSecondMonitor ? ' (Requiere 2º Monitor)' : ''),
-                    'extra_monitor_whatsapp_url' => $requiresSecondMonitor ? ("https://wa.me/".$academyWa."?text=".rawurlencode($waText)) : null,
+                    'extra_monitor_whatsapp_url' => $requiresSecondMonitor ? ('https://wa.me/'.$academyWa.'?text='.rawurlencode($waText)) : null,
                     'email_status' => $emailStatus,
                     'email_error' => $emailError,
                     'google_maps_url' => $googleMapsUrl,
@@ -202,6 +205,54 @@ class AcademyController extends Controller
     }
 
     /**
+     * Check de disponibilidad para modal de creación (Commander).
+     */
+    public function checkAvailability(Request $request)
+    {
+        $validated = $request->validate([
+            'date' => 'required|date_format:Y-m-d',
+            'time' => 'required|date_format:H:i',
+            'duration_minutes' => 'nullable|integer|in:60,90',
+            'projected_party_size' => 'nullable|integer|min:1|max:12',
+        ]);
+
+        $startsAt = BusinessDateTime::parseInAppTimezone($validated['date'].' '.$validated['time']);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return response()->json([
+                'max_capacity' => 0,
+                'message' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ], 422);
+        }
+
+        if ($durationMinutes < 60) {
+            return response()->json([
+                'max_capacity' => 0,
+                'message' => 'La duración mínima de una sesión es de 1 hora.',
+            ], 422);
+        }
+
+        $projectedPartySize = (int) ($validated['projected_party_size'] ?? 1);
+        $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize, 0);
+
+        $payload = [
+            'max_capacity' => (int) $evaluation['max_capacity'],
+            'peak_monitors_used' => (int) ($evaluation['peak_monitors_used'] ?? 0),
+            'occupied_lesson_ids' => $evaluation['occupied_lesson_ids'] ?? [],
+            'range_start' => $evaluation['request_window_start'],
+            'range_end' => $evaluation['request_window_end'],
+            'is_staff_exhausted' => (int) $evaluation['max_capacity'] === 0,
+            'message' => (int) $evaluation['max_capacity'] === 0
+                ? 'No quedan monitores disponibles en este horario (se requiere disponibilidad 15 min antes y 15 min después).'
+                : null,
+        ];
+
+        return response()->json($payload, (int) $evaluation['max_capacity'] === 0 ? 422 : 200);
+    }
+
+    /**
      * Dashboard global de pagos (Clases + Alquileres + Bonos VIP).
      */
     public function globalPaymentsDashboard(Request $request)
@@ -240,7 +291,7 @@ class AcademyController extends Controller
                     'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
                     'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
                     'modality' => $e->lesson?->modality ?: 'grupal',
-                    'date' => $e->lesson?->starts_at?->toIso8601String(),
+                    'date' => $e->lesson?->starts_at ? BusinessDateTime::toApi($e->lesson->starts_at) : null,
                     'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y'),
                 ];
             })
@@ -368,8 +419,8 @@ class AcademyController extends Controller
      */
     private function buildWeeklyHealthSummary(): array
     {
-        $start = now()->startOfWeek();
-        $end = now()->endOfWeek();
+        $start = BusinessDateTime::now()->startOfWeek();
+        $end = BusinessDateTime::now()->endOfWeek();
 
         $weekEnrollments = LessonUser::query()
             ->with('lesson:id,price,starts_at')
@@ -390,6 +441,7 @@ class AcademyController extends Controller
 
         $emailTagged = $weekEnrollments->filter(function ($e) {
             $notes = (string) ($e->admin_notes ?? '');
+
             return str_contains($notes, '[email_sent]') || str_contains($notes, '[email_error');
         });
         $emailSent = $emailTagged->filter(fn ($e) => str_contains((string) ($e->admin_notes ?? ''), '[email_sent]'))->count();
@@ -412,14 +464,16 @@ class AcademyController extends Controller
             ],
         ];
     }
+
     /**
      * Consola del Comandante: gestión del día, trigger Surf-Trip, marcar olas óptimas.
      */
     public function index(Request $request)
     {
+        $tz = BusinessDateTime::appTimezone();
         $date = $request->has('date')
-            ? Carbon::parse($request->input('date'))
-            : Carbon::today();
+            ? BusinessDateTime::parseInAppTimezone((string) $request->input('date'))->startOfDay()
+            : BusinessDateTime::today();
 
         $lessons = Lesson::query()
             ->whereDate('starts_at', $date)
@@ -428,8 +482,8 @@ class AcademyController extends Controller
             ->get()
             ->map(fn (Lesson $l) => [
                 'id' => $l->id,
-                'starts_at' => $l->starts_at->toIso8601String(),
-                'ends_at' => $l->ends_at->toIso8601String(),
+                'starts_at' => BusinessDateTime::toApi($l->starts_at),
+                'ends_at' => BusinessDateTime::toApi($l->ends_at),
                 'level' => $l->level,
                 'modality' => $l->modality,
                 'batch_id' => $l->batch_id,
@@ -470,6 +524,7 @@ class AcademyController extends Controller
     public function toggleOptimalWaves(Lesson $lesson)
     {
         $lesson->update(['is_optimal_waves' => ! $lesson->is_optimal_waves]);
+
         return back()->with('success', 'Olas óptimas actualizadas.');
     }
 
@@ -481,8 +536,9 @@ class AcademyController extends Controller
         $lesson->update([
             'is_surf_trip' => true,
             'location' => 'Playa Secundaria (Furgoneta)',
-            'surf_trip_triggered_at' => now(),
+            'surf_trip_triggered_at' => BusinessDateTime::now(),
         ]);
+
         return back()->with('success', 'Surf-Trip activado. Los alumnos deben confirmar asistencia.');
     }
 
@@ -495,6 +551,7 @@ class AcademyController extends Controller
             'status' => Lesson::STATUS_CANCELLED,
             'cancellation_reason' => Lesson::CANCELLATION_MAL_MAR,
         ]);
+
         return back()->with('success', 'Clase cancelada por mal mar. Créditos devueltos.');
     }
 
@@ -527,7 +584,7 @@ class AcademyController extends Controller
             ])
             ->update([
                 'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => now(),
+                'cancelled_at' => BusinessDateTime::now(),
                 'admin_notes' => $validated['admin_notes'] ?? 'Clase cancelada por el staff.',
             ]);
 
@@ -550,7 +607,7 @@ class AcademyController extends Controller
 
         $lessonIds = Lesson::query()
             ->where('batch_id', $batchId)
-            ->where('starts_at', '>=', now())
+            ->where('starts_at', '>=', BusinessDateTime::now())
             ->pluck('id')
             ->toArray();
 
@@ -576,7 +633,7 @@ class AcademyController extends Controller
             ])
             ->update([
                 'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => now(),
+                'cancelled_at' => BusinessDateTime::now(),
                 'admin_notes' => $notes,
             ]);
 
@@ -604,6 +661,11 @@ class AcademyController extends Controller
             if ($assignment) {
                 $assignment->delete();
             }
+            $lesson = Lesson::find($lessonId);
+            if ($lesson?->starts_at) {
+                $this->rebalanceVipCapacitiesForDate($lesson->starts_at);
+            }
+
             return back()->with('success', 'Staff desasignado.');
         }
 
@@ -611,6 +673,11 @@ class AcademyController extends Controller
             ['lesson_id' => $lessonId, 'role' => $role],
             ['user_id' => $userId]
         );
+        $lesson = Lesson::find($lessonId);
+        if ($lesson?->starts_at) {
+            $this->rebalanceVipCapacitiesForDate($lesson->starts_at);
+        }
+
         return back()->with('success', 'Staff asignado.');
     }
 
@@ -621,7 +688,8 @@ class AcademyController extends Controller
     {
         $validated = $request->validate([
             'starts_at' => 'required|date',
-            'ends_at' => 'required|date|after:starts_at',
+            'ends_at' => 'nullable|date|after:starts_at',
+            'duration_minutes' => 'nullable|integer|in:60,90',
             'level' => 'required|in:iniciacion,intermedio,avanzado',
             'modality' => 'required|in:particular,grupal,semanal',
             'max_slots' => 'integer|min:1|max:12',
@@ -633,21 +701,56 @@ class AcademyController extends Controller
 
         $location = $validated['location'] ?? 'Zurriola';
         $modality = $validated['modality'];
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $minDuration = 60;
+        if ($durationMinutes % 15 !== 0) {
+            return back()->withErrors([
+                'duration_minutes' => 'La duración debe estar en intervalos de 15 minutos.',
+            ])->withInput();
+        }
+        if ($durationMinutes < $minDuration) {
+            return back()->withErrors([
+                'duration_minutes' => 'La duración mínima de una sesión es de 1 hora.',
+            ])->withInput();
+        }
+        if ($durationMinutes % 15 !== 0) {
+            return back()->withErrors([
+                'duration_minutes' => 'La duración debe estar en intervalos de 15 minutos.',
+            ])->withInput();
+        }
+        if ($durationMinutes < $minDuration) {
+            return back()->withErrors([
+                'duration_minutes' => 'La duración mínima de una sesión es de 1 hora.',
+            ])->withInput();
+        }
 
         if ($modality === Lesson::MODALITY_SEMANAL) {
             $batchId = (string) Str::uuid();
-            $start = Carbon::parse($validated['weekly_start'] ?? $validated['starts_at'])->startOfDay();
-            $end = Carbon::parse($validated['weekly_end'] ?? $validated['ends_at'])->endOfDay();
+            $start = BusinessDateTime::parseInAppTimezone((string) ($validated['weekly_start'] ?? $validated['starts_at']))->startOfDay();
+            $end = BusinessDateTime::parseInAppTimezone((string) ($validated['weekly_end'] ?? $validated['ends_at']))->endOfDay();
             $created = 0;
 
             for ($d = $start->copy(); $d->lte($end); $d->addDay()) {
                 // Lunes(1) a Viernes(5)
-                if ($d->dayOfWeekIso < 1 || $d->dayOfWeekIso > 5) continue;
+                if ($d->dayOfWeekIso < 1 || $d->dayOfWeekIso > 5) {
+                    continue;
+                }
 
-                $s = Carbon::parse($validated['starts_at']);
-                $e = Carbon::parse($validated['ends_at']);
+                $s = BusinessDateTime::parseInAppTimezone($validated['starts_at']);
                 $startsAt = $d->copy()->setTime($s->hour, $s->minute);
-                $endsAt = $d->copy()->setTime($e->hour, $e->minute);
+                $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+                $projectedPartySize = ((int) ($validated['max_slots'] ?? 6)) >= 7 ? 7 : 1;
+                $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize);
+                if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+                    return back()->withErrors([
+                        'starts_at' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+                    ])->withInput();
+                }
+                if (! $availability['allowed']) {
+                    return back()->withErrors([
+                        'starts_at' => $this->availabilityService->buildConflictMessage($availability),
+                    ])->withInput();
+                }
 
                 Lesson::create([
                     'starts_at' => $startsAt,
@@ -665,9 +768,24 @@ class AcademyController extends Controller
             return back()->with('success', "Curso semanal creado ({$created} sesiones).");
         }
 
+        $startsAt = BusinessDateTime::parseInAppTimezone($validated['starts_at']);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return back()->withErrors([
+                'starts_at' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ])->withInput();
+        }
+        $projectedPartySize = ((int) ($validated['max_slots'] ?? 6)) >= 7 ? 7 : 1;
+        $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize);
+        if (! $availability['allowed']) {
+            return back()->withErrors([
+                'starts_at' => $this->availabilityService->buildConflictMessage($availability),
+            ])->withInput();
+        }
+
         Lesson::create([
-            'starts_at' => $validated['starts_at'],
-            'ends_at' => $validated['ends_at'],
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
             'level' => $validated['level'],
             'modality' => $modality,
             'max_slots' => $validated['max_slots'] ?? 6,
@@ -675,6 +793,7 @@ class AcademyController extends Controller
             'location' => $location,
             'is_private' => $modality === Lesson::MODALITY_PARTICULAR,
         ]);
+
         return back()->with('success', 'Clase creada.');
     }
 
@@ -690,6 +809,7 @@ class AcademyController extends Controller
         ]);
 
         $lesson->update(array_filter($validated, fn ($v) => $v !== null));
+
         return back()->with('success', 'Clase actualizada.');
     }
 
@@ -702,9 +822,34 @@ class AcademyController extends Controller
         if ($enrollment->status !== LessonUser::STATUS_PENDING) {
             return back()->with('error', 'Solo se pueden confirmar solicitudes pendientes.');
         }
+
+        $lesson = $enrollment->lesson;
+        if ($lesson) {
+            $blockingStatuses = $this->availabilityService->occupancyStatuses();
+            $alreadyBooked = (int) LessonUser::query()
+                ->where('lesson_id', $lesson->id)
+                ->whereIn('status', $blockingStatuses)
+                ->sum(\Illuminate\Support\Facades\DB::raw('COALESCE(quantity, party_size, 1)'));
+            $incoming = (int) ($enrollment->quantity ?? $enrollment->party_size ?? 1);
+            $projectedPartySize = $alreadyBooked + max(1, $incoming);
+
+            $availability = $this->availabilityService->evaluate(
+                $lesson->starts_at,
+                $lesson->ends_at,
+                $projectedPartySize,
+                (int) $lesson->id
+            );
+
+            if (! $availability['allowed']) {
+                return back()->withErrors([
+                    'status' => $this->availabilityService->buildConflictMessage($availability),
+                ]);
+            }
+        }
+
         $enrollment->update([
             'status' => LessonUser::STATUS_CONFIRMED,
-            'confirmed_at' => now(),
+            'confirmed_at' => BusinessDateTime::now(),
             'payment_status' => LessonUser::PAYMENT_CONFIRMED,
         ]);
         $googleMapsUrl = config('services.academy.maps_url');
@@ -722,6 +867,7 @@ class AcademyController extends Controller
                 $this->stampEmailStatus($enrollment, 'error', $e->getMessage());
             }
         }
+
         return back()->with('success', 'Solicitud confirmada.');
     }
 
@@ -758,6 +904,7 @@ class AcademyController extends Controller
             Mail::to($enrollment->user->email)->queue(new ReservationConfirmedMail($enrollment->user, $enrollment->lesson, $googleMapsUrl));
             $this->stampEmailStatus($enrollment, 'sent', null, true);
             $userName = $enrollment->user->nombre ?? $enrollment->user->name ?? 'alumno';
+
             return back()->with('success', "¡Email enviado y corregido para {$userName}! 📧✨");
         } catch (\Throwable $e) {
             Log::error('Error reenviando ReservationConfirmedMail', [
@@ -767,6 +914,7 @@ class AcademyController extends Controller
                 'error' => $e->getMessage(),
             ]);
             $this->stampEmailStatus($enrollment, 'error', $e->getMessage(), true);
+
             return back()->with('error', 'No se pudo reenviar el email. Revisa el detalle en el badge.');
         }
     }
@@ -801,6 +949,37 @@ class AcademyController extends Controller
         $enrollment->save();
     }
 
+    private function isQuarterMinute(Carbon $value): bool
+    {
+        return ((int) $value->minute % 15) === 0;
+    }
+
+    private function rebalanceVipCapacitiesForDate(Carbon $date): void
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+        Lesson::query()
+            ->where('modality', 'vip')
+            ->where('status', Lesson::STATUS_SCHEDULED)
+            ->whereBetween('starts_at', [$start, $end])
+            ->get(['id', 'starts_at', 'ends_at', 'max_slots', 'max_capacity'])
+            ->each(function (Lesson $lesson): void {
+                $evaluation = $this->availabilityService->evaluate(
+                    $lesson->starts_at,
+                    $lesson->ends_at,
+                    1,
+                    (int) $lesson->id
+                );
+                $capacity = (int) ($evaluation['max_capacity'] ?? 0);
+                if ((int) ($lesson->max_slots ?? 0) !== $capacity || (int) ($lesson->max_capacity ?? 0) !== $capacity) {
+                    $lesson->update([
+                        'max_slots' => $capacity,
+                        'max_capacity' => $capacity,
+                    ]);
+                }
+            });
+    }
+
     /**
      * Rechazar justificante: cancelar solicitud y guardar motivo.
      */
@@ -826,7 +1005,7 @@ class AcademyController extends Controller
             'proof_uploaded_at' => null,
             'payment_method' => null,
             'admin_notes' => $validated['admin_notes'] ?? 'Justificante rechazado.',
-            'cancelled_at' => now(),
+            'cancelled_at' => BusinessDateTime::now(),
         ]);
 
         return back()->with('success', 'Justificante rechazado y solicitud cancelada.');
@@ -863,6 +1042,7 @@ class AcademyController extends Controller
             'status' => LessonUser::STATUS_PENDING,
             'expires_at' => Carbon::now('UTC')->addHour(),
         ]);
+
         return back()->with('success', 'Solicitud reactivada 1h más.');
     }
 
@@ -876,7 +1056,7 @@ class AcademyController extends Controller
             'ids.*' => 'integer|exists:lesson_user,id',
         ]);
 
-        $cutoff = now()->subHours(48);
+        $cutoff = BusinessDateTime::now()->subHours(48);
         $deleted = LessonUser::query()
             ->whereIn('id', $validated['ids'])
             ->where('status', LessonUser::STATUS_PENDING)

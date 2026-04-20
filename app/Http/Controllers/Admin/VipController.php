@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserBono;
 use App\Services\VipLoyaltyService;
 use App\Services\VipStudentPerformanceService;
+use App\Support\BusinessDateTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Builder;
@@ -100,7 +101,7 @@ class VipController extends Controller
 
         $vips = $users->map(function (User $u) use ($loyalty) {
             $raw = $u->last_confirmed_reservation_at;
-            $lastAt = $raw ? \Carbon\Carbon::parse($raw) : null;
+            $lastAt = $raw ? BusinessDateTime::parseInAppTimezone((string) $raw) : null;
             $minRem = $u->min_remaining_classes;
 
             return [
@@ -108,7 +109,7 @@ class VipController extends Controller
                 'nombre' => $u->nombre,
                 'apellido' => $u->apellido,
                 'email' => $u->email,
-                'last_confirmed_reservation_at' => $lastAt?->toIso8601String(),
+                'last_confirmed_reservation_at' => $lastAt ? BusinessDateTime::toApi($lastAt) : null,
                 'health' => $loyalty->healthFromLastActivity($lastAt),
                 'days_since_activity' => $loyalty->daysSinceLastActivity($lastAt),
                 'min_remaining_classes' => $minRem !== null ? (int) $minRem : null,
@@ -158,7 +159,7 @@ class VipController extends Controller
             abort(403, 'Conflicto de contexto: target_user_id no coincide con el alumno de la ruta.');
         }
 
-        $bonoMonth = (string) $request->query('bono_month', now()->format('Y-m'));
+        $bonoMonth = (string) $request->query('bono_month', BusinessDateTime::now()->format('Y-m'));
         $loadHistory = $request->boolean('load_history', false);
 
         $rows = VipStudentPerformanceService::buildReservationRows($user);
@@ -217,7 +218,7 @@ class VipController extends Controller
                         'credits_locked' => 1,
                         'status' => LessonUser::STATUS_CONFIRMED,
                         'payment_status' => LessonUser::PAYMENT_CONFIRMED,
-                        'confirmed_at' => now(),
+                        'confirmed_at' => BusinessDateTime::now(),
                     ]
                 );
                 $resolvedLessonUserId = (int) $lessonUser->id;

@@ -47,9 +47,10 @@ const Pag_principal = ({ productos }) => (
       >
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-surf-primary/10 via-surf-sand to-white" />
 
-        <div className="max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
-          {/* Columna de texto (60%) */}
-          <div className="w-full lg:w-3/5 space-y-6">
+        <div className="max-w-6xl mx-auto rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-xl shadow-slate-200/60 backdrop-blur-sm sm:p-8 lg:p-10">
+          <div className="flex flex-col items-center gap-10 lg:flex-row lg:gap-16">
+            {/* Columna de texto (60%) */}
+            <div className="w-full space-y-6 lg:w-3/5">
             <p className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] text-surf-primary/80">
               <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surf-primary text-surf-sand text-xs font-bold">
                 S4
@@ -76,75 +77,84 @@ const Pag_principal = ({ productos }) => (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mt-4">
               <a
                 href="/servicios/surf"
-                className="transition-s4 inline-flex items-center justify-center rounded-full bg-surf-accent px-6 py-3 text-sm sm:text-base font-semibold text-white shadow-lg shadow-surf-accent/30 hover:bg-surf-accent/90 hover:-translate-y-0.5 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surf-accent/80 focus-visible:ring-offset-2 focus-visible:ring-offset-surf-sand"
+                className="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
                 Reserva tu clase
               </a>
               <button
                 type="button"
-                className="transition-s4 inline-flex items-center gap-2 rounded-full border border-surf-primary/20 bg-white/60 px-5 py-2.5 text-sm font-medium text-surf-primary hover:bg-surf-primary/5 hover:-translate-y-0.5 hover:scale-[1.01]"
+                className="group inline-flex items-center justify-center rounded-full border border-blue-600 bg-transparent px-6 py-3 text-base font-semibold text-blue-600 shadow-sm transition-all duration-300 ease-in-out hover:-translate-y-0.5 hover:bg-blue-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
+                <Sparkles className="mr-2 h-4 w-4 text-blue-500 transition-colors duration-300 group-hover:text-blue-700" />
                 Ver niveles y horarios
-                <Sparkles className="h-4 w-4 text-surf-secondary" />
               </button>
             </div>
 
             {/* Trust bar */}
-            <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-primary text-surf-secondary">
+            <div className="mt-8 grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-primary text-surf-secondary">
                   <ShieldCheck className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Instructores federados</p>
-                  <p className="text-xs text-slate-600">Formación oficial y rescate en mar</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Instructores federados</p>
+                    <p className="text-xs text-slate-600">Formación oficial y rescate en mar</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-secondary/10 text-surf-secondary">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-secondary/10 text-surf-secondary">
                   <Sparkles className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">Equipo premium incluido</p>
-                  <p className="text-xs text-slate-600">Tablas y neoprenos de última generación</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">Equipo premium incluido</p>
+                    <p className="text-xs text-slate-600">Tablas y neoprenos de última generación</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-primary/5 text-surf-primary">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-surf-primary/5 text-surf-primary">
                   <Users className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">+5.000 surfistas formados</p>
-                  <p className="text-xs text-slate-600">Clases para todos los niveles y edades</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-slate-900">+5.000 surfistas formados</p>
+                    <p className="text-xs text-slate-600">Clases para todos los niveles y edades</p>
+                  </div>
                 </div>
               </div>
+            </div>
+            </div>
+
+            {/* Columna visual (40%) */}
+            <div className="mt-6 w-full lg:mt-0 lg:w-2/5">
+              <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-gradient-to-br from-surf-primary via-slate-900 to-surf-secondary p-1 shadow-2xl shadow-slate-300/40">
+                <div className="relative hero-wave-mask overflow-hidden rounded-[24px] animate-wave-float">
+                  <img
+                    src="/img/placeholder.svg"
+                    alt="Surfista en el Cantábrico frente a San Sebastián"
+                    className="h-72 w-full object-cover opacity-90 sm:h-80 md:h-96"
+                    loading="lazy"
+                  />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-surf-primary/70 via-surf-primary/10 to-transparent" />
+
+                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs text-surf-sand sm:text-sm">
+                    <div>
+                      <p className="font-semibold tracking-wide uppercase">Spot Local</p>
+                      <p className="text-surf-sand/80">
+                        La Concha · Zurriola · Ondarreta
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">Condiciones Cantábrico</p>
+                      <p className="text-surf-sand/80">Seguridad &amp; técnica primero</p>
+                    </div>
+                  </div>
+                </div>
             </div>
           </div>
-
-          {/* Columna visual (40%) */}
-          <div className="w-full lg:w-2/5 mt-6 lg:mt-0">
-            <div className="relative glass-card hero-wave-mask rounded-custom overflow-hidden shadow-2xl bg-gradient-to-br from-surf-primary via-slate-900 to-surf-secondary animate-wave-float">
-              <img
-                src="/img/placeholder.svg"
-                alt="Surfista en el Cantábrico frente a San Sebastián"
-                className="h-72 w-full object-cover opacity-90 sm:h-80 md:h-96"
-                loading="lazy"
-              />
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-surf-primary/70 via-surf-primary/10 to-transparent" />
-
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs sm:text-sm text-surf-sand">
-                <div>
-                  <p className="font-semibold tracking-wide uppercase">Spot Local</p>
-                  <p className="text-surf-sand/80">
-                    La Concha · Zurriola · Ondarreta
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">Condiciones Cantábrico</p>
-                  <p className="text-surf-sand/80">Seguridad &amp; técnica primero</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

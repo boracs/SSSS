@@ -8,6 +8,7 @@ use App\Models\CreditTransaction;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
+use App\Support\BusinessDateTime;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -46,7 +47,7 @@ class CreditEngineService
             $enrollment->update([
                 'status' => LessonUser::STATUS_REFUNDED,
                 'credits_locked' => 0,
-                'cancelled_at' => now(),
+                'cancelled_at' => BusinessDateTime::now(),
             ]);
 
             if ($credits > 0) {
@@ -68,11 +69,11 @@ class CreditEngineService
     public function cancelByStudent(LessonUser $enrollment): void
     {
         $lesson = $enrollment->lesson;
-        $hoursUntilStart = now()->diffInHours($lesson->starts_at, false);
+        $hoursUntilStart = BusinessDateTime::now()->diffInHours($lesson->starts_at, false);
 
         $enrollment->update([
             'status' => LessonUser::STATUS_CANCELLED,
-            'cancelled_at' => now(),
+            'cancelled_at' => BusinessDateTime::now(),
         ]);
 
         if ($hoursUntilStart >= 24) {

@@ -57,9 +57,14 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
+                array_filter([
+                    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                ]),
+                ($tz = env('DB_TIMEZONE')) && $tz !== ''
+                    ? [PDO::MYSQL_ATTR_INIT_COMMAND => 'SET time_zone="'.str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $tz).'"']
+                    : []
+            )) : [],
         ],
 
         'mariadb' => [
@@ -77,9 +82,14 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
+            'options' => extension_loaded('pdo_mysql') ? array_filter(array_merge(
+                array_filter([
+                    PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                ]),
+                ($tz = env('DB_TIMEZONE')) && $tz !== ''
+                    ? [PDO::MYSQL_ATTR_INIT_COMMAND => 'SET time_zone="'.str_replace(['\\', '"'], ['\\\\', '\\"'], (string) $tz).'"']
+                    : []
+            )) : [],
         ],
 
         'pgsql' => [

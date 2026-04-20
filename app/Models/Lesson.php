@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Casts\BusinessWallClockDatetime;
+use App\Support\BusinessDateTime;
+use DateTimeInterface;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,21 +16,32 @@ class Lesson extends Model
     use HasFactory;
 
     public const TYPE_SURF = 'surf';
+
     public const TYPE_SKATE = 'skate';
 
     public const LEVEL_INICIACION = 'iniciacion';
+
     public const LEVEL_INTERMEDIO = 'intermedio';
+
     public const LEVEL_AVANZADO = 'avanzado';
+
     // Backward-compat (DB ya no lo acepta; útil para mapear legacy)
     public const LEVEL_PRO = 'pro';
 
     public const MODALITY_PARTICULAR = 'particular';
+
     public const MODALITY_GRUPAL = 'grupal';
+
     public const MODALITY_SEMANAL = 'semanal';
+
     public const STATUS_SCHEDULED = 'scheduled';
+
     public const STATUS_COMPLETED = 'completed';
+
     public const STATUS_CANCELLED = 'cancelled';
+
     public const CANCELLATION_MAL_MAR = 'mal_mar';
+
     public const CANCELLATION_STUDENT = 'student';
 
     protected $fillable = [
@@ -54,20 +68,26 @@ class Lesson extends Model
     ];
 
     protected $casts = [
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
+        'starts_at' => BusinessWallClockDatetime::class,
+        'ends_at' => BusinessWallClockDatetime::class,
         'is_private' => 'boolean',
         'is_surf_trip' => 'boolean',
         'is_optimal_waves' => 'boolean',
         'surf_trip_triggered_at' => 'datetime',
     ];
 
+    /**
+     * JSON/Inertia: hora de negocio con offset (no UTC-Z) para que el cliente no desplace la hora.
+     */
+    protected function serializeDate(DateTimeInterface $date): string
+    {
+        return BusinessDateTime::toApi($date);
+    }
+
     public function totalPartySize(): int
     {
         return (int) $this->enrollments()
             ->whereIn('status', [
-                LessonUser::STATUS_PENDING,
-                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
                 LessonUser::STATUS_CONFIRMED,
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
@@ -78,7 +98,10 @@ class Lesson extends Model
     public function monitorsRequiredFor(int $totalPartySize, bool $hasBigGroup): int
     {
         $maxStaff = 2;
-        if ($hasBigGroup) return $maxStaff;
+        if ($hasBigGroup) {
+            return $maxStaff;
+        }
+
         return (int) min($maxStaff, (int) ceil(max(0, $totalPartySize) / 6));
     }
 
@@ -86,8 +109,6 @@ class Lesson extends Model
     {
         return $this->enrollments()
             ->whereIn('status', [
-                LessonUser::STATUS_PENDING,
-                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
                 LessonUser::STATUS_CONFIRMED,
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
@@ -126,12 +147,14 @@ class Lesson extends Model
     public function monitor(): ?User
     {
         $a = $this->staffAssignments()->where('role', 'monitor')->first();
+
         return $a?->user;
     }
 
     public function fotografo(): ?User
     {
         $a = $this->staffAssignments()->where('role', 'fotografo')->first();
+
         return $a?->user;
     }
 
