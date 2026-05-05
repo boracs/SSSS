@@ -199,6 +199,9 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
     Route::put('/taquilla/admin/planes/{plan}', [PlanesTaquillasController::class, 'updatePlan'])->name('taquilla.planes.update');
     Route::patch('/taquilla/admin/planes/{plan}/toggle-active', [PlanesTaquillasController::class, 'togglePlanActive'])->name('taquilla.planes.toggle-active');
     Route::get('/taquilla/admin/pagos/cola', [PlanesTaquillasController::class, 'colaPagos'])->name('taquilla.pagos.queue');
+    Route::patch('/taquilla/admin/pagos/{pago}/reviewed', [PlanesTaquillasController::class, 'markPagoTaquillaReviewed'])->name('taquilla.pagos.reviewed');
+    Route::patch('/taquilla/admin/pagos/{pago}/payment-state', [PlanesTaquillasController::class, 'updatePagoTaquillaPaymentState'])->name('taquilla.pagos.payment-state');
+    Route::patch('/taquilla/admin/pagos/{pago}/checked-state', [PlanesTaquillasController::class, 'updatePagoTaquillaCheckedState'])->name('taquilla.pagos.checked-state');
     Route::post('/taquilla/admin/pagos/{pago}/confirmar', [PlanesTaquillasController::class, 'confirmarPagoTaquilla'])->name('taquilla.pagos.confirm');
     Route::post('/taquilla/admin/pagos/{pago}/rechazar', [PlanesTaquillasController::class, 'rechazarPagoTaquilla'])->name('taquilla.pagos.reject');
     Route::get('/taquilla/admin/pagos/{pago}/proof', [PlanesTaquillasController::class, 'showProof'])->name('taquilla.pagos.proof');
@@ -221,6 +224,8 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');
         Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
         Route::get('payments/global-dashboard', [\App\Http\Controllers\Admin\AcademyController::class, 'globalPaymentsDashboard'])->name('payments.global');
+        Route::patch('payments/reviewed', [\App\Http\Controllers\Admin\AcademyController::class, 'markPaymentReviewed'])->name('payments.reviewed');
+        Route::patch('payments/refund-status', [\App\Http\Controllers\Admin\AcademyController::class, 'updateRefundStatus'])->name('payments.refund-status');
         Route::get('payment-validation', [PaymentValidationController::class, 'index'])->name('payment-validation.index');
         Route::post('payment-validation/{userBonoId}/confirm', [PaymentValidationController::class, 'confirm'])->name('payment-validation.confirm');
         Route::post('payment-validation/{userBonoId}/reject', [PaymentValidationController::class, 'reject'])->name('payment-validation.reject');
@@ -259,6 +264,7 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('enrollments/{enrollmentId}/reject', [\App\Http\Controllers\Admin\AcademyController::class, 'rejectEnrollmentProof'])->name('enrollments.reject');
         Route::post('enrollments/{enrollmentId}/reactivate', [\App\Http\Controllers\Admin\AcademyController::class, 'reactivateEnrollment'])->name('enrollments.reactivate');
         Route::get('enrollments/{enrollmentId}/proof', [\App\Http\Controllers\Admin\AcademyController::class, 'showProof'])->name('enrollments.proof');
+        Route::get('lessons/{lesson}/details', [\App\Http\Controllers\Admin\AcademyController::class, 'lessonDetails'])->name('lessons.details');
         Route::post('enrollments/bulk-delete-stale', [\App\Http\Controllers\Admin\AcademyController::class, 'bulkDeleteStale'])->name('enrollments.bulk-delete-stale');
     });
 });

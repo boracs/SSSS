@@ -8,21 +8,21 @@ const TAB_RENTALS = "rentals";
 
 const STATUS_OPTIONS = [
     { id: "all", label: "Todos" },
-    { id: "submitted", label: "Pendientes de Validar" },
-    { id: "pending", label: "Pendientes de Pago" },
+    { id: "pending", label: "Pendientes" },
     { id: "confirmed", label: "Confirmados" },
+    { id: "rejected", label: "Rechazados" },
 ];
 
 function statusBadge(status) {
     if (status === "confirmed") return "bg-emerald-900/30 text-emerald-200";
-    if (status === "submitted") return "bg-sky-900/30 text-sky-200";
+    if (status === "rejected") return "bg-rose-900/40 text-rose-100";
     if (status === "pending_extra_monitor") return "bg-rose-900/30 text-rose-200";
     return "bg-amber-900/30 text-amber-200";
 }
 
 function statusLabel(status) {
     if (status === "confirmed") return "Confirmado";
-    if (status === "submitted") return "Enviado";
+    if (status === "rejected") return "Rechazado";
     if (status === "pending_extra_monitor") return "Pend. refuerzo";
     return "Pendiente";
 }
@@ -86,7 +86,7 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
     const [tab, setTab] = useState(TAB_LESSONS);
     const [status, setStatus] = useState(filters.status || "all");
     const [preview, setPreview] = useState(null); // {url,name}
-    const [rejecting, setRejecting] = useState(null); // {type,id,notes}
+    const [rejecting, setRejecting] = useState(null); // { id, notes, status }
     const [dismissing, setDismissing] = useState({});
     const [removed, setRemoved] = useState({});
     const [methodFilter, setMethodFilter] = useState("all"); // all|digital|tienda
@@ -166,20 +166,22 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
     };
 
     const approve = (row) => {
+        if (row?.status === "confirmed") return;
         const onSuccess = () => {
             router.reload({ only: ["lessonRows", "rentalRows", "counts", "flash", "adminStats"] });
         };
         if (tab === TAB_LESSONS) {
-            if (status === "submitted") dismissRow(row.id);
+            if (status === "pending") dismissRow(row.id);
             router.post(route("admin.academy.enrollments.confirm", row.id), {}, { preserveScroll: true, onSuccess });
             return;
         }
-        if (status === "submitted") dismissRow(row.id);
+        if (status === "pending") dismissRow(row.id);
         router.post(route("admin.bookings.approve-proof", row.id), {}, { preserveScroll: true, onSuccess });
     };
 
     const reject = () => {
         if (!rejecting) return;
+        if (rejecting.status === "rejected") return;
         const onSuccess = () => {
             router.reload({ only: ["lessonRows", "rentalRows", "counts", "flash", "adminStats"] });
         };
@@ -454,7 +456,9 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                     <button
                                                         type="button"
                                                         onClick={() => approve(r)}
-                                                        className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                        disabled={r.status === "confirmed"}
+                                                        title={r.status === "confirmed" ? "El pago ya está confirmado" : undefined}
+                                                        className="rounded-xl bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                                                     >
                                                         Aprobar
                                                     </button>
@@ -480,8 +484,10 @@ export default function CheckManager({ lessonRows = [], rentalRows = [], filters
                                                     ) : null}
                                                     <button
                                                         type="button"
-                                                        onClick={() => setRejecting({ id: r.id, notes: "" })}
-                                                        className="rounded-xl bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700"
+                                                        onClick={() => setRejecting({ id: r.id, notes: "", status: r.status })}
+                                                        disabled={r.status === "rejected"}
+                                                        title={r.status === "rejected" ? "El pago ya está rechazado" : undefined}
+                                                        className="rounded-xl bg-rose-600 px-3 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-40"
                                                     >
                                                         Rechazar
                                                     </button>

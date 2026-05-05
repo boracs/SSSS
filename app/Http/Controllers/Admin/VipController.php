@@ -176,6 +176,8 @@ class VipController extends Controller
         $from = (string) $request->query('from', 'vips');
         $from = in_array($from, ['vips', 'users'], true) ? $from : 'vips';
 
+        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
         return Inertia::render('User/Dashboard/MyReservations', [
             'classRows' => $rows['classRows'],
             'rentalRows' => $rows['rentalRows'],
@@ -190,6 +192,9 @@ class VipController extends Controller
             'analysisNav' => [
                 'from' => $from,
             ],
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
         ]);
     }
 

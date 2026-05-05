@@ -73,10 +73,9 @@ const Menu_Principal = () => {
         String(user?.has_locker) === "1" ||
         user?.has_active_locker === true ||
         String(user?.has_active_locker) === "1";
-    const pendingBonosCount = Number(adminStats?.pendingBonosCount || 0);
-    const pendingPaymentsGlobalCount = Number(adminStats?.pendingPaymentsGlobalCount || 0);
-    const pendingRentalsCount = Number(adminStats?.pendingRentalsCount || 0);
-    const submittedLockerPaymentsCount = Number(adminStats?.submittedLockerPaymentsCount || 0);
+    const unreviewedPaymentsTotal = Number(adminStats?.unreviewed_payments_total || 0);
+    const unreviewedRentalsCount = Number(adminStats?.unreviewed_rentals_count || 0);
+    const unreviewedLockersTotal = Number(adminStats?.unreviewed_lockers_total || 0);
 
     const [mobileOpen, setMobileOpen] = useState(false);
     const [menuVisible, setMenuVisible] = useState(true);
@@ -95,17 +94,18 @@ const Menu_Principal = () => {
         const studentLinks = user && !isAdmin ? [
             { label: "Tienda", href: route("tienda") },
             { label: "Mis Reservas", href: route("my-reservations.index") },
+            ...(hasActiveLocker ? [{ label: "Taquilla", href: route("taquillas.index.client") }] : []),
             { label: "Perfil", href: route("profile.edit") },
         ] : [];
 
         const vipLinks = user && !isAdmin && isVip ? [
-            { label: "⭐ Mis Bonos / Comprar", href: route("bonos.index") },
+            { label: "⭐ Mis Bonos", href: route("bonos.index") },
         ] : [];
 
         const adminDirect = isAdmin ? [
             { label: "Gestor de Pedidos", href: route("gestor.pedidos"), icon: ShoppingBagIcon },
             { label: "Usuarios VIP", href: route("admin.users.index"), icon: UsersIcon },
-            { label: "Pagos", href: route("admin.payments.global"), icon: CreditCardIcon, badge: pendingPaymentsGlobalCount },
+            { label: "Pagos", href: route("admin.payments.global"), icon: CreditCardIcon, badge: unreviewedPaymentsTotal },
         ] : [];
 
         const classesModule = isAdmin ? [
@@ -125,13 +125,13 @@ const Menu_Principal = () => {
         ] : [];
 
         const lockersModule = isAdmin ? [
-            { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: submittedLockerPaymentsCount },
+            { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: unreviewedLockersTotal },
             { label: "Mapa de Taquillas", href: route("asignar.taquilla.mostrar"), icon: MapIcon },
-            { label: "Configuración de Planes", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
+            { label: "Planes y Vigencia de usuarios", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
         ] : [];
 
         return { publicLinks, studentLinks, vipLinks, adminDirect, classesModule, rentalsModule, lockersModule, adminClientView };
-    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount, submittedLockerPaymentsCount]);
+    }, [user, isAdmin, isVip, unreviewedPaymentsTotal, unreviewedLockersTotal]);
 
     useEffect(() => {
         const onScroll = () => {
@@ -221,7 +221,7 @@ const Menu_Principal = () => {
                                     );
                                 })}
                             </Dropdown>
-                            <Dropdown label="Módulo Alquileres" badge={pendingRentalsCount}>
+                            <Dropdown label="Módulo Alquileres" badge={unreviewedRentalsCount}>
                                 {links.rentalsModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
@@ -232,7 +232,7 @@ const Menu_Principal = () => {
                                     );
                                 })}
                             </Dropdown>
-                            <Dropdown label="Gestor Taquillas" badge={submittedLockerPaymentsCount}>
+                            <Dropdown label="Gestor Taquillas" badge={unreviewedLockersTotal}>
                                 {links.lockersModule.map((l) => {
                                     const Icon = l.icon;
                                     return (

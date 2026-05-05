@@ -58,6 +58,35 @@ final class BusinessDateTime
     }
 
     /**
+     * Fecha de calendario de alquiler (solo Y-m-d o datetime sin zona) en la zona del negocio, inicio del día 00:00.
+     * Sirve para ventanas de disponibilidad (from/to) y comparaciones por día.
+     */
+    public static function parseRentalDate(string $value): Carbon
+    {
+        $trim = trim($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trim)) {
+            return self::parseInAppTimezone($trim.' 00:00:00');
+        }
+
+        return self::parseInAppTimezone($trim);
+    }
+
+    /**
+     * Día de calendario del alquiler a la hora estándar de entrega/devolución en tienda (config {@see config('services.academy.rental_handoff_hour')}, por defecto 10:00).
+     */
+    public static function parseRentalHandoffDate(string $value): Carbon
+    {
+        $hour = (int) config('services.academy.rental_handoff_hour', 10);
+        $hour = max(0, min(23, $hour));
+        $trim = trim($value);
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $trim)) {
+            return self::parseInAppTimezone(sprintf('%s %02d:00:00', $trim, $hour));
+        }
+
+        return self::parseInAppTimezone($trim);
+    }
+
+    /**
      * Entrada del modal / API sin zona: "Y-m-d H:i:s" o "Y-m-dTH:i" / "Y-m-dTH:i:s" = reloj de pared en la escuela.
      */
     public static function parseInAppTimezone(string $datetime): Carbon

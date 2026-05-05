@@ -93,13 +93,13 @@ export default function Index({ surfboards }) {
         <>
             <Head title="Gestor de tablas (alquiler)" />
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-                <Breadcrumbs items={breadcrumbs} className="mb-4" />
+                <Breadcrumbs items={breadcrumbs} variant="dark" className="mb-4" />
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h1 className="font-heading text-2xl font-extrabold tracking-tight text-brand-primary">
+                        <h1 className="font-heading text-2xl font-extrabold tracking-tight text-gray-100">
                             Tablas de alquiler
                         </h1>
-                        <p className="mt-1 text-sm text-slate-600">
+                        <p className="mt-1 text-sm text-gray-300">
                             CRUD de inventario de tablas y su esquema de precios.
                         </p>
                     </div>

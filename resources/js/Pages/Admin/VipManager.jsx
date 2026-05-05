@@ -23,6 +23,8 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
     const [deleteProcessing, setDeleteProcessing] = useState(false);
     const [timeNotice, setTimeNotice] = useState("");
     const [availabilityError, setAvailabilityError] = useState("");
+    const [overlapModalOpen, setOverlapModalOpen] = useState(false);
+    const [forceCreateProcessing, setForceCreateProcessing] = useState(false);
 
     const form = useForm({
         date: "",
@@ -34,6 +36,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
         photographer_id: "",
         location: "Zurriola",
         max_capacity: 12,
+        force_create: false,
     });
 
     const [year, monthNum] = useMemo(() => {
@@ -119,7 +122,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
         });
     };
 
-    const submit = (e) => {
+    const submit = async (e) => {
         e.preventDefault();
         const minDurationOk = Number(form.data.duration_minutes || 90) >= 60;
         if (!minDurationOk) return;
@@ -134,12 +137,52 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
             });
             return;
         }
+
+        let latestAvailability = availability;
+        if (form.data.date && form.data.time) {
+            latestAvailability = await checkAvailability(form.data.date, form.data.time, 0, {
+                duration_minutes: Number(form.data.duration_minutes || 90),
+            });
+        }
+
+        const shouldWarnOverlap =
+            form.data.time &&
+            Number(latestAvailability?.max_capacity ?? 12) === 0 &&
+            (
+                (Array.isArray(latestAvailability?.conflicts) && latestAvailability.conflicts.length > 0)
+                || (Array.isArray(latestAvailability?.occupied_staff) && latestAvailability.occupied_staff.length > 0)
+            );
+
+        if (shouldWarnOverlap) {
+            setOverlapModalOpen(true);
+            return;
+        }
+
         form.post(route("admin.vip-manager.lessons.store"), {
             preserveScroll: true,
             onSuccess: () => {
                 form.reset("time", "monitor_id", "photographer_id");
                 setAvailability(null);
                 setDrawerOpen(false);
+            },
+        });
+    };
+
+    const forceCreateWithConflict = () => {
+        if (forceCreateProcessing) return;
+        setForceCreateProcessing(true);
+        form.setData("force_create", true);
+        form.post(route("admin.vip-manager.lessons.store"), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOverlapModalOpen(false);
+                form.reset("time", "monitor_id", "photographer_id");
+                setAvailability(null);
+                setDrawerOpen(false);
+            },
+            onFinish: () => {
+                form.setData("force_create", false);
+                setForceCreateProcessing(false);
             },
         });
     };
@@ -225,7 +268,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
     const resolvedMaxCapacity = hasAvailability ? Number(availability.max_capacity) : null;
 
     const checkAvailability = async (dateValue, timeValue, excludeLessonId = 0, overrides = {}) => {
-        if (!dateValue || !timeValue) return;
+        if (!dateValue || !timeValue) return null;
         setCheckingAvailability(true);
         setAvailabilityError("");
         try {
@@ -241,7 +284,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
             if (!contentType.includes("application/json")) {
                 setAvailabilityError("Respuesta no válida del servidor al comprobar disponibilidad.");
                 setAvailability(null);
-                return;
+                return null;
             }
             const data = await res.json();
             console.log("[VIP check-availability] Monitores ocupados detectados:", Number(data?.peak_monitors_used ?? -1), data);
@@ -251,6 +294,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
             if (!res.ok) {
                 setAvailabilityError(data?.message || "No se pudo comprobar la disponibilidad.");
             }
+            return data;
         } finally {
             setCheckingAvailability(false);
         }
@@ -272,6 +316,7 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
             photographer_id: "",
             location: "Zurriola",
             max_capacity: 12,
+            force_create: false,
         });
         setDrawerOpen(true);
     };
@@ -661,7 +706,6 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
                                     type="submit"
                                     disabled={
                                         form.processing
-                                        || (form.data.time && hasAvailability && resolvedMaxCapacity === 0)
                                         || (() => {
                                             return !!getDurationValidationMessage();
                                         })()
@@ -673,6 +717,96 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
                             </div>
                         </form>
                     </aside>
+                </div>
+            ) : null}
+            {overlapModalOpen ? (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        className="absolute inset-0 bg-gray-950/80"
+                        onClick={() => setOverlapModalOpen(false)}
+                        aria-label="Cerrar aviso de solape"
+                    />
+                    <div className="relative z-10 w-full max-w-3xl rounded-xl border border-white/10 bg-gradient-to-b from-gray-800 to-gray-900 p-5 shadow-2xl ring-1 ring-white/10">
+                        <h3 className="text-lg font-bold text-gray-100">Solape detectado: monitores ocupados</h3>
+                        <p className="mt-1 text-sm text-gray-300">
+                            Esta clase se solapa con sesiones activas y ahora no hay monitores libres.
+                        </p>
+
+                        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                            <div className="rounded-xl border border-amber-700/40 bg-amber-900/20 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">Clase(s) en conflicto</p>
+                                {Array.isArray(availability?.conflicts) && availability.conflicts.length > 0 ? (
+                                    <ul className="mt-2 space-y-2 text-sm text-amber-100">
+                                        {availability.conflicts.map((c, idx) => (
+                                            <li key={`conflict-${c.lesson_id || idx}`} className="rounded-lg border border-amber-700/30 bg-amber-900/10 px-2 py-1.5">
+                                                <p className="font-semibold">{c.title || "Clase"}</p>
+                                                <p className="text-xs text-amber-200">
+                                                    {c.window_start ? formatDateTimeMadrid(c.window_start) : "—"} - {c.window_end ? formatDateTimeMadrid(c.window_end) : "—"}
+                                                </p>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="mt-2 text-sm text-amber-100">No se pudo detallar el conflicto.</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-gray-700 bg-gray-900 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Monitores ocupados</p>
+                                {Array.isArray(availability?.occupied_staff) && availability.occupied_staff.length > 0 ? (
+                                    <ul className="mt-2 space-y-1 text-sm text-gray-200">
+                                        {availability.occupied_staff.map((person) => (
+                                            <li key={`busy-${person.id}`} className="rounded-md bg-gray-800 px-2 py-1">
+                                                {person.name}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="mt-2 text-sm text-gray-400">Sin detalle de staff ocupado.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="mt-4 rounded-xl border border-gray-700 bg-gray-900 p-3">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-300">Todas las clases de ese día</p>
+                            {Array.isArray(availability?.daily_schedule) && availability.daily_schedule.length > 0 ? (
+                                <div className="mt-2 max-h-56 overflow-auto space-y-1.5 pr-1">
+                                    {availability.daily_schedule.map((entry) => (
+                                        <div key={`day-${entry.id}`} className="rounded-lg border border-gray-700 bg-gray-800 px-2 py-1.5 text-xs text-gray-200">
+                                            <p className="font-semibold text-gray-100">{entry.title} · {entry.modality}</p>
+                                            <p>
+                                                {entry.starts_at ? formatDateTimeMadrid(entry.starts_at, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—"}
+                                                {" - "}
+                                                {entry.ends_at ? formatDateTimeMadrid(entry.ends_at, { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit" }) : "—"}
+                                            </p>
+                                            <p className="text-gray-300">Monitor: {entry.monitor_name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="mt-2 text-sm text-gray-400">Sin clases registradas en ese día.</p>
+                            )}
+                        </div>
+
+                        <div className="mt-5 flex flex-col-reverse justify-end gap-2 sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={() => setOverlapModalOpen(false)}
+                                className="rounded-xl border border-gray-600 px-4 py-2 text-sm font-semibold text-gray-200 transition-all duration-200 ease-in-out hover:bg-gray-700"
+                            >
+                                Modificar hora
+                            </button>
+                            <button
+                                type="button"
+                                onClick={forceCreateWithConflict}
+                                disabled={forceCreateProcessing}
+                                className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-all duration-200 ease-in-out hover:bg-amber-700 disabled:opacity-60"
+                            >
+                                {forceCreateProcessing ? "Creando..." : "Continuar y crear igualmente"}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             ) : null}
         </>

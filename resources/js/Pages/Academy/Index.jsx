@@ -25,16 +25,6 @@ function SkeletonCard() {
     );
 }
 
-function PersonSlotIcon({ filled, title }) {
-    return (
-        <span className={filled ? "text-brand-accent" : "text-slate-400"} title={title}>
-            <svg className="h-4 w-4" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth={filled ? 0 : 1.5} viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-            </svg>
-        </span>
-    );
-}
-
 function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) {
     const [quantity, setQuantity] = useState(1);
     const [ageBracket, setAgeBracket] = useState("adult");
@@ -58,206 +48,100 @@ function BookingModal({ open, lesson, onClose, onConfirm, processing = false }) 
     const ageConflict = ageBracket !== "family" && ((ageBracket === "children" && hasAdults) || (ageBracket === "adult" && hasChildren));
 
     return (
-        <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-gray-950/70" onClick={onClose} aria-hidden />
-            <div className="relative w-full max-w-lg rounded-2xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
-                <h3 className="font-heading text-lg font-bold text-gray-100">Reserva grupal</h3>
-                <p className="mt-1 text-sm text-gray-400">Configura tu grupo antes de pagar.</p>
-
-                <div className="mt-4">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-400">Cantidad (1-6)</label>
-                    <input
-                        type="number"
-                        min={1}
-                        max={6}
-                        value={quantity}
-                        onChange={(e) => setQuantity(Math.max(1, Math.min(6, Number(e.target.value || 1))))}
-                        className="input-focus-ring mt-2 w-full rounded-xl px-4 py-2.5 text-sm"
-                    />
-                </div>
-
-                <div className="mt-4">
-                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-400">Rango de Edad del Grupo</label>
-                    <select
-                        value={ageBracket}
-                        onChange={(e) => setAgeBracket(e.target.value)}
-                        className="input-focus-ring mt-2 w-full rounded-xl px-4 py-2.5 text-sm"
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-brand-deep/70 backdrop-blur-md" onClick={onClose} aria-hidden />
+            <div className="relative max-h-[92vh] w-full max-w-[80vw] overflow-y-auto rounded-3xl border border-white/20 bg-gradient-to-br from-[#0d234d] to-[#0f2d5c] p-5 shadow-2xl lg:p-7 xl:max-w-[1200px]">
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 className="font-heading text-xl font-bold tracking-tight text-white">Reserva grupal</h3>
+                        <p className="mt-1 text-sm text-white/80">Configura tu grupo antes de continuar al pago Bizum/IBAN.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl p-2 text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                        aria-label="Cerrar"
                     >
-                        <option value="children">👦 Niños (7-11 años)</option>
-                        <option value="adult">🏄‍♂️ Adultos / Jóvenes (+12 años)</option>
-                        <option value="family">👨‍👩‍👧‍👦 Familia (Mezcla - Clase Especial)</option>
-                    </select>
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                {ageConflict && (
-                    <div className="mt-3 rounded-xl border border-amber-700 bg-amber-900/30 px-3 py-2 text-xs font-medium text-amber-200">
-                        Este grupo ya cuenta con alumnos de otra franja. Por seguridad y autonomía, te sugerimos buscar una sesión compatible o contactarnos.
+                <div className="mt-4 grid grid-cols-1 gap-5 xl:grid-cols-2 xl:gap-6">
+                    <div className="space-y-4">
+                        <div className="rounded-2xl border border-white/20 bg-white/10 p-4">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-white/80">Datos del grupo</div>
+                            <div className="mt-3 space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/80">Cantidad (1-6)</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        max={6}
+                                        value={quantity}
+                                        onChange={(e) => setQuantity(Math.max(1, Math.min(6, Number(e.target.value || 1))))}
+                                        className="input-focus-ring mt-2 w-full rounded-xl border border-white/20 bg-[#0f1b34] px-4 py-2.5 text-sm text-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/80">Rango de Edad del Grupo</label>
+                                    <select
+                                        value={ageBracket}
+                                        onChange={(e) => setAgeBracket(e.target.value)}
+                                        className="input-focus-ring mt-2 w-full rounded-xl border border-white/20 bg-[#0f1b34] px-4 py-2.5 text-sm text-white"
+                                    >
+                                        <option value="children">👦 Niños (7-11 años)</option>
+                                        <option value="adult">🏄‍♂️ Adultos / Jóvenes (+12 años)</option>
+                                        <option value="family">👨‍👩‍👧‍👦 Familia (Mezcla - Clase Especial)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                )}
 
-                {requestExtra && (
-                    <div className="mt-3 rounded-xl border border-sky-700 bg-sky-900/30 px-3 py-2 text-xs font-medium text-sky-200">
-                        ¡Sois un gran grupo! Superamos el límite de 6 alumnos por monitor. Si confirmas, solicitaremos un segundo monitor de refuerzo para vuestra seguridad. El precio no cambia y la calidad mejora.
+                    <div className="space-y-4">
+                        <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-sm text-white/90">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-white/80">Condiciones</div>
+                            <p className="mt-3">
+                                El precio se mantiene, pero al ser un grupo mayor, el servicio mejorará con atención personalizada de dos monitores tras nuestra confirmación.
+                            </p>
+                        </div>
+
+                        {ageConflict && (
+                            <div className="rounded-2xl border border-amber-300/50 bg-amber-500/15 px-4 py-3 text-xs font-medium text-amber-100">
+                                Este grupo ya cuenta con alumnos de otra franja. Por seguridad y autonomía, te sugerimos buscar una sesión compatible o contactarnos.
+                            </div>
+                        )}
+
+                        {requestExtra && (
+                            <div className="rounded-2xl border border-sky-300/50 bg-sky-500/15 px-4 py-3 text-xs font-medium text-sky-100">
+                                ¡Sois un gran grupo! Superamos el límite de 6 alumnos por monitor. Si confirmas, solicitaremos un segundo monitor de refuerzo para vuestra seguridad. El precio no cambia y la calidad mejora.
+                            </div>
+                        )}
                     </div>
-                )}
+                </div>
 
-                <p className="mt-3 text-xs text-gray-400">
-                    El precio se mantiene, pero al ser un grupo mayor, el servicio mejorará con atención personalizada de dos monitores tras nuestra confirmación.
-                </p>
-
-                <div className="mt-4 flex justify-end gap-2">
-                    <button type="button" onClick={onClose} className="btn-secondary">Cancelar</button>
+                <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/20"
+                    >
+                        Cancelar
+                    </button>
                     <button
                         type="button"
                         disabled={processing || ageConflict}
                         onClick={() => onConfirm({ quantity, ageBracket, requestExtra })}
-                        className="rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
+                        className="inline-flex min-w-[190px] items-center justify-center rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        {processing ? "Procesando..." : (requestExtra ? "Solicitar Ampliación de Monitor" : "Reservar y pagar")}
+                        {processing ? "Procesando..." : (requestExtra ? "Solicitar ampliación" : "Continuar al pago")}
                     </button>
                 </div>
             </div>
         </div>
-    );
-}
-
-function LessonCard({ lesson, isEnrolled, enrollmentStatus, creditsBalance, onShowPayment, hasProof = false }) {
-    const startsAt = new Date(lesson.starts_at);
-    const timeStr = formatTimeMadrid(startsAt);
-    const hasFotografo = !!lesson.fotografo;
-    const occupied = lesson.party_size_total ?? lesson.enrolled_count;
-    const maxSlots = lesson.max_slots ?? 0;
-    const isPrivate = !!lesson.is_private;
-    const isFullByStaff = !!lesson.is_full_by_staff;
-
-    return (
-        <article className="cursor-pointer rounded-xl border border-gray-700 bg-gray-800/80 p-3 backdrop-blur-sm transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-gray-800 hover:shadow-md">
-            <div className="flex flex-wrap items-start justify-between gap-1">
-                <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        lesson.level === "pro"
-                            ? "bg-gradient-to-r from-brand-deep/90 to-brand-accent/80 text-white"
-                            : "bg-gray-700 text-gray-200"
-                    }`}
-                >
-                    {lesson.level === "pro" ? "Pro" : "Iniciación"}
-                </span>
-                <span className="text-xs font-medium text-gray-400">{timeStr}</span>
-            </div>
-
-            <p className="mt-2 font-heading text-base font-bold tracking-tight text-gray-100">
-                {isPrivate ? "CLASE PRIVADA" : (lesson.title || `Clase ${timeStr}`)}
-            </p>
-            <p className="mt-0.5 text-xs text-gray-400">{lesson.location}</p>
-
-            <div className="mt-2 flex items-center gap-1.5">
-                {lesson.monitor && (
-                    <span
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-900/30 text-xs font-bold text-sky-200"
-                        title={`Monitor: ${lesson.monitor.nombre}`}
-                    >
-                        {(lesson.monitor.nombre || "M").charAt(0)}
-                    </span>
-                )}
-                {hasFotografo ? (
-                    <span
-                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-accent/20 text-brand-accent"
-                        title={`Fotógrafo: ${lesson.fotografo.nombre}`}
-                    >
-                        <CameraIcon className="h-3.5 w-3.5" />
-                    </span>
-                ) : (
-                    <span
-                        className="inline-flex items-center gap-0.5 rounded-full bg-gray-700 px-1.5 py-0.5 text-gray-300"
-                        title="Sesión sin fotos"
-                    >
-                        <CameraSlashIcon className="h-3.5 w-3.5" />
-                        <span className="text-[10px]">Sin fotos</span>
-                    </span>
-                )}
-                {maxSlots > 0 && (
-                    <span className="ml-auto flex items-center gap-0.5" title={`${occupied} de ${maxSlots} plazas`}>
-                        {Array.from({ length: maxSlots }, (_, i) => (
-                            <PersonSlotIcon key={i} filled={i < occupied} title={i < occupied ? "Ocupada" : "Libre"} />
-                        ))}
-                    </span>
-                )}
-            </div>
-
-            <div className="mt-3 flex gap-2">
-                {isEnrolled ? (
-                    <>
-                        {(enrollmentStatus === "pending" || enrollmentStatus === "confirmed") && (
-                            <div className={`flex-1 rounded-xl px-3 py-2 text-center ${
-                                enrollmentStatus === "pending" && hasProof
-                                    ? "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70"
-                                    : enrollmentStatus === "pending"
-                                      ? "bg-amber-50 text-amber-800"
-                                      : "bg-amber-50 text-amber-800"
-                            }`}>
-                                <span className="text-sm font-medium">
-                                    {enrollmentStatus === "pending" && hasProof
-                                        ? "Validando tu pago..."
-                                        : enrollmentStatus === "pending"
-                                          ? "Pendiente de pago"
-                                          : "Confirmada (pendiente de clase)"}
-                                </span>
-                                {enrollmentStatus === "pending" && hasProof && (
-                                    <p className="mt-1 text-xs font-normal text-sky-600/90">
-                                        Estamos en ello; puede tardar un rato según el momento. Gracias por tu paciencia.
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {enrollmentStatus === "pending" && onShowPayment && (
-                            <button
-                                type="button"
-                                onClick={() => onShowPayment(lesson)}
-                                className="btn-secondary flex-1 text-sm"
-                            >
-                                Ver instrucciones de pago
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => router.post(route("academy.lessons.cancel", lesson.id))}
-                            className="btn-secondary flex-1 text-sm"
-                        >
-                            {enrollmentStatus === "pending" || enrollmentStatus === "confirmed" ? "Cancelar solicitud" : "Cancelar inscripción"}
-                        </button>
-                    </>
-                ) : occupied < maxSlots && !isFullByStaff ? (
-                    <button
-                        type="button"
-                        onClick={() => router.post(route("academy.lessons.request", lesson.id), { party_size: 1 })}
-                        className="btn-primary flex-1 text-sm"
-                    >
-                        Solicitar clase
-                    </button>
-                ) : (
-                    <span className="text-sm text-gray-400">
-                        {isFullByStaff ? "Completo (staff)" : "Clase completa"}
-                    </span>
-                )}
-            </div>
-        </article>
-    );
-}
-
-function CameraIcon({ className }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 13v7a2 2 0 01-2 2H7a2 2 0 01-2-2v-7" />
-        </svg>
-    );
-}
-function CameraSlashIcon({ className }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-        </svg>
     );
 }
 
@@ -347,7 +231,7 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
     };
 
     const dotClass = (p) => {
-        if (p.vip) return "bg-amber-400 ring-1 ring-amber-600/50";
+        if (p.vip) return "bg-rose-500 ring-1 ring-rose-700/50";
         if (p.t === "particular") return "bg-red-500";
         if (p.t === "semanal") return "bg-sky-500";
         return "bg-emerald-500";
@@ -429,7 +313,7 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                     const connectRight = hasWeekly && idx % 7 !== 6 && (next?.stats?.count_by_type?.semanal || 0) > 0 && isConsecutive(c.dateStr, next?.dateStr);
 
                     const pillClass = (t, vip) => {
-                        if (vip) return "bg-amber-400 ring-1 ring-amber-600/50";
+                        if (vip) return "bg-rose-500 ring-1 ring-rose-700/50";
                         if (t === "particular") return "bg-red-500";
                         if (t === "semanal") return "bg-sky-500";
                         return "bg-emerald-500"; // grupal
@@ -475,14 +359,14 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                                     {c.stats?.count_by_type?.particular > 0 && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
                                     {c.stats?.count_by_type?.grupal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
                                     {c.stats?.count_by_type?.semanal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-500" />}
-                                    {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-amber-600/50" />}
+                                    {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-rose-700/50" />}
                                 </div>
                                 {/* Desktop: dots sutiles por tipo */}
                                 <div className="hidden w-full items-center justify-center gap-1.5 sm:flex">
                                     {c.stats?.count_by_type?.particular > 0 && <span className="h-1.5 w-1.5 rounded-full bg-rose-400" />}
                                     {c.stats?.count_by_type?.grupal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
                                     {c.stats?.count_by_type?.semanal > 0 && <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />}
-                                    {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 ring-1 ring-amber-600/50" />}
+                                    {c.stats?.is_vip && <span className="h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-rose-700/50" />}
                                     {overflow > 0 && (
                                         <span
                                             className="ml-1 cursor-pointer text-[9px] font-semibold text-slate-400"
@@ -501,16 +385,29 @@ function CalendarCommander({ monthDate, selectedDate, onSelectDay, onNavigateMon
                 })}
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-300">
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
-                    <span className="h-2 w-2 rounded-full bg-sky-500" /> Disponible
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" /> Solicitud enviada
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
-                    <span className="h-2 w-2 rounded-full bg-slate-400" /> Completo (staff)
-                </span>
+            <div className="mt-4 space-y-2 text-xs text-slate-300">
+                <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" /> Grupal
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-sky-500" /> Semanal
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-rose-500" /> VIP
+                    </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-amber-500" /> Solicitud enviada
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-[#00D1FF]" /> Verificando pago
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-slate-800 px-2 py-1 ring-1 ring-slate-700">
+                        <span className="h-2 w-2 rounded-full bg-rose-500" /> Pago rechazado
+                    </span>
+                </div>
             </div>
         </div>
     );
@@ -754,6 +651,7 @@ export default function AcademyIndex({
     const [date, setDate] = useState(selectedDate);
     const [month, setMonth] = useState(calendarMonth || selectedDate);
     const [paymentModalLesson, setPaymentModalLesson] = useState(null);
+    const [groupLessonRequestPayload, setGroupLessonRequestPayload] = useState(null);
     const [bookingModalLesson, setBookingModalLesson] = useState(null);
     const [processingId, setProcessingId] = useState(null);
     const pageProps = usePage().props;
@@ -777,10 +675,14 @@ export default function AcademyIndex({
     // Oferta pública: exclusión total de particulares.
     const visibleFeedLessons = useMemo(() => {
         return feedLessons.filter((l) => {
+            if (isAdmin) return true;
             const modality = l.modality || (l.is_private ? "particular" : "grupal");
-            return modality !== "particular";
+            if (isVipUser) {
+                return modality === "grupal" || modality === "semanal" || modality === "vip";
+            }
+            return modality === "grupal" || modality === "semanal";
         });
-    }, [feedLessons]);
+    }, [feedLessons, isAdmin, isVipUser]);
 
     const mySignalsByDate = useMemo(() => {
         const out = {};
@@ -887,47 +789,21 @@ export default function AcademyIndex({
         setProcessingId(lesson.id);
         const enrolledStatus = myEnrollmentStatusByLesson?.[lesson.id];
         if (enrolledStatus === "pending" || enrolledStatus === "confirmed") {
+            setGroupLessonRequestPayload(null);
             setPaymentModalLesson(lesson);
             setBookingModalLesson(null);
             setProcessingId(null);
             return;
         }
-        router.post(
-            route("academy.lessons.request", lesson.id),
-            {
-                quantity: payload?.quantity ?? 1,
-                age_bracket: payload?.ageBracket ?? "adult",
-                request_extra_monitor: !!payload?.requestExtra,
-            },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setPaymentModalLesson(lesson);
-                    setBookingModalLesson(null);
-                    router.reload({
-                        only: [
-                            "lessonsFeed",
-                            "myEnrollmentStatusByLesson",
-                            "myEnrollmentHasProofByLesson",
-                            "myEnrollmentExpiresAtByLesson",
-                            "myEnrollmentIdByLesson",
-                            "auth",
-                        ],
-                        onFinish: () => setProcessingId(null),
-                    });
-                    setProcessingId(null);
-                },
-                onError: () => setProcessingId(null),
-            }
-        );
+        setGroupLessonRequestPayload({
+            quantity: payload?.quantity ?? 1,
+            age_bracket: payload?.ageBracket ?? "adult",
+            request_extra_monitor: !!payload?.requestExtra,
+        });
+        setPaymentModalLesson(lesson);
+        setBookingModalLesson(null);
+        setProcessingId(null);
     };
-
-    useEffect(() => {
-        const id = flash?.payment_lesson_id;
-        if (!id) return;
-        const lesson = feedLessons.find((l) => l.id === id);
-        if (lesson) setPaymentModalLesson(lesson);
-    }, [flash?.payment_lesson_id, feedLessons]);
 
     const monthDate = useMemo(() => startOfMonth(new Date((month || selectedDate) + "T12:00:00")), [month, selectedDate]);
 
@@ -1028,7 +904,7 @@ export default function AcademyIndex({
                                         { id: "all", label: "Todas" },
                                         { id: "grupal", label: "Grupales" },
                                         { id: "semanal", label: "Semanales" },
-                                        ...(isVipUser ? [{ id: "vip", label: "Clases VIP" }] : []),
+                                        ...((isVipUser || isAdmin) ? [{ id: "vip", label: "Clases VIP" }] : []),
                                     ].map((f) => (
                                         <button
                                             key={f.id}
@@ -1168,17 +1044,32 @@ export default function AcademyIndex({
             {pendingSurfTripLesson && <SurfTripFab lesson={pendingSurfTripLesson} />}
             <PaymentModal
                 open={!!paymentModalLesson}
-                onClose={() => setPaymentModalLesson(null)}
+                onClose={() => {
+                    setPaymentModalLesson(null);
+                    setGroupLessonRequestPayload(null);
+                }}
                 lesson={paymentModalLesson}
-                expiresAt={paymentModalLesson && !myEnrollmentHasProofByLesson[paymentModalLesson.id] ? myEnrollmentExpiresAtByLesson[paymentModalLesson.id] : null}
-                hasProof={!!(paymentModalLesson && myEnrollmentHasProofByLesson[paymentModalLesson.id])}
-                enrollmentId={paymentModalLesson ? myEnrollmentIdByLesson[paymentModalLesson.id] : null}
+                expiresAt={
+                    paymentModalLesson && paymentModalLesson.id !== "PRIVATE_FLOW" && !myEnrollmentHasProofByLesson[paymentModalLesson.id]
+                        ? myEnrollmentExpiresAtByLesson[paymentModalLesson.id]
+                        : null
+                }
+                hasProof={
+                    !!(paymentModalLesson && paymentModalLesson.id !== "PRIVATE_FLOW" && myEnrollmentHasProofByLesson[paymentModalLesson.id])
+                }
+                enrollmentId={
+                    paymentModalLesson && paymentModalLesson.id !== "PRIVATE_FLOW"
+                        ? myEnrollmentIdByLesson[paymentModalLesson.id]
+                        : null
+                }
                 bizumNumber={paymentBizumNumber}
                 iban={paymentIban}
                 whatsappHelpUrl={whatsappHelpUrl}
                 isAdmin={isAdmin}
                 currentUserId={currentUser?.id ?? null}
+                groupLessonRequestPayload={groupLessonRequestPayload}
                 onSuccessAction={() => {
+                    setGroupLessonRequestPayload(null);
                     router.reload({
                         only: [
                             "lessonsFeed",
@@ -1362,12 +1253,22 @@ export default function AcademyIndex({
                                     const durationMinutes = privateDurationMode === "manual"
                                         ? Math.max(30, Number(privateManualMinutes || 90))
                                         : Number(privateDurationMinutes || 90);
-                                    router.post(route("academy.private.request"), { date: privateDate, start: selectedPrivateSlot.start, duration_minutes: durationMinutes }, { preserveScroll: true });
+                                    const start = selectedPrivateSlot.start;
+                                    setPaymentModalLesson({
+                                        id: "PRIVATE_FLOW",
+                                        date: privateDate,
+                                        start,
+                                        duration_minutes: durationMinutes,
+                                        price: 0,
+                                        starts_at: `${privateDate}T${start}`,
+                                        currency: "EUR",
+                                    });
+                                    setGroupLessonRequestPayload(null);
                                     setShowPrivateModal(false);
                                 }}
                                 className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Confirmar solicitud
+                                Continuar al pago
                             </button>
                         </div>
                     </div>

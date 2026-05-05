@@ -7,6 +7,7 @@ use App\Http\Requests\Rentals\StoreBookingRequest;
 use App\Models\Booking;
 use App\Models\Surfboard;
 use App\Services\BookingService;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,8 +24,8 @@ class BookingController extends Controller
     {
         $data = $request->validated();
         $surfboard = Surfboard::query()->findOrFail($data['surfboard_id']);
-        $start = Carbon::parse($data['start_date']);
-        $end = Carbon::parse($data['end_date']);
+        $start = BusinessDateTime::parseRentalHandoffDate((string) $data['start_date']);
+        $end = BusinessDateTime::parseRentalHandoffDate((string) $data['end_date']);
 
         if (! $this->bookingService->isAvailable((int) $surfboard->id, $start, $end)) {
             $msg = 'La tabla no está disponible en ese rango. Ya existe una reserva (pendiente o confirmada) que la bloquea.';
@@ -44,16 +45,11 @@ class BookingController extends Controller
         $totalPrice = $this->bookingService->calculateBestPrice($schema, $start, $end);
         $depositAmount = $this->bookingService->calculateDeposit($totalPrice, 30.0);
         $expiresAt = Carbon::now()->addDays(7);
-        $hasProof = $request->hasFile('proof');
-
-        $proofPath = null;
-        if ($hasProof) {
-            $proofPath = $request->file('proof')->storeAs(
-                'payment-proofs/rentals',
-                Str::uuid()->toString().'.'.$request->file('proof')->getClientOriginalExtension(),
-                'local'
-            );
-        }
+        $proofPath = $request->file('proof')->storeAs(
+            'payment-proofs/rentals',
+            Str::uuid()->toString().'.'.$request->file('proof')->getClientOriginalExtension(),
+            'local'
+        );
 
         $booking = Booking::create([
             'surfboard_id' => $surfboard->id,
@@ -65,9 +61,9 @@ class BookingController extends Controller
             'end_date' => $end,
             'expires_at' => $expiresAt,
             'status' => Booking::STATUS_PENDING,
-            'payment_status' => $hasProof ? Booking::PAYMENT_SUBMITTED : Booking::PAYMENT_PENDING,
+            'payment_status' => Booking::PAYMENT_PENDING,
             'payment_proof_path' => $proofPath,
-            'proof_uploaded_at' => $hasProof ? now() : null,
+            'proof_uploaded_at' => now(),
             'payment_method' => $data['payment_method'] ?? null,
             'total_price' => $totalPrice,
             'deposit_amount' => $depositAmount,
@@ -78,16 +74,13 @@ class BookingController extends Controller
             return response()->json([
                 'success' => true,
                 'booking' => $booking->fresh(),
-                'message' => $hasProof
-                    ? 'Reserva creada y comprobante enviado. Queda pendiente de validación manual.'
-                    : 'Reserva creada en estado pendiente. El cliente dispone de 7 días para realizar el ingreso.',
+                'message' => 'Reserva creada y comprobante enviado. Queda pendiente de validación manual.',
             ], 201);
         }
 
         return redirect()->back()->with([
-            'success' => $hasProof
-                ? 'Reserva creada y comprobante enviado correctamente. Te avisaremos tras validación.'
-                : 'Reserva creada (pendiente). Depósito: ' . number_format((float) $depositAmount, 2, ',', '') . ' €. Caduca en 7 días.',
+            'success' => 'Reserva creada y comprobante enviado correctamente. Te avisaremos tras validación. Depósito: '
+                . number_format((float) $depositAmount, 2, ',', '') . ' €. Caduca en 7 días.',
             'booking_id' => $booking->id,
         ]);
     }
@@ -100,8 +93,12 @@ class BookingController extends Controller
             'to' => ['required', 'date', 'after_or_equal:from'],
         ]);
 
-        $from = Carbon::parse($request->input('from'));
-        $to = Carbon::parse($request->input('to'));
+        $fromRaw = (string) $request->input('from');
+        $toRaw = (string) $request->input('to');
+        $from = BusinessDateTime::parseRentalDate($fromRaw);
+        $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($toRaw))
+            ? BusinessDateTime::parseInAppTimezone(trim($toRaw).' 23:59:59')
+            : BusinessDateTime::parseRentalDate($toRaw);
         $ranges = $this->bookingService->getBlockedRanges(
             (int) $request->input('surfboard_id'),
             $from,

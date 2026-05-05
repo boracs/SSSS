@@ -70,12 +70,14 @@ const Tienda = ({ productos }) => {
                     <div className="text-sm">{mensajeToast}</div>{" "}
                 </div>
             )}{" "}
-            <div className="p-4 w-[80%] mx-auto">
-                {" "}
-                <h2 className="text-2xl font-bold mb-4 text-center">Tienda</h2>
-                {/* Mostrar productos */}{" "}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                    {" "}
+            <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+                <div className="mb-5 flex items-end justify-between gap-3">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl">Tienda</h2>
+                    <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
+                        {productos.length} productos
+                    </p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {obtenerProductosDePagina().map((producto) => (
                         <Producto
                             key={producto.id}
@@ -86,30 +88,29 @@ const Tienda = ({ productos }) => {
                             descuento={producto.descuento}
                             producto={producto}
                         />
-                    ))}{" "}
+                    ))}
                 </div>
-                {/* Paginación */}{" "}
-                <div className="flex justify-center mt-6 space-x-4">
-                    {" "}
+                <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                     <button
                         onClick={irAAnterior}
-                        className="px-4 py-2 bg-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={paginaActual === 1}
                     >
-                        Anterior{" "}
-                    </button>{" "}
-                    <span className="text-sm text-gray-600">
-                        Página {paginaActual} de {totalPaginas}{" "}
-                    </span>{" "}
+                        Anterior
+                    </button>
+                    <span className="text-sm text-slate-300">
+                        Página <span className="font-bold text-slate-100">{paginaActual}</span> de{" "}
+                        <span className="font-bold text-slate-100">{Math.max(1, totalPaginas)}</span>
+                    </span>
                     <button
                         onClick={irASiguiente}
-                        className="px-4 py-2 bg-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                         disabled={paginaActual === totalPaginas}
                     >
-                        Siguiente{" "}
-                    </button>{" "}
-                </div>{" "}
-            </div>{" "}
+                        Siguiente
+                    </button>
+                </div>
+            </div>
         </Layout1>
     );
 };

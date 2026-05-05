@@ -18,8 +18,10 @@ class Booking extends Model
     public const STATUS_CANCELLED = 'cancelled';
 
     public const PAYMENT_PENDING = 'pending';
-    public const PAYMENT_SUBMITTED = 'submitted';
     public const PAYMENT_CONFIRMED = 'confirmed';
+    public const PAYMENT_REJECTED = 'rejected';
+    public const REFUND_PENDING = 'pending';
+    public const REFUND_COMPLETED = 'completed';
 
     protected $fillable = [
         'surfboard_id',
@@ -34,6 +36,8 @@ class Booking extends Model
         'payment_status',
         'payment_proof_path',
         'proof_uploaded_at',
+        'reviewed_at',
+        'refund_status',
         'payment_method',
         'admin_notes',
         'total_price',
@@ -46,6 +50,7 @@ class Booking extends Model
         'end_date'   => 'datetime',
         'expires_at' => 'datetime',
         'proof_uploaded_at' => 'datetime',
+        'reviewed_at' => 'datetime',
         'total_price' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
     ];
@@ -82,5 +87,36 @@ class Booking extends Model
             ->where(function (Builder $q) {
                 $q->whereNotNull('expires_at')->where('expires_at', '<', now());
             });
+    }
+
+    /**
+     * Hay ingreso o comprobante asociado: si el cliente cancela, el admin debe revisar devolución.
+     */
+    public function needsRefundReviewAfterCancellation(): bool
+    {
+        if ($this->payment_status === self::PAYMENT_CONFIRMED) {
+            return true;
+        }
+
+        return ($this->payment_status ?? '') === self::PAYMENT_PENDING
+            && ! empty($this->payment_proof_path);
+    }
+
+    /**
+     * Marca la reserva cancelada y, si aplica, vuelve a dejarla sin revisar para que el badge rojo
+     * del menú admin cuente la devolución pendiente (reviewed_at = null).
+     */
+    public function applyCancellationWithRefundQueue(): void
+    {
+        $needsQueue = $this->needsRefundReviewAfterCancellation();
+
+        $this->status = self::STATUS_CANCELLED;
+        if ($needsQueue) {
+            $this->reviewed_at = null;
+            $this->refund_status = self::REFUND_PENDING;
+        } elseif ($this->refund_status !== null) {
+            $this->refund_status = null;
+        }
+        $this->save();
     }
 }

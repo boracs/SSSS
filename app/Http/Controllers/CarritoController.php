@@ -25,13 +25,19 @@ class CarritoController extends Controller
             }])
             ->get();
 
+        $paymentProps = [
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $this->academyWhatsappUrl(),
+        ];
+
         if ($carrito->isEmpty()) {
-            return Inertia::render('Carrito', [
+            return Inertia::render('Carrito', array_merge([
                 'productos' => [],
                 'total' => 0,
                 'message' => 'Tu carrito está vacío.',
                 'canCheckout' => (bool) $user->hasActiveLocker(),
-            ]);
+            ], $paymentProps));
         }
 
         $productos = $carrito->flatMap(function ($item) {
@@ -57,11 +63,19 @@ class CarritoController extends Controller
             return $acc + (float) $producto['subtotal'];
         }, 0.0);
 
-        return Inertia::render('Carrito', [
+        return Inertia::render('Carrito', array_merge([
             'productos' => $productos->values()->all(),
             'total' => round($total, 2),
             'canCheckout' => (bool) $user->hasActiveLocker(),
-        ]);
+        ], $paymentProps));
+    }
+
+    private function academyWhatsappUrl(): ?string
+    {
+        $raw = (string) config('services.academy.whatsapp_number', '');
+        $digits = preg_replace('/\D+/', '', $raw);
+
+        return $digits !== '' ? 'https://wa.me/'.$digits : null;
     }
 
 

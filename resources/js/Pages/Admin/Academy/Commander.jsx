@@ -22,8 +22,9 @@ const MODALITY_OPTIONS = [
     { value: "semanal", label: "Semanal" },
 ];
 
-export default function Commander({ lessons = [], selectedDate, staff = [] }) {
+export default function Commander({ lessons = [], selectedDate, staff = [], selectedStaffId = null }) {
     const [date, setDate] = useState(selectedDate);
+    const [staffFilter, setStaffFilter] = useState(selectedStaffId ? String(selectedStaffId) : "");
     const [showNewLesson, setShowNewLesson] = useState(false);
     const [staleSelected, setStaleSelected] = useState([]);
     const [newLesson, setNewLesson] = useState({
@@ -43,6 +44,25 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
     const [availability, setAvailability] = useState(null);
     const [checkingAvailability, setCheckingAvailability] = useState(false);
     const [availabilityError, setAvailabilityError] = useState("");
+    const [lessonDetailsOpen, setLessonDetailsOpen] = useState(false);
+    const [lessonDetailsLoading, setLessonDetailsLoading] = useState(false);
+    const [lessonDetailsError, setLessonDetailsError] = useState("");
+    const [lessonDetails, setLessonDetails] = useState(null);
+    const [lessonDetailsCache, setLessonDetailsCache] = useState({});
+
+    const invalidateLessonDetailsCache = (lessonId) => {
+        if (!lessonId) return;
+        setLessonDetailsCache((prev) => {
+            if (!prev?.[lessonId]) return prev;
+            const next = { ...prev };
+            delete next[lessonId];
+            return next;
+        });
+    };
+
+    useEffect(() => {
+        setStaffFilter(selectedStaffId ? String(selectedStaffId) : "");
+    }, [selectedStaffId]);
 
     useEffect(() => {
         if (newLesson.modality !== "particular") return;
@@ -54,15 +74,34 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
 
     const go = (d) => {
         setDate(d);
-        router.get(route("admin.academy.index"), { date: d });
+        router.get(
+            route("admin.academy.index"),
+            { date: d, staff_id: staffFilter || undefined },
+            { preserveScroll: true, preserveState: true, replace: true }
+        );
+    };
+
+    const applyStaffFilter = (nextStaffId) => {
+        setStaffFilter(nextStaffId);
+        router.get(
+            route("admin.academy.index"),
+            { date, staff_id: nextStaffId || undefined },
+            { preserveScroll: true, preserveState: true, replace: true }
+        );
     };
 
     const toggleOptimal = (lesson) => {
-        router.post(route("admin.academy.lessons.optimal-waves", lesson.id));
+        router.post(route("admin.academy.lessons.optimal-waves", lesson.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lesson.id),
+        });
     };
     const triggerSurfTrip = (lesson) => {
         if (!confirm("¿Activar Surf-Trip? La clase pasará a Playa Secundaria (Furgoneta).")) return;
-        router.post(route("admin.academy.lessons.surf-trip", lesson.id));
+        router.post(route("admin.academy.lessons.surf-trip", lesson.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lesson.id),
+        });
     };
     const cancelMalMar = (lesson) => {
         if (!confirm("¿Cancelar clase por Mal Mar? Se devolverán los créditos a los alumnos.")) return;
@@ -70,7 +109,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
     };
 
     const cancelSingleSession = (lessonId) => {
-        router.post(route("admin.academy.lessons.cancel", lessonId), {}, { preserveScroll: true });
+        router.post(route("admin.academy.lessons.cancel", lessonId), {}, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lessonId),
+        });
     };
     const cancelWeeklyPack = (batchId) => {
         router.post(route("admin.academy.lessons.cancel-batch"), { batch_id: batchId }, { preserveScroll: true });
@@ -170,7 +212,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
             lesson_id: lessonId,
             role,
             user_id: userId || null,
-        }, { preserveScroll: true });
+        }, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lessonId),
+        });
     };
 
     const duplicateLesson = (lesson) => {
@@ -194,10 +239,18 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
     };
 
     const confirmEnrollment = (enrollmentId) => {
-        router.post(route("admin.academy.enrollments.confirm", enrollmentId), {}, { preserveScroll: true });
+        const lessonId = lessons.find((l) => (l.enrollments || []).some((e) => e.id === enrollmentId))?.id;
+        router.post(route("admin.academy.enrollments.confirm", enrollmentId), {}, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lessonId),
+        });
     };
     const rejectEnrollment = (enrollmentId, adminNotes) => {
-        router.post(route("admin.academy.enrollments.reject", enrollmentId), { admin_notes: adminNotes || null }, { preserveScroll: true });
+        const lessonId = lessons.find((l) => (l.enrollments || []).some((e) => e.id === enrollmentId))?.id;
+        router.post(route("admin.academy.enrollments.reject", enrollmentId), { admin_notes: adminNotes || null }, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lessonId),
+        });
     };
 
     const [rejecting, setRejecting] = useState(null); // { id, name, notes }
@@ -249,6 +302,66 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
         return s?.user?.id ?? "";
     };
 
+    const openLessonDetails = async (lesson) => {
+        if (!lesson?.id) return;
+        const cached = lessonDetailsCache?.[lesson.id];
+        if (cached) {
+            setLessonDetails(cached);
+            setLessonDetailsError("");
+            setLessonDetailsOpen(true);
+            return;
+        }
+        setLessonDetailsOpen(true);
+        setLessonDetailsLoading(true);
+        setLessonDetailsError("");
+        setLessonDetails(null);
+        try {
+            const res = await fetch(route("admin.academy.lessons.details", lesson.id), {
+                headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setLessonDetailsError(data?.message || "No se pudo cargar el detalle de la clase.");
+                return;
+            }
+            setLessonDetails(data);
+            setLessonDetailsCache((prev) => ({ ...prev, [lesson.id]: data }));
+        } catch (error) {
+            setLessonDetailsError("No se pudo cargar el detalle de la clase.");
+        } finally {
+            setLessonDetailsLoading(false);
+        }
+    };
+
+    const prefetchLessonDetails = async (lesson) => {
+        if (!lesson?.id) return;
+        if (lessonDetailsCache?.[lesson.id]) return;
+        try {
+            const res = await fetch(route("admin.academy.lessons.details", lesson.id), {
+                headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" },
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            setLessonDetailsCache((prev) => ({ ...prev, [lesson.id]: data }));
+        } catch (_error) {
+            // Prefetch silencioso
+        }
+    };
+
+    const statusBadgeClass = (status) => {
+        if (["confirmed", "enrolled", "attended"].includes(String(status))) return "bg-emerald-900/30 text-emerald-200 border-emerald-700/50";
+        if (["pending", "pending_extra_monitor"].includes(String(status))) return "bg-amber-900/30 text-amber-200 border-amber-700/50";
+        if (["cancelled", "expired", "refunded"].includes(String(status))) return "bg-rose-900/30 text-rose-200 border-rose-700/50";
+        return "bg-gray-800 text-gray-200 border-gray-600";
+    };
+
+    const paymentBadgeClass = (label) => {
+        const v = String(label || "").toLowerCase();
+        if (v.includes("pagado")) return "bg-emerald-900/30 text-emerald-200 border-emerald-700/50";
+        if (v.includes("justificante")) return "bg-sky-900/30 text-sky-200 border-sky-700/50";
+        return "bg-amber-900/30 text-amber-200 border-amber-700/50";
+    };
+
     return (
         <>
             <Head title="Consola Comandante · Academia" />
@@ -259,6 +372,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                         { label: "Academia", href: route("admin.academy.index") },
                         { label: "Consola" },
                     ]}
+                    variant="dark"
                     className="mb-4"
                 />
                 <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-100">
@@ -317,6 +431,21 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                             onChange={(e) => go(e.target.value)}
                             className="input-focus-ring mt-1 rounded-xl px-4 py-2"
                         />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-300">Monitor (filtro)</label>
+                        <select
+                            value={staffFilter}
+                            onChange={(e) => applyStaffFilter(e.target.value)}
+                            className="input-focus-ring mt-1 rounded-xl px-4 py-2 text-sm"
+                        >
+                            <option value="">Todos los monitores</option>
+                            {staff.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {`${s.nombre || ""} ${s.apellido || ""}`.trim() || s.email}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <button
                         type="button"
@@ -529,8 +658,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                 key={lesson.id}
                                 onMouseEnter={() => setHoverBatchId(lesson.batch_id || null)}
                                 onMouseLeave={() => setHoverBatchId(null)}
+                                onMouseOver={() => prefetchLessonDetails(lesson)}
+                                onClick={() => openLessonDetails(lesson)}
                                 className={[
-                                    "rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out",
+                                    "cursor-pointer rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out hover:border-sky-600/40",
                                     lesson.batch_id ? "border-l-4 border-l-sky-500" : "",
                                     (lesson.modality === "particular" || lesson.is_private) ? "bg-amber-50/60 border-amber-200/60" : "",
                                     (hoverBatchId && lesson.batch_id && hoverBatchId === lesson.batch_id) ? "ring-2 ring-sky-200/70 shadow-md" : "",
@@ -637,7 +768,20 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                     <div className="flex flex-wrap gap-2">
                                         <button
                                             type="button"
-                                            onClick={() => duplicateLesson(lesson)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openLessonDetails(lesson);
+                                            }}
+                                            className="rounded-xl border border-sky-700 bg-sky-900/20 px-3 py-2 text-sm font-medium text-sky-200 transition-all duration-200 ease-in-out hover:bg-sky-800/30"
+                                        >
+                                            Ver detalle
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                duplicateLesson(lesson);
+                                            }}
                                             className="rounded-xl border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-200 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-gray-700"
                                             title="Duplicar clase"
                                         >
@@ -645,7 +789,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => toggleOptimal(lesson)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleOptimal(lesson);
+                                            }}
                                             className="rounded-xl border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-200 transition-all duration-300 hover:bg-gray-700"
                                         >
                                             {lesson.is_optimal_waves ? "Quitar óptimas" : "Olas óptimas"}
@@ -653,7 +800,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         {!lesson.is_surf_trip && (
                                             <button
                                                 type="button"
-                                                onClick={() => triggerSurfTrip(lesson)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    triggerSurfTrip(lesson);
+                                                }}
                                                 className="rounded-xl bg-brand-accent px-3 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-brand-accent/90"
                                             >
                                                 Trigger Surf-Trip
@@ -662,7 +812,8 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                         {lesson.status === "scheduled" && (
                                             <button
                                                 type="button"
-                                                onClick={() => {
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
                                                     if (lesson.batch_id) {
                                                         setCancelChoice({ lessonId: lesson.id, batchId: lesson.batch_id });
                                                     } else {
@@ -688,7 +839,11 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                                 <label className="block text-xs font-medium text-gray-300">Monitor</label>
                                                 <select
                                                     value={getStaffForRole(lesson, "monitor")}
-                                                    onChange={(e) => assignStaff(lesson.id, "monitor", e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        assignStaff(lesson.id, "monitor", e.target.value);
+                                                    }}
                                                     className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
                                                 >
                                                     <option value="">— Sin asignar</option>
@@ -703,7 +858,11 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                                                 <label className="block text-xs font-medium text-gray-300">Fotógrafo</label>
                                                 <select
                                                     value={getStaffForRole(lesson, "fotografo")}
-                                                    onChange={(e) => assignStaff(lesson.id, "fotografo", e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        assignStaff(lesson.id, "fotografo", e.target.value);
+                                                    }}
                                                     className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
                                                 >
                                                     <option value="">— Sin asignar</option>
@@ -722,6 +881,86 @@ export default function Commander({ lessons = [], selectedDate, staff = [] }) {
                     )}
                 </div>
             </div>
+            {lessonDetailsOpen && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-950/70 backdrop-blur-md" onClick={() => setLessonDetailsOpen(false)} aria-hidden />
+                    <div className="relative w-full max-w-4xl rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-gray-100">Detalle de clase</h3>
+                        {lessonDetailsLoading ? (
+                            <p className="mt-3 text-sm text-gray-300">Cargando detalle...</p>
+                        ) : lessonDetailsError ? (
+                            <p className="mt-3 text-sm text-rose-300">{lessonDetailsError}</p>
+                        ) : lessonDetails ? (
+                            <div className="mt-3 space-y-4">
+                                <div className="rounded-xl border border-gray-700 bg-gray-900 p-3 text-sm text-gray-200">
+                                    <p><span className="font-semibold">Fecha/hora:</span> {lessonDetails.lesson?.starts_at ? formatDateTimeMadrid(lessonDetails.lesson.starts_at) : "—"}</p>
+                                    <p><span className="font-semibold">Nivel:</span> {lessonDetails.lesson?.level || "—"} · <span className="font-semibold">Lugar:</span> {lessonDetails.lesson?.location || "—"}</p>
+                                    <p><span className="font-semibold">Precio:</span> {lessonDetails.lesson?.price != null ? `${lessonDetails.lesson.price} ${lessonDetails.lesson.currency || "EUR"}` : "—"}</p>
+                                    <p><span className="font-semibold">Monitores:</span> {(lessonDetails.staff || []).filter((s) => s.role === "monitor").map((s) => s.name).join(", ") || "Sin monitor asignado"}</p>
+                                </div>
+                                <div className="overflow-x-auto rounded-xl border border-gray-700">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-gray-900 text-gray-300">
+                                            <tr>
+                                                <th className="px-3 py-2 text-left">Alumno</th>
+                                                <th className="px-3 py-2 text-left">Estado inscripción</th>
+                                                <th className="px-3 py-2 text-left">Estado pago</th>
+                                                <th className="px-3 py-2 text-left">Justificante</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(lessonDetails.students || []).map((st) => (
+                                                <tr key={st.id} className="border-t border-gray-700 text-gray-200">
+                                                    <td className="px-3 py-2">
+                                                        <p className="font-medium">{st.name}</p>
+                                                        <p className="text-xs text-gray-400">{st.email || "sin email"}</p>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${statusBadgeClass(st.status)}`}>
+                                                            {st.status_label}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <span className={`inline-flex rounded-full border px-2 py-1 text-xs font-semibold ${paymentBadgeClass(st.payment_state_label)}`}>
+                                                            {st.payment_state_label}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {st.payment_proof_url ? (
+                                                            <a
+                                                                href={st.payment_proof_url}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="rounded-md bg-sky-700/30 px-2 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-700/50"
+                                                            >
+                                                                Ver
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500">—</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {(lessonDetails.students || []).length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="px-3 py-5 text-center text-sm text-gray-400">
+                                                        Sin alumnos en esta clase.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        ) : null}
+                        <div className="mt-4 flex justify-end">
+                            <button type="button" onClick={() => setLessonDetailsOpen(false)} className="btn-secondary">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Modal rechazo */}
             {rejecting && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">

@@ -60,13 +60,16 @@ export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
                                 <th className="px-3 py-2 text-left">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="text-slate-900">
                             {packs.map((pack) => (
-                                <tr key={pack.id} className={`border-t border-slate-100 transition-all ${pack.activo ? "" : "bg-slate-50 text-slate-400 opacity-50"}`}>
-                                    <td className="px-3 py-2">{pack.nombre}</td>
-                                    <td className="px-3 py-2">{pack.num_clases}</td>
-                                    <td className="px-3 py-2">{`${Number(pack.precio).toFixed(2)} €`}</td>
-                                    <td className="px-3 py-2">{pack.activo ? "Sí" : "No"}</td>
+                                <tr
+                                    key={pack.id}
+                                    className={`border-t border-slate-100 transition-all ${pack.activo ? "bg-white text-slate-900" : "bg-slate-50 text-slate-600"}`}
+                                >
+                                    <td className="px-3 py-2 text-slate-900">{pack.nombre}</td>
+                                    <td className="px-3 py-2 text-slate-900">{pack.num_clases}</td>
+                                    <td className="px-3 py-2 text-slate-900">{`${Number(pack.precio).toFixed(2)} €`}</td>
+                                    <td className="px-3 py-2 text-slate-900">{pack.activo ? "Sí" : "No"}</td>
                                     <td className="px-3 py-2">
                                         <button
                                             onClick={() => togglePack(pack)}

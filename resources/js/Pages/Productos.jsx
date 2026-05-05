@@ -290,10 +290,10 @@ export default function Productos({ productos: productosIniciales }) {
 
     return (
         <Layout1>
-            <div className=" bg-[#111826]   flex flex-col lg:flex-row p-4 space-y-4 lg:space-y-0 lg:space-x-4">
-                <div className=" bg-[#111826] flex-1 lg:w-full overflow-auto p-6 ">
-                    <h2 className="text-xl font-semibold mb-3">Productos</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-12">
+            <div className="bg-[#111826] flex flex-col lg:flex-row p-3 sm:p-4 space-y-3 lg:space-y-0 lg:space-x-4">
+                <div className="bg-[#111826] flex-1 lg:w-full overflow-auto p-2 sm:p-3 lg:p-4">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-2 text-gray-100">Productos</h2>
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(138px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(146px,1fr))] 2xl:grid-cols-[repeat(auto-fill,minmax(154px,1fr))] min-[2100px]:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 sm:gap-4">
                         {productos
                             .sort((a, b) => a.nombre.localeCompare(b.nombre))
                             .map((producto) => (
@@ -310,10 +310,10 @@ export default function Productos({ productos: productosIniciales }) {
                             ))}
                     </div>
 
-                    <div className="flex justify-center mt-12 bg-black bg-opacity-10 items-center py-6">
+                    <div className="flex justify-center mt-8 bg-black/10 items-center py-4">
                         <button
                             type="button"
-                            className="w-200 py-2 px-12 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700"
+                            className="py-2 px-8 sm:px-12 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700"
                             onClick={() =>
                                 router.visit(route("producto.crear"))
                             }

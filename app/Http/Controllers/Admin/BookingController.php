@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreBookingRequest;
 use App\Models\Booking;
 use App\Models\Surfboard;
 use App\Services\BookingService;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -67,8 +68,8 @@ class BookingController extends Controller
     {
         $data = $request->validated();
         $surfboard = Surfboard::query()->findOrFail($data['surfboard_id']);
-        $start = Carbon::parse($data['start_date']);
-        $end = Carbon::parse($data['end_date']);
+        $start = BusinessDateTime::parseRentalHandoffDate((string) $data['start_date']);
+        $end = BusinessDateTime::parseRentalHandoffDate((string) $data['end_date']);
 
         if (! $this->bookingService->isAvailable((int) $surfboard->id, $start, $end)) {
             if ($request->wantsJson()) {
@@ -129,8 +130,12 @@ class BookingController extends Controller
             'to' => ['required', 'date', 'after_or_equal:from'],
         ]);
 
-        $from = Carbon::parse($request->input('from'));
-        $to = Carbon::parse($request->input('to'));
+        $fromRaw = (string) $request->input('from');
+        $toRaw = (string) $request->input('to');
+        $from = BusinessDateTime::parseRentalDate($fromRaw);
+        $to = preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($toRaw))
+            ? BusinessDateTime::parseInAppTimezone(trim($toRaw).' 23:59:59')
+            : BusinessDateTime::parseRentalDate($toRaw);
         $ranges = $this->bookingService->getBlockedRanges(
             (int) $request->input('surfboard_id'),
             $from,
@@ -165,6 +170,7 @@ class BookingController extends Controller
         $booking->update([
             'status' => Booking::STATUS_CONFIRMED,
             'payment_status' => Booking::PAYMENT_CONFIRMED,
+            'refund_status' => null,
             'payment_proof_note' => $booking->payment_proof_note ?? 'Confirmado por admin ' . now()->toDateTimeString(),
         ]);
 
@@ -177,12 +183,14 @@ class BookingController extends Controller
     public function approveProof(Booking $booking): RedirectResponse
     {
         if (($booking->payment_status ?? Booking::PAYMENT_PENDING) === Booking::PAYMENT_CONFIRMED) {
-            return redirect()->back()->with('success', 'El pago ya estaba confirmado.');
+            return redirect()->back()->with('error', 'Este pago ya está confirmado.');
         }
 
         $booking->update([
             'status' => Booking::STATUS_CONFIRMED,
             'payment_status' => Booking::PAYMENT_CONFIRMED,
+            'refund_status' => null,
+            'reviewed_at' => null,
         ]);
 
         return redirect()->back()->with('success', 'Pago de alquiler confirmado.');
@@ -197,20 +205,40 @@ class BookingController extends Controller
             'admin_notes' => 'nullable|string|max:2000',
         ]);
 
-        if (! empty($booking->payment_proof_path) && Storage::disk('local')->exists($booking->payment_proof_path)) {
-            Storage::disk('local')->delete($booking->payment_proof_path);
+        $note = trim((string) ($validated['admin_notes'] ?? '')) !== ''
+            ? trim((string) $validated['admin_notes'])
+            : 'Comprobante rechazado.';
+
+        if (($booking->payment_status ?? '') === Booking::PAYMENT_REJECTED) {
+            return redirect()->back()->with('error', 'Este pago ya está rechazado.');
         }
 
-        $booking->update([
-            'payment_status' => Booking::PAYMENT_PENDING,
-            'payment_proof_path' => null,
-            'proof_uploaded_at' => null,
-            'payment_method' => null,
-            'admin_notes' => $validated['admin_notes'] ?? 'Comprobante rechazado.',
-            'status' => Booking::STATUS_PENDING,
-        ]);
+        if ($booking->status === Booking::STATUS_PENDING) {
+            $booking->update([
+                'payment_status' => Booking::PAYMENT_REJECTED,
+                'refund_status' => null,
+                'admin_notes' => $note,
+                'status' => Booking::STATUS_PENDING,
+                'reviewed_at' => null,
+            ]);
 
-        return redirect()->back()->with('success', 'Comprobante de alquiler rechazado.');
+            return redirect()->back()->with('success', 'Comprobante de alquiler rechazado.');
+        }
+
+        $bps = $booking->payment_status ?? '';
+        if (($bps === Booking::PAYMENT_CONFIRMED) || ($bps === Booking::PAYMENT_PENDING && ! empty($booking->payment_proof_path))) {
+            $booking->update([
+                'payment_status' => Booking::PAYMENT_REJECTED,
+                'refund_status' => $bps === Booking::PAYMENT_CONFIRMED ? Booking::REFUND_PENDING : null,
+                'admin_notes' => $note,
+                'status' => $bps === Booking::PAYMENT_CONFIRMED ? Booking::STATUS_CANCELLED : $booking->status,
+                'reviewed_at' => null,
+            ]);
+
+            return redirect()->back()->with('success', 'Pago de alquiler marcado como rechazado.');
+        }
+
+        return redirect()->back()->with('error', 'No hay un pago enviado o confirmado que se pueda rechazar en este estado.');
     }
 
     /**
@@ -239,10 +267,8 @@ class BookingController extends Controller
             return redirect()->back()->with('success', 'La reserva ya estaba cancelada.');
         }
 
-        $booking->update([
-            'status' => Booking::STATUS_CANCELLED,
-        ]);
+        $booking->applyCancellationWithRefundQueue();
 
-        return redirect()->back()->with('success', 'Reserva cancelada.');
+        return redirect()->back()->with('success', 'Reserva cancelada. Si había pago asociado, queda pendiente de revisión para devolución.');
     }
 }

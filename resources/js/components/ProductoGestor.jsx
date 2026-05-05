@@ -18,15 +18,15 @@ const ProductoGestor = ({ producto, productoSeleccionadoId, onClick }) => {
         <div
             key={producto.id}
             onClick={handleClick}
-            className={`group flex flex-col p-4 border-2 transition-all duration-300 ease-in-out cursor-pointer 
-                rounded-xl shadow-lg hover:shadow-2xl hover:bg-gray-50 
+            className={`group flex h-full flex-col p-2.5 sm:p-3 border transition-all duration-300 ease-in-out cursor-pointer 
+                rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 
                 ${
                     isSelected
-                        ? "border-blue-600 ring-4 ring-blue-200"
-                        : "border-gray-100"
+                        ? "border-blue-500 ring-2 ring-blue-200"
+                        : "border-gray-100/90"
                 }
                 ${isLowStock && !isDeleted ? "bg-red-50" : "bg-white"}
-                max-w-[200px] relative overflow-hidden transform group-hover:scale-[1.03]`} // <--- Animación principal
+                w-full relative overflow-hidden transform group-hover:scale-[1.02]`} // <--- Animación principal
         >
             {/* Indicador de Producto Eliminado (Badge y Overlay) */}
             {isDeleted && (
@@ -34,7 +34,7 @@ const ProductoGestor = ({ producto, productoSeleccionadoId, onClick }) => {
                     {/* Overlay suave y claro */}
                     <div className="absolute inset-0 bg-gray-600 bg-opacity-30 rounded-xl z-10"></div>
                     {/* Badge destacado */}
-                    <span className="absolute top-0 left-0 w-full bg-red-700 text-white text-xs font-bold py-1 text-center z-20 flex items-center justify-center gap-1">
+                    <span className="absolute top-0 left-0 w-full bg-red-700 text-white text-[10px] font-bold py-1 text-center z-20 flex items-center justify-center gap-1">
                         <IoCloseCircle size={14} /> PRODUCTO INACTIVO
                     </span>
                 </>
@@ -42,13 +42,13 @@ const ProductoGestor = ({ producto, productoSeleccionadoId, onClick }) => {
 
             {/* Indicador de Stock Bajo (Badge) */}
             {isLowStock && !isDeleted && (
-                <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg z-10 transition-opacity">
+                <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow z-10 transition-opacity">
                     STOCK BAJO
                 </span>
             )}
 
             {/* Imagen del Producto */}
-            <div className="w-full h-32 mb-4 relative rounded-lg overflow-hidden">
+            <div className="w-full h-20 sm:h-24 mb-2 relative rounded-md overflow-hidden">
                 <img
                     src={producto.imagen_principal || "/img/placeholder.svg"}
                     alt={producto.nombre}
@@ -60,31 +60,31 @@ const ProductoGestor = ({ producto, productoSeleccionadoId, onClick }) => {
             </div>
 
             {/* Nombre y Precio */}
-            <div className="w-full text-center mb-3">
-                <p className="text-lg font-extrabold text-gray-900 leading-snug truncate">
+            <div className="w-full text-center mb-1.5">
+                <p className="text-sm sm:text-base font-bold text-gray-900 leading-snug truncate">
                     {producto.nombre}
                 </p>
-                <p className="text-3xl font-bold text-green-600 mt-1">
+                <p className="text-xl sm:text-2xl font-semibold text-green-600 mt-0.5 leading-none">
                     ${producto.precio}
                 </p>
             </div>
 
             {/* Metadatos (Cantidad y Descuento) */}
-            <div className="w-full space-y-1 text-sm text-gray-600 border-t pt-2">
+            <div className="w-full space-y-0.5 text-xs text-gray-600 border-t pt-1.5 mt-auto">
                 <p className="flex items-center justify-between">
                     <span className="flex items-center gap-1 font-medium text-gray-700">
-                        <FaBoxes size={12} /> Stock:
+                        <FaBoxes size={10} /> Stock:
                     </span>
-                    <span className="font-bold">{producto.unidades}</span>
+                    <span className="font-semibold">{producto.unidades}</span>
                 </p>
 
                 {/* Descuento (Si aplica) */}
                 {producto.descuento > 0 && (
                     <p className="flex items-center justify-between">
                         <span className="flex items-center gap-1 font-medium text-gray-700">
-                            <FaTag size={12} /> Descuento:
+                            <FaTag size={10} /> Descuento:
                         </span>
-                        <span className="font-extrabold text-red-500">
+                        <span className="font-bold text-red-500">
                             {producto.descuento}%
                         </span>
                     </p>

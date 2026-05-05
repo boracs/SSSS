@@ -72,12 +72,15 @@ class BonoController extends Controller
                 ->values();
         }
 
+        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
         return Inertia::render('Client/Bonos/Index', [
             'packs' => $packs,
             'myBonos' => $myBonos,
             'consumptionHistory' => $consumptionHistory,
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
         ]);
     }
 

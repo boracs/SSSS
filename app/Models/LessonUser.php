@@ -23,8 +23,10 @@ class LessonUser extends Model
     public const STATUS_PENDING_EXTRA_MONITOR = 'pending_extra_monitor';
 
     public const PAYMENT_PENDING = 'pending';
-    public const PAYMENT_SUBMITTED = 'submitted';
     public const PAYMENT_CONFIRMED = 'confirmed';
+    public const PAYMENT_REJECTED = 'rejected';
+    public const REFUND_PENDING = 'pending';
+    public const REFUND_COMPLETED = 'completed';
 
     protected $fillable = [
         'lesson_id',
@@ -40,6 +42,8 @@ class LessonUser extends Model
         'expires_at',
         'payment_proof_path',
         'proof_uploaded_at',
+        'reviewed_at',
+        'refund_status',
         'payment_method',
         'admin_notes',
         'surf_trip_confirmed',
@@ -50,6 +54,7 @@ class LessonUser extends Model
         'confirmed_at' => 'datetime',
         'expires_at' => 'datetime',
         'proof_uploaded_at' => 'datetime',
+        'reviewed_at' => 'datetime',
     ];
 
     public function lesson(): BelongsTo

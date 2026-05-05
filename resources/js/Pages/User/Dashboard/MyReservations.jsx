@@ -10,6 +10,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { AnimatePresence, motion } from "framer-motion";
+import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 
 const TAB_CLASSES = "classes";
 const TAB_RENTALS = "rentals";
@@ -30,14 +31,26 @@ const RESERVATIONS_PARTIAL_KEYS = [
 const MONTH_NAV_PARTIAL_KEYS = ["performanceData", "analysisNav"];
 
 function badgeByStatus(row) {
+    if (row?.status === "cancelled") {
+        if (row?.refund_pending) {
+            return {
+                label: "Cancelada · devolución pendiente",
+                cls: "bg-rose-100 text-rose-900 ring-1 ring-rose-300",
+            };
+        }
+        return {
+            label: "Cancelada",
+            cls: "bg-slate-200 text-slate-700",
+        };
+    }
     if (row?.payment_status === "confirmed" || row?.status === "confirmed") {
         return { label: "Confirmado", cls: "bg-emerald-100 text-emerald-700" };
     }
-    if (row?.payment_status === "submitted") {
-        return { label: "Validando Pago", cls: "bg-amber-100 text-amber-700" };
+    if (row?.payment_status === "rejected") {
+        return { label: "Pago rechazado", cls: "bg-rose-100 text-rose-700" };
     }
     if (row?.payment_status === "pending" || row?.status === "pending") {
-        return { label: "Pendiente de Pago", cls: "bg-rose-100 text-rose-700" };
+        return { label: "Pendiente", cls: "bg-amber-100 text-amber-700" };
     }
     if (row?.status === "cancelled_late_lost") {
         return {
@@ -51,7 +64,7 @@ function badgeByStatus(row) {
             cls: "bg-amber-100 text-amber-700",
         };
     }
-    if (row?.status === "cancelled_free" || row?.status === "cancelled") {
+    if (row?.status === "cancelled_free") {
         return {
             label: "Cancelada sin penalización",
             cls: "bg-slate-200 text-slate-700",
@@ -121,6 +134,9 @@ const BONO_GROUP_INACTIVE_STYLE = {
     hdrText: "text-rose-950",
 };
 
+/** Reloj de la escuela / alquileres (no la zona del navegador). */
+const DISPLAY_TZ = "Europe/Madrid";
+
 function formatCountdown(isoDate) {
     if (!isoDate) return null;
     const end = new Date(isoDate).getTime() + 30 * 60 * 1000;
@@ -130,6 +146,34 @@ function formatCountdown(isoDate) {
     const mins = Math.floor(diff / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")} min`;
+}
+
+function formatDateTimeMadrid(iso) {
+    if (!iso) return "Sin fecha";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "Sin fecha";
+    return d.toLocaleString("es-ES", {
+        timeZone: DISPLAY_TZ,
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+}
+
+function formatDateMadrid(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("es-ES", {
+        timeZone: DISPLAY_TZ,
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    });
 }
 
 function skuColorToken(sku = "") {
@@ -947,10 +991,10 @@ function AttendanceHeatmap({
                                         </p>
                                         <p className="text-sm text-gray-300">
                                             {selectedData.lesson?.starts_at
-                                                ? new Date(
+                                                ? formatDateTimeMadrid(
                                                       selectedData.lesson
                                                           .starts_at,
-                                                  ).toLocaleString("es-ES")
+                                                  )
                                                 : "Sin hora"}{" "}
                                             ·{" "}
                                             {selectedData.lesson?.spot ||
@@ -1060,6 +1104,46 @@ export default function MyReservations() {
     return <MyReservationsView key={remountKey} />;
 }
 
+function formatEurEs(n) {
+    if (n == null || Number.isNaN(Number(n))) return null;
+    return Number(n).toFixed(2).replace(".", ",");
+}
+
+/** Señal/depósito y precio total (clases y alquileres), desde buildReservationRows. */
+function ReservationPriceLines({ row }) {
+    const total = row.total_price != null && Number(row.total_price) > 0 ? Number(row.total_price) : null;
+    const deposit =
+        row.deposit_amount != null && Number(row.deposit_amount) > 0
+            ? Number(row.deposit_amount)
+            : row.amount != null && Number(row.amount) > 0
+              ? Number(row.amount)
+              : null;
+    if (total == null && deposit == null) return null;
+    return (
+        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-800">
+            <p>
+                {deposit != null ? (
+                    <>
+                        <span className="font-semibold text-slate-900">Compromiso / señal:</span>{" "}
+                        {formatEurEs(deposit)} €
+                    </>
+                ) : null}
+                {deposit != null && total != null ? <span className="text-slate-400"> · </span> : null}
+                {total != null ? (
+                    <>
+                        <span className="font-semibold text-slate-900">Precio total:</span> {formatEurEs(total)} €
+                    </>
+                ) : null}
+            </p>
+            {deposit != null && total != null && total > deposit + 0.001 ? (
+                <p className="mt-1 text-xs text-slate-600">
+                    Puedes formalizar la reserva abonando la señal; el resto se gestiona según la escuela o las condiciones del alquiler.
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
 /** Datos siempre desde props Inertia; en admin, calendario/stats vía GET admin/vips/{id}/analisis + target_user_id (no /mis-reservas). */
 function MyReservationsView() {
     const { props } = usePage();
@@ -1071,6 +1155,10 @@ function MyReservationsView() {
         isAdminView: isAdminViewRaw = false,
         targetUser = null,
         analysisNav = null,
+        paymentIban = "[IBAN]",
+        paymentBizumNumber = "[BIZUM_NUMBER]",
+        whatsappHelpUrl = null,
+        flash = {},
     } = props;
 
     const isAdminView =
@@ -1092,8 +1180,8 @@ function MyReservationsView() {
     );
     const [tick, setTick] = useState(Date.now());
     const [proofModal, setProofModal] = useState(null); // { type, id }
-    const [proofFile, setProofFile] = useState(null);
     const [cancelModal, setCancelModal] = useState(null); // { type, id, isWithinCancellationWindow }
+    const [flashDismissed, setFlashDismissed] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyLoaded, setHistoryLoaded] = useState(
@@ -1146,12 +1234,50 @@ function MyReservationsView() {
         return () => clearInterval(id);
     }, []);
 
+    useEffect(() => {
+        setFlashDismissed(false);
+    }, [flash?.success, flash?.error]);
+
     const activeRows = useMemo(() => {
         void tick;
         if (tab === TAB_CLASSES) return classRows;
         if (tab === TAB_RENTALS) return rentalRows;
         return bonoRows;
     }, [tab, classRows, rentalRows, bonoRows, tick]);
+
+    const proofTargetRow = useMemo(() => {
+        if (!proofModal?.id) return null;
+        const list = proofModal.type === "class" ? classRows : rentalRows;
+        return (list || []).find((r) => Number(r.id) === Number(proofModal.id)) ?? null;
+    }, [proofModal, classRows, rentalRows]);
+
+    const proofPriceBreakdown = useMemo(() => {
+        if (!proofTargetRow) return null;
+        const total =
+            proofTargetRow.total_price != null && Number(proofTargetRow.total_price) > 0
+                ? Number(proofTargetRow.total_price)
+                : null;
+        const deposit =
+            proofTargetRow.deposit_amount != null && Number(proofTargetRow.deposit_amount) > 0
+                ? Number(proofTargetRow.deposit_amount)
+                : proofTargetRow.amount != null && Number(proofTargetRow.amount) > 0
+                  ? Number(proofTargetRow.amount)
+                  : null;
+        const rows = [];
+        if (deposit != null && deposit > 0) {
+            rows.push({
+                label: "Compromiso / señal a pagar",
+                value: `${deposit.toFixed(2).replace(".", ",")} €`,
+            });
+        }
+        if (total != null && total > 0) {
+            rows.push({
+                label: "Precio total del servicio",
+                value: `${total.toFixed(2).replace(".", ",")} €`,
+            });
+        }
+        return rows.length ? rows : null;
+    }, [proofTargetRow]);
 
     const { upcomingRows, historyRows } = useMemo(() => {
         const now = Date.now();
@@ -1171,26 +1297,29 @@ function MyReservationsView() {
         return { upcomingRows: upcoming, historyRows: history };
     }, [activeRows]);
 
-    const submitProof = () => {
-        if (!proofModal?.id || !proofFile || processing) return;
+    const submitReservationProof = async ({ proofFile, paymentMethod }) => {
+        if (!proofModal?.id || processing) throw new Error("blocked");
         setProcessing(true);
-        const routeName =
-            proofModal.type === "class"
-                ? "my-reservations.class.upload-proof"
-                : "my-reservations.rental.upload-proof";
-        router.post(
-            route(routeName, proofModal.id),
-            { proof: proofFile, payment_method: "transferencia" },
-            {
-                forceFormData: true,
-                preserveScroll: true,
-                onSuccess: () => {
-                    setProofModal(null);
-                    setProofFile(null);
-                },
-                onFinish: () => setProcessing(false),
-            },
-        );
+        try {
+            const routeName =
+                proofModal.type === "class"
+                    ? "my-reservations.class.upload-proof"
+                    : "my-reservations.rental.upload-proof";
+            await new Promise((resolve, reject) => {
+                router.post(
+                    route(routeName, proofModal.id),
+                    { proof: proofFile, payment_method: paymentMethod },
+                    {
+                        forceFormData: true,
+                        preserveScroll: true,
+                        onSuccess: () => resolve(),
+                        onError: () => reject(new Error("proof")),
+                    },
+                );
+            });
+        } finally {
+            setProcessing(false);
+        }
     };
 
     const cancelReservation = () => {
@@ -1249,6 +1378,34 @@ function MyReservationsView() {
             {isAdminView ? (
                 <div className="sticky top-0 z-40 border-b border-blue-200/80 bg-blue-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm">
                     MODO ANÁLISIS: viendo datos de {targetDisplayName}
+                </div>
+            ) : null}
+            {!isAdminView && !flashDismissed && flash?.success ? (
+                <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+                    <div className="flex items-start justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950 shadow-sm">
+                        <p className="font-medium">{flash.success}</p>
+                        <button
+                            type="button"
+                            onClick={() => setFlashDismissed(true)}
+                            className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+            {!isAdminView && !flashDismissed && flash?.error ? (
+                <div className="mx-auto max-w-6xl px-4 pt-4 sm:px-6">
+                    <div className="flex items-start justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-950 shadow-sm">
+                        <p className="font-medium">{flash.error}</p>
+                        <button
+                            type="button"
+                            onClick={() => setFlashDismissed(true)}
+                            className="shrink-0 rounded-lg px-2 py-1 text-xs font-semibold text-rose-800 hover:bg-rose-100"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
                 </div>
             ) : null}
             <div
@@ -1562,7 +1719,7 @@ function MyReservationsView() {
                                             </div>
                                         ) : null}
                                         <table className="min-w-full text-sm">
-                                            <thead className="bg-gray-800 text-gray-200">
+                                            <thead className="bg-gray-800 text-white">
                                                 <tr>
                                                     <th className="px-3 py-2 text-left">
                                                         Fecha
@@ -1596,12 +1753,10 @@ function MyReservationsView() {
                                                                 <td className="px-3 py-2">
                                                                     {h.lesson
                                                                         ?.starts_at
-                                                                        ? new Date(
+                                                                        ? formatDateMadrid(
                                                                               h
                                                                                   .lesson
                                                                                   .starts_at,
-                                                                          ).toLocaleDateString(
-                                                                              "es-ES",
                                                                           )
                                                                         : "—"}
                                                                 </td>
@@ -1616,13 +1771,9 @@ function MyReservationsView() {
                                                                 </td>
                                                                 <td className="px-3 py-2">
                                                                     <span
-                                                                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${Number(h.uc_cost) === 2 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}
+                                                                        className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
                                                                     >
-                                                                        {Number(
-                                                                            h.uc_cost,
-                                                                        ) === 2
-                                                                            ? "Consumo: 2 Créditos"
-                                                                            : "Consumo: 1 Crédito"}
+                                                                        Consumo: {Math.max(1, Number(h.uc_cost || 1))} {Math.max(1, Number(h.uc_cost || 1)) === 1 ? "Crédito" : "Créditos"}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-3 py-2 tabular-nums font-medium text-white">
@@ -1716,6 +1867,7 @@ function MyReservationsView() {
                                     {upcomingRows.map((row) => {
                                         const badge = badgeByStatus(row);
                                         const countdown =
+                                            row.status !== "cancelled" &&
                                             row.payment_status === "pending"
                                                 ? formatCountdown(
                                                       row.created_at,
@@ -1749,13 +1901,19 @@ function MyReservationsView() {
                                                         </div>
                                                         <p className="text-sm text-slate-600">
                                                             {row.start_time
-                                                                ? new Date(
+                                                                ? formatDateTimeMadrid(
                                                                       row.start_time,
-                                                                  ).toLocaleString(
-                                                                      "es-ES",
                                                                   )
                                                                 : "Sin fecha"}
                                                         </p>
+                                                        {isRental && row.end_time ? (
+                                                            <p className="text-xs text-slate-500">
+                                                                Fin del alquiler:{" "}
+                                                                {formatDateTimeMadrid(
+                                                                    row.end_time,
+                                                                )}
+                                                            </p>
+                                                        ) : null}
                                                         {isClass ? (
                                                             <p className="text-sm text-slate-600">
                                                                 {row.level ||
@@ -1786,6 +1944,19 @@ function MyReservationsView() {
                                                                 €
                                                             </p>
                                                         ) : null}
+                                                        {isClass || isRental ? (
+                                                            <ReservationPriceLines row={row} />
+                                                        ) : null}
+                                                        {isRental &&
+                                                        row.refund_pending ? (
+                                                            <p className="text-xs font-medium text-rose-800">
+                                                                El club gestionará la
+                                                                devolución del importe
+                                                                abonado. El administrador
+                                                                ha sido avisado en el panel
+                                                                de alquileres.
+                                                            </p>
+                                                        ) : null}
                                                     </div>
                                                     <span
                                                         className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${badge.cls}`}
@@ -1814,6 +1985,8 @@ function MyReservationsView() {
                                                     <div className="mt-4 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                                                         {(isClass ||
                                                             isRental) &&
+                                                        row.status !==
+                                                            "cancelled" &&
                                                         row.payment_status ===
                                                             "pending" &&
                                                         !expired ? (
@@ -1837,6 +2010,8 @@ function MyReservationsView() {
                                                         ) : null}
                                                         {(isClass ||
                                                             isRental) &&
+                                                        row.status !==
+                                                            "cancelled" &&
                                                         row.payment_status ===
                                                             "pending" &&
                                                         expired ? (
@@ -1847,7 +2022,7 @@ function MyReservationsView() {
                                                             </span>
                                                         ) : null}
 
-                                                        {isClass ? (
+                                                        {isClass && !expired ? (
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
@@ -1867,16 +2042,17 @@ function MyReservationsView() {
                                                                 Cancelar Reserva
                                                             </button>
                                                         ) : null}
-                                                        {isRental ? (
+                                                        {isRental &&
+                                                        row.status !==
+                                                            "cancelled" &&
+                                                        !expired ? (
                                                             row.can_cancel ? (
                                                                 <button
                                                                     type="button"
                                                                     onClick={() =>
                                                                         setCancelModal(
                                                                             {
-                                                                                type: isClass
-                                                                                    ? "class"
-                                                                                    : "rental",
+                                                                                type: "rental",
                                                                                 id: row.id,
                                                                             },
                                                                         )
@@ -1950,13 +2126,21 @@ function MyReservationsView() {
                                                         </div>
                                                         <p className="text-sm text-slate-500">
                                                             {row.start_time
-                                                                ? new Date(
+                                                                ? formatDateTimeMadrid(
                                                                       row.start_time,
-                                                                  ).toLocaleString(
-                                                                      "es-ES",
                                                                   )
                                                                 : "Sin fecha"}
                                                         </p>
+                                                        {isClass || isRental ? (
+                                                            <ReservationPriceLines row={row} />
+                                                        ) : null}
+                                                        {isRental &&
+                                                        row.refund_pending ? (
+                                                            <p className="text-xs font-medium text-rose-800">
+                                                                Devolución pendiente de
+                                                                gestionar por el club.
+                                                            </p>
+                                                        ) : null}
                                                     </div>
                                                     <span
                                                         className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${badge.cls}`}
@@ -1974,46 +2158,44 @@ function MyReservationsView() {
                 )}
             </div>
 
-            {proofModal ? (
-                <div
-                    className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 p-4"
-                    onClick={() => setProofModal(null)}
-                >
-                    <div
-                        className="w-full max-w-md rounded-2xl bg-white p-5 space-y-3"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <p className="text-lg font-bold text-slate-900">
-                            Subir justificante
-                        </p>
-                        <input
-                            type="file"
-                            accept=".jpg,.jpeg,.png,.webp,.gif,.pdf"
-                            onChange={(e) =>
-                                setProofFile(e.target.files?.[0] || null)
-                            }
-                            className="w-full rounded-lg border border-slate-300 p-2"
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button
-                                type="button"
-                                onClick={() => setProofModal(null)}
-                                className="rounded-lg bg-slate-200 px-3 py-1.5 text-slate-700"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                type="button"
-                                onClick={submitProof}
-                                disabled={!proofFile || processing}
-                                className="rounded-lg bg-sky-600 px-3 py-1.5 text-white disabled:opacity-60"
-                            >
-                                {processing ? "Subiendo..." : "Subir"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : null}
+            <ManualPaymentInstructionsModal
+                open={!!proofModal}
+                onClose={() => setProofModal(null)}
+                bizumNumber={paymentBizumNumber}
+                iban={paymentIban}
+                whatsappHelpUrl={whatsappHelpUrl}
+                useReservationStepsHeading
+                showDepositNotice={
+                    proofModal?.type === "class" || proofModal?.type === "rental"
+                }
+                totalPrimaryLine={
+                    proofPriceBreakdown
+                        ? "Resumen de importes"
+                        : !proofTargetRow
+                          ? null
+                          : (() => {
+                                const n =
+                                    proofModal?.type === "rental"
+                                        ? proofTargetRow.amount
+                                        : proofTargetRow.price ?? proofTargetRow.amount;
+                                if (n == null || Number(n) <= 0) return null;
+                                return `Importe pendiente: ${Number(n).toFixed(2).replace(".", ",")} €`;
+                            })()
+                }
+                priceBreakdownRows={proofPriceBreakdown}
+                secondaryNote="Tu reserva se actualizará cuando el equipo confirme el pago manualmente."
+                uploadIntro="Sube aquí el justificante de pago para validación manual."
+                onSubmit={submitReservationProof}
+                onAfterSuccessSubmit={() =>
+                    router.reload({ only: RESERVATIONS_PARTIAL_KEYS })
+                }
+                successSubtitle="Hemos recibido el comprobante. Validaremos el pago en breve."
+                whatsappMessageBuilder={() =>
+                    proofModal?.type === "class"
+                        ? "Hola, tengo una duda con el pago de mi clase reservada."
+                        : "Hola, tengo una duda con el pago de mi alquiler."
+                }
+            />
 
             {cancelModal ? (
                 <div

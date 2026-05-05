@@ -62,51 +62,41 @@ const Producto = ({
             : "/img/placeholder.svg";
 
     return (
-        <div>
+        <div
+            className="w-full"
+            onClick={() => handleVerProducto(producto.id)}
+        >
             <div
-                // 💡 Tarjeta: Cambiamos a un color oscuro (slate-800) con bordes y sombras de alto contraste.
-                className="max-w-xs w-full bg-slate-800 border border-gray-700 rounded-2xl shadow-3xl overflow-hidden hover:shadow-4xl hover:shadow-emerald-500/40 transition-all duration-500 cursor-pointer p-5 group"
-                onClick={() => handleVerProducto(producto.id)}
+                className="h-full rounded-2xl border border-slate-700/90 bg-gradient-to-b from-slate-800 to-slate-900 p-4 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-emerald-500/20 cursor-pointer group"
             >
                 <div className="w-full overflow-hidden relative rounded-xl">
                     <img
                         src={imageSource} // Usando la fuente de imagen defensiva
                         alt={producto.nombre}
-                        // 💡 AJUSTE: Aseguramos que la imagen use 'block' para eliminar espacios extraños y la hacemos crecer.
-                        className="w-full h-48 object-cover transition-transform duration-500 group-hover:scale-105 block"
+                        className="block h-44 w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                     {descuento > 0 && (
-                        // Etiqueta de descuento más moderna y visible en la imagen
-                        <div className="absolute top-2 right-2 bg-pink-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-full shadow-lg">
+                        <div className="absolute right-2 top-2 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white shadow-lg">
                             -{parseInt(descuento)}% OFF
                         </div>
                     )}
                 </div>
                 <div
-                    // 💡 AJUSTE DE ALTURA: min-h-[140px] asegura que haya suficiente espacio para el contenido variable.
-                    // Usamos 'flex flex-col justify-between' para que el botón siempre quede abajo.
-                    className="p-2 pt-4 flex flex-col min-h-[140px] justify-between"
+                    className="flex min-h-[156px] flex-col justify-between px-1 pt-3"
                 >
                     <div>
-                        {" "}
-                        {/* Contenedor para Título y Precios */}
                         <h2
-                            // 💡 CORRECCIÓN: 'text-left' para asegurar alineación a la izquierda si el contenedor padre
-                            // tiene 'text-center' y forzamos el límite a 2 líneas para estabilidad.
-                            className="text-2xl font-extrabold text-white tracking-tight mb-1 overflow-hidden h-14 line-clamp-2 text-left"
+                            className="mb-1 line-clamp-2 min-h-[3rem] text-left text-lg font-bold leading-tight text-slate-100"
                         >
                             {nombre}
                         </h2>
-                        {/* BLOQUE DE PRECIOS */}
                         <div className="flex items-center justify-between mt-2">
                             {descuento > 0 ? (
                                 <div className="flex flex-col text-left">
-                                    {/* Precio Original (tachado y sutil) */}
-                                    <p className="text-base font-medium text-gray-400 line-through">
+                                    <p className="text-sm font-medium text-slate-400 line-through">
                                         {precio} €
                                     </p>
-                                    {/* Precio Final (el más destacado, usando un color techie: emerald) */}
-                                    <p className="text-3xl font-extrabold text-emerald-400 tracking-tight">
+                                    <p className="text-2xl font-extrabold tracking-tight text-emerald-300">
                                         {(
                                             precio -
                                             (descuento / 100) * precio
@@ -115,18 +105,16 @@ const Producto = ({
                                     </p>
                                 </div>
                             ) : (
-                                // Precio base sin descuento
-                                <p className="text-3xl font-extrabold text-indigo-400 text-left">
+                                <p className="text-2xl font-extrabold text-cyan-300 text-left">
                                     {precio} €
                                 </p>
                             )}
                         </div>
                     </div>
 
-                    <div className="mt-6">
+                    <div className="mt-4">
                         {user ? (
                             tieneTaquilla ? (
-                                /* 🏆 1. ESTADO HABILITADO (Logueado y con Taquilla) 🏆 */
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation();
@@ -134,11 +122,11 @@ const Producto = ({
                                     }}
                                     disabled={unidades === 0}
                                     className={`
-                                    w-full py-3.5 rounded-xl font-extrabold transition-all duration-300 shadow-xl text-white flex items-center justify-center tracking-wider
+                                    flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-bold tracking-wide text-white transition-all duration-300
                                     ${
                                         unidades === 0
-                                            ? "bg-gray-600 cursor-not-allowed shadow-none" // AGOTADO
-                                            : "bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.97] shadow-emerald-500/50" // COMPRA ACTIVA
+                                            ? "cursor-not-allowed bg-slate-600/70"
+                                            : "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/30 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.98]"
                                     }
                                 `}
                                 >
@@ -147,16 +135,14 @@ const Producto = ({
                                         : "Añadir al Carrito"}
                                 </button>
                             ) : (
-                                /* ⚠️ 2. ESTADO DESHABILITADO (Logueado pero sin Taquilla) ⚠️ */
                                 <button
                                     onClick={(e) => e.stopPropagation()}
-                                    className="w-full py-3.5 rounded-xl font-extrabold bg-amber-600 text-white cursor-not-allowed relative group shadow-md opacity-90 tracking-wider"
+                                    className="group relative w-full cursor-not-allowed rounded-xl bg-amber-600 py-2.5 text-sm font-bold tracking-wide text-white shadow-md opacity-90"
                                     disabled
                                 >
                                     <span className="opacity-100">
                                         Taquilla Requerida
                                     </span>
-                                    {/* Tooltip: Perfecto para el tema oscuro */}
                                     <span className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] w-max max-w-xs text-center text-xs text-white bg-slate-900 rounded-lg p-2 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-20 whitespace-nowrap">
                                         Debes tener una taquilla asignada para
                                         poder comprar ofertas
@@ -164,10 +150,9 @@ const Producto = ({
                                 </button>
                             )
                         ) : (
-                            /* 🚫 3. ESTADO DESHABILITADO (No Logueado) 🚫 */
                             <button
                                 onClick={(e) => e.stopPropagation()}
-                                className="w-full py-3.5 rounded-xl font-extrabold bg-gray-700 text-gray-300 cursor-not-allowed relative group shadow-inner tracking-wider"
+                                className="group relative w-full cursor-not-allowed rounded-xl bg-slate-700 py-2.5 text-sm font-bold tracking-wide text-slate-200 shadow-inner"
                                 disabled
                             >
                                 <span className="opacity-90">

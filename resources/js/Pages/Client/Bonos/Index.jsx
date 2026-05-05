@@ -1,23 +1,31 @@
 import { Head, router, usePage } from "@inertiajs/react";
 import { useState } from "react";
+import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 
-export default function ClientBonosIndex({ packs = [], myBonos = [], consumptionHistory = [], paymentIban, paymentBizumNumber }) {
+export default function ClientBonosIndex({
+    packs = [],
+    myBonos = [],
+    consumptionHistory = [],
+    paymentIban,
+    paymentBizumNumber,
+    whatsappHelpUrl = null,
+}) {
     const { flash } = usePage().props;
     const [selectedPack, setSelectedPack] = useState(null);
-    const [proof, setProof] = useState(null);
-    const [sending, setSending] = useState(false);
     const toast = flash?.success || flash?.error;
 
-    const submit = () => {
-        if (!selectedPack || !proof) return;
-        setSending(true);
-        router.post(route("bonos.request-purchase"), { pack_id: selectedPack.id, proof }, {
-            forceFormData: true,
-            onFinish: () => setSending(false),
-            onSuccess: () => {
-                setSelectedPack(null);
-                setProof(null);
-            },
+    const submitBono = async ({ proofFile }) => {
+        if (!selectedPack) throw new Error("no pack");
+        const fd = new FormData();
+        fd.append("pack_id", String(selectedPack.id));
+        fd.append("proof", proofFile);
+        await new Promise((resolve, reject) => {
+            router.post(route("bonos.request-purchase"), fd, {
+                forceFormData: true,
+                preserveScroll: true,
+                onSuccess: () => resolve(),
+                onError: () => reject(new Error("bono")),
+            });
         });
     };
 
@@ -46,7 +54,9 @@ export default function ClientBonosIndex({ packs = [], myBonos = [], consumption
                             <p className="text-lg font-semibold text-gray-100">{pack.nombre}</p>
                             <p className="text-gray-300">{pack.num_clases} clases</p>
                             <p className="mt-2 text-2xl font-bold text-sky-300">{Number(pack.precio).toFixed(2)} €</p>
-                            <button type="button" onClick={() => setSelectedPack(pack)} className="mt-3 rounded-xl bg-sky-600 px-4 py-2 text-white font-semibold hover:bg-sky-700">Comprar</button>
+                            <button type="button" onClick={() => setSelectedPack(pack)} className="mt-3 rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">
+                                Comprar
+                            </button>
                         </div>
                     ))}
                 </div>
@@ -96,34 +106,22 @@ export default function ClientBonosIndex({ packs = [], myBonos = [], consumption
                         </table>
                     </div>
                 </div>
-
-                {selectedPack ? (
-                    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/60 p-4">
-                        <div className="w-full max-w-lg rounded-2xl bg-white p-5 space-y-4">
-                            <h3 className="text-xl font-bold">Comprar {selectedPack.nombre}</h3>
-                            <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                                <p><strong>Bizum:</strong> {paymentBizumNumber || "[BIZUM_NUMBER]"}</p>
-                                <p><strong>IBAN:</strong> {paymentIban || "[IBAN]"}</p>
-                                <p className="mt-2">Sube aquí el justificante de pago para validación manual.</p>
-                                <p className="mt-2 rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700">
-                                    Tu bono se activará en cuanto el administrador confirme el pago.
-                                </p>
-                            </div>
-
-                            <input type="file" onChange={(e) => setProof(e.target.files?.[0] || null)} className="block w-full rounded-lg border border-slate-300 px-3 py-2" />
-                            <div className="flex gap-2">
-                                <button type="button" onClick={submit} disabled={sending || !proof} className="rounded-xl bg-emerald-600 px-4 py-2 text-white font-semibold disabled:opacity-50">
-                                    {sending ? "Enviando..." : "Enviar comprobante"}
-                                </button>
-                                <button type="button" onClick={() => { setSelectedPack(null); setProof(null); }} className="rounded-xl bg-slate-200 px-4 py-2 text-slate-700">
-                                    Cerrar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
             </div>
+
+            <ManualPaymentInstructionsModal
+                open={!!selectedPack}
+                onClose={() => setSelectedPack(null)}
+                bizumNumber={paymentBizumNumber || "[BIZUM_NUMBER]"}
+                iban={paymentIban || "[IBAN]"}
+                whatsappHelpUrl={whatsappHelpUrl}
+                showDepositNotice={false}
+                totalPrimaryLine={selectedPack ? `Total a pagar: ${Number(selectedPack.precio).toFixed(2).replace(".", ",")} €` : null}
+                secondaryNote="Tu bono se activará en cuanto el administrador confirme el pago."
+                uploadIntro="Sube aquí el justificante de pago para validación manual."
+                onSubmit={submitBono}
+                onAfterSuccessSubmit={() => setSelectedPack(null)}
+                successSubtitle="Hemos recibido tu solicitud. Validaremos el pago y activaremos tu bono."
+            />
         </>
     );
 }
-

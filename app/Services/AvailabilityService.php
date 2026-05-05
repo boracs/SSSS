@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Lesson;
 use App\Models\LessonUser;
+use App\Models\StaffAssignment;
 use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -169,7 +170,11 @@ class AvailabilityService
             ->when($excludeLessonId > 0, fn ($q) => $q->where('id', '!=', $excludeLessonId))
             ->where('starts_at', '<', $scanEnd)
             ->where('ends_at', '>', $scanStart)
-            ->with(['enrollments' => function ($q) use ($statuses) {
+            ->with([
+                'staffAssignments' => function ($q) {
+                    $q->select('lesson_id', 'role')->where('role', StaffAssignment::ROLE_MONITOR);
+                },
+                'enrollments' => function ($q) use ($statuses) {
                 $q->select('lesson_id', 'status', 'quantity', 'party_size')
                     ->whereIn('status', $statuses);
             }])
@@ -177,9 +182,12 @@ class AvailabilityService
 
         return $lessons
             ->map(function (Lesson $lesson) {
-                $partySize = (int) $lesson->enrollments->sum(
+                $enrolledPartySize = (int) $lesson->enrollments->sum(
                     fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1)
                 );
+                $hasAssignedMonitor = $lesson->staffAssignments->isNotEmpty();
+                // Toda clase en calendario reserva al menos 1 monitor operativo.
+                $partySize = max(1, $enrolledPartySize, $hasAssignedMonitor ? 1 : 0);
 
                 if ($partySize <= 0) {
                     return null;

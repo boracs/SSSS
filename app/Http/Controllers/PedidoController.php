@@ -18,15 +18,19 @@ class PedidoController extends Controller
 {
     public function crear(Request $request): \Illuminate\Http\RedirectResponse
     {
-    //VALIDACIÓN
+    //VALIDACIÓN (carrito vía FormData: productos_json + justificante obligatorio)
     $request->validate([
-        'productos' => ['required', 'array', 'min:1'],
-        'productos.*.id' => ['required', 'integer', 'exists:productos,id'], 
-        'productos.*.cantidad' => ['required', 'integer', 'min:1'],
-        'total' => ['required', 'numeric', 'min:0'], 
+        'productos_json' => ['required', 'json'],
+        'total' => ['required', 'numeric', 'min:0'],
+        'proof' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf', 'max:10240'],
+        'payment_method' => ['nullable', 'in:bizum,transferencia'],
         'fecha_entrega' => ['nullable', 'date_format:d/m/Y'],
     ]);
-    $productosCarrito = $request->input('productos');
+    /** @var array<int, array{id:int, cantidad:int}>|null */
+    $productosCarrito = json_decode((string) $request->input('productos_json'), true);
+    if (! is_array($productosCarrito) || $productosCarrito === []) {
+        return back()->withErrors(['productos_json' => 'El carrito enviado no es válido.']);
+    }
     $user = auth()->user();
     
     // 1. Manejo de autenticación
@@ -50,7 +54,12 @@ class PedidoController extends Controller
             'fecha_entrega' => $fechaEntrega,
         ]);
 
-        foreach ($productosCarrito as $producto) {
+        foreach ($productosCarrito as $idx => $producto) {
+            if (! isset($producto['id'], $producto['cantidad'])) {
+                DB::rollBack();
+
+                return back()->withErrors(['productos_json' => "Carrito inválido en la posición {$idx}."]);
+            }
             $prod = Producto::find($producto['id']);
 
             if (!$prod) {
@@ -80,6 +89,13 @@ class PedidoController extends Controller
         }
 
         $pedido->update(['precio_total' => round($totalCarrito, 2)]);
+
+        $proofPath = $request->file('proof')->store('pedido-proofs/'.$pedido->id, 'local');
+        $pedido->update([
+            'payment_proof_path' => $proofPath,
+            'payment_method' => $request->input('payment_method'),
+            'proof_uploaded_at' => now(),
+        ]);
 
         // 4. Vaciar carrito del usuario (CRUCIAL para la sincronización de Inertia)
         // Esto garantiza que el carrito compartido ($user->carrito() en HandleInertiaRequests) 

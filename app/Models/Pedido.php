@@ -19,6 +19,13 @@ class Pedido extends Model
         'precio_total',
         'pagado',
         'entregado',
+        'payment_proof_path',
+        'payment_method',
+        'proof_uploaded_at',
+    ];
+
+    protected $casts = [
+        'proof_uploaded_at' => 'datetime',
     ];
 
     /**

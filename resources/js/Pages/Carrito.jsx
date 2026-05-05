@@ -2,12 +2,21 @@ import React, { useState, useEffect } from "react";
 import { usePage, router } from "@inertiajs/react";
 import Boton_go_back from "../components/Boton_go_back";
 import Layout1 from "../layouts/Layout1";
+import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 
 const Carrito = () => {
     // 1. Obtener los props y el objeto flash directamente de usePage()
     // Inertia se encarga de que estos props se actualicen automáticamente después de las visitas.
     const { props } = usePage();
-    const { productos = [], total = 0, flash, canCheckout = false } = props;
+    const {
+        productos = [],
+        total = 0,
+        flash,
+        canCheckout = false,
+        paymentIban = "[IBAN]",
+        paymentBizumNumber = "[BIZUM_NUMBER]",
+        whatsappHelpUrl = null,
+    } = props;
 
     // Estado local para el mensaje de notificación (Toast)
     const [mensajeToast, setMensajeToast] = useState("");
@@ -16,8 +25,7 @@ const Carrito = () => {
     // Estado para los modales
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [productoAEliminar, setProductoAEliminar] = useState(null);
-    const [isModalConfirmacionPedidoOpen, setIsModalConfirmacionPedidoOpen] =
-        useState(false);
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
 
     // --- EFECTO: Manejar mensajes flash de Laravel (incluye el mensaje de éxito de eliminar) ---
     useEffect(() => {
@@ -46,11 +54,8 @@ const Carrito = () => {
         setIsModalOpen(false);
     };
 
-    const abrirModalConfirmacionPedido = () =>
-        setIsModalConfirmacionPedidoOpen(true);
-
-    const cerrarModalConfirmacionPedido = () =>
-        setIsModalConfirmacionPedidoOpen(false);
+    const abrirModalPagoPedido = () => setPaymentModalOpen(true);
+    const cerrarModalPagoPedido = () => setPaymentModalOpen(false);
 
     const eliminarProducto = () => {
         if (!productoAEliminar) return;
@@ -67,50 +72,40 @@ const Carrito = () => {
         });
     };
 
-    const realizarPedidoHandler = () => {
-        // Convierte el total a número y maneja la coma/punto si es necesario
-        const totalNumerico = parseFloat(total.toString().replace(",", "."));
-
+    const enviarPedidoConJustificante = async ({ proofFile, paymentMethod }) => {
+        const totalNumerico = parseFloat(String(total).replace(",", "."));
         if (isNaN(totalNumerico) || totalNumerico <= 0) {
-            // ... (Mostrar error y salir)
-            return;
+            setMensajeToast("El total del pedido no es válido.");
+            setTipoToast("error");
+            setTimeout(() => setMensajeToast(""), 4000);
+            throw new Error("total");
         }
-
-        // Usa router.post para enviar la petición de creación
-        router.post(
-            route("crear.pedido"),
-            {
-                productos: productos, // Datos del carrito
-                total: totalNumerico, // Total calculado
-            },
-            {
+        const lineas = productos.map((p) => ({ id: p.id, cantidad: p.cantidad }));
+        const fd = new FormData();
+        fd.append("productos_json", JSON.stringify(lineas));
+        fd.append("total", String(totalNumerico));
+        fd.append("proof", proofFile);
+        fd.append("payment_method", paymentMethod);
+        await new Promise((resolve, reject) => {
+            router.post(route("crear.pedido"), fd, {
+                forceFormData: true,
                 preserveScroll: true,
-
-                // ⭐️ AÑADIDO: Cierra el modal de confirmación al recibir éxito ⭐️
-                onSuccess: () => {
-                    // Cerramos el modal inmediatamente
-                    cerrarModalConfirmacionPedido();
-                    // El useEffect se encargará de mostrar el flash.success (Toast)
-                },
-
+                onSuccess: () => resolve(),
                 onError: (errors) => {
-                    cerrarModalConfirmacionPedido();
-
-                    // ⭐️ Capturamos el error específico del backend ⭐️
                     const errorMessage =
                         errors.stock ||
                         errors.general ||
-                        "Error desconocido al procesar el pedido. Intente de nuevo.";
-
-                    // ❌ Opcional: Para DEBUG, puedes ver el objeto completo
+                        errors.productos_json ||
+                        errors.proof ||
+                        "Error al procesar el pedido. Inténtalo de nuevo.";
                     console.error("Errores recibidos de Laravel:", errors);
-
                     setMensajeToast(errorMessage);
                     setTipoToast("error");
                     setTimeout(() => setMensajeToast(""), 4000);
+                    reject(new Error("pedido"));
                 },
-            }
-        );
+            });
+        });
     };
 
     // Determinar las clases de Toast
@@ -204,7 +199,7 @@ const Carrito = () => {
                                 {productos.length > 0 && (
                                     <>
                                         <button
-                                            onClick={abrirModalConfirmacionPedido}
+                                            onClick={abrirModalPagoPedido}
                                             disabled={!canCheckout}
                                             className={`px-6 py-3 rounded-lg font-bold transition duration-150 shadow-md ${
                                                 canCheckout
@@ -260,39 +255,24 @@ const Carrito = () => {
                 </div>
             )}
 
-            {/* Modal confirmar pedido */}
-            {isModalConfirmacionPedidoOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-70 backdrop-blur-sm">
-                    <div className="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full transform transition-all duration-300 scale-100">
-                        <h3 className="text-2xl font-bold text-green-600 mb-4">
-                            🛒 Confirmación de Pedido
-                        </h3>
-                        <p className="text-lg text-gray-700 mb-6">
-                            Estás a punto de **confirmar tu pedido** por un
-                            total de **
-                            {new Intl.NumberFormat("es-ES", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                            }).format(total)}{" "}
-                            €**. ¿Deseas continuar?
-                        </p>
-                        <div className="flex justify-end space-x-4">
-                            <button
-                                onClick={cerrarModalConfirmacionPedido}
-                                className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400 transition duration-150 font-medium"
-                            >
-                                Cancelar
-                            </button>
-                            <button
-                                onClick={realizarPedidoHandler}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-150 font-bold"
-                            >
-                                Confirmar Pedido
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ManualPaymentInstructionsModal
+                open={paymentModalOpen}
+                onClose={cerrarModalPagoPedido}
+                bizumNumber={paymentBizumNumber}
+                iban={paymentIban}
+                whatsappHelpUrl={whatsappHelpUrl}
+                showDepositNotice={false}
+                useReservationStepsHeading={false}
+                totalPrimaryLine={`Total a pagar: ${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(total))} €`}
+                secondaryNote="Tu pedido quedará registrado cuando validemos el comprobante. El carrito se vaciará al confirmar el envío."
+                uploadIntro="Sube aquí el justificante del pago (Bizum o transferencia) para validación manual."
+                onSubmit={enviarPedidoConJustificante}
+                onAfterSuccessSubmit={() => router.reload({ only: ["productos", "total"] })}
+                successSubtitle="Hemos recibido tu pedido y el justificante. Te avisaremos cuando lo validemos."
+                whatsappMessageBuilder={() =>
+                    `Hola, tengo una duda con el pago de mi pedido en la tienda (total ${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(total))} €).`
+                }
+            />
         </Layout1>
     );
 };

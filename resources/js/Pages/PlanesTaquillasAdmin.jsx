@@ -113,13 +113,23 @@ function InactivePlanWarningTooltip() {
 
 function paymentStatusPill(status) {
     if (status === "confirmed") return "bg-emerald-100 text-emerald-700";
-    if (status === "submitted") return "bg-sky-100 text-sky-700";
+    if (status === "rejected") return "bg-rose-100 text-rose-700";
     return "bg-amber-100 text-amber-700";
 }
 
 function paymentStatusLabel(status) {
     if (status === "confirmed") return "Confirmado";
-    if (status === "submitted") return "En revision";
+    if (status === "rejected") return "Rechazado";
+    return "Pendiente";
+}
+
+function paymentMethodLabel(row) {
+    if (row?.status === "rejected") return "Fallido";
+    if (row?.status === "pending") return "Pendiente";
+    const method = String(row?.payment_method || "").toLowerCase();
+    if (method === "transferencia" || method === "bizum") return "Transferencia";
+    if (method === "tienda") return "Cortesía";
+    if (method === "domiciliado") return "Domiciliado";
     return "Pendiente";
 }
 
@@ -210,9 +220,14 @@ export default function PlanesTaquillasAdmin({ planes = [], usuarios = [], flash
                         <input value={form.nombre} onChange={(e) => setForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Nombre" className="rounded-lg border border-slate-300 px-3 py-2" required />
                         <input type="number" step="0.01" min="0" value={form.precio_total} onChange={(e) => setForm((p) => ({ ...p, precio_total: e.target.value }))} placeholder="Precio €" className="rounded-lg border border-slate-300 px-3 py-2" required />
                         <input type="number" min="1" max="36" value={form.duracion_meses} onChange={(e) => setForm((p) => ({ ...p, duracion_meses: Number(e.target.value) }))} placeholder="Meses" className="rounded-lg border border-slate-300 px-3 py-2" required />
-                        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2">
-                            <input type="checkbox" checked={form.visible} onChange={(e) => setForm((p) => ({ ...p, visible: e.target.checked }))} />
-                            Visible
+                        <label className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-slate-800">
+                            <input
+                                type="checkbox"
+                                checked={form.visible}
+                                onChange={(e) => setForm((p) => ({ ...p, visible: e.target.checked }))}
+                                className="h-4 w-4 rounded border-slate-400 text-sky-600 accent-sky-600 focus:ring-2 focus:ring-sky-500"
+                            />
+                            <span className="text-sm font-semibold">Visible</span>
                         </label>
                         <button type="submit" disabled={loading} className="rounded-lg bg-sky-600 px-3 py-2 font-semibold text-white disabled:opacity-60">
                             {loading ? "Guardando..." : "Guardar plan"}
@@ -296,15 +311,15 @@ export default function PlanesTaquillasAdmin({ planes = [], usuarios = [], flash
                                                     </div>
                                                     <p className="mt-1 text-xs text-slate-500">{u.email || "sin email"}</p>
                                                 </td>
-                                                <td className="px-3 py-2">{u.numeroTaquilla ?? "-"}</td>
-                                                <td className="px-3 py-2">
+                                                <td className="px-3 py-2 font-medium text-slate-900">{u.numeroTaquilla ?? "-"}</td>
+                                                <td className="px-3 py-2 font-medium text-slate-900">
                                                     <div className="inline-flex items-center">
                                                         <span>{u.plan_vigente?.nombre || "-"}</span>
                                                         {u.plan_vigente && u.plan_vigente.activo === false ? <InactivePlanWarningTooltip /> : null}
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-2">{fmtDate(u.ultimo_pago)}</td>
-                                                <td className="px-3 py-2">
+                                                <td className="px-3 py-2 font-medium text-slate-900">{fmtDate(u.ultimo_pago)}</td>
+                                                <td className="px-3 py-2 font-medium text-slate-900">
                                                     <div className="inline-flex items-center">
                                                         <span>{fmtDate(u.fecha_fin)}</span>
                                                         <ExtraDaysBadge days={Number(u.prepaid_extra_days || 0)} />
@@ -333,31 +348,42 @@ export default function PlanesTaquillasAdmin({ planes = [], usuarios = [], flash
                                                                             <th className="px-3 py-2 text-left">Plan</th>
                                                                             <th className="px-3 py-2 text-left">Periodo</th>
                                                                             <th className="px-3 py-2 text-left">Estado</th>
-                                                                            <th className="px-3 py-2 text-right">Ver comprobante</th>
+                                                                            <th className="px-3 py-2 text-left">Pago</th>
+                                                                            <th className="px-3 py-2 text-left">Comprobado</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
                                                                         {historyRows.map((row) => (
                                                                             <tr key={row.id} className="border-t border-slate-100">
-                                                                                <td className="px-3 py-2">{row.plan}</td>
-                                                                                <td className="px-3 py-2">{fmtDate(row.periodo_inicio)} - {fmtDate(row.periodo_fin)}</td>
+                                                                                <td className="px-3 py-2 font-medium text-slate-900">{row.plan}</td>
+                                                                                <td className="px-3 py-2 font-medium text-slate-900">{fmtDate(row.periodo_inicio)} - {fmtDate(row.periodo_fin)}</td>
                                                                                 <td className="px-3 py-2">
                                                                                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${paymentStatusPill(row.status)}`}>
                                                                                         {paymentStatusLabel(row.status)}
                                                                                     </span>
                                                                                 </td>
-                                                                                <td className="px-3 py-2 text-right">
-                                                                                    {row.proof_url ? (
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-                                                                                            onClick={() => setProofModalUrl(row.proof_url)}
-                                                                                        >
-                                                                                            Ver
-                                                                                        </button>
-                                                                                    ) : (
-                                                                                        <span className="text-xs text-slate-400">-</span>
-                                                                                    )}
+                                                                                <td className="px-3 py-2">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="font-semibold text-slate-800">{paymentMethodLabel(row)}</span>
+                                                                                        {paymentMethodLabel(row) === "Transferencia" ? (
+                                                                                            row.proof_url ? (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                                                                                                    onClick={() => setProofModalUrl(row.proof_url)}
+                                                                                                >
+                                                                                                    Justificante
+                                                                                                </button>
+                                                                                            ) : (
+                                                                                                <span className="text-xs text-slate-400">Sin justificante</span>
+                                                                                            )
+                                                                                        ) : null}
+                                                                                    </div>
+                                                                                </td>
+                                                                                <td className="px-3 py-2">
+                                                                                    <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${row.is_checked ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                                                                                        {row.is_checked ? "Sí" : "No"}
+                                                                                    </span>
                                                                                 </td>
                                                                             </tr>
                                                                         ))}

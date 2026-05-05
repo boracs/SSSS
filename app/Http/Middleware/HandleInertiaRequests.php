@@ -7,6 +7,7 @@ use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Support\AcademyContact;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -57,6 +58,11 @@ class HandleInertiaRequests extends Middleware
                     : null,
             ],
 
+            'academyClassReservationDepositEur' => (float) config('services.academy.class_reservation_deposit_eur', 30),
+
+            /** Texto genérico del WhatsApp de la escuela (plantillas, enlaces, etc.). */
+            'academyWhatsappDisplay' => AcademyContact::whatsappDisplay(),
+
             // 🔥 Flash messages
             'flash' => [
                 'success' => $request->session()->get('success'),
@@ -70,33 +76,31 @@ class HandleInertiaRequests extends Middleware
                     return null;
                 }
 
-                $lessonSubmitted = LessonUser::query()
-                    ->where('payment_status', LessonUser::PAYMENT_SUBMITTED)
+                $unreviewedLessons = LessonUser::query()
+                    ->whereNull('reviewed_at')
                     ->count();
-                $rentalSubmitted = Booking::query()
-                    ->where('payment_status', Booking::PAYMENT_SUBMITTED)
+                $unreviewedRentals = Booking::query()
+                    ->whereNull('reviewed_at')
                     ->count();
-                $bonosPending = UserBono::query()
-                    ->where('status', UserBono::STATUS_PENDING)
+                $unreviewedBonos = UserBono::query()
+                    ->whereNull('reviewed_at')
+                    ->count();
+                $unreviewedPaymentsTotal = $unreviewedLessons + $unreviewedRentals + $unreviewedBonos;
+                $unreviewedLockersTotal = PagoCuota::query()
+                    ->whereNull('reviewed_at')
                     ->count();
                 $pendingCuotas = User::query()
                     ->whereNotNull('numeroTaquilla')
                     ->whereNotNull('fecha_vencimiento_cuota')
                     ->whereDate('fecha_vencimiento_cuota', '<', now()->toDateString())
                     ->count();
-                $submittedLockerPaymentsCount = PagoCuota::query()
-                    ->where('status', PagoCuota::STATUS_SUBMITTED)
-                    ->count();
                 $vipRenewalAlertCount = User::query()->needsRenewal()->count();
 
                 return [
-                    'submittedPaymentsCount' => $lessonSubmitted + $rentalSubmitted,
-                    'pendingClassesCount' => $lessonSubmitted,
-                    'pendingRentalsCount' => $rentalSubmitted,
-                    'pendingBonosCount' => $bonosPending,
-                    'pendingPaymentsGlobalCount' => $lessonSubmitted + $rentalSubmitted + $bonosPending,
+                    'unreviewed_payments_total' => $unreviewedPaymentsTotal,
+                    'unreviewed_rentals_count' => $unreviewedRentals,
+                    'unreviewed_lockers_total' => $unreviewedLockersTotal,
                     'pendingCuotasCount' => $pendingCuotas,
-                    'submittedLockerPaymentsCount' => $submittedLockerPaymentsCount,
                     'vipRenewalAlertCount' => $vipRenewalAlertCount,
                 ];
             },

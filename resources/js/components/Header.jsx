@@ -12,6 +12,7 @@ import {
     UsersIcon,
     WrenchScrewdriverIcon,
 } from "@heroicons/react/24/outline";
+import OpcionesIntro from "./OpcionesIntro";
 
 function cx(...parts) {
     return parts.filter(Boolean).join(" ");
@@ -22,7 +23,7 @@ function NavItem({ href, active, children }) {
         <Link
             href={href}
             className={cx(
-                "inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-white transition-all duration-200",
+                "inline-flex h-9 items-center gap-2 rounded-xl px-3 text-[13px] font-medium leading-[1.05] text-center text-white transition-all duration-200",
                 active
                     ? "bg-white/20 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.24)]"
                     : "hover:bg-cyan-300/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
@@ -40,7 +41,7 @@ function MenuDropdown({ label, badge = 0, children }) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium text-white transition-all duration-200 hover:bg-cyan-300/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
+                className="inline-flex h-9 items-center gap-2 rounded-xl px-3 text-[13px] font-medium leading-[1.05] text-center text-white transition-all duration-200 hover:bg-cyan-300/20 hover:shadow-[0_8px_24px_rgba(0,0,0,0.2)]"
             >
                 {label}
                 {badge > 0 ? (
@@ -67,7 +68,7 @@ function AccountDropdown({ user }) {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-400 px-4 text-sm font-semibold text-white shadow-lg transition-all hover:brightness-110"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-amber-400 px-3.5 text-[13px] font-semibold leading-none text-white shadow-lg transition-all hover:brightness-110"
             >
                 {displayName}
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
@@ -97,7 +98,7 @@ function GuestAccountDropdown() {
             <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}
-                className="inline-flex h-10 items-center gap-2 rounded-xl bg-brand-accent px-3 text-sm font-semibold text-white hover:bg-brand-accent/90"
+                className="inline-flex h-9 items-center gap-2 rounded-xl bg-brand-accent px-3 text-[13px] font-semibold leading-[1.05] text-white hover:bg-brand-accent/90"
             >
                 Iniciar sesión
                 <ChevronDownIcon className={cx("h-4 w-4 transition-transform", open ? "rotate-180" : "")} />
@@ -118,6 +119,8 @@ function GuestAccountDropdown() {
 
 export default function Header() {
     const { url, props } = usePage();
+    const currentPath = String(url || "").split("?")[0];
+    const isHome = currentPath === "/";
     const user = props?.auth?.user;
     const isAdmin = !!user && String(user?.role) === "admin";
     const isVip = user?.is_vip === true || String(user?.is_vip) === "1";
@@ -127,9 +130,9 @@ export default function Header() {
         user?.has_active_locker === true ||
         String(user?.has_active_locker) === "1";
 
-    const pendingPaymentsGlobalCount = Number(props?.adminStats?.pendingPaymentsGlobalCount || 0);
-    const pendingRentalsCount = Number(props?.adminStats?.pendingRentalsCount || 0);
-    const submittedLockerPaymentsCount = Number(props?.adminStats?.submittedLockerPaymentsCount || 0);
+    const unreviewedPaymentsTotal = Number(props?.adminStats?.unreviewed_payments_total || 0);
+    const unreviewedRentalsCount = Number(props?.adminStats?.unreviewed_rentals_count || 0);
+    const unreviewedLockersTotal = Number(props?.adminStats?.unreviewed_lockers_total || 0);
     const vipRenewalAlertCount = Number(props?.adminStats?.vipRenewalAlertCount || 0);
     const cartCount = Number(props?.cart?.count || props?.cartCount || 0);
 
@@ -155,15 +158,18 @@ export default function Header() {
             ? [
                   { label: "Tienda", href: route("tienda"), match: (u) => u.startsWith("/tienda") },
                   { label: "Mis Reservas", href: route("my-reservations.index"), match: (u) => u.startsWith("/mis-reservas") },
+                  ...(hasActiveLocker
+                      ? [{ label: "Taquilla", href: route("taquillas.index.client"), match: (u) => u.startsWith("/taquilla/planes") }]
+                      : []),
               ]
             : [];
 
-        const vipLinks = user && !isAdmin && isVip ? [{ label: "⭐ Mis Bonos / Comprar", href: route("bonos.index"), match: (u) => u.startsWith("/bonos") }] : [];
+        const vipLinks = user && !isAdmin && isVip ? [{ label: "⭐ Mis Bonos", href: route("bonos.index"), match: (u) => u.startsWith("/bonos") }] : [];
 
         const adminDirect = isAdmin
             ? [
                   { label: "Usuarios VIP", href: route("admin.users.index"), match: (u) => u.startsWith("/admin/users"), icon: UsersIcon },
-                  { label: "Pagos", href: route("admin.payments.global"), match: (u) => u.startsWith("/admin/payments/global-dashboard"), icon: CreditCardIcon, badge: pendingPaymentsGlobalCount },
+                  { label: "Pagos", href: route("admin.payments.global"), match: (u) => u.startsWith("/admin/payments/global-dashboard"), icon: CreditCardIcon, badge: unreviewedPaymentsTotal },
               ]
             : [];
 
@@ -196,14 +202,14 @@ export default function Header() {
 
         const lockersModule = isAdmin
             ? [
-                  { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: submittedLockerPaymentsCount },
+                  { label: "Verificar Pagos", href: route("taquilla.pagos.queue"), icon: BanknotesIcon, badge: unreviewedLockersTotal },
                   { label: "Mapa de Taquillas", href: route("asignar.taquilla.mostrar"), icon: MapIcon },
-                  { label: "Configuración de Planes", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
+                  { label: "Planes y Vigencia de usuarios", href: route("taquilla.index.admin"), icon: WrenchScrewdriverIcon },
               ]
             : [];
 
         return { publicLinks, studentLinks, vipLinks, adminDirect, adminShopModule, classesModule, rentalsModule, lockersModule, adminClientView };
-    }, [user, isAdmin, isVip, pendingPaymentsGlobalCount, submittedLockerPaymentsCount, vipRenewalAlertCount]);
+    }, [user, isAdmin, isVip, unreviewedPaymentsTotal, unreviewedLockersTotal, vipRenewalAlertCount]);
 
     useEffect(() => {
         const onScroll = () => {
@@ -224,21 +230,13 @@ export default function Header() {
 
     return (
         <header className="relative z-[500] mb-[50px]">
-            <div className="border-b border-emerald-500/20 px-4 py-6 sm:px-6" style={{ background: "linear-gradient(95deg, #071a2f 0%, #0b2a43 45%, #114d4b 100%)" }}>
-                <div className="mx-auto max-w-7xl">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-lime-400">S4 - SAN SEBASTIAN SURF SCHOOL</p>
-                    <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">
-                        Domina el Cantabrico con <span className="text-emerald-400">S4</span>
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
-                </div>
-            </div>
+            {isHome ? <OpcionesIntro /> : null}
 
             <div className={cx("sticky top-0 z-[500] border-b border-cyan-950 bg-[#0f5f74] transition-transform duration-300", menuVisible ? "translate-y-0" : "-translate-y-full")}>
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+                <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
                     <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-extrabold text-white">S4</span>
-                        <span className="hidden sm:inline text-xl font-bold leading-5 text-white">San Sebastian<br />Surf School</span>
+                        <span className="hidden sm:inline text-lg font-bold leading-[1.02] text-white">San Sebastian<br />Surf School</span>
                     </Link>
 
                     <nav className="hidden lg:flex items-center gap-1">
@@ -293,7 +291,7 @@ export default function Header() {
                             </MenuDropdown>
                         ) : null}
                         {isAdmin ? (
-                            <MenuDropdown label="Módulo Alquileres" badge={pendingRentalsCount}>
+                            <MenuDropdown label="Módulo Alquileres" badge={unreviewedRentalsCount}>
                                 {links.rentalsModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
@@ -306,7 +304,7 @@ export default function Header() {
                             </MenuDropdown>
                         ) : null}
                         {isAdmin ? (
-                            <MenuDropdown label="Gestor Taquillas" badge={submittedLockerPaymentsCount}>
+                            <MenuDropdown label="Gestor Taquillas" badge={unreviewedLockersTotal}>
                                 {links.lockersModule.map((l) => {
                                     const Icon = l.icon;
                                     return (
@@ -342,14 +340,14 @@ export default function Header() {
                                 <Link
                                     href={route("pedidos")}
                                     className={cx(
-                                        "relative hidden lg:inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-200/30 bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20",
+                                        "relative hidden lg:inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-200/30 bg-white/10 px-3 text-[13px] font-semibold leading-[1.05] text-white hover:bg-white/20",
                                         active((u) => u.startsWith("/pedidos")) ? "bg-white/20" : ""
                                     )}
                                 >
                                     <ShoppingBagIcon className="h-4 w-4" />
                                     <span>Pedidos</span>
                                 </Link>
-                                <Link href={route("carrito")} className={cx("relative hidden lg:inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-200/30 bg-white/10 px-3 text-sm font-semibold text-white hover:bg-white/20", active((u) => u.startsWith("/carrito")) ? "bg-white/20" : "")}>
+                                <Link href={route("carrito")} className={cx("relative hidden lg:inline-flex h-9 items-center gap-2 rounded-xl border border-cyan-200/30 bg-white/10 px-3 text-[13px] font-semibold leading-[1.05] text-white hover:bg-white/20", active((u) => u.startsWith("/carrito")) ? "bg-white/20" : "")}>
                                 <ShoppingCartIcon className="h-4 w-4" />
                                 <span>Carrito</span>
                                 {cartCount > 0 ? (
@@ -376,8 +374,18 @@ export default function Header() {
                 </div>
             </div>
 
+            <div className="border-b border-emerald-500/20 px-4 py-6 sm:px-6" style={{ background: "linear-gradient(95deg, #071a2f 0%, #0b2a43 45%, #114d4b 100%)" }}>
+                <div className="mx-auto max-w-7xl">
+                    <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-lime-400">S4 - SAN SEBASTIAN SURF SCHOOL</p>
+                    <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">
+                        Domina el Cantabrico con <span className="text-emerald-400">S4</span>
+                    </h1>
+                    <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
+                </div>
+            </div>
+
             {mobileOpen ? (
-                <div className="fixed inset-0 z-[120] bg-gray-950/70" onClick={() => setMobileOpen(false)}>
+                <div className="fixed inset-0 z-[1200] bg-gray-950/70" onClick={() => setMobileOpen(false)}>
                     <aside className="ml-auto h-full w-[85vw] max-w-sm border-l border-gray-700 bg-gray-800 p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
                         <div className="mb-4 flex items-center justify-between">
                             <p className="font-semibold text-gray-100">Menú</p>

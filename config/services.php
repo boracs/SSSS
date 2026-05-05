@@ -47,9 +47,15 @@ return [
         'bizum_number' => env('ACADEMY_BIZUM_NUMBER', '[BIZUM_NUMBER]'),
         'iban' => env('ACADEMY_IBAN', '[IBAN]'),
         'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
+        /** Texto mostrado en plantillas/UI (si vacío, se formatea whatsapp_number). */
+        'whatsapp_display' => env('ACADEMY_WHATSAPP_DISPLAY'),
         'maps_url' => env('ACADEMY_MAPS_URL', 'https://maps.app.goo.gl/TuUbicacion'),
         /** Reloj de pared de la escuela (columnas naive starts_at/ends_at); independiente de APP_TIMEZONE. */
         'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
+        /** Señal máxima para formalizar reserva de clase (el resto puede pagarse en escuela). */
+        'class_reservation_deposit_eur' => (float) env('ACADEMY_CLASS_RESERVATION_DEPOSIT_EUR', 30),
+        /** Hora de recogida/devolución por defecto en alquileres (reloj de pared Madrid) cuando solo llega Y-m-d. */
+        'rental_handoff_hour' => (int) env('ACADEMY_RENTAL_HANDOFF_HOUR', 10),
     ],
 
     'contact_form' => [

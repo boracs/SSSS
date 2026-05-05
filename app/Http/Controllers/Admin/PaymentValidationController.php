@@ -45,17 +45,33 @@ class PaymentValidationController extends Controller
 
     public function confirm(int $userBonoId)
     {
+        $bono = UserBono::query()->findOrFail($userBonoId);
+        if ($bono->status === UserBono::STATUS_CONFIRMED) {
+            return back()->with('error', 'Este bono ya está confirmado.');
+        }
+
         $this->bonoService->confirmBono($userBonoId);
+        $bono->refresh();
+        $bono->update(['reviewed_at' => null]);
+
         return back()->with('success', 'Bono confirmado correctamente.');
     }
 
     public function reject(Request $request, int $userBonoId)
     {
+        $bono = UserBono::query()->findOrFail($userBonoId);
+        if ($bono->status === UserBono::STATUS_REJECTED) {
+            return back()->with('error', 'Este bono ya está rechazado.');
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:2000',
         ]);
 
         $this->bonoService->rejectBono($userBonoId, $validated['reason']);
+        $bono->refresh();
+        $bono->update(['reviewed_at' => null]);
+
         return back()->with('success', 'Bono rechazado.');
     }
 }

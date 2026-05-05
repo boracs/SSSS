@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/solid";
 import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline";
 import { useMemo, useState } from "react";
+import Breadcrumbs from "../../../components/Breadcrumbs";
 
 function UserRowActionsMenu({ user, onOpenVipConfirm }) {
     const analysisHref = `${route("admin.vips.analysis", user.id)}?from=users&target_user_id=${user.id}`;
@@ -137,8 +138,16 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
             <Head title="Admin · Usuarios" />
             <div className="mx-auto max-w-4xl space-y-6 p-6">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Gestión de Usuarios</h1>
-                    <p className="mt-1 text-sm text-gray-500">Consola compacta: filtros, estado VIP y acciones en menú.</p>
+                    <Breadcrumbs
+                        items={[
+                            { label: "Admin", href: route("Pag_principal") },
+                            { label: "Usuarios" },
+                        ]}
+                        variant="dark"
+                        className="mb-3"
+                    />
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-100">Gestión de Usuarios</h1>
+                    <p className="mt-1 text-sm text-gray-300">Consola compacta: filtros, estado VIP y acciones en menú.</p>
                 </div>
 
                 {toast ? (

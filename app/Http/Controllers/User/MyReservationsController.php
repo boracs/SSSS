@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Services\VipStudentPerformanceService;
+use App\Support\BusinessDateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -45,6 +46,8 @@ class MyReservationsController extends Controller
             $performanceData = VipStudentPerformanceService::buildPerformanceData($user, $bonoMonth, $loadHistory, false);
         }
 
+        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
         return Inertia::render('User/Dashboard/MyReservations', [
             'classRows' => $classRows,
             'rentalRows' => $rentalRows,
@@ -53,6 +56,9 @@ class MyReservationsController extends Controller
             'isAdminView' => false,
             'targetUser' => null,
             'analysisNav' => null,
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
         ]);
     }
 
@@ -77,7 +83,7 @@ class MyReservationsController extends Controller
             'payment_proof_path' => $path,
             'proof_uploaded_at' => now(),
             'payment_method' => $request->input('payment_method'),
-            'payment_status' => LessonUser::PAYMENT_SUBMITTED,
+            'payment_status' => LessonUser::PAYMENT_PENDING,
         ]);
 
         return back()->with('success', 'Justificante de clase subido correctamente.');
@@ -104,7 +110,7 @@ class MyReservationsController extends Controller
             'payment_proof_path' => $path,
             'proof_uploaded_at' => now(),
             'payment_method' => $request->input('payment_method'),
-            'payment_status' => Booking::PAYMENT_SUBMITTED,
+            'payment_status' => Booking::PAYMENT_PENDING,
             'status' => Booking::STATUS_PENDING,
         ]);
 
@@ -115,6 +121,12 @@ class MyReservationsController extends Controller
     {
         if ((int) $enrollment->user_id !== (int) $request->user()->id) {
             abort(403);
+        }
+
+        if (($enrollment->payment_status ?? '') === LessonUser::PAYMENT_PENDING
+            && $enrollment->created_at
+            && $enrollment->created_at->copy()->addMinutes(30)->isPast()) {
+            return back()->with('error', 'La sesión de pago ha expirado; esta reserva ya no se puede cancelar desde aquí.');
         }
 
         $validated = $request->validate([
@@ -137,6 +149,9 @@ class MyReservationsController extends Controller
                 $enrollment->update([
                     'status' => LessonUser::STATUS_CANCELLED_LATE_RESCUED,
                     'cancelled_at' => now(),
+                    'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                        ? LessonUser::REFUND_PENDING
+                        : $enrollment->refund_status,
                 ]);
 
                 return back()->with('success', 'Reserva cancelada con rescate: se aplicarán 30EUR de gestión y recuperas la clase.');
@@ -145,6 +160,9 @@ class MyReservationsController extends Controller
             $enrollment->update([
                 'status' => LessonUser::STATUS_CANCELLED_LATE_LOST,
                 'cancelled_at' => now(),
+                'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                    ? LessonUser::REFUND_PENDING
+                    : $enrollment->refund_status,
             ]);
 
             return back()->with('success', 'Reserva cancelada fuera de plazo: la clase se considera consumida.');
@@ -153,6 +171,9 @@ class MyReservationsController extends Controller
         $enrollment->update([
             'status' => LessonUser::STATUS_CANCELLED_FREE,
             'cancelled_at' => now(),
+            'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                ? LessonUser::REFUND_PENDING
+                : $enrollment->refund_status,
         ]);
 
         return back()->with('success', 'Reserva de clase cancelada dentro de plazo y clase recuperada.');
@@ -164,15 +185,28 @@ class MyReservationsController extends Controller
             abort(403);
         }
 
-        if (! $booking->start_date || now()->diffInHours($booking->start_date, false) <= 24) {
+        if ($booking->status === Booking::STATUS_CANCELLED) {
+            return back()->with('error', 'Esta reserva ya estaba cancelada.');
+        }
+
+        if (($booking->payment_status ?? '') === Booking::PAYMENT_PENDING
+            && $booking->created_at
+            && $booking->created_at->copy()->addMinutes(30)->isPast()) {
+            return back()->with('error', 'La sesión de pago ha expirado; esta reserva ya no se puede cancelar desde aquí.');
+        }
+
+        if (! $booking->start_date || BusinessDateTime::now()->diffInHours($booking->start_date, false) <= 24) {
             return back()->with('error', 'Fuera de plazo de cancelación (requiere 24h de antelación).');
         }
 
-        $booking->update([
-            'status' => Booking::STATUS_CANCELLED,
-        ]);
+        $hadRefundQueue = $booking->needsRefundReviewAfterCancellation();
+        $booking->applyCancellationWithRefundQueue();
 
-        return back()->with('success', 'Reserva de alquiler cancelada.');
+        $msg = $hadRefundQueue
+            ? 'Reserva cancelada. Si ya habías abonado un importe, el club tramitará la devolución; el equipo administrativo ha sido notificado.'
+            : 'Reserva de alquiler cancelada.';
+
+        return back()->with('success', $msg);
     }
 
     private function isWithinCancellationWindow($startAt): bool

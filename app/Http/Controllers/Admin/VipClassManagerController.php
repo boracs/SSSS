@@ -155,6 +155,9 @@ class VipClassManagerController extends Controller
             'max_capacity' => $availability['max_capacity'],
             'peak_monitors_used' => $availability['peak_monitors_used'] ?? null,
             'occupied_lesson_ids' => $availability['occupied_lesson_ids'] ?? [],
+            'conflicts' => $availability['conflicts'] ?? [],
+            'occupied_staff' => $staffAvailability['occupied'] ?? [],
+            'daily_schedule' => $this->buildDailySchedule($startsAt),
             'is_staff_exhausted' => $availability['max_capacity'] === 0,
             'staff' => $staffAvailability,
             'message' => $availability['max_capacity'] === 0
@@ -177,6 +180,7 @@ class VipClassManagerController extends Controller
             'photographer_id' => 'nullable|integer|exists:users,id',
             'location' => 'nullable|string|max:150',
             'max_capacity' => 'required|integer|in:0,6,12',
+            'force_create' => 'nullable|boolean',
         ]);
 
         $startsAt = $this->parseVipFormDateTime($validated['date'], $validated['time']);
@@ -203,12 +207,15 @@ class VipClassManagerController extends Controller
         $rangeStart = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_start']);
         $rangeEnd = BusinessDateTime::parseInAppTimezone((string) $availability['request_window_end']);
         $staffAvailability = $this->computeStaffAvailability($rangeStart, $rangeEnd, 0);
-        if (! $availability['allowed']) {
+        $forceCreate = (bool) ($validated['force_create'] ?? false);
+        if (! $availability['allowed'] && ! $forceCreate) {
             return back()->withErrors([
                 'time' => $this->availabilityService->buildConflictMessage($availability),
             ])->withInput();
         }
-        $this->assertSelectedStaffIsAvailable($validated, $staffAvailability);
+        if (! $forceCreate) {
+            $this->assertSelectedStaffIsAvailable($validated, $staffAvailability);
+        }
 
         $lesson = Lesson::create([
             'title' => 'VIP '.strtoupper((string) $validated['level']),
@@ -514,6 +521,34 @@ class VipClassManagerController extends Controller
     private function isQuarterMinute(Carbon $value): bool
     {
         return ((int) $value->minute % 15) === 0;
+    }
+
+    private function buildDailySchedule(Carbon $date): array
+    {
+        $start = $date->copy()->startOfDay();
+        $end = $date->copy()->endOfDay();
+
+        return Lesson::query()
+            ->where('status', '!=', Lesson::STATUS_CANCELLED)
+            ->whereBetween('starts_at', [$start, $end])
+            ->with(['staffAssignments.user:id,nombre,apellido'])
+            ->orderBy('starts_at')
+            ->get(['id', 'title', 'starts_at', 'ends_at', 'modality', 'location'])
+            ->map(function (Lesson $lesson): array {
+                $monitor = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_MONITOR);
+                $monitorName = trim((string) (($monitor?->user?->nombre ?? '').' '.($monitor?->user?->apellido ?? '')));
+                return [
+                    'id' => (int) $lesson->id,
+                    'title' => (string) ($lesson->title ?: 'Clase'),
+                    'modality' => (string) ($lesson->modality ?: '—'),
+                    'location' => (string) ($lesson->location ?: 'Zurriola'),
+                    'starts_at' => $lesson->starts_at ? BusinessDateTime::toApi($lesson->starts_at) : null,
+                    'ends_at' => $lesson->ends_at ? BusinessDateTime::toApi($lesson->ends_at) : null,
+                    'monitor_name' => $monitorName !== '' ? $monitorName : 'Sin asignar',
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function rebalanceVipCapacitiesForDate(Carbon $date): void

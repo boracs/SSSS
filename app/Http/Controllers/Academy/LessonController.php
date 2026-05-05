@@ -49,7 +49,36 @@ class LessonController extends Controller
         $rangeStart = $month->copy()->startOfMonth()->startOfDay();
         $rangeEnd = $month->copy()->endOfMonth()->endOfDay();
 
-        $canSeeVip = auth()->user() && (string) auth()->user()?->role === 'admin';
+        $viewer = auth()->user();
+        $isAdminViewer = (bool) $viewer && (
+            (string) ($viewer->role ?? '') === 'admin'
+            || (bool) ($viewer->is_admin ?? false)
+        );
+        $isVipViewer = (bool) $viewer && (bool) ($viewer->is_vip ?? false);
+        $canSeeVip = $isAdminViewer || $isVipViewer;
+
+        $canViewLessonByRole = function (Lesson $lesson) use ($isAdminViewer, $isVipViewer): bool {
+            if ($isAdminViewer) {
+                return true;
+            }
+
+            $modality = (string) ($lesson->modality ?: ((bool) ($lesson->is_private ?? false)
+                ? Lesson::MODALITY_PARTICULAR
+                : (($lesson->type ?? '') === 'weekly' ? Lesson::MODALITY_SEMANAL : Lesson::MODALITY_GRUPAL)));
+
+            if ($isVipViewer) {
+                return in_array($modality, [
+                    Lesson::MODALITY_GRUPAL,
+                    Lesson::MODALITY_SEMANAL,
+                    'vip',
+                ], true);
+            }
+
+            return in_array($modality, [
+                Lesson::MODALITY_GRUPAL,
+                Lesson::MODALITY_SEMANAL,
+            ], true);
+        };
 
         // Dataset ligero para el calendario (alto rendimiento).
         $calendarLessons = Lesson::query()
@@ -57,17 +86,13 @@ class LessonController extends Controller
             ->whereBetween('starts_at', [$rangeStart, $rangeEnd])
             ->orderBy('starts_at')
             ->get(['id', 'starts_at', 'type', 'is_private', 'level', 'modality'])
-            ->filter(function (Lesson $l) use ($canSeeVip) {
-                $isVip = (bool) ($l->is_private ?? false);
-
-                return $canSeeVip ? true : ! $isVip;
-            });
+            ->filter($canViewLessonByRole);
 
         $dayStats = $calendarLessons
             ->groupBy(fn (Lesson $l) => $l->starts_at->format('Y-m-d'))
             ->map(function ($items) use ($canSeeVip) {
                 $itemsArr = $items->map(function (Lesson $l) {
-                    $isVip = (bool) ($l->is_private ?? false);
+                    $isVip = (string) ($l->modality ?? '') === 'vip';
                     $modality = $l->modality ?: ($isVip ? 'particular' : (($l->type ?? '') === 'weekly' ? 'semanal' : 'grupal'));
                     // Tipos operativos para pills: particular / grupal / semanal
                     $pillType = $modality;
@@ -136,6 +161,7 @@ class LessonController extends Controller
                 'price',
                 'currency',
             ])
+            ->filter($canViewLessonByRole)
             ->map(function (Lesson $l) {
                 $pending = (int) ($l->pending_count ?? 0);
                 $confirmed = (int) ($l->confirmed_count ?? 0);
@@ -322,6 +348,8 @@ class LessonController extends Controller
             'date' => 'required|date',
             'start' => 'required|date_format:H:i',
             'duration_minutes' => 'nullable|integer|min:30|max:300',
+            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
+            'payment_method' => 'nullable|in:bizum,transferencia',
         ]);
 
         $day = BusinessDateTime::parseInAppTimezone((string) $validated['date'])->startOfDay();
@@ -365,6 +393,13 @@ class LessonController extends Controller
             'expires_at' => Carbon::now('UTC')->addHours(2),
         ]);
 
+        $path = $request->file('proof')->store('lesson-proofs/'.$enrollment->id, 'local');
+        $enrollment->update([
+            'payment_proof_path' => $path,
+            'proof_uploaded_at' => BusinessDateTime::now(),
+            'payment_method' => $request->input('payment_method'),
+        ]);
+
         if ($user->email) {
             Mail::to($user->email)->send(new RequestReceivedMail(
                 $enrollment,
@@ -376,21 +411,7 @@ class LessonController extends Controller
         }
 
         return back()
-            ->with('success', 'Solicitud de clase particular creada. Te avisaremos cuando el staff la confirme.')
-            ->with('payment_lesson_id', $lesson->id)
-            ->with('payment_lesson_payload', [
-                'id' => $lesson->id,
-                'starts_at' => BusinessDateTime::toApi($lesson->starts_at),
-                'ends_at' => BusinessDateTime::toApi($lesson->ends_at),
-                'level' => $lesson->level,
-                'modality' => $lesson->modality,
-                'location' => $lesson->location ?? 'Zurriola',
-                'price' => $lesson->price !== null ? (float) $lesson->price : null,
-                'currency' => $lesson->currency ?? 'EUR',
-                'is_private' => true,
-                'title' => null,
-                'description' => null,
-            ]);
+            ->with('success', 'Solicitud de clase particular creada con justificante. Queda pendiente de validación; el staff te avisará cuando la confirme.');
     }
 
     /**
@@ -409,6 +430,8 @@ class LessonController extends Controller
             'party_size' => 'nullable|integer|min:1|max:12', // compat legacy
             'request_extra_monitor' => 'nullable|boolean',
             'age_bracket' => 'nullable|in:children,adult,family',
+            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
+            'payment_method' => 'nullable|in:bizum,transferencia',
         ]);
         $partySize = (int) ($validated['quantity'] ?? $validated['party_size'] ?? 1);
         $requestExtraMonitor = (bool) ($validated['request_extra_monitor'] ?? false);
@@ -420,7 +443,7 @@ class LessonController extends Controller
 
         $enrollment = null;
         try {
-            $enrollment = DB::transaction(function () use ($lesson, $user, $partySize) {
+            $enrollment = DB::transaction(function () use ($lesson, $user, $partySize, $requestExtraMonitor, $ageBracket) {
                 // Lock lesson row to serialize capacity checks
                 $lockedLesson = Lesson::query()->whereKey($lesson->id)->lockForUpdate()->firstOrFail();
 
@@ -558,6 +581,19 @@ class LessonController extends Controller
         }
 
         if ($enrollment) {
+            $file = $request->file('proof');
+            $dir = 'lesson-proofs/'.$enrollment->id;
+            $oldPath = $enrollment->payment_proof_path;
+            if ($oldPath && Storage::disk('local')->exists($oldPath)) {
+                Storage::disk('local')->delete($oldPath);
+            }
+            $path = $file->store($dir, 'local');
+            $enrollment->update([
+                'payment_proof_path' => $path,
+                'proof_uploaded_at' => BusinessDateTime::now(),
+                'payment_method' => $request->input('payment_method'),
+            ]);
+
             $enrollment->load('user', 'lesson');
             Mail::to($user->email)->send(new RequestReceivedMail(
                 $enrollment,
@@ -569,8 +605,7 @@ class LessonController extends Controller
         }
 
         return back()
-            ->with('success', '¡Solicitud recibida! Tienes 2 horas para abonar el compromiso de 20€ o el total de la clase para asegurar tu plaza. De lo contrario, la solicitud podría ser ignorada.')
-            ->with('payment_lesson_id', $lesson->id);
+            ->with('success', '¡Solicitud recibida con justificante! Queda pendiente de validación por el equipo.');
     }
 
     /**
@@ -610,7 +645,7 @@ class LessonController extends Controller
             'payment_proof_path' => $path,
             'proof_uploaded_at' => BusinessDateTime::now(),
             'payment_method' => $request->input('payment_method'),
-            'payment_status' => LessonUser::PAYMENT_SUBMITTED,
+            'payment_status' => LessonUser::PAYMENT_PENDING,
         ]);
 
         return back()->with('success', 'Justificante subido. Lo revisaremos en breve.');
@@ -737,6 +772,9 @@ class LessonController extends Controller
             $enrollment->update([
                 'status' => LessonUser::STATUS_CANCELLED,
                 'cancelled_at' => BusinessDateTime::now(),
+                'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                    ? LessonUser::REFUND_PENDING
+                    : $enrollment->refund_status,
             ]);
 
             return back()->with('success', 'Solicitud cancelada.');

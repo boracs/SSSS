@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from "react";
 import { Head, router } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
+import { DocumentMinusIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
+import Breadcrumbs from "../../../components/Breadcrumbs";
 
 function fmtDate(value) {
     if (!value) return "—";
@@ -18,14 +20,15 @@ function shortPlanName(plan) {
     return plan || "—";
 }
 
-function statusUi(row) {
-    if (row.status === "confirmed") {
-        return { label: "Confirmado", cls: "bg-emerald-100 text-emerald-700" };
+function pagoUi(row) {
+    const method = String(row?.payment_method || "");
+    if (row?.status === "rejected") return "failed";
+    if (row?.status === "confirmed") {
+        if (method === "tienda") return "metalico";
+        if (method === "domiciliado") return "domiciliado";
+        return "transferencia";
     }
-    if (row.status === "submitted") {
-        return { label: "En revisión", cls: "bg-sky-100 text-sky-700 animate-pulse" };
-    }
-    return { label: "Pendiente", cls: "bg-amber-100 text-amber-700" };
+    return "pending";
 }
 
 function ModalShell({ open, onClose, children, maxWidth = "max-w-lg" }) {
@@ -57,20 +60,35 @@ function ModalShell({ open, onClose, children, maxWidth = "max-w-lg" }) {
 }
 
 export default function Queue({ pagos }) {
+    const filterPillBase = "rounded-full px-3 py-1 text-xs font-semibold transition-colors";
+    const filterPillActive = "bg-sky-600 text-white";
+    const filterPillIdle = "bg-sky-900/40 text-sky-100 hover:bg-sky-800/50";
     const [search, setSearch] = useState(pagos?.filters?.search || "");
     const [status, setStatus] = useState(pagos?.filters?.status || "all");
     const [pendingReview, setPendingReview] = useState(!!pagos?.filters?.pending_review);
+    const [prioritizeUnreviewed, setPrioritizeUnreviewed] = useState(false);
     const [proofModal, setProofModal] = useState(null);
     const [processingId, setProcessingId] = useState(null);
-    const [rejecting, setRejecting] = useState(null); // { id, notes }
     const [tableLoading, setTableLoading] = useState(false);
-    const [approving, setApproving] = useState(null); // { row, locker_number }
     const [reassigning, setReassigning] = useState(null); // { user_id, name, locker_number }
-    const [approveConfirming, setApproveConfirming] = useState(null); // row
     const [toast, setToast] = useState(null);
+    const [reviewModal, setReviewModal] = useState(null); // row
+    const [processingReviewId, setProcessingReviewId] = useState(null);
+    const [failedReasonModal, setFailedReasonModal] = useState(null); // { row, reason }
+    const [failedReasonViewModal, setFailedReasonViewModal] = useState(null); // row
+    const [focusedUserPayments, setFocusedUserPayments] = useState(null); // { id, name }
 
-    const rows = pagos?.rows || [];
+    const rows = useMemo(() => {
+        const base = pagos?.rows || [];
+        if (!prioritizeUnreviewed) return base;
+        return [...base].sort((a, b) => Number(Boolean(b?.is_new)) - Number(Boolean(a?.is_new)));
+    }, [pagos?.rows, prioritizeUnreviewed]);
+    const visibleRows = useMemo(() => {
+        if (!focusedUserPayments?.id) return rows;
+        return rows.filter((row) => Number(row?.user_id) === Number(focusedUserPayments.id));
+    }, [rows, focusedUserPayments]);
     const counts = pagos?.counts || {};
+    const isRowUnreviewed = (row) => Boolean(row?.is_new);
 
     const applyFilters = (next = {}) => {
         const q = {
@@ -88,47 +106,73 @@ export default function Queue({ pagos }) {
         });
     };
 
-    const doApprove = (id, lockerNumber = null) => {
-        setProcessingId(`approve-${id}`);
-        router.post(route("taquilla.pagos.confirm", id), { locker_number: lockerNumber || null }, {
+    const updatePagoState = (row, nextState, failureReason = "") => {
+        if (!row?.id) return;
+        setProcessingId(`state-${row.id}`);
+        router.patch(route("taquilla.pagos.payment-state", row.id), { pago_state: nextState, failure_reason: failureReason || null }, {
             preserveScroll: true,
             onFinish: () => setProcessingId(null),
-            onSuccess: () => {
-                setToast({ type: "success", message: "Pago aprobado correctamente." });
-                setTimeout(() => setToast(null), 2200);
-                router.reload({ only: ["pagos"], preserveScroll: true, preserveState: true });
+            onSuccess: (page) => {
+                const err = page?.props?.flash?.error;
+                if (err) {
+                    setToast({ type: "error", message: String(err) });
+                    setTimeout(() => setToast(null), 4200);
+                    return;
+                }
+                setToast({ type: "success", message: "Pago actualizado." });
+                setTimeout(() => setToast(null), 1800);
+                router.reload({ only: ["pagos", "adminStats"], preserveScroll: true, preserveState: true });
             },
             onError: () => {
-                setToast({ type: "error", message: "No se pudo aprobar el pago." });
+                setToast({ type: "error", message: "No se pudo actualizar el pago." });
                 setTimeout(() => setToast(null), 2200);
             },
         });
     };
 
-    const doReject = () => {
-        if (!rejecting?.id) return;
-        setProcessingId(`reject-${rejecting.id}`);
-        router.post(route("taquilla.pagos.reject", rejecting.id), { admin_notes: rejecting.notes || null }, {
+    const submitFailedReason = () => {
+        if (!failedReasonModal?.row?.id) return;
+        const reason = String(failedReasonModal.reason || "").trim();
+        if (!reason) {
+            setToast({ type: "error", message: "Debes indicar el motivo del fallo." });
+            setTimeout(() => setToast(null), 2200);
+            return;
+        }
+        updatePagoState(failedReasonModal.row, "failed", reason);
+        setFailedReasonModal(null);
+    };
+
+    const setComprobado = (row, value) => {
+        if (!row?.id) return;
+        const nextChecked = value === "yes";
+        if (Boolean(row?.is_checked) === nextChecked) return;
+        setProcessingId(`check-${row.id}`);
+        router.patch(route("taquilla.pagos.checked-state", row.id), { is_checked: nextChecked }, {
             preserveScroll: true,
-            onFinish: () => setProcessingId(null),
-            onSuccess: () => {
-                setRejecting(null);
-                setToast({ type: "success", message: "Pago rechazado correctamente." });
-                setTimeout(() => setToast(null), 2200);
-                router.reload({ only: ["pagos"], preserveScroll: true, preserveState: true });
+            onSuccess: (page) => {
+                const err = page?.props?.flash?.error;
+                if (err) {
+                    setToast({ type: "error", message: String(err) });
+                    setTimeout(() => setToast(null), 4200);
+                    return;
+                }
+                setToast({ type: "success", message: "Comprobación actualizada." });
+                setTimeout(() => setToast(null), 1800);
+                router.reload({ only: ["pagos", "adminStats"], preserveScroll: true, preserveState: true });
             },
             onError: () => {
-                setToast({ type: "error", message: "No se pudo rechazar el pago." });
+                setToast({ type: "error", message: "No se pudo actualizar la comprobación." });
                 setTimeout(() => setToast(null), 2200);
             },
+            onFinish: () => setProcessingId(null),
         });
     };
 
     const statusOptions = useMemo(() => ([
         { id: "all", label: `Todos (${counts.all || 0})` },
         { id: "pending", label: `Pendientes (${counts.pending || 0})` },
-        { id: "submitted", label: `En revisión (${counts.submitted || 0})` },
         { id: "confirmed", label: `Confirmados (${counts.confirmed || 0})` },
+        { id: "rejected", label: `Rechazados (${counts.rejected || 0})` },
     ]), [counts]);
 
     const lockerOccupiedSet = useMemo(() => new Set((pagos?.lockerGrid?.occupied || []).map(Number)), [pagos?.lockerGrid]);
@@ -141,14 +185,6 @@ export default function Queue({ pagos }) {
         return "bg-rose-100 text-rose-700";
     };
 
-    const openApproveFlow = (row) => {
-        if (row?.numeroTaquilla) {
-            setApproveConfirming(row);
-            return;
-        }
-        setApproving({ row, locker_number: null });
-    };
-
     const saveReassign = () => {
         if (!reassigning?.user_id || !reassigning?.locker_number) return;
         setProcessingId(`reassign-${reassigning.user_id}`);
@@ -158,7 +194,7 @@ export default function Queue({ pagos }) {
                 setReassigning(null);
                 setToast({ type: "success", message: "Taquilla reasignada correctamente." });
                 setTimeout(() => setToast(null), 2200);
-                router.reload({ only: ["pagos"], preserveState: true, preserveScroll: true });
+                router.reload({ only: ["pagos", "adminStats"], preserveState: true, preserveScroll: true });
             },
             onError: () => {
                 setToast({ type: "error", message: "No se pudo reasignar la taquilla." });
@@ -168,11 +204,43 @@ export default function Queue({ pagos }) {
         });
     };
 
+    const markAsReviewed = () => {
+        if (!reviewModal?.id || processingReviewId) return;
+        setProcessingReviewId(reviewModal.id);
+        router.patch(route("taquilla.pagos.reviewed", reviewModal.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setReviewModal(null);
+                setToast({ type: "success", message: "Marca de pendiente retirada." });
+                setTimeout(() => setToast(null), 2200);
+                router.reload({ only: ["pagos", "adminStats"], preserveState: true, preserveScroll: true });
+            },
+            onError: () => {
+                setToast({ type: "error", message: "No se pudo retirar la marca de pendiente." });
+                setTimeout(() => setToast(null), 2200);
+            },
+            onFinish: () => setProcessingReviewId(null),
+        });
+    };
+
     return (
         <>
             <Head title="Taquillas · Cola de Pagos" />
             <div className="mx-auto max-w-7xl p-6 space-y-4">
-                <h1 className="text-2xl font-bold text-slate-900">Pagos por Verificar · Taquillas</h1>
+                <Breadcrumbs
+                    items={[
+                        { label: "Admin", href: route("Pag_principal") },
+                        { label: "Taquillas", href: route("taquilla.index.admin") },
+                        { label: "Pagos por verificar" },
+                    ]}
+                    variant="dark"
+                    className="mb-1"
+                />
+                <h1 className="text-2xl font-bold text-gray-100">
+                    {focusedUserPayments?.name
+                        ? `PAGOS DE "${focusedUserPayments.name}"`
+                        : "Pagos por Verificar · Taquillas"}
+                </h1>
 
                 <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -183,6 +251,15 @@ export default function Queue({ pagos }) {
                         className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm sm:w-80"
                     />
                     <button type="button" onClick={() => applyFilters()} className="rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white">Buscar</button>
+                    {focusedUserPayments ? (
+                        <button
+                            type="button"
+                            onClick={() => setFocusedUserPayments(null)}
+                            className="rounded-lg bg-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-300"
+                        >
+                            Ver todos los pagos
+                        </button>
+                    ) : null}
                     <label className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm">
                         <input
                             type="checkbox"
@@ -205,7 +282,7 @@ export default function Queue({ pagos }) {
                                 setStatus(s.id);
                                 applyFilters({ status: s.id });
                             }}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${status === s.id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700"}`}
+                            className={`${filterPillBase} ${status === s.id ? filterPillActive : filterPillIdle}`}
                         >
                             {s.label}
                         </button>
@@ -217,12 +294,30 @@ export default function Queue({ pagos }) {
                         <table className="min-w-full text-sm">
                             <thead className="sticky top-0 bg-slate-50/95 text-slate-700 backdrop-blur">
                                 <tr>
+                                    <th className="w-10 px-2 py-2 text-left text-xs uppercase tracking-wide" aria-label="Orden por pendientes">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPrioritizeUnreviewed((prev) => !prev)}
+                                            className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition ${
+                                                prioritizeUnreviewed
+                                                    ? "border-red-400/60 bg-red-900/20 text-red-200"
+                                                    : "border-slate-300 bg-slate-100 text-slate-500 hover:bg-slate-200"
+                                            }`}
+                                            title={prioritizeUnreviewed ? "Quitar prioridad de pendientes" : "Priorizar pendientes (círculo rojo)"}
+                                            aria-label="Ordenar por pagos pendientes de revisión"
+                                        >
+                                            <span className="relative inline-flex items-center justify-center">
+                                                <span className="text-xs">↕</span>
+                                                <span className="absolute -right-1 -top-1 h-1.5 w-1.5 rounded-full bg-red-500" />
+                                            </span>
+                                        </button>
+                                    </th>
                                     <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Usuario</th>
                                     <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Taquilla</th>
                                     <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Plan</th>
-                                    <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Fechas</th>
-                                    <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Estado</th>
-                                    <th className="px-3 py-2 text-right text-xs uppercase tracking-wide">Acciones</th>
+                                    <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Justificante</th>
+                                    <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Pago</th>
+                                    <th className="px-3 py-2 text-left text-xs uppercase tracking-wide">Comprobado</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -237,45 +332,112 @@ export default function Queue({ pagos }) {
                                             <td className="px-3 py-3"><div className="ml-auto h-8 w-44 rounded bg-slate-200" /></td>
                                         </tr>
                                     ))
-                                ) : rows.length === 0 ? (
-                                    <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-500">Sin registros para estos filtros.</td></tr>
-                                ) : rows.map((row) => {
-                                    const badge = statusUi(row);
+                                ) : visibleRows.length === 0 ? (
+                                    <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-500">Sin registros para estos filtros.</td></tr>
+                                ) : visibleRows.map((row) => {
+                                    const pagoState = pagoUi(row);
                                     return (
-                                        <tr key={row.id} className="border-t border-slate-100 hover:bg-slate-50/60">
+                                        <tr
+                                            key={row.id}
+                                            className="border-t border-slate-100 hover:bg-slate-50/60"
+                                        >
+                                            <td className="px-2 py-2.5">
+                                                {isRowUnreviewed(row) ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setReviewModal(row);
+                                                        }}
+                                                        className="mx-auto block rounded-full"
+                                                        title="Pago no revisado"
+                                                        aria-label="Pago no revisado"
+                                                    >
+                                                        <span className="block h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.25)]" />
+                                                    </button>
+                                                ) : null}
+                                            </td>
                                             <td className="px-3 py-2.5">
                                                 <p className="font-semibold text-slate-900">{row.user || "—"}</p>
                                                 <p className="text-xs text-slate-500">{row.email || "sin email"}</p>
                                             </td>
-                                            <td className="px-3 py-2.5">{row.numeroTaquilla ?? "—"}</td>
-                                            <td className="px-3 py-2.5 font-medium text-slate-700">{shortPlanName(row.plan)}</td>
-                                            <td className="px-3 py-2.5">
-                                                <p>{fmtDate(row.periodo_inicio)} - {fmtDate(row.periodo_fin)}</p>
+                                            <td className="px-3 py-2.5 font-bold text-slate-900">{row.numeroTaquilla ?? "—"}</td>
+                                            <td className="px-3 py-2.5 font-bold text-slate-900">{shortPlanName(row.plan)}</td>
+                                            <td className="px-3 py-2.5 font-bold text-slate-900">
+                                                <p>{row.proof_uploaded_at_human || row.created_at_human || "—"}</p>
                                             </td>
                                             <td className="px-3 py-2.5">
-                                                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${badge.cls}`}>{badge.label}</span>
-                                            </td>
-                                            <td className="px-3 py-2.5">
-                                                <div className="flex justify-end gap-2">
-                                                    {row.proof_url ? (
-                                                        <button type="button" onClick={() => setProofModal(row.proof_url)} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
-                                                            Ver comprobante
+                                                <div className="inline-flex items-center gap-1.5">
+                                                    <select
+                                                        value={pagoState}
+                                                        onChange={(e) => {
+                                                            const next = e.target.value;
+                                                            if (next === "failed") {
+                                                                setFailedReasonModal({
+                                                                    row,
+                                                                    reason: row.status === "rejected" ? String(row.admin_notes || "") : "",
+                                                                });
+                                                                return;
+                                                            }
+                                                            updatePagoState(row, next);
+                                                        }}
+                                                        disabled={processingId === `state-${row.id}`}
+                                                        className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 disabled:opacity-60"
+                                                    >
+                                                        <option value="pending">Pend</option>
+                                                        <option value="transferencia">Transf</option>
+                                                        <option value="metalico">Cortesía</option>
+                                                        <option value="domiciliado">Dom</option>
+                                                        <option value="failed">Fallido</option>
+                                                    </select>
+                                                    {pagoState === "failed" && String(row.admin_notes || "").trim() ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setFailedReasonViewModal(row);
+                                                            }}
+                                                            className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
+                                                            title="Ver motivo del pago fallido"
+                                                            aria-label="Ver motivo del pago fallido"
+                                                        >
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h5M6 19l-1.5 2 .5-2A4 4 0 0 1 1 15V7a4 4 0 0 1 4-4h14a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H6Z" />
+                                                            </svg>
                                                         </button>
                                                     ) : null}
+                                                </div>
+                                            </td>
+                                            <td className="px-3 py-2.5" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center gap-2">
+                                                    <select
+                                                        value={row.is_checked ? "yes" : "no"}
+                                                        onChange={(e) => setComprobado(row, e.target.value)}
+                                                        disabled={processingId === `check-${row.id}`}
+                                                        className={`rounded-lg border px-2.5 py-1 text-xs font-semibold disabled:opacity-60 ${
+                                                            row.is_checked
+                                                                ? "border-emerald-300 bg-emerald-100 text-emerald-700"
+                                                                : "border-rose-300 bg-rose-100 text-rose-700"
+                                                        }`}
+                                                    >
+                                                        <option value="yes">Sí</option>
+                                                        <option value="no">No</option>
+                                                    </select>
                                                     <button
                                                         type="button"
-                                                        disabled={processingId === `approve-${row.id}`}
-                                                        onClick={() => openApproveFlow(row)}
-                                                        className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm disabled:opacity-60"
+                                                        onClick={() => {
+                                                            if (row.proof_url) setProofModal(row.proof_url);
+                                                        }}
+                                                        disabled={!row.proof_url}
+                                                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full ring-1 transition ${
+                                                            row.proof_url
+                                                                ? "bg-slate-100 text-slate-700 ring-slate-300 hover:bg-slate-200"
+                                                                : "cursor-not-allowed bg-slate-100 text-slate-400 ring-slate-200"
+                                                        }`}
+                                                        title={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
+                                                        aria-label={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
                                                     >
-                                                        {processingId === `approve-${row.id}` ? "..." : "Aprobar"}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setRejecting({ id: row.id, notes: "" })}
-                                                        className="rounded-lg bg-rose-600 px-3 py-1 text-xs font-semibold text-white shadow-sm"
-                                                    >
-                                                        Rechazar
+                                                        {row.proof_url ? <DocumentTextIcon className="h-4 w-4" /> : <DocumentMinusIcon className="h-4 w-4" />}
                                                     </button>
                                                 </div>
                                             </td>
@@ -318,8 +480,16 @@ export default function Queue({ pagos }) {
                                         </td>
                                         <td className="px-3 py-2">{fmtDate(u.expires_at)}</td>
                                         <td className="px-3 py-2">
+                                            <div className={`mb-1 text-xs font-semibold ${u.is_expired ? "text-rose-600" : "text-slate-600"}`}>
+                                                {typeof u.days_remaining === "number"
+                                                    ? `${u.days_remaining} días`
+                                                    : "—"}
+                                            </div>
                                             <div className="h-2 w-40 rounded-full bg-slate-200">
-                                                <div className={`h-2 rounded-full ${u.up_to_date ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: `${Math.max(0, Math.min(100, Number(u.progress || 0)))}%` }} />
+                                                <div
+                                                    className={`h-2 rounded-full ${u.is_expired ? "bg-rose-500" : "bg-emerald-500"}`}
+                                                    style={{ width: `${Math.max(0, Math.min(100, Number(u.progress || 0)))}%` }}
+                                                />
                                             </div>
                                         </td>
                                         <td className="px-3 py-2">
@@ -327,8 +497,7 @@ export default function Queue({ pagos }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        setSearch(u.name || "");
-                                                        applyFilters({ search: u.name || "" });
+                                                        setFocusedUserPayments({ id: u.id, name: u.name || "Usuario" });
                                                     }}
                                                     className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200"
                                                 >
@@ -362,101 +531,72 @@ export default function Queue({ pagos }) {
                         <iframe title="Comprobante taquilla" src={proofModal} className="h-[75vh] w-full rounded-lg" />
                 </div>
             </ModalShell>
+            <ModalShell open={!!reviewModal} onClose={() => setReviewModal(null)} maxWidth="max-w-md">
+                <div className="space-y-3">
+                    <p className="text-lg font-bold text-slate-900">Retirar marca de pendiente</p>
+                    <p className="text-sm text-slate-700">
+                        ¿Desea retirar la marca de pendiente para <strong>{reviewModal?.user || "este pago"}</strong>?
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setReviewModal(null)}
+                            disabled={!!processingReviewId}
+                            className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700 disabled:opacity-60"
+                        >
+                            No
+                        </button>
+                        <button
+                            type="button"
+                            onClick={markAsReviewed}
+                            disabled={!!processingReviewId}
+                            className="rounded-lg bg-emerald-600 px-3 py-1 text-white disabled:opacity-60"
+                        >
+                            {processingReviewId ? "Procesando..." : "Sí"}
+                        </button>
+                    </div>
+                </div>
+            </ModalShell>
 
-            <ModalShell open={!!rejecting} onClose={() => setRejecting(null)}>
+            <ModalShell open={!!failedReasonViewModal} onClose={() => setFailedReasonViewModal(null)} maxWidth="max-w-md">
                 <div className="space-y-3">
-                        <p className="text-lg font-bold text-slate-900">Confirmar rechazo</p>
-                        <p className="text-sm text-slate-700">¿Seguro que quieres rechazar este pago? Puedes añadir un motivo para auditoría.</p>
-                        <textarea
-                            className="w-full rounded-xl border border-slate-300 px-3 py-2"
-                            rows={4}
-                            value={rejecting?.notes || ""}
-                            onChange={(e) => setRejecting((prev) => ({ ...prev, notes: e.target.value }))}
-                            placeholder="Ej: Imagen no legible"
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setRejecting(null)} className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700">Cancelar</button>
-                            <button
-                                type="button"
-                                disabled={processingId === `reject-${rejecting?.id}`}
-                                onClick={doReject}
-                                className="rounded-lg bg-rose-600 px-3 py-1 text-white disabled:opacity-60"
-                            >
-                                {processingId === `reject-${rejecting?.id}` ? "..." : "Confirmar rechazo"}
-                            </button>
-                        </div>
+                    <p className="text-lg font-bold text-slate-900">Motivo del pago fallido</p>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                        {failedReasonViewModal?.admin_notes?.trim() || "Sin nota adicional."}
+                    </div>
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setFailedReasonViewModal(null)}
+                            className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
                 </div>
             </ModalShell>
-            <ModalShell open={!!approveConfirming} onClose={() => setApproveConfirming(null)} maxWidth="max-w-md">
+            <ModalShell open={!!failedReasonModal} onClose={() => setFailedReasonModal(null)} maxWidth="max-w-md">
                 <div className="space-y-3">
-                        <p className="text-lg font-bold text-slate-900">Confirmar aprobación</p>
-                        <p className="text-sm text-slate-700">
-                            Vas a aprobar el pago de <span className="font-semibold">{approveConfirming?.user || "usuario"}</span>.
-                            Esta acción actualizará su estado de pago.
-                        </p>
-                        <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setApproveConfirming(null)} className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700">Cancelar</button>
-                            <button
-                                type="button"
-                                disabled={processingId === `approve-${approveConfirming?.id}`}
-                                onClick={() => {
-                                    if (!approveConfirming?.id) return;
-                                    doApprove(approveConfirming.id);
-                                    setApproveConfirming(null);
-                                }}
-                                className="rounded-lg bg-emerald-600 px-3 py-1 text-white disabled:opacity-60"
-                            >
-                                {processingId === `approve-${approveConfirming?.id}` ? "..." : "Confirmar"}
-                            </button>
-                        </div>
-                </div>
-            </ModalShell>
-            <ModalShell open={!!approving} onClose={() => setApproving(null)} maxWidth="max-w-2xl">
-                <div className="space-y-4">
-                        <p className="text-lg font-bold text-slate-900">Aprobar pago y asignar taquilla</p>
-                        <div className="rounded-xl border border-slate-200 p-3">
-                            <p className="font-semibold text-slate-900">{approving?.row?.user || "Usuario"}</p>
-                            <p className="text-xs text-slate-500">{approving?.row?.email || "sin email"}</p>
-                            <p className="mt-2 text-xs text-slate-600">Sin taquilla actual: debes seleccionar una libre.</p>
-                        </div>
-                        <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">
-                            {lockerCells.map((n) => {
-                                const occupied = lockerOccupiedSet.has(Number(n));
-                                const selected = Number(approving?.locker_number) === Number(n);
-                                return (
-                                    <button
-                                        key={`approve-locker-${n}`}
-                                        type="button"
-                                        disabled={occupied}
-                                        onClick={() => setApproving((prev) => ({ ...prev, locker_number: n }))}
-                                        className={`h-9 rounded-md text-xs font-semibold ${
-                                            occupied
-                                                ? "cursor-not-allowed bg-slate-200 text-slate-400"
-                                                : selected
-                                                    ? "bg-sky-600 text-white"
-                                                    : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                        }`}
-                                    >
-                                        {n}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <button type="button" onClick={() => setApproving(null)} className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700">Cancelar</button>
-                            <button
-                                type="button"
-                                disabled={!approving?.locker_number || processingId === `approve-${approving?.row?.id}`}
-                                onClick={() => {
-                                    if (!approving?.row?.id) return;
-                                    doApprove(approving.row.id, approving?.locker_number);
-                                    setApproving(null);
-                                }}
-                                className="rounded-lg bg-emerald-600 px-3 py-1 text-white disabled:opacity-50"
-                            >
-                                Aprobar
-                            </button>
-                        </div>
+                    <p className="text-lg font-bold text-slate-900">Marcar pago como fallido</p>
+                    <p className="text-sm text-slate-700">Indica el motivo del fallo (ej: no se ve reflejado en banco, domiciliación fallida, etc.).</p>
+                    <textarea
+                        className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                        rows={4}
+                        value={failedReasonModal?.reason || ""}
+                        onChange={(e) => setFailedReasonModal((prev) => ({ ...prev, reason: e.target.value }))}
+                        placeholder="Motivo del pago fallido"
+                    />
+                    <div className="flex justify-end gap-2">
+                        <button type="button" onClick={() => setFailedReasonModal(null)} className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700">Cancelar</button>
+                        <button
+                            type="button"
+                            onClick={submitFailedReason}
+                            disabled={processingId === `state-${failedReasonModal?.row?.id}`}
+                            className="rounded-lg bg-rose-600 px-3 py-1 text-white disabled:opacity-60"
+                        >
+                            Guardar
+                        </button>
+                    </div>
                 </div>
             </ModalShell>
             <ModalShell open={!!reassigning} onClose={() => setReassigning(null)} maxWidth="max-w-2xl">

@@ -23,12 +23,14 @@ class UserBono extends Model
         'debt_compensated_uc',
         'status',
         'payment_proof_path',
+        'reviewed_at',
         'admin_notes',
     ];
 
     protected $casts = [
         'clases_restantes' => 'integer',
         'debt_compensated_uc' => 'integer',
+        'reviewed_at' => 'datetime',
     ];
 
     protected static function booted(): void

@@ -39,8 +39,8 @@ class AcademyController extends Controller
     public function checkManager(Request $request)
     {
         $googleMapsUrl = config('services.academy.maps_url');
-        $status = $request->query('status', 'all'); // all|pending|submitted|confirmed
-        $validStatuses = ['all', 'pending', 'submitted', 'confirmed'];
+        $status = $request->query('status', 'all'); // all|pending|confirmed|rejected
+        $validStatuses = ['all', 'pending', 'confirmed', 'rejected'];
         if (! in_array($status, $validStatuses, true)) {
             $status = 'all';
         }
@@ -164,15 +164,15 @@ class AcademyController extends Controller
         $lessonCounts = [
             'all' => LessonUser::query()->count(),
             'pending' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_PENDING)->count(),
-            'submitted' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_SUBMITTED)->count(),
             'confirmed' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_CONFIRMED)->count(),
+            'rejected' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_REJECTED)->count(),
         ];
 
         $rentalCounts = [
             'all' => Booking::query()->count(),
             'pending' => Booking::query()->where('payment_status', Booking::PAYMENT_PENDING)->count(),
-            'submitted' => Booking::query()->where('payment_status', Booking::PAYMENT_SUBMITTED)->count(),
             'confirmed' => Booking::query()->where('payment_status', Booking::PAYMENT_CONFIRMED)->count(),
+            'rejected' => Booking::query()->where('payment_status', Booking::PAYMENT_REJECTED)->count(),
         ];
 
         $allRows = $lessons->concat($rentals);
@@ -193,7 +193,6 @@ class AcademyController extends Controller
                 'lessons' => $lessonCounts,
                 'rentals' => $rentalCounts,
                 'pendingCount' => ($lessonCounts['pending'] ?? 0) + ($rentalCounts['pending'] ?? 0),
-                'submittedCount' => ($lessonCounts['submitted'] ?? 0) + ($rentalCounts['submitted'] ?? 0),
             ],
             'totals' => [
                 'total_tienda_eur' => $totalTiendaEur,
@@ -257,42 +256,59 @@ class AcademyController extends Controller
      */
     public function globalPaymentsDashboard(Request $request)
     {
-        $status = $request->query('status', 'all'); // all|pending|submitted|confirmed
-        $validStatuses = ['all', 'pending', 'submitted', 'confirmed'];
+        $status = $request->query('status', 'all'); // all|pending|confirmed|rejected
+        $validStatuses = ['all', 'pending', 'confirmed', 'rejected'];
         if (! in_array($status, $validStatuses, true)) {
             $status = 'all';
         }
 
-        $bonoStatus = $request->query('bono_status', 'all'); // all|pending_validation|pending_payment|confirmed
-        $validBonoStatuses = ['all', 'pending_validation', 'pending_payment', 'confirmed'];
+        $bonoStatus = $request->query('bono_status', 'all'); // all|pending_validation|pending_payment|confirmed|rejected
+        $validBonoStatuses = ['all', 'pending_validation', 'pending_payment', 'confirmed', 'rejected'];
         if (! in_array($bonoStatus, $validBonoStatuses, true)) {
             $bonoStatus = 'all';
         }
 
         $bonoPackId = $request->query('bono_pack_id');
         $bonoPackId = is_numeric($bonoPackId) ? (int) $bonoPackId : null;
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $startDate = is_string($startDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) ? $startDate : null;
+        $endDate = is_string($endDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate) ? $endDate : null;
 
         $lessonRows = LessonUser::query()
             ->with(['user', 'lesson'])
             ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
+            ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate))
             ->orderByDesc('created_at')
             ->limit(400)
             ->get()
             ->map(function (LessonUser $e) {
+                $paymentStatus = $e->payment_status ?? LessonUser::PAYMENT_PENDING;
+                $reviewedAt = $e->reviewed_at?->toIso8601String();
+                $createdAt = $e->created_at?->toIso8601String();
                 return [
                     'id' => $e->id,
+                    'entity' => 'class',
                     'user_name' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
                     'user' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
                     'email' => $e->user?->email,
                     'phone' => $e->user?->telefono,
-                    'status' => $e->payment_status ?? LessonUser::PAYMENT_PENDING,
+                    'status' => $paymentStatus,
                     'enrollment_status' => $e->status,
+                    'lesson_status' => $e->lesson?->status,
+                    'refund_status' => $this->resolveEnrollmentRefundStatus($e, $e->lesson),
+                    'is_new' => $reviewedAt === null,
+                    'reviewed_at' => $reviewedAt,
+                    'created_at' => $createdAt,
+                    'created_at_human' => $this->dashboardCreatedAtHuman($e->created_at),
                     'proof_url' => ! empty($e->payment_proof_path) ? route('admin.academy.enrollments.proof', $e->id) : null,
                     'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
                     'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
                     'modality' => $e->lesson?->modality ?: 'grupal',
                     'date' => $e->lesson?->starts_at ? BusinessDateTime::toApi($e->lesson->starts_at) : null,
                     'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y'),
+                    'admin_notes' => $e->admin_notes,
                 ];
             })
             ->values();
@@ -300,22 +316,36 @@ class AcademyController extends Controller
         $rentalRows = Booking::query()
             ->with(['user', 'surfboard'])
             ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
+            ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate))
             ->orderByDesc('created_at')
             ->limit(400)
             ->get()
             ->map(function (Booking $b) {
+                $paymentStatus = $b->payment_status ?? Booking::PAYMENT_PENDING;
+                $reviewedAt = $b->reviewed_at?->toIso8601String();
+                $createdAt = $b->created_at?->toIso8601String();
                 return [
                     'id' => $b->id,
+                    'entity' => 'rental',
                     'user_name' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
                     'user' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
                     'email' => $b->user?->email,
                     'phone' => $b->phone ?: $b->user?->telefono,
-                    'status' => $b->payment_status ?? Booking::PAYMENT_PENDING,
+                    'status' => $paymentStatus,
+                    'refund_status' => $this->resolveBookingRefundStatus($b),
+                    'is_new' => $reviewedAt === null,
+                    'reviewed_at' => $reviewedAt,
+                    'created_at' => $createdAt,
+                    'created_at_human' => $this->dashboardCreatedAtHuman($b->created_at),
                     'proof_url' => ! empty($b->payment_proof_path) ? route('admin.bookings.proof', $b->id) : null,
-                    'amount' => (float) $b->deposit_amount,
+                    'amount' => (float) ($b->total_price ?? 0),
+                    'deposit_amount' => (float) ($b->deposit_amount ?? 0),
+                    'booking_status' => $b->status,
                     'rental_name' => $b->surfboard?->name ? 'Alquiler · '.$b->surfboard->name : 'Alquiler',
                     'date' => $b->start_date?->toIso8601String(),
                     'date_human' => $b->start_date?->locale('es')->translatedFormat('d/m/Y'),
+                    'admin_notes' => $b->admin_notes,
                 ];
             })
             ->values();
@@ -323,7 +353,10 @@ class AcademyController extends Controller
         $bonoRows = UserBono::query()
             ->with(['user:id,nombre,apellido,email,telefono', 'pack:id,nombre,num_clases,precio'])
             ->when($bonoPackId, fn ($q) => $q->where('pack_id', $bonoPackId))
+            ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
+            ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate))
             ->when($bonoStatus === 'confirmed', fn ($q) => $q->where('status', UserBono::STATUS_CONFIRMED))
+            ->when($bonoStatus === 'rejected', fn ($q) => $q->where('status', UserBono::STATUS_REJECTED))
             ->when($bonoStatus === 'pending_validation', function ($q) {
                 $q->where('status', UserBono::STATUS_PENDING)
                     ->whereNotNull('payment_proof_path');
@@ -336,13 +369,17 @@ class AcademyController extends Controller
             ->limit(300)
             ->get()
             ->map(function (UserBono $row) {
+                $reviewedAt = $row->reviewed_at?->toIso8601String();
                 return [
                     'id' => $row->id,
+                    'entity' => 'bono',
                     'user_name' => $row->user ? trim(($row->user->nombre ?? '').' '.($row->user->apellido ?? '')) : '—',
                     'user' => $row->user ? trim(($row->user->nombre ?? '').' '.($row->user->apellido ?? '')) : '—',
                     'email' => $row->user?->email,
                     'phone' => $row->user?->telefono,
                     'status' => $row->status,
+                    'is_new' => $reviewedAt === null,
+                    'reviewed_at' => $reviewedAt,
                     'pack_id' => (int) $row->pack_id,
                     'pack' => $row->pack?->nombre,
                     'num_clases' => (int) ($row->pack?->num_clases ?? 0),
@@ -350,17 +387,19 @@ class AcademyController extends Controller
                     'has_proof' => ! empty($row->payment_proof_path),
                     'proof_url' => $row->payment_proof_path ? Storage::url($row->payment_proof_path) : null,
                     'created_at' => $row->created_at?->toIso8601String(),
-                    'created_at_human' => $row->created_at
-                        ? ($row->created_at->isToday()
-                            ? 'Hoy a las '.$row->created_at->format('H:i')
-                            : $row->created_at->format('d/m/Y H:i'))
-                        : null,
-                    'date_human' => $row->created_at
-                        ? ($row->created_at->isToday()
-                            ? 'Hoy a las '.$row->created_at->format('H:i')
-                            : $row->created_at->format('d/m/Y H:i'))
-                        : null,
+                    'created_at_human' => $this->dashboardCreatedAtHuman($row->created_at),
+                    'date_human' => $this->dashboardCreatedAtHuman($row->created_at),
+                    'admin_notes' => $row->admin_notes,
                 ];
+            })
+            ->values();
+
+        $payments = collect()
+            ->concat($lessonRows)
+            ->concat($rentalRows)
+            ->concat($bonoRows)
+            ->sortByDesc(function (array $row) {
+                return strtotime((string) ($row['created_at'] ?? ''));
             })
             ->values();
 
@@ -380,23 +419,23 @@ class AcademyController extends Controller
                 'status' => $status,
                 'bono_status' => $bonoStatus,
                 'bono_pack_id' => $bonoPackId,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
             ],
-            'lessonRows' => $lessonRows,
-            'rentalRows' => $rentalRows,
-            'bonoRows' => $bonoRows,
+            'payments' => $payments,
             'bonoPacks' => $bonoPacks,
             'counts' => [
                 'lessons' => [
                     'all' => LessonUser::query()->count(),
                     'pending' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_PENDING)->count(),
-                    'submitted' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_SUBMITTED)->count(),
                     'confirmed' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_CONFIRMED)->count(),
+                    'rejected' => LessonUser::query()->where('payment_status', LessonUser::PAYMENT_REJECTED)->count(),
                 ],
                 'rentals' => [
                     'all' => Booking::query()->count(),
                     'pending' => Booking::query()->where('payment_status', Booking::PAYMENT_PENDING)->count(),
-                    'submitted' => Booking::query()->where('payment_status', Booking::PAYMENT_SUBMITTED)->count(),
                     'confirmed' => Booking::query()->where('payment_status', Booking::PAYMENT_CONFIRMED)->count(),
+                    'rejected' => Booking::query()->where('payment_status', Booking::PAYMENT_REJECTED)->count(),
                 ],
                 'bonos' => [
                     'all' => UserBono::query()->count(),
@@ -409,9 +448,70 @@ class AcademyController extends Controller
                         ->whereNull('payment_proof_path')
                         ->count(),
                     'confirmed' => UserBono::query()->where('status', UserBono::STATUS_CONFIRMED)->count(),
+                    'rejected' => UserBono::query()->where('status', UserBono::STATUS_REJECTED)->count(),
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Marcar un pago como revisado en flujo administrativo (quita indicador visual no revisado).
+     */
+    public function markPaymentReviewed(Request $request)
+    {
+        $validated = $request->validate([
+            'entity' => 'required|string|in:class,rental,bono',
+            'id' => 'required|integer|min:1',
+        ]);
+
+        $now = BusinessDateTime::now();
+
+        if ($validated['entity'] === 'class') {
+            $row = LessonUser::query()->findOrFail($validated['id']);
+            $row->update(['reviewed_at' => $now]);
+        } elseif ($validated['entity'] === 'rental') {
+            $row = Booking::query()->findOrFail($validated['id']);
+            $row->update(['reviewed_at' => $now]);
+        } else {
+            $row = UserBono::query()->findOrFail($validated['id']);
+            $row->update(['reviewed_at' => $now]);
+        }
+
+        return back()->with('success', 'Marca de pendiente retirada correctamente.');
+    }
+
+    /**
+     * Actualiza el estado de devolución para clases/alquileres cancelados con pago confirmado.
+     */
+    public function updateRefundStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'entity' => 'required|string|in:class,rental',
+            'id' => 'required|integer|min:1',
+            'refund_status' => 'required|string|in:pending,completed',
+        ]);
+
+        if ($validated['entity'] === 'class') {
+            $row = LessonUser::query()->with('lesson')->findOrFail($validated['id']);
+            if (! $this->shouldTrackRefundForEnrollment($row, $row->lesson)) {
+                return back()->with('error', 'La devolución no aplica para esta clase.');
+            }
+            $row->update([
+                'refund_status' => $validated['refund_status'],
+                'reviewed_at' => null,
+            ]);
+        } else {
+            $row = Booking::query()->findOrFail($validated['id']);
+            if (! $this->shouldTrackRefundForBooking($row)) {
+                return back()->with('error', 'La devolución no aplica para este alquiler.');
+            }
+            $row->update([
+                'refund_status' => $validated['refund_status'],
+                'reviewed_at' => null,
+            ]);
+        }
+
+        return back()->with('success', 'Estado de devolución actualizado.');
     }
 
     /**
@@ -474,9 +574,19 @@ class AcademyController extends Controller
         $date = $request->has('date')
             ? BusinessDateTime::parseInAppTimezone((string) $request->input('date'))->startOfDay()
             : BusinessDateTime::today();
+        $staffId = $request->filled('staff_id') ? (int) $request->input('staff_id') : null;
+        if ($staffId !== null && $staffId <= 0) {
+            $staffId = null;
+        }
 
         $lessons = Lesson::query()
             ->whereDate('starts_at', $date)
+            ->when($staffId, function ($q) use ($staffId) {
+                $q->whereHas('staffAssignments', function ($sq) use ($staffId) {
+                    $sq->where('role', StaffAssignment::ROLE_MONITOR)
+                        ->where('user_id', $staffId);
+                });
+            })
             ->with(['staffAssignments.user', 'enrollments.user'])
             ->orderBy('starts_at')
             ->get()
@@ -509,12 +619,92 @@ class AcademyController extends Controller
                 ]),
             ]);
 
-        $staff = User::query()->where('role', 'admin')->get(['id', 'nombre', 'email']);
+        $staff = User::query()
+            ->where('role', 'admin')
+            ->orWhereHas('staffAssignments', function ($q) {
+                $q->where('role', StaffAssignment::ROLE_MONITOR);
+            })
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'apellido', 'email'])
+            ->unique('id')
+            ->values();
 
         return Inertia::render('Admin/Academy/Commander', [
             'lessons' => $lessons,
             'selectedDate' => $date->format('Y-m-d'),
             'staff' => $staff,
+            'selectedStaffId' => $staffId,
+        ]);
+    }
+
+    public function lessonDetails(Lesson $lesson)
+    {
+        $lesson->load([
+            'staffAssignments.user:id,nombre,apellido,email',
+            'enrollments.user:id,nombre,apellido,email',
+        ]);
+
+        $statusLabels = [
+            LessonUser::STATUS_PENDING => 'Pendiente',
+            LessonUser::STATUS_PENDING_EXTRA_MONITOR => 'Pendiente (extra monitor)',
+            LessonUser::STATUS_CONFIRMED => 'Confirmado',
+            LessonUser::STATUS_ENROLLED => 'Inscrito',
+            LessonUser::STATUS_ATTENDED => 'Asistido',
+            LessonUser::STATUS_CANCELLED => 'Cancelado',
+            LessonUser::STATUS_EXPIRED => 'Expirado',
+            LessonUser::STATUS_REFUNDED => 'Reembolsado',
+        ];
+
+        $staffMembers = $lesson->staffAssignments->map(function ($assignment) {
+            return [
+                'id' => (int) $assignment->id,
+                'role' => $assignment->role,
+                'name' => trim((string) (($assignment->user?->nombre ?? '').' '.($assignment->user?->apellido ?? ''))),
+                'email' => $assignment->user?->email,
+            ];
+        })->values();
+
+        $students = $lesson->enrollments->map(function (LessonUser $enrollment) use ($statusLabels) {
+            $displayName = trim((string) (($enrollment->user?->nombre ?? '').' '.($enrollment->user?->apellido ?? '')));
+            $hasProof = ! empty($enrollment->payment_proof_path);
+            $paymentState = 'Pendiente de pago';
+            if ($hasProof && ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_PENDING) {
+                $paymentState = 'Justificante subido';
+            }
+            if (($enrollment->payment_method ?? null) === 'tienda') {
+                $paymentState = 'Pagado (Tienda)';
+            } elseif ($enrollment->payment_status === LessonUser::PAYMENT_CONFIRMED) {
+                $paymentState = $hasProof ? 'Pagado (Justificante)' : 'Pagado (Bono/Tienda)';
+            }
+
+            return [
+                'id' => (int) $enrollment->id,
+                'name' => $displayName !== '' ? $displayName : '—',
+                'email' => $enrollment->user?->email,
+                'status' => $enrollment->status,
+                'status_label' => $statusLabels[$enrollment->status] ?? ucfirst((string) $enrollment->status),
+                'payment_status' => $enrollment->payment_status ?? LessonUser::PAYMENT_PENDING,
+                'payment_state_label' => $paymentState,
+                'payment_method' => $enrollment->payment_method,
+                'has_payment_proof' => $hasProof,
+                'payment_proof_url' => $hasProof ? route('admin.academy.enrollments.proof', $enrollment->id) : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'lesson' => [
+                'id' => (int) $lesson->id,
+                'starts_at' => BusinessDateTime::toApi($lesson->starts_at),
+                'ends_at' => BusinessDateTime::toApi($lesson->ends_at),
+                'level' => $lesson->level,
+                'location' => $lesson->location,
+                'price' => $lesson->price !== null ? (float) $lesson->price : null,
+                'currency' => $lesson->currency ?? 'EUR',
+                'modality' => $lesson->modality,
+                'status' => $lesson->status,
+            ],
+            'staff' => $staffMembers,
+            'students' => $students,
         ]);
     }
 
@@ -582,11 +772,16 @@ class AcademyController extends Controller
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
             ])
-            ->update([
-                'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => BusinessDateTime::now(),
-                'admin_notes' => $validated['admin_notes'] ?? 'Clase cancelada por el staff.',
-            ]);
+            ->get()
+            ->each(function (LessonUser $enrollment) use ($validated): void {
+                $enrollment->status = LessonUser::STATUS_CANCELLED;
+                $enrollment->cancelled_at = BusinessDateTime::now();
+                $enrollment->admin_notes = $validated['admin_notes'] ?? 'Clase cancelada por el staff.';
+                $enrollment->refund_status = ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                    ? LessonUser::REFUND_PENDING
+                    : null;
+                $enrollment->save();
+            });
 
         return back()->with('success', 'Clase cancelada.');
     }
@@ -631,11 +826,16 @@ class AcademyController extends Controller
                 LessonUser::STATUS_ENROLLED,
                 LessonUser::STATUS_ATTENDED,
             ])
-            ->update([
-                'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => BusinessDateTime::now(),
-                'admin_notes' => $notes,
-            ]);
+            ->get()
+            ->each(function (LessonUser $enrollment) use ($notes): void {
+                $enrollment->status = LessonUser::STATUS_CANCELLED;
+                $enrollment->cancelled_at = BusinessDateTime::now();
+                $enrollment->admin_notes = $notes;
+                $enrollment->refund_status = ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+                    ? LessonUser::REFUND_PENDING
+                    : null;
+                $enrollment->save();
+            });
 
         return back()->with('success', 'Pack semanal cancelado (sesiones futuras).');
     }
@@ -819,6 +1019,24 @@ class AcademyController extends Controller
     public function confirmEnrollment(int $enrollmentId)
     {
         $enrollment = LessonUser::with('user', 'lesson')->findOrFail($enrollmentId);
+
+        if (
+            ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_REJECTED
+            && $enrollment->status !== LessonUser::STATUS_PENDING
+        ) {
+            $enrollment->update([
+                'payment_status' => LessonUser::PAYMENT_CONFIRMED,
+                'refund_status' => null,
+                'reviewed_at' => null,
+            ]);
+
+            return back()->with('success', 'Pago marcado como confirmado.');
+        }
+
+        if (($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED) {
+            return back()->with('error', 'Este pago ya está confirmado.');
+        }
+
         if ($enrollment->status !== LessonUser::STATUS_PENDING) {
             return back()->with('error', 'Solo se pueden confirmar solicitudes pendientes.');
         }
@@ -851,6 +1069,8 @@ class AcademyController extends Controller
             'status' => LessonUser::STATUS_CONFIRMED,
             'confirmed_at' => BusinessDateTime::now(),
             'payment_status' => LessonUser::PAYMENT_CONFIRMED,
+            'refund_status' => null,
+            'reviewed_at' => null,
         ]);
         $googleMapsUrl = config('services.academy.maps_url');
         if ($enrollment->user && $enrollment->user->email) {
@@ -989,26 +1209,44 @@ class AcademyController extends Controller
             'admin_notes' => 'nullable|string|max:2000',
         ]);
 
+        $note = trim((string) ($validated['admin_notes'] ?? '')) !== ''
+            ? trim((string) $validated['admin_notes'])
+            : 'Justificante rechazado.';
+
         $enrollment = LessonUser::findOrFail($enrollmentId);
-        if ($enrollment->status !== LessonUser::STATUS_PENDING) {
-            return back()->with('error', 'Solo se pueden revisar solicitudes pendientes.');
+
+        if (($enrollment->payment_status ?? '') === LessonUser::PAYMENT_REJECTED) {
+            return back()->with('error', 'Este pago ya está rechazado.');
         }
 
-        if (! empty($enrollment->payment_proof_path) && Storage::disk('local')->exists($enrollment->payment_proof_path)) {
-            Storage::disk('local')->delete($enrollment->payment_proof_path);
+        if ($enrollment->status === LessonUser::STATUS_PENDING) {
+            $enrollment->update([
+                'status' => LessonUser::STATUS_CANCELLED,
+                'payment_status' => LessonUser::PAYMENT_REJECTED,
+                'refund_status' => null,
+                'admin_notes' => $note,
+                'cancelled_at' => BusinessDateTime::now(),
+                'reviewed_at' => null,
+            ]);
+
+            return back()->with('success', 'Justificante rechazado y solicitud cancelada.');
         }
 
-        $enrollment->update([
-            'status' => LessonUser::STATUS_CANCELLED,
-            'payment_status' => LessonUser::PAYMENT_PENDING,
-            'payment_proof_path' => null,
-            'proof_uploaded_at' => null,
-            'payment_method' => null,
-            'admin_notes' => $validated['admin_notes'] ?? 'Justificante rechazado.',
-            'cancelled_at' => BusinessDateTime::now(),
-        ]);
+        $ps = $enrollment->payment_status ?? '';
+        if (($ps === LessonUser::PAYMENT_CONFIRMED) || ($ps === LessonUser::PAYMENT_PENDING && ! empty($enrollment->payment_proof_path))) {
+            $enrollment->update([
+                'payment_status' => LessonUser::PAYMENT_REJECTED,
+                'refund_status' => $ps === LessonUser::PAYMENT_CONFIRMED ? LessonUser::REFUND_PENDING : null,
+                'status' => $ps === LessonUser::PAYMENT_CONFIRMED ? LessonUser::STATUS_CANCELLED : $enrollment->status,
+                'cancelled_at' => $ps === LessonUser::PAYMENT_CONFIRMED ? BusinessDateTime::now() : $enrollment->cancelled_at,
+                'admin_notes' => $note,
+                'reviewed_at' => null,
+            ]);
 
-        return back()->with('success', 'Justificante rechazado y solicitud cancelada.');
+            return back()->with('success', 'Pago marcado como rechazado.');
+        }
+
+        return back()->with('error', 'No hay un pago enviado o confirmado que se pueda rechazar en este estado.');
     }
 
     /**
@@ -1064,5 +1302,71 @@ class AcademyController extends Controller
             ->delete();
 
         return back()->with('success', "Se eliminaron {$deleted} solicitudes antiguas.");
+    }
+
+    private function resolveEnrollmentRefundStatus(LessonUser $enrollment, ?Lesson $lesson = null): ?string
+    {
+        if (! $this->shouldTrackRefundForEnrollment($enrollment, $lesson)) {
+            return null;
+        }
+
+        return $enrollment->refund_status ?: LessonUser::REFUND_PENDING;
+    }
+
+    private function resolveBookingRefundStatus(Booking $booking): ?string
+    {
+        if (! $this->shouldTrackRefundForBooking($booking)) {
+            return null;
+        }
+
+        return $booking->refund_status ?: Booking::REFUND_PENDING;
+    }
+
+    private function shouldTrackRefundForEnrollment(LessonUser $enrollment, ?Lesson $lesson = null): bool
+    {
+        if (! $this->isEnrollmentCancelledLike($enrollment->status)) {
+            return false;
+        }
+
+        return ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
+            || ! empty($enrollment->refund_status);
+    }
+
+    private function isEnrollmentCancelledLike(?string $status): bool
+    {
+        return in_array($status, [
+            LessonUser::STATUS_CANCELLED,
+            LessonUser::STATUS_CANCELLED_FREE,
+            LessonUser::STATUS_CANCELLED_LATE_LOST,
+            LessonUser::STATUS_CANCELLED_LATE_RESCUED,
+            LessonUser::STATUS_REFUNDED,
+        ], true);
+    }
+
+    private function shouldTrackRefundForBooking(Booking $booking): bool
+    {
+        return ($booking->status ?? '') === Booking::STATUS_CANCELLED
+            && (
+                ($booking->payment_status ?? '') === Booking::PAYMENT_CONFIRMED
+                || ! empty($booking->refund_status)
+            );
+    }
+
+    /**
+     * Fecha relativa "Hoy a las HH:mm" usando el reloj de negocio (Madrid), no el TZ del servidor.
+     */
+    private function dashboardCreatedAtHuman(?Carbon $dt): ?string
+    {
+        if ($dt === null) {
+            return null;
+        }
+
+        $wall = $dt->copy()->timezone(BusinessDateTime::businessTimezone());
+
+        if ($wall->isSameDay(BusinessDateTime::today())) {
+            return 'Hoy a las '.$wall->format('H:i');
+        }
+
+        return $wall->locale('es')->translatedFormat('d/m/Y H:i');
     }
 }

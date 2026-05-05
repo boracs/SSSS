@@ -329,16 +329,28 @@ class VipStudentPerformanceService
             ];
         }
 
+        $classDepositCap = (float) config('services.academy.class_reservation_deposit_eur', 30);
+
         $classRows = LessonUser::query()
-            ->with(['lesson:id,title,starts_at,level,modality,location'])
+            ->with(['lesson:id,title,starts_at,level,modality,location,price'])
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(120)
             ->get()
-            ->map(function (LessonUser $row) {
+            ->map(function (LessonUser $row) use ($classDepositCap) {
                 $startAt = $row->lesson?->starts_at;
                 $isWithinCancellationWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) <= 24 : false;
-                $canCancel = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
+                $paymentPending = ($row->payment_status ?? '') === LessonUser::PAYMENT_PENDING;
+                $sessionExpired = $paymentPending
+                    && $row->created_at
+                    && $row->created_at->copy()->addMinutes(30)->isPast();
+                $canCancelWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
+                $canCancel = ! $sessionExpired && $canCancelWindow;
+
+                $unitPrice = (float) ($row->lesson?->price ?? 0);
+                $qty = max(1, (int) ($row->quantity ?: $row->party_size ?: 1));
+                $totalPrice = round($unitPrice * $qty, 2);
+                $depositAmount = $totalPrice > 0 ? round(min($classDepositCap, $totalPrice), 2) : 0.0;
 
                 return [
                     'id' => $row->id,
@@ -354,7 +366,15 @@ class VipStudentPerformanceService
                     'has_proof' => ! empty($row->payment_proof_path),
                     'can_cancel' => $canCancel,
                     'is_within_cancellation_window' => $isWithinCancellationWindow,
-                    'cancel_block_reason' => $canCancel ? null : 'Fuera de plazo de cancelación (requiere 24h de antelación)',
+                    'cancel_block_reason' => $sessionExpired
+                        ? 'Sesión expirada por falta de pago.'
+                        : ($canCancel ? null : 'Fuera de plazo de cancelación (requiere 24h de antelación)'),
+                    'unit_price' => $unitPrice,
+                    'party_quantity' => $qty,
+                    'total_price' => $totalPrice,
+                    'deposit_amount' => $depositAmount,
+                    /** @deprecated Usar deposit_amount; se mantiene por compatibilidad con vistas antiguas. */
+                    'amount' => $depositAmount,
                 ];
             })
             ->values();
@@ -367,7 +387,23 @@ class VipStudentPerformanceService
             ->get()
             ->map(function (Booking $row) {
                 $startAt = $row->start_date;
-                $canCancel = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
+                $paymentPending = ($row->payment_status ?? '') === Booking::PAYMENT_PENDING;
+                $sessionExpired = $paymentPending
+                    && $row->created_at
+                    && $row->created_at->copy()->addMinutes(30)->isPast();
+                $canCancelWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
+                $canCancel = ! $sessionExpired && $canCancelWindow;
+
+                $deposit = (float) ($row->deposit_amount ?? 0);
+                $totalPrice = (float) ($row->total_price ?? 0);
+                $refundPending = $row->status === Booking::STATUS_CANCELLED
+                    && (
+                        ($row->payment_status ?? '') === Booking::PAYMENT_CONFIRMED
+                        || (
+                            ($row->payment_status ?? '') === Booking::PAYMENT_PENDING
+                            && ! empty($row->payment_proof_path)
+                        )
+                    );
 
                 return [
                     'id' => $row->id,
@@ -378,10 +414,16 @@ class VipStudentPerformanceService
                     'created_at' => $row->created_at?->toIso8601String(),
                     'start_time' => $startAt ? BusinessDateTime::toApi($startAt) : null,
                     'end_time' => $row->end_date ? BusinessDateTime::toApi($row->end_date) : null,
-                    'amount' => (float) ($row->deposit_amount ?? 0),
+                    'deposit_amount' => $deposit,
+                    'total_price' => $totalPrice,
+                    /** Importe a abonar como compromiso (p. ej. % del total); mismo valor que deposit_amount. */
+                    'amount' => $deposit,
                     'has_proof' => ! empty($row->payment_proof_path),
+                    'refund_pending' => $refundPending,
                     'can_cancel' => $canCancel,
-                    'cancel_block_reason' => $canCancel ? null : 'Fuera de plazo de cancelación (requiere 24h de antelación)',
+                    'cancel_block_reason' => $sessionExpired
+                        ? 'Sesión expirada por falta de pago.'
+                        : ($canCancel ? null : 'Fuera de plazo de cancelación (requiere 24h de antelación)'),
                 ];
             })
             ->values();
@@ -705,11 +747,6 @@ class VipStudentPerformanceService
 
     private static function calculateUcCost(?string $lessonModality, int $participantsTotal): int
     {
-        $modality = strtolower((string) ($lessonModality ?? ''));
-        if (in_array($modality, ['privada', 'private', 'particular', 'solo'], true)) {
-            return 2;
-        }
-
         return $participantsTotal <= 1 ? 2 : 1;
     }
 

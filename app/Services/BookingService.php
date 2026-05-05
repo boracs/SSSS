@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\PriceSchema;
 use App\Models\Surfboard;
+use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -84,8 +85,8 @@ class BookingService
      */
     public function getBlockedRanges(int $surfboardId, \DateTimeInterface $from, \DateTimeInterface $to): array
     {
-        $fromC = Carbon::parse($from);
-        $toC = Carbon::parse($to);
+        $fromC = $from instanceof Carbon ? $from : Carbon::parse($from);
+        $toC = $to instanceof Carbon ? $to : Carbon::parse($to);
 
         return Booking::query()
             ->where('surfboard_id', $surfboardId)
@@ -96,8 +97,8 @@ class BookingService
             ->get()
             ->map(fn (Booking $b) => [
                 'id' => $b->id,
-                'start' => $b->start_date->toIso8601String(),
-                'end' => $b->end_date->toIso8601String(),
+                'start' => $b->start_date ? BusinessDateTime::toApi($b->start_date) : '',
+                'end' => $b->end_date ? BusinessDateTime::toApi($b->end_date) : '',
                 'status' => $b->status,
             ])
             ->values()
