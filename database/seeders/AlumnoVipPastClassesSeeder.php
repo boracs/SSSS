@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\BonoConsumption;
+use App\Support\LessonBonoCreditUnits;
 use App\Models\CreditTransaction;
 use App\Models\Lesson;
 use App\Models\LessonUser;
@@ -161,8 +162,13 @@ class AlumnoVipPastClassesSeeder extends Seeder
                     ->first();
 
                 if (! $existingConsumption) {
-                    $alreadyUsed = BonoConsumption::query()->where('user_bono_id', $bono->id)->count();
-                    $remainingAfter = max(0, (int) $pack->num_clases - $alreadyUsed - 1);
+                    $usedUc = (int) BonoConsumption::query()
+                        ->where('user_bono_id', $bono->id)
+                        ->with('lesson:id,modality')
+                        ->get()
+                        ->sum(fn (BonoConsumption $row) => LessonBonoCreditUnits::unitsFromModality($row->lesson?->modality));
+                    $uc = LessonBonoCreditUnits::unitsFromModality($def['modality']);
+                    $remainingAfter = max(0, (int) $pack->num_clases - $usedUc - $uc);
                     BonoConsumption::query()->create([
                         'user_bono_id' => $bono->id,
                         'user_id' => $user->id,
@@ -172,6 +178,7 @@ class AlumnoVipPastClassesSeeder extends Seeder
                     ]);
                 }
 
+                $chargeUc = LessonBonoCreditUnits::unitsFromModality($def['modality']);
                 CreditTransaction::query()->firstOrCreate(
                     [
                         'lesson_user_id' => $enrollment->id,
@@ -180,15 +187,19 @@ class AlumnoVipPastClassesSeeder extends Seeder
                     ],
                     [
                         'user_id' => $user->id,
-                        'amount' => -1,
+                        'amount' => -$chargeUc,
                         'lesson_id' => $lesson->id,
                     ]
                 );
             }
 
-            $used = BonoConsumption::query()->where('user_bono_id', $bono->id)->count();
+            $usedUc = (int) BonoConsumption::query()
+                ->where('user_bono_id', $bono->id)
+                ->with('lesson:id,modality')
+                ->get()
+                ->sum(fn (BonoConsumption $row) => LessonBonoCreditUnits::unitsFromModality($row->lesson?->modality));
             $bono->update([
-                'clases_restantes' => max(0, (int) $pack->num_clases - $used),
+                'clases_restantes' => max(0, (int) $pack->num_clases - $usedUc),
             ]);
         });
     }

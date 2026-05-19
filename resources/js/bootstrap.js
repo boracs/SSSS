@@ -1,5 +1,11 @@
 import axios from 'axios';
+import { route as ziggyRoute } from 'ziggy-js';
+import { Ziggy } from './ziggy';
+
 window.axios = axios;
+
+window.route = (name, params, absolute, config = Ziggy) =>
+    ziggyRoute(name, params, absolute, config);
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 // CSRF estable para SPA: usar cookie XSRF-TOKEN (siempre sincronizada) -> header X-XSRF-TOKEN

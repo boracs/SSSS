@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\BonoConsumption;
+use App\Support\LessonBonoCreditUnits;
 use App\Models\PackBono;
 use App\Models\UserBono;
 use App\Services\BonoService;
@@ -53,23 +54,50 @@ class BonoController extends Controller
 
         $consumptionHistory = collect();
         if (Schema::hasTable('bono_consumptions')) {
-            $consumptionHistory = BonoConsumption::query()
-                ->with(['lesson:id,title,starts_at,level'])
+            $consumptions = BonoConsumption::query()
+                ->with([
+                    'lesson:id,title,starts_at,level,modality',
+                    'userBono.pack:id,num_clases',
+                ])
                 ->where('user_id', $user->id)
                 ->orderByDesc('consumed_at')
-                ->limit(50)
-                ->get()
-                ->map(function (BonoConsumption $c) {
+                ->limit(80)
+                ->get();
+
+            $distinctBonos = $consumptions->pluck('user_bono_id')->filter()->unique()->count();
+            $recalcRunning = $distinctBonos <= 1;
+
+            $rows = collect();
+            foreach ($consumptions->groupBy(fn (BonoConsumption $c) => $c->user_bono_id ?? 0) as $bonoId => $group) {
+                $ordered = $group->sortBy(fn (BonoConsumption $c) => $c->consumed_at?->timestamp ?? 0)->values();
+                $packSize = (int) ($ordered->first()?->userBono?->pack?->num_clases ?? 0);
+                $running = ($recalcRunning && $packSize > 0) ? $packSize : null;
+
+                foreach ($ordered as $c) {
                     $lessonTitle = $c->lesson?->title ?: 'Clase de surf';
-                    return [
+                    $credits = LessonBonoCreditUnits::unitsFromModality($c->lesson?->modality);
+                    if ($running !== null) {
+                        $running = max(0, $running - $credits);
+                        $remaining = $running;
+                    } else {
+                        $remaining = (int) $c->remaining_after;
+                    }
+
+                    $rows->push([
                         'id' => $c->id,
                         'date' => $c->consumed_at?->toIso8601String(),
                         'date_human' => $c->consumed_at?->locale('es')->translatedFormat('d/m/Y H:i'),
                         'lesson_name' => $lessonTitle,
-                        'remaining_after' => (int) $c->remaining_after,
-                    ];
-                })
-                ->values();
+                        'credits_consumed' => $credits,
+                        'remaining_after' => $remaining,
+                    ]);
+                }
+            }
+
+            $consumptionHistory = $rows
+                ->sortByDesc(fn (array $r) => strtotime((string) ($r['date'] ?? '')))
+                ->values()
+                ->take(50);
         }
 
         $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));

@@ -12,7 +12,7 @@ final class AcademyContact
     public static function whatsappDisplay(): string
     {
         $display = trim((string) (config('services.academy.whatsapp_display') ?? ''));
-        if ($display !== '') {
+        if ($display !== '' && self::isSafePublicDisplayString($display)) {
             return $display;
         }
 
@@ -30,5 +30,25 @@ final class AcademyContact
         }
 
         return strlen($digits) > 0 ? '+'.$digits : '';
+    }
+
+    /**
+     * Evita mostrar en UI pegados accidentales (p. ej. código PHP en .env).
+     */
+    private static function isSafePublicDisplayString(string $value): bool
+    {
+        if (strlen($value) > 280) {
+            return false;
+        }
+
+        if (str_contains($value, '<?php') || str_contains($value, 'namespace ')) {
+            return false;
+        }
+
+        if (str_contains($value, 'declare(strict_types')) {
+            return false;
+        }
+
+        return true;
     }
 }

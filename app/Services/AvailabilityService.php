@@ -7,6 +7,7 @@ use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Support\BusinessDateTime;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AvailabilityService
@@ -43,6 +44,26 @@ class AvailabilityService
         return $partySize >= 7
             ? self::BIG_GROUP_MARGIN_MINUTES
             : self::STANDARD_MARGIN_MINUTES;
+    }
+
+    /**
+     * Bloquea la fila de `lessons` y ejecuta el callback con el modelo fresco.
+     * Debe llamarse dentro de `DB::transaction()` para que `lockForUpdate()` sea efectivo en InnoDB.
+     *
+     * @template T
+     *
+     * @param  callable(Lesson): T  $callback
+     * @return T
+     */
+    public function withLockedLesson(int $lessonId, callable $callback): mixed
+    {
+        if (DB::transactionLevel() < 1) {
+            throw new \RuntimeException('AvailabilityService::withLockedLesson requiere una transacción activa (DB::transaction).');
+        }
+
+        $lesson = Lesson::query()->whereKey($lessonId)->lockForUpdate()->firstOrFail();
+
+        return $callback($lesson);
     }
 
     /**

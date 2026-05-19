@@ -1,18 +1,30 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\User;
 
+use App\Actions\Academy\CancelEnrollmentAction;
+use App\Actions\Academy\UploadLessonProofAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Academy\UploadLessonProofRequest;
+use App\Http\Requests\User\CancelLessonEnrollmentRequest;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Services\VipStudentPerformanceService;
 use App\Support\BusinessDateTime;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class MyReservationsController extends Controller
 {
+    public function __construct(
+        private readonly UploadLessonProofAction $uploadLessonProofAction,
+        private readonly CancelEnrollmentAction $cancelEnrollmentAction,
+    ) {}
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -62,31 +74,23 @@ class MyReservationsController extends Controller
         ]);
     }
 
-    public function uploadClassProof(Request $request, LessonUser $enrollment)
+    public function uploadClassProof(UploadLessonProofRequest $request, LessonUser $enrollment)
     {
-        if ((int) $enrollment->user_id !== (int) $request->user()->id) {
-            abort(403);
+        try {
+            $this->authorize('uploadProof', $enrollment);
+        } catch (AuthorizationException) {
+            return back()->with('error', 'No tienes permiso para subir un justificante en esta reserva.');
         }
 
-        $request->validate([
-            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
-            'payment_method' => 'nullable|in:bizum,transferencia',
-        ]);
+        $result = $this->uploadLessonProofAction->execute(
+            $enrollment,
+            $request->proofFile(),
+            $request->paymentMethod(),
+        );
 
-        $oldPath = $enrollment->payment_proof_path;
-        if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-            Storage::disk('local')->delete($oldPath);
-        }
-
-        $path = $request->file('proof')->store('lesson-proofs/'.$enrollment->id, 'local');
-        $enrollment->update([
-            'payment_proof_path' => $path,
-            'proof_uploaded_at' => now(),
-            'payment_method' => $request->input('payment_method'),
-            'payment_status' => LessonUser::PAYMENT_PENDING,
-        ]);
-
-        return back()->with('success', 'Justificante de clase subido correctamente.');
+        return $result['ok']
+            ? back()->with('success', $result['message'])
+            : back()->with('error', $result['message']);
     }
 
     public function uploadRentalProof(Request $request, Booking $booking)
@@ -117,66 +121,19 @@ class MyReservationsController extends Controller
         return back()->with('success', 'Justificante de alquiler subido correctamente.');
     }
 
-    public function cancelClass(Request $request, LessonUser $enrollment)
+    public function cancelClass(CancelLessonEnrollmentRequest $request, LessonUser $enrollment)
     {
-        if ((int) $enrollment->user_id !== (int) $request->user()->id) {
-            abort(403);
+        try {
+            $this->authorize('cancel', $enrollment);
+        } catch (AuthorizationException) {
+            return back()->with('error', 'No tienes permiso para cancelar esta reserva.');
         }
 
-        if (($enrollment->payment_status ?? '') === LessonUser::PAYMENT_PENDING
-            && $enrollment->created_at
-            && $enrollment->created_at->copy()->addMinutes(30)->isPast()) {
-            return back()->with('error', 'La sesión de pago ha expirado; esta reserva ya no se puede cancelar desde aquí.');
-        }
+        $result = $this->cancelEnrollmentAction->execute($enrollment, $request->latePolicy());
 
-        $validated = $request->validate([
-            'late_policy' => 'nullable|in:lose,rescue',
-        ]);
-
-        $enrollment->loadMissing('lesson:id,starts_at');
-        $startAt = $enrollment->lesson?->starts_at;
-        if (! $startAt) {
-            return back()->with('error', 'No se pudo determinar la hora de inicio de la clase.');
-        }
-
-        if ($startAt->lte(now())) {
-            return back()->with('error', 'La clase ya ha comenzado y no puede cancelarse.');
-        }
-
-        if ($this->isWithinCancellationWindow($startAt)) {
-            $latePolicy = (string) ($validated['late_policy'] ?? 'lose');
-            if ($latePolicy === 'rescue') {
-                $enrollment->update([
-                    'status' => LessonUser::STATUS_CANCELLED_LATE_RESCUED,
-                    'cancelled_at' => now(),
-                    'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
-                        ? LessonUser::REFUND_PENDING
-                        : $enrollment->refund_status,
-                ]);
-
-                return back()->with('success', 'Reserva cancelada con rescate: se aplicarán 30EUR de gestión y recuperas la clase.');
-            }
-
-            $enrollment->update([
-                'status' => LessonUser::STATUS_CANCELLED_LATE_LOST,
-                'cancelled_at' => now(),
-                'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
-                    ? LessonUser::REFUND_PENDING
-                    : $enrollment->refund_status,
-            ]);
-
-            return back()->with('success', 'Reserva cancelada fuera de plazo: la clase se considera consumida.');
-        }
-
-        $enrollment->update([
-            'status' => LessonUser::STATUS_CANCELLED_FREE,
-            'cancelled_at' => now(),
-            'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
-                ? LessonUser::REFUND_PENDING
-                : $enrollment->refund_status,
-        ]);
-
-        return back()->with('success', 'Reserva de clase cancelada dentro de plazo y clase recuperada.');
+        return $result['ok']
+            ? back()->with('success', $result['message'])
+            : back()->with('error', $result['message']);
     }
 
     public function cancelRental(Request $request, Booking $booking)
@@ -207,11 +164,6 @@ class MyReservationsController extends Controller
             : 'Reserva de alquiler cancelada.';
 
         return back()->with('success', $msg);
-    }
-
-    private function isWithinCancellationWindow($startAt): bool
-    {
-        return now()->diffInHours($startAt, false) <= 24;
     }
 }
 

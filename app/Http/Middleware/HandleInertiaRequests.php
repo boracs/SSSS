@@ -63,10 +63,10 @@ class HandleInertiaRequests extends Middleware
             /** Texto genérico del WhatsApp de la escuela (plantillas, enlaces, etc.). */
             'academyWhatsappDisplay' => AcademyContact::whatsappDisplay(),
 
-            // 🔥 Flash messages
+            // 🔥 Flash messages (nunca enviar pegados de código / cadenas enormes al cliente)
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error'   => $request->session()->get('error'),
+                'success' => self::sanitizeFlashValue($request->session()->get('success')),
+                'error' => self::sanitizeFlashValue($request->session()->get('error')),
                 'payment_lesson_id' => $request->session()->get('payment_lesson_id'),
             ],
 
@@ -105,5 +105,30 @@ class HandleInertiaRequests extends Middleware
                 ];
             },
         ];
+    }
+
+    private static function sanitizeFlashValue(mixed $value): mixed
+    {
+        if (! is_string($value)) {
+            return $value;
+        }
+
+        if (strlen($value) > 8000) {
+            return null;
+        }
+
+        if (str_contains($value, '<?php')) {
+            return null;
+        }
+
+        if (str_contains($value, 'namespace App\\Listeners') || str_contains($value, 'namespace App\\Http')) {
+            return null;
+        }
+
+        if (str_contains($value, 'declare(strict_types')) {
+            return null;
+        }
+
+        return $value;
     }
 }

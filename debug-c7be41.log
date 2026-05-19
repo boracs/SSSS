@@ -1,0 +1,2 @@
+{"sessionId":"c7be41","hypothesisId":"H2","location":"HandleInertiaRequests::share","message":"flash_scan","data":{"success_len":0,"error_len":0,"success_has_php":false,"error_has_php":false},"timestamp":1778434261390}
+{"sessionId":"c7be41","hypothesisId":"H1","location":"Pag_principalController::index","message":"productos_scan","data":{"productos_count":10,"suspicious_fields":[],"cantidadCarrito":0},"timestamp":1778434261426}

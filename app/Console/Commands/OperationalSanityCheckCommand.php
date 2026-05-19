@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\BonoConsumption;
+use App\Support\LessonBonoCreditUnits;
 use App\Models\CreditTransaction;
 use App\Models\Lesson;
 use App\Models\LessonUser;
@@ -28,8 +29,13 @@ class OperationalSanityCheckCommand extends Command
             ->get()
             ->filter(function (UserBono $bono) {
                 $packSize = (int) ($bono->pack->num_clases ?? 0);
-                $consumed = (int) BonoConsumption::query()->where('user_bono_id', $bono->id)->count();
-                $expected = max(0, $packSize - $consumed);
+                $consumedUc = (int) BonoConsumption::query()
+                    ->where('user_bono_id', $bono->id)
+                    ->with('lesson:id,modality')
+                    ->get()
+                    ->sum(fn (BonoConsumption $c) => LessonBonoCreditUnits::unitsFromModality($c->lesson?->modality));
+                $expected = max(0, $packSize - $consumedUc);
+
                 return (int) $bono->clases_restantes !== $expected;
             })
             ->values();

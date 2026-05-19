@@ -2,8 +2,16 @@
 
 namespace App\Http\Controllers\Academy;
 
+use App\Actions\Academy\EnrollStudentAction;
+use App\Actions\Academy\RequestLessonAction;
+use App\Actions\Academy\RequestPrivateLessonAction;
+use App\Actions\Academy\UploadLessonProofAction;
+use App\Actions\Academy\CancelEnrollmentAction;
 use App\Http\Controllers\Controller;
-use App\Mail\RequestReceivedMail;
+use App\Http\Requests\Academy\EnrollStudentRequest;
+use App\Http\Requests\Academy\RequestLessonRequest;
+use App\Http\Requests\Academy\RequestPrivateLessonRequest;
+use App\Http\Requests\Academy\UploadLessonProofRequest;
 use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
@@ -11,13 +19,10 @@ use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
 use App\Services\CreditEngineService;
 use App\Support\BusinessDateTime;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class LessonController extends Controller
@@ -25,7 +30,12 @@ class LessonController extends Controller
     public function __construct(
         protected CreditEngineService $creditEngine,
         protected AutoReleaseService $autoReleaseService,
-        protected AvailabilityService $availabilityService
+        protected AvailabilityService $availabilityService,
+        protected EnrollStudentAction $enrollStudentAction,
+        protected RequestLessonAction $requestLessonAction,
+        protected RequestPrivateLessonAction $requestPrivateLessonAction,
+        protected UploadLessonProofAction $uploadLessonProofAction,
+        protected CancelEnrollmentAction $cancelEnrollmentAction,
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -337,283 +347,61 @@ class LessonController extends Controller
      * Solicitud de clase particular: crea una lección particular + enrollment pending del alumno.
      * La petición aparece en Commander como "particular" para aprobar/assign manual.
      */
-    public function requestPrivateLesson(Request $request)
+    public function requestPrivateLesson(RequestPrivateLessonRequest $request)
     {
-        $user = auth()->user();
+        $user = $request->user();
         if (! $user) {
             return back()->with('error', 'Debes iniciar sesión.');
         }
 
-        $validated = $request->validate([
-            'date' => 'required|date',
-            'start' => 'required|date_format:H:i',
-            'duration_minutes' => 'nullable|integer|min:30|max:300',
-            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
-            'payment_method' => 'nullable|in:bizum,transferencia',
-        ]);
+        $result = $this->requestPrivateLessonAction->execute($user, $request);
 
-        $day = BusinessDateTime::parseInAppTimezone((string) $validated['date'])->startOfDay();
-        if ($day->lt(BusinessDateTime::today())) {
-            return back()->with('error', 'No puedes solicitar una fecha pasada.');
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
         }
 
-        $startsAt = BusinessDateTime::parseInAppTimezone($validated['date'].' '.$validated['start']);
-        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
-        if ($durationMinutes < 60 || $durationMinutes % 15 !== 0) {
-            return back()->with('error', 'La duración debe ser de al menos 1 hora y en múltiplos de 15.');
-        }
-        if (((int) $startsAt->minute % 15) !== 0) {
-            return back()->with('error', 'La hora de inicio debe estar en intervalos de 15 minutos.');
-        }
-        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
-        if (((int) $endsAt->minute % 15) !== 0) {
-            return back()->with('error', 'La hora de fin debe estar en intervalos de 15 minutos.');
-        }
-
-        $lesson = Lesson::create([
-            'starts_at' => $startsAt,
-            'ends_at' => $endsAt,
-            'level' => Lesson::LEVEL_INICIACION,
-            'modality' => Lesson::MODALITY_PARTICULAR,
-            'max_slots' => 6,
-            'location' => 'Zurriola',
-            'is_private' => true,
-            'status' => Lesson::STATUS_SCHEDULED,
-            'title' => null,
-            'description' => null,
-        ]);
-
-        $enrollment = LessonUser::create([
-            'lesson_id' => $lesson->id,
-            'user_id' => $user->id,
-            'party_size' => 1,
-            'credits_locked' => 0,
-            'status' => LessonUser::STATUS_PENDING,
-            'payment_status' => LessonUser::PAYMENT_PENDING,
-            'expires_at' => Carbon::now('UTC')->addHours(2),
-        ]);
-
-        $path = $request->file('proof')->store('lesson-proofs/'.$enrollment->id, 'local');
-        $enrollment->update([
-            'payment_proof_path' => $path,
-            'proof_uploaded_at' => BusinessDateTime::now(),
-            'payment_method' => $request->input('payment_method'),
-        ]);
-
-        if ($user->email) {
-            Mail::to($user->email)->send(new RequestReceivedMail(
-                $enrollment,
-                $lesson,
-                config('services.academy.iban', '[IBAN]'),
-                config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-                url()->route('profile.edit')
-            ));
-        }
-
-        return back()
-            ->with('success', 'Solicitud de clase particular creada con justificante. Queda pendiente de validación; el staff te avisará cuando la confirme.');
+        return back()->with('success', $result['message']);
     }
 
     /**
      * Solicitar una clase (workflow: pending -> confirmed -> enrolled).
      * Valida capacidad humana (MAX_STAFF=2, ratio 1:6) y evita race conditions.
      */
-    public function requestLesson(Request $request, Lesson $lesson)
+    public function requestLesson(RequestLessonRequest $request, Lesson $lesson)
     {
-        $user = auth()->user();
+        $user = $request->user();
         if (! $user) {
             return back()->with('error', 'Debes iniciar sesión.');
         }
 
-        $validated = $request->validate([
-            'quantity' => 'nullable|integer|min:1|max:6',
-            'party_size' => 'nullable|integer|min:1|max:12', // compat legacy
-            'request_extra_monitor' => 'nullable|boolean',
-            'age_bracket' => 'nullable|in:children,adult,family',
-            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
-            'payment_method' => 'nullable|in:bizum,transferencia',
-        ]);
-        $partySize = (int) ($validated['quantity'] ?? $validated['party_size'] ?? 1);
-        $requestExtraMonitor = (bool) ($validated['request_extra_monitor'] ?? false);
-        $ageBracket = $validated['age_bracket'] ?? null;
+        $result = $this->requestLessonAction->execute(
+            $user,
+            $lesson,
+            $request->partySize(),
+            $request->requestExtraMonitor(),
+            $request->ageBracket(),
+            $request->proofFile(),
+            $request->paymentMethod(),
+        );
 
-        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
-            return back()->with('error', 'No puedes solicitar una clase pasada.');
+        if (! $result['ok']) {
+            $response = back()->with('error', $result['message']);
+            if (isset($result['extra_monitor_offer'])) {
+                $response->with('extra_monitor_offer', $result['extra_monitor_offer']);
+            }
+
+            return $response;
         }
 
-        $enrollment = null;
-        try {
-            $enrollment = DB::transaction(function () use ($lesson, $user, $partySize, $requestExtraMonitor, $ageBracket) {
-                // Lock lesson row to serialize capacity checks
-                $lockedLesson = Lesson::query()->whereKey($lesson->id)->lockForUpdate()->firstOrFail();
-
-                $activeStatuses = [
-                    LessonUser::STATUS_PENDING,
-                    LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                    LessonUser::STATUS_CONFIRMED,
-                    LessonUser::STATUS_ENROLLED,
-                    LessonUser::STATUS_ATTENDED,
-                ];
-
-                $existing = LessonUser::query()
-                    ->where('lesson_id', $lockedLesson->id)
-                    ->where('user_id', $user->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($existing && in_array($existing->status, $activeStatuses, true)) {
-                    throw new \RuntimeException('YA_EXISTE');
-                }
-
-                $currentTotal = (int) LessonUser::query()
-                    ->where('lesson_id', $lockedLesson->id)
-                    ->whereIn('status', $activeStatuses)
-                    ->lockForUpdate()
-                    ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
-
-                $currentHasBig = LessonUser::query()
-                    ->where('lesson_id', $lockedLesson->id)
-                    ->whereIn('status', $activeStatuses)
-                    ->whereRaw('COALESCE(quantity, party_size, 1) >= 7')
-                    ->lockForUpdate()
-                    ->exists();
-
-                $existingAgeBrackets = LessonUser::query()
-                    ->where('lesson_id', $lockedLesson->id)
-                    ->whereIn('status', $activeStatuses)
-                    ->whereNotNull('age_bracket')
-                    ->lockForUpdate()
-                    ->pluck('age_bracket')
-                    ->unique()
-                    ->values()
-                    ->toArray();
-
-                if (! empty($existingAgeBrackets) && $ageBracket && ! in_array('family', $existingAgeBrackets, true) && $ageBracket !== 'family') {
-                    $hasAdults = in_array('adult', $existingAgeBrackets, true) || $ageBracket === 'adult';
-                    $hasChildren = in_array('children', $existingAgeBrackets, true) || $ageBracket === 'children';
-                    if ($hasAdults && $hasChildren) {
-                        throw new \RuntimeException('MEZCLA_EDAD_NO_PERMITIDA');
-                    }
-                }
-
-                $newTotal = $currentTotal + $partySize;
-                $hasBig = $currentHasBig || $partySize >= 7;
-                $modality = $lockedLesson->modality ?: ((bool) ($lockedLesson->is_private ?? false) ? Lesson::MODALITY_PARTICULAR : Lesson::MODALITY_GRUPAL);
-                $isParticular = $modality === Lesson::MODALITY_PARTICULAR;
-                if (! $isParticular) {
-                    $monitors = $lockedLesson->monitorsRequiredFor($newTotal, $hasBig);
-                    if ($monitors >= 2) {
-                        throw new \RuntimeException('COMPLETO_STAFF');
-                    }
-                }
-
-                $capacity = $isParticular ? 6 : ($lockedLesson->max_capacity ?? $lockedLesson->max_slots ?? 6);
-                if ($capacity && $newTotal > (int) $capacity && ! $requestExtraMonitor) {
-                    throw new \RuntimeException('OFRECER_REFUERZO');
-                }
-                if ($capacity && $newTotal > 12) {
-                    throw new \RuntimeException('COMPLETO_CAPACIDAD');
-                }
-
-                if ($existing) {
-                    $existing->fill([
-                        'party_size' => $partySize,
-                        'quantity' => $partySize,
-                        'age_bracket' => $ageBracket,
-                        'credits_locked' => 0,
-                        'status' => $requestExtraMonitor ? LessonUser::STATUS_PENDING_EXTRA_MONITOR : LessonUser::STATUS_PENDING,
-                        'payment_status' => LessonUser::PAYMENT_PENDING,
-                        'expires_at' => Carbon::now('UTC')->addHours(2),
-                    ])->save();
-
-                    return $existing;
-                }
-
-                return LessonUser::create([
-                    'lesson_id' => $lockedLesson->id,
-                    'user_id' => $user->id,
-                    'party_size' => $partySize,
-                    'quantity' => $partySize,
-                    'age_bracket' => $ageBracket,
-                    'credits_locked' => 0,
-                    'status' => $requestExtraMonitor ? LessonUser::STATUS_PENDING_EXTRA_MONITOR : LessonUser::STATUS_PENDING,
-                    'payment_status' => LessonUser::PAYMENT_PENDING,
-                    'expires_at' => Carbon::now('UTC')->addHours(2),
-                ]);
-            });
-        } catch (\RuntimeException $e) {
-            if ($e->getMessage() === 'YA_EXISTE') {
-                return back()->with('error', 'Ya tienes una solicitud activa para esta clase.');
-            }
-            if ($e->getMessage() === 'COMPLETO_STAFF') {
-                return back()->with('error', 'Completo: no hay monitores disponibles para ese horario.');
-            }
-            if ($e->getMessage() === 'COMPLETO_CAPACIDAD') {
-                return back()->with('error', 'Clase completa por capacidad.');
-            }
-            if ($e->getMessage() === 'OFRECER_REFUERZO') {
-                $activeStatuses = [
-                    LessonUser::STATUS_PENDING,
-                    LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                    LessonUser::STATUS_CONFIRMED,
-                    LessonUser::STATUS_ENROLLED,
-                    LessonUser::STATUS_ATTENDED,
-                ];
-                $currentTotal = (int) LessonUser::query()
-                    ->where('lesson_id', $lesson->id)
-                    ->whereIn('status', $activeStatuses)
-                    ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
-                $capacity = (int) ($lesson->max_capacity ?? $lesson->max_slots ?? 6);
-                $available = max(0, $capacity - $currentTotal);
-
-                return back()
-                    ->with('error', "Solo quedan {$available} plazas aseguradas. Al ser un grupo mayor, excederemos el cupo de 6 alumnos y necesitaremos asignar un segundo monitor para garantizar la calidad y seguridad. ¿Desea que comprobemos si es posible solicitar otro monitor para su grupo?")
-                    ->with('extra_monitor_offer', [
-                        'lesson_id' => $lesson->id,
-                        'available' => $available,
-                        'requested' => $partySize,
-                    ]);
-            }
-            if ($e->getMessage() === 'MEZCLA_EDAD_NO_PERMITIDA') {
-                return back()->with('error', 'Por seguridad y autonomía, no mezclamos rangos de edad distantes en el mismo grupo de agua.');
-            }
-            throw $e;
-        }
-
-        if ($enrollment) {
-            $file = $request->file('proof');
-            $dir = 'lesson-proofs/'.$enrollment->id;
-            $oldPath = $enrollment->payment_proof_path;
-            if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-                Storage::disk('local')->delete($oldPath);
-            }
-            $path = $file->store($dir, 'local');
-            $enrollment->update([
-                'payment_proof_path' => $path,
-                'proof_uploaded_at' => BusinessDateTime::now(),
-                'payment_method' => $request->input('payment_method'),
-            ]);
-
-            $enrollment->load('user', 'lesson');
-            Mail::to($user->email)->send(new RequestReceivedMail(
-                $enrollment,
-                $lesson,
-                config('services.academy.iban', '[IBAN]'),
-                config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-                url()->route('profile.edit')
-            ));
-        }
-
-        return back()
-            ->with('success', '¡Solicitud recibida con justificante! Queda pendiente de validación por el equipo.');
+        return back()->with('success', $result['message']);
     }
 
     /**
      * Subir comprobante de pago para una solicitud PENDING. Se guarda en storage privado.
      */
-    public function uploadProof(Request $request, Lesson $lesson)
+    public function uploadProof(UploadLessonProofRequest $request, Lesson $lesson)
     {
-        $user = auth()->user();
+        $user = $request->user();
         if (! $user) {
             return back()->with('error', 'Debes iniciar sesión.');
         }
@@ -621,34 +409,29 @@ class LessonController extends Controller
         $enrollment = LessonUser::query()
             ->where('lesson_id', $lesson->id)
             ->where('user_id', $user->id)
-            ->where('status', LessonUser::STATUS_PENDING)
-            ->firstOrFail();
+            ->whereIn('status', [
+                LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+            ])
+            ->first();
 
-        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
-            return back()->with('error', 'No puedes subir un comprobante para una clase pasada.');
+        if (! $enrollment) {
+            return back()->with('error', 'No existe una solicitud pendiente para esta clase.');
         }
 
-        $request->validate([
-            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
-            'payment_method' => 'nullable|in:bizum,transferencia',
-        ]);
+        $this->authorize('uploadProof', $enrollment);
 
-        $file = $request->file('proof');
-        $dir = 'lesson-proofs/'.$enrollment->id;
-        $oldPath = $enrollment->payment_proof_path;
-        if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-            Storage::disk('local')->delete($oldPath);
+        $result = $this->uploadLessonProofAction->execute(
+            $enrollment,
+            $request->proofFile(),
+            $request->paymentMethod(),
+        );
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
         }
 
-        $path = $file->store($dir, 'local');
-        $enrollment->update([
-            'payment_proof_path' => $path,
-            'proof_uploaded_at' => BusinessDateTime::now(),
-            'payment_method' => $request->input('payment_method'),
-            'payment_status' => LessonUser::PAYMENT_PENDING,
-        ]);
-
-        return back()->with('success', 'Justificante subido. Lo revisaremos en breve.');
+        return back()->with('success', $result['message']);
     }
 
     /**
@@ -716,46 +499,17 @@ class LessonController extends Controller
     /**
      * Inscribirse a una clase (consumirá créditos en la auditoría 1h antes).
      */
-    public function enroll(Request $request, Lesson $lesson)
+    public function enroll(EnrollStudentRequest $request, Lesson $lesson)
     {
-        $user = auth()->user();
-        if (! $user) {
-            return back()->with('error', 'Debes iniciar sesión.');
+        $this->authorize('enroll', $lesson);
+
+        $result = $this->enrollStudentAction->execute($request->user(), $lesson);
+
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
         }
 
-        if ($lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
-            return back()->with('error', 'No puedes inscribirte en una clase pasada.');
-        }
-
-        $exists = $lesson->enrollments()->where('user_id', $user->id)->whereIn('status', [LessonUser::STATUS_PENDING, LessonUser::STATUS_CONFIRMED, LessonUser::STATUS_ENROLLED, LessonUser::STATUS_ATTENDED])->exists();
-        if ($exists) {
-            return back()->with('error', 'Ya estás inscrito.');
-        }
-
-        $enrolled = $lesson->enrolledCount();
-        if ($enrolled >= $lesson->max_slots) {
-            return back()->with('error', 'Clase completa.');
-        }
-
-        $newTotal = $lesson->totalPartySize() + 1;
-        $hasBig = $lesson->hasBigGroup() || (1 >= 7);
-        if ($lesson->isStaffFullFor($newTotal, $hasBig)) {
-            return back()->with('error', 'Completo: no hay monitores disponibles.');
-        }
-        $capacity = $lesson->max_capacity ?? $lesson->max_slots;
-        if ($newTotal > (int) $capacity) {
-            return back()->with('error', 'Clase completa por capacidad.');
-        }
-
-        DB::transaction(function () use ($lesson, $user) {
-            $lesson->users()->attach($user->id, [
-                'party_size' => 1,
-                'credits_locked' => 0,
-                'status' => LessonUser::STATUS_ENROLLED,
-            ]);
-        });
-
-        return back()->with('success', 'Inscripción realizada correctamente.');
+        return back()->with('success', $result['message']);
     }
 
     /**
@@ -763,26 +517,28 @@ class LessonController extends Controller
      */
     public function cancel(Lesson $lesson)
     {
-        $enrollment = $lesson->enrollments()->where('user_id', auth()->id())->first();
+        $user = auth()->user();
+        if (! $user) {
+            return back()->with('error', 'Debes iniciar sesión.');
+        }
+
+        $enrollment = LessonUser::query()
+            ->where('lesson_id', $lesson->id)
+            ->where('user_id', $user->id)
+            ->first();
+
         if (! $enrollment) {
             return back()->with('error', 'No estás inscrito.');
         }
 
-        if (in_array($enrollment->status, [LessonUser::STATUS_PENDING, LessonUser::STATUS_CONFIRMED], true)) {
-            $enrollment->update([
-                'status' => LessonUser::STATUS_CANCELLED,
-                'cancelled_at' => BusinessDateTime::now(),
-                'refund_status' => ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_CONFIRMED
-                    ? LessonUser::REFUND_PENDING
-                    : $enrollment->refund_status,
-            ]);
+        $this->authorize('cancel', $enrollment);
 
-            return back()->with('success', 'Solicitud cancelada.');
+        $result = $this->cancelEnrollmentAction->execute($enrollment);
+        if (! $result['ok']) {
+            return back()->with('error', $result['message']);
         }
 
-        $this->creditEngine->cancelByStudent($enrollment);
-
-        return back()->with('success', 'Inscripción cancelada.');
+        return back()->with('success', $result['message']);
     }
 
     /**

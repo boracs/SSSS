@@ -2,7 +2,13 @@
 
 namespace App\Providers;
 
+use App\Events\LessonRequestedEvent;
+use App\Events\LessonProofUploadedEvent;
+use App\Events\PrivateLessonRequestedEvent;
 use App\Events\SoloStudentLocked;
+use App\Listeners\SendLessonRequestedMailListener;
+use App\Listeners\NotifyAdminLessonProofUploadedListener;
+use App\Listeners\SendPrivateLessonRequestedMailListener;
 use App\Listeners\SendSoloStudentNotification;
 use App\Models\Lesson;
 use App\Models\User;
@@ -45,6 +51,9 @@ class AppServiceProvider extends ServiceProvider
     {
         Lesson::observe(LessonObserver::class);
         Event::listen(SoloStudentLocked::class, SendSoloStudentNotification::class);
+        Event::listen(LessonRequestedEvent::class, SendLessonRequestedMailListener::class);
+        Event::listen(LessonProofUploadedEvent::class, NotifyAdminLessonProofUploadedListener::class);
+        Event::listen(PrivateLessonRequestedEvent::class, SendPrivateLessonRequestedMailListener::class);
         Vite::prefetch(concurrency: 3);
         Inertia::setRootView('app');
 

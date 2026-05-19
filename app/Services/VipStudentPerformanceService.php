@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserBono;
 use App\Support\BusinessDateTime;
+use App\Support\LessonBonoCreditUnits;
 
 class VipStudentPerformanceService
 {
@@ -515,7 +516,7 @@ class VipStudentPerformanceService
                 'lesson:id,title,starts_at,ends_at,level,location,modality,internal_notes',
                 'lesson.enrollments' => function ($q) {
                     $q->with('user:id,nombre,apellido')
-                        ->select('id', 'lesson_id', 'user_id', 'status');
+                        ->select('id', 'lesson_id', 'user_id', 'status', 'quantity', 'party_size');
                 },
             ])
             ->where('user_id', $user->id)
@@ -551,7 +552,8 @@ class VipStudentPerformanceService
             $participants = collect($lesson->enrollments ?? [])
                 ->whereIn('status', [LessonUser::STATUS_CONFIRMED, LessonUser::STATUS_ENROLLED, LessonUser::STATUS_ATTENDED])
                 ->values();
-            $totalParticipants = (int) $participants->count();
+            $totalParty = (int) $participants->sum(fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1));
+            $totalParticipants = max(1, $totalParty);
             $ucCost = self::calculateUcCost($lesson->modality, $totalParticipants);
             $crew = $participants->map(function ($e) {
                 $name = trim(($e->user->nombre ?? '').' '.($e->user->apellido ?? ''));
@@ -647,7 +649,7 @@ class VipStudentPerformanceService
                 'lesson:id,title,starts_at,ends_at,level,location,modality,internal_notes',
                 'lesson.enrollments' => function ($q) {
                     $q->with('user:id,nombre,apellido')
-                        ->select('id', 'lesson_id', 'user_id', 'status');
+                        ->select('id', 'lesson_id', 'user_id', 'status', 'quantity', 'party_size');
                 },
             ])
             ->where('user_id', $user->id)
@@ -673,7 +675,8 @@ class VipStudentPerformanceService
             $participants = collect($lesson?->enrollments ?? [])
                 ->whereIn('status', [LessonUser::STATUS_CONFIRMED, LessonUser::STATUS_ENROLLED, LessonUser::STATUS_ATTENDED])
                 ->values();
-            $totalParticipants = (int) $participants->count();
+            $totalParty = (int) $participants->sum(fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1));
+            $totalParticipants = max(1, $totalParty);
             $ucCost = self::calculateUcCost($lesson?->modality, $totalParticipants);
             $crew = $participants->map(function ($e) {
                 $name = trim(($e->user->nombre ?? '').' '.($e->user->apellido ?? ''));
@@ -745,9 +748,9 @@ class VipStudentPerformanceService
         })->values();
     }
 
-    private static function calculateUcCost(?string $lessonModality, int $participantsTotal): int
+    private static function calculateUcCost(?string $lessonModality, int $participantPartyTotal): int
     {
-        return $participantsTotal <= 1 ? 2 : 1;
+        return LessonBonoCreditUnits::unitsForCharge($lessonModality, max(1, $participantPartyTotal));
     }
 
     /**
@@ -759,7 +762,7 @@ class VipStudentPerformanceService
             ->with([
                 'lesson:id,modality',
                 'lesson.enrollments' => function ($q) {
-                    $q->select('id', 'lesson_id', 'status');
+                    $q->select('id', 'lesson_id', 'status', 'quantity', 'party_size');
                 },
             ])
             ->where('user_id', $user->id)
@@ -772,11 +775,11 @@ class VipStudentPerformanceService
             ->get();
 
         return (int) $rows->sum(function (LessonUser $row) {
-            $participants = collect($row->lesson?->enrollments ?? [])
+            $partyTotal = (int) collect($row->lesson?->enrollments ?? [])
                 ->whereIn('status', [LessonUser::STATUS_CONFIRMED, LessonUser::STATUS_ENROLLED, LessonUser::STATUS_ATTENDED])
-                ->count();
+                ->sum(fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1));
 
-            return self::calculateUcCost($row->lesson?->modality, (int) $participants);
+            return self::calculateUcCost($row->lesson?->modality, max(1, $partyTotal));
         });
     }
 

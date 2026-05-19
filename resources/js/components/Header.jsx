@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
 import {
     AcademicCapIcon,
@@ -137,8 +137,6 @@ export default function Header() {
     const cartCount = Number(props?.cart?.count || props?.cartCount || 0);
 
     const [mobileOpen, setMobileOpen] = useState(false);
-    const [menuVisible, setMenuVisible] = useState(true);
-    const lastScrollYRef = useRef(0);
 
     const active = (matcher) => (typeof matcher === "function" ? matcher(url || "") : false);
 
@@ -211,28 +209,11 @@ export default function Header() {
         return { publicLinks, studentLinks, vipLinks, adminDirect, adminShopModule, classesModule, rentalsModule, lockersModule, adminClientView };
     }, [user, isAdmin, isVip, unreviewedPaymentsTotal, unreviewedLockersTotal, vipRenewalAlertCount]);
 
-    useEffect(() => {
-        const onScroll = () => {
-            const currentY = window.scrollY || 0;
-            const lastY = lastScrollYRef.current;
-            if (currentY <= 80) {
-                setMenuVisible(true);
-                lastScrollYRef.current = currentY;
-                return;
-            }
-            if (currentY < lastY) setMenuVisible(true);
-            else if (currentY > lastY && currentY > 140) setMenuVisible(false);
-            lastScrollYRef.current = currentY;
-        };
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
-    }, []);
-
     return (
-        <header className="relative z-[500] mb-[50px]">
+        <header className="relative z-[500]">
             {isHome ? <OpcionesIntro /> : null}
 
-            <div className={cx("sticky top-0 z-[500] border-b border-cyan-950 bg-[#0f5f74] transition-transform duration-300", menuVisible ? "translate-y-0" : "-translate-y-full")}>
+            <div className="border-b border-cyan-950 bg-[#0f5f74]">
                 <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
                     <Link href={route("Pag_principal")} className="inline-flex items-center gap-2">
                         <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500 text-sm font-extrabold text-white">S4</span>
@@ -374,15 +355,17 @@ export default function Header() {
                 </div>
             </div>
 
-            <div className="border-b border-emerald-500/20 px-4 py-6 sm:px-6" style={{ background: "linear-gradient(95deg, #071a2f 0%, #0b2a43 45%, #114d4b 100%)" }}>
-                <div className="mx-auto max-w-7xl">
-                    <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-lime-400">S4 - SAN SEBASTIAN SURF SCHOOL</p>
-                    <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">
-                        Domina el Cantabrico con <span className="text-emerald-400">S4</span>
-                    </h1>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
+            {isHome ? (
+                <div className="border-b border-emerald-500/20 px-4 py-6 sm:px-6" style={{ background: "linear-gradient(95deg, #071a2f 0%, #0b2a43 45%, #114d4b 100%)" }}>
+                    <div className="mx-auto max-w-7xl">
+                        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-lime-400">S4 - SAN SEBASTIAN SURF SCHOOL</p>
+                        <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">
+                            Domina el Cantabrico con <span className="text-emerald-400">S4</span>
+                        </h1>
+                        <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
+                    </div>
                 </div>
-            </div>
+            ) : null}
 
             {mobileOpen ? (
                 <div className="fixed inset-0 z-[1200] bg-gray-950/70" onClick={() => setMobileOpen(false)}>

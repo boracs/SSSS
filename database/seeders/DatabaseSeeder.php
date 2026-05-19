@@ -1,5 +1,7 @@
 <?php
 
+namespace Database\Seeders;
+
 use App\Models\User;
 use App\Models\Producto;
 use App\Models\Pedido;

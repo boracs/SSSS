@@ -6,7 +6,7 @@ import {
     StarIcon,
 } from "@heroicons/react/24/solid";
 import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 
 function UserRowActionsMenu({ user, onOpenVipConfirm }) {
@@ -16,7 +16,7 @@ function UserRowActionsMenu({ user, onOpenVipConfirm }) {
         <Menu as="div" className="relative inline-block text-left">
             <MenuButton
                 type="button"
-                className="rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300"
+                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-600"
                 aria-label={`Acciones para ${user.email}`}
             >
                 <EllipsisHorizontalIcon className="h-5 w-5" aria-hidden />
@@ -86,7 +86,7 @@ function VipStatusIcon({ isVip }) {
     return (
         <span className="inline-flex justify-center" title={label}>
             <StarIcon
-                className={`h-5 w-5 ${isVip ? "text-yellow-500" : "text-gray-300"}`}
+                className={`h-5 w-5 ${isVip ? "text-yellow-400" : "text-gray-600"}`}
                 aria-hidden
             />
             <span className="sr-only">{label}</span>
@@ -130,7 +130,22 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
         `${vipConfirmUser.nombre ?? ""} ${vipConfirmUser.apellido ?? ""}`.trim() || "";
     const vipConfirmIsActivate = vipConfirmUser && !vipConfirmUser.is_vip;
 
-    const toast = flash?.success || flash?.error;
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        const message = flash?.success || flash?.error;
+        if (!message) {
+            setToast(null);
+            return;
+        }
+        setToast({
+            message,
+            type: flash?.success ? "success" : "error",
+        });
+        const timer = window.setTimeout(() => setToast(null), 4000);
+        return () => window.clearTimeout(timer);
+    }, [flash?.success, flash?.error]);
+
     const rows = useMemo(() => users, [users]);
 
     return (
@@ -152,44 +167,46 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
 
                 {toast ? (
                     <div
-                        className={`fixed right-4 top-24 z-50 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg ${
-                            flash?.success ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                        role="status"
+                        aria-live="polite"
+                        className={`fixed right-4 top-24 z-50 max-w-sm rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg transition-opacity duration-300 ${
+                            toast.type === "success" ? "bg-emerald-600" : "bg-rose-600"
                         }`}
                     >
-                        {toast}
+                        {toast.message}
                     </div>
                 ) : null}
 
-                <div className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_1fr_minmax(8rem,auto)_auto]">
+                <div className="grid gap-3 rounded-xl border border-gray-700 bg-gray-900 p-4 shadow-sm sm:grid-cols-[1fr_1fr_minmax(8rem,auto)_auto]">
                     <input
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 sm:col-span-2"
+                        className="rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:col-span-2"
                         placeholder="Buscar por nombre o email"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
                     <select
-                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        className="rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                         value={vip}
                         onChange={(e) => setVip(e.target.value)}
                     >
-                        <option value="all">Todos</option>
-                        <option value="vip">Solo VIP</option>
-                        <option value="non_vip">Solo No VIP</option>
+                        <option value="all" className="bg-gray-900 text-white">Todos</option>
+                        <option value="vip" className="bg-gray-900 text-white">Solo VIP</option>
+                        <option value="non_vip" className="bg-gray-900 text-white">Solo No VIP</option>
                     </select>
                     <button
                         type="button"
                         onClick={applyFilters}
-                        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
                     >
                         Filtrar
                     </button>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full table-fixed text-sm">
                             <thead>
-                                <tr className="border-b border-gray-100 bg-gray-50/80 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                <tr className="border-b border-gray-700 bg-gray-800/80 text-left text-xs font-semibold uppercase tracking-wide text-white">
                                     <th className="w-[32%] px-4 py-3 pl-5">Usuario</th>
                                     <th className="w-[36%] px-4 py-3">Email</th>
                                     <th className="w-[14%] px-4 py-3">Rol</th>
@@ -199,21 +216,21 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 text-gray-900">
+                            <tbody className="divide-y divide-gray-800 text-white">
                                 {rows.map((u) => {
                                     const name = `${u.nombre ?? ""} ${u.apellido ?? ""}`.trim() || "—";
                                     return (
-                                        <tr key={u.id} className="transition-colors hover:bg-gray-50/60">
+                                        <tr key={u.id} className="transition-colors hover:bg-gray-800/50">
                                             <td className="px-4 py-3 pl-5 align-middle">
-                                                <span className="font-medium text-gray-900">{name}</span>
+                                                <span className="font-medium text-white">{name}</span>
                                             </td>
                                             <td className="px-4 py-3 align-middle">
-                                                <span className="block truncate text-sm text-gray-500" title={u.email}>
+                                                <span className="block truncate text-sm text-gray-200" title={u.email}>
                                                     {u.email}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 align-middle">
-                                                <span className="text-xs font-medium uppercase tracking-wide text-gray-600">
+                                                <span className="text-xs font-medium uppercase tracking-wide text-gray-200">
                                                     {u.role ?? "user"}
                                                 </span>
                                             </td>
@@ -228,7 +245,7 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
                                 })}
                                 {rows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-500">
+                                        <td colSpan={5} className="px-5 py-10 text-center text-sm text-gray-300">
                                             No hay usuarios para los filtros seleccionados.
                                         </td>
                                     </tr>

@@ -71,4 +71,20 @@ class LessonUser extends Model
     {
         return $this->morphMany(AttendanceNote::class, 'reservation');
     }
+
+    public function isOwnedBy(User $user): bool
+    {
+        return (int) $this->user_id === (int) $user->id;
+    }
+
+    /**
+     * Estado operativo equivalente a "pending_payment": solicitud pendiente con pago aún no confirmado.
+     */
+    public function awaitingProofUpload(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_PENDING,
+            self::STATUS_PENDING_EXTRA_MONITOR,
+        ], true) && $this->payment_status === self::PAYMENT_PENDING;
+    }
 }
