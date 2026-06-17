@@ -96,10 +96,14 @@ class BookingService
             ->orderBy('start_date')
             ->get()
             ->map(fn (Booking $b) => [
-                'id' => $b->id,
-                'start' => $b->start_date ? BusinessDateTime::toApi($b->start_date) : '',
-                'end' => $b->end_date ? BusinessDateTime::toApi($b->end_date) : '',
+                'id'     => $b->id,
+                'start'  => $b->start_date ? BusinessDateTime::toApi($b->start_date) : '',
+                'end'    => $b->end_date   ? BusinessDateTime::toApi($b->end_date)   : '',
+                // status raw para uso admin; display_status para color en calendario cliente.
                 'status' => $b->status,
+                'display_status' => $b->payment_status === Booking::PAYMENT_CONFIRMED
+                    ? 'ocupado'
+                    : 'pendiente',
             ])
             ->values()
             ->all();

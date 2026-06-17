@@ -40,7 +40,7 @@ export default function Footer() {
                             San Sebastian Surf School
                         </p>
                         <p className="mt-2 text-sm font-medium leading-relaxed text-white/80">
-                            La Concha · Zurriola · Cantábrico. Seguridad, técnica y experiencia premium.
+                            Zurriola · Cantábrico. Seguridad, técnica y experiencia premium.
                         </p>
                     </div>
                     <div>

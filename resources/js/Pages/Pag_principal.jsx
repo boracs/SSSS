@@ -47,7 +47,7 @@ const Pag_principal = ({ productos }) => (
             <title>San Sebastian Surf School | S4</title>
             <meta
                 name="description"
-                content="Domina el Cantábrico con San Sebastian Surf School (S4). Clases de surf seguras y exclusivas en La Concha y Zurriola."
+                content="Domina el Cantábrico con San Sebastian Surf School (S4). Clases de surf seguras y exclusivas en Zurriola."
             />
         </Head>
 
@@ -82,7 +82,7 @@ const Pag_principal = ({ productos }) => (
                                 técnica. Vive la experiencia definitiva en las
                                 olas de{" "}
                                 <strong className="font-semibold text-slate-900">
-                                    La Concha
+                                    Zurriola
                                 </strong>{" "}
                                 y{" "}
                                 <strong className="font-semibold text-slate-900">
@@ -180,7 +180,7 @@ const Pag_principal = ({ productos }) => (
                                                 Spot Local
                                             </p>
                                             <p className="text-surf-sand/80">
-                                                La Concha · Zurriola · Ondarreta
+                                                Zurriola · Ondarreta
                                             </p>
                                         </div>
                                         <div className="text-right">

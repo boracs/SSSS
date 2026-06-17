@@ -129,9 +129,17 @@ export default function Show({ surfboard, paymentIban = "[IBAN]", paymentBizumNu
                     toast.success("Reserva creada correctamente. Te avisaremos tras validación.");
                     resolve();
                 },
-                onError: () => {
-                    toast.error("No se pudo crear la reserva o subir el comprobante.");
+                onError: (errors) => {
+                    const messages = Object.values(errors || {}).flat();
+                    if (messages.length > 0) {
+                        messages.forEach((msg) => toast.error(msg));
+                    } else {
+                        toast.error("No se pudo crear la reserva. Inténtalo de nuevo.");
+                    }
                     reject(new Error("rental"));
+                },
+                onFinish: () => {
+                    // onFinish es llamado siempre; no cerramos aquí
                 },
             });
         });

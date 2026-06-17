@@ -16,7 +16,7 @@ export default function BrandBanner() {
                     <span className="text-brand-accent">S4</span>
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/80 sm:text-base">
-                    Escuela de surf premium en San Sebastián. Seguridad, técnica y experiencia local en La Concha y Zurriola.
+                    Escuela de surf premium en San Sebastián. Seguridad, técnica y experiencia local en Zurriola.
                 </p>
             </div>
         </div>

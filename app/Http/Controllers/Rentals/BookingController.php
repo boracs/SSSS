@@ -42,14 +42,31 @@ class BookingController extends Controller
         }
 
         $schema = $surfboard->priceSchema;
+        if ($schema === null) {
+            $msg = 'Esta tabla no tiene un esquema de precios configurado. Contacta con el administrador.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->withErrors(['surfboard_id' => $msg]);
+        }
         $totalPrice = $this->bookingService->calculateBestPrice($schema, $start, $end);
         $depositAmount = $this->bookingService->calculateDeposit($totalPrice, 30.0);
         $expiresAt = Carbon::now()->addDays(7);
-        $proofPath = $request->file('proof')->storeAs(
+
+        $proofFile = $request->file('proof');
+        $proofPath = $proofFile->storeAs(
             'payment-proofs/rentals',
-            Str::uuid()->toString().'.'.$request->file('proof')->getClientOriginalExtension(),
+            Str::uuid()->toString().'.'.$proofFile->getClientOriginalExtension(),
             'local'
         );
+
+        if ($proofPath === false || $proofPath === null) {
+            $msg = 'No se pudo guardar el justificante de pago. Inténtalo de nuevo o contacta con soporte.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->withErrors(['proof' => $msg]);
+        }
 
         $booking = Booking::create([
             'surfboard_id' => $surfboard->id,

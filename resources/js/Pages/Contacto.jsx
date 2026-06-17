@@ -1,28 +1,13 @@
 import React from 'react';
 import FomrularioContacto from '../components/FormularioContacto';
 import Layout1 from '../layouts/Layout1';
-import BotonAtras from '../components/Boton_go_back';
 
-
-const Contacto = ({ children }) => {
+const Contacto = () => {
   return (
     <Layout1>
-    <div className="min-h-screen bg-gray-100">
-
-
-  
-      <main className="container mx-auto p-6">
-        {
-        < div>
-                <FomrularioContacto></FomrularioContacto>
-            
-        </div>
-        }
-      </main>
-        
-
-
-    </div>
+      <div className="flex min-h-screen items-center justify-center bg-gray-100 px-6 py-8">
+        <FomrularioContacto />
+      </div>
     </Layout1>
   );
 };

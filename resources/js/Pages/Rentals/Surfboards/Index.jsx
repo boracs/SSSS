@@ -8,18 +8,15 @@ function imageUrlFor(surfboard) {
     if (!surfboard.image_url) return null;
     try {
         const parsed = JSON.parse(surfboard.image_url);
-        if (Array.isArray(parsed) && parsed[0]) return `/storage/${String(parsed[0]).replace(/^\/+/, "")}`;
+        if (Array.isArray(parsed) && parsed[0])
+            return `/storage/${String(parsed[0]).replace(/^\/+/, "")}`;
     } catch {
         // ignore
     }
     const p = surfboard.image_url;
-    return String(p).startsWith("http") ? p : `/storage/${String(p).replace(/^\/+/, "")}`;
-}
-
-function formatMoney(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return "—";
-    return `${n.toFixed(2).replace(".", ",")} €`;
+    return String(p).startsWith("http")
+        ? p
+        : `/storage/${String(p).replace(/^\/+/, "")}`;
 }
 
 function imageListFor(surfboard) {
@@ -30,28 +27,132 @@ function imageListFor(surfboard) {
         try {
             const parsed = JSON.parse(surfboard.image_url);
             if (Array.isArray(parsed)) {
-                parsed.forEach((p) => list.push(String(p).startsWith("http") ? p : `/storage/${String(p).replace(/^\/+/, "")}`));
+                parsed.forEach((p) =>
+                    list.push(
+                        String(p).startsWith("http")
+                            ? p
+                            : `/storage/${String(p).replace(/^\/+/, "")}`,
+                    ),
+                );
             } else {
-                list.push(String(surfboard.image_url).startsWith("http") ? surfboard.image_url : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`);
+                list.push(
+                    String(surfboard.image_url).startsWith("http")
+                        ? surfboard.image_url
+                        : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`,
+                );
             }
         } catch {
-            list.push(String(surfboard.image_url).startsWith("http") ? surfboard.image_url : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`);
+            list.push(
+                String(surfboard.image_url).startsWith("http")
+                    ? surfboard.image_url
+                    : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`,
+            );
         }
     }
     return [...new Set(list.filter(Boolean))];
 }
 
+/** Bloque de detalle reutilizado tanto en el acordeón móvil como en el panel lateral de escritorio. */
+function BoardDetail({ board, onImageClick }) {
+    const images = useMemo(() => imageListFor(board), [board]);
+    const name = board.name || `Tabla #${board.id}`;
+
+    return (
+        <>
+            {/* Imágenes mini en fila — clic abre modal */}
+            <div className="flex flex-wrap gap-2">
+                {(images.length ? images : [imageUrlFor(board)]).map(
+                    (img, i) => (
+                        <button
+                            key={img || i}
+                            type="button"
+                            onClick={() => onImageClick(img)}
+                            aria-label="Ampliar imagen"
+                            className="group h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:border-sky-300"
+                        >
+                            <SafeImage
+                                src={img}
+                                alt={board.image_alt || name}
+                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                placeholderClassName="rounded-none"
+                            />
+                        </button>
+                    ),
+                )}
+            </div>
+
+            <h2 className="mt-5 text-2xl font-extrabold tracking-tight text-slate-900">
+                {name}
+            </h2>
+
+            {/* Especificaciones técnicas */}
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Especificaciones técnicas
+                </p>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                    {[
+                        { label: "Altura",  value: board.altura },
+                        { label: "Anchura", value: board.ancho },
+                        { label: "Grosor",  value: board.grosor },
+                        {
+                            label: "Volumen",
+                            value: board.volumen ? `${board.volumen} L` : null,
+                        },
+                    ].map(({ label, value }) => (
+                        <div key={label} className="rounded-lg bg-slate-50 p-3">
+                            <dt className="text-xs text-slate-500">{label}</dt>
+                            <dd className="mt-1 font-semibold text-slate-900">
+                                {value || "—"}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+            </div>
+
+            {/* Descripción */}
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">
+                {board.description ||
+                    "Tabla premium optimizada para rendimiento, estabilidad y control en distintas condiciones de mar."}
+            </p>
+
+            {/* Botón único de reserva */}
+            <Link
+                href={route("rentals.surfboards.show", board.id)}
+                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-sky-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-sky-700"
+            >
+                Reservar
+            </Link>
+        </>
+    );
+}
+
 export default function Index({ surfboards, category }) {
-    const allBoards = surfboards || [];
+    const allBoards = (surfboards || []).filter((s) => {
+        const active = s.is_active ?? s.isActive;
+        return active === true || active === 1;
+    });
+
     const [activeCategory, setActiveCategory] = useState(category || "all");
-    const [selectedId, setSelectedId] = useState(null);
-    const [activeImage, setActiveImage] = useState(null);
+    const [selectedId, setSelectedId]         = useState(null);
+    const [modalImage, setModalImage]         = useState(null);
+
+    /* Bloquea scroll del body cuando el modal está abierto */
+    useEffect(() => {
+        if (!modalImage) return;
+        const onKey = (e) => { if (e.key === "Escape") setModalImage(null); };
+        document.addEventListener("keydown", onKey);
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            document.body.style.overflow = "";
+        };
+    }, [modalImage]);
 
     const counts = useMemo(() => {
-        const all = allBoards;
-        const soft = all.filter((s) => s.category === "soft").length;
-        const hard = all.filter((s) => s.category === "hard").length;
-        return { all: all.length, soft, hard };
+        const soft = allBoards.filter((s) => s.category === "soft").length;
+        const hard = allBoards.filter((s) => s.category === "hard").length;
+        return { all: allBoards.length, soft, hard };
     }, [allBoards]);
 
     const filteredBoards = useMemo(() => {
@@ -59,11 +160,9 @@ export default function Index({ surfboards, category }) {
         return allBoards.filter((s) => s.category === activeCategory);
     }, [allBoards, activeCategory]);
 
+    /* Auto-selecciona el primero al cambiar filtro */
     useEffect(() => {
-        if (!filteredBoards.length) {
-            setSelectedId(null);
-            return;
-        }
+        if (!filteredBoards.length) { setSelectedId(null); return; }
         if (!selectedId || !filteredBoards.some((s) => s.id === selectedId)) {
             setSelectedId(filteredBoards[0].id);
         }
@@ -71,30 +170,39 @@ export default function Index({ surfboards, category }) {
 
     const selectedBoard = useMemo(
         () => filteredBoards.find((s) => s.id === selectedId) || null,
-        [filteredBoards, selectedId]
+        [filteredBoards, selectedId],
     );
-    const selectedImages = useMemo(() => imageListFor(selectedBoard), [selectedBoard]);
 
-    useEffect(() => {
-        setActiveImage(selectedImages[0] || null);
-    }, [selectedBoard, selectedImages]);
+    /* Toggle: clic en la tarjeta ya seleccionada la deselecciona (cierra el acordeón) */
+    const handleCardClick = (id) =>
+        setSelectedId((prev) => (prev === id ? null : id));
 
     return (
         <>
             <Head title="Tablas de alquiler" />
-            <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6" style={{ fontFamily: "'Inter', 'Geist', sans-serif" }}>
+            <div
+                className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6"
+                style={{ fontFamily: "'Inter', 'Geist', sans-serif" }}
+            >
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+                    {/* ── Catálogo ── */}
                     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        {/* Cabecera con título + filtros */}
                         <div className="border-b border-slate-100 p-5">
                             <h1 className="text-3xl font-extrabold tracking-tight text-slate-800">
-                            Tablas de alquiler
+                                Tablas de alquiler
                             </h1>
                             <p className="mt-1 text-sm text-slate-600">
-                            Consulta disponibilidad y reserva en segundos.
+                                Consulta disponibilidad y reserva en segundos.
                             </p>
-                            <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Filtros de categoría">
+                            <div
+                                className="mt-4 flex flex-wrap gap-2"
+                                role="tablist"
+                                aria-label="Filtros de categoría"
+                            >
                                 {[
-                                    { id: "all", label: `Todas (${counts.all})` },
+                                    { id: "all",  label: `Todas (${counts.all})` },
                                     { id: "soft", label: `Softboards (${counts.soft})` },
                                     { id: "hard", label: `Hardboards (${counts.hard})` },
                                 ].map((f) => (
@@ -116,48 +224,67 @@ export default function Index({ surfboards, category }) {
                             </div>
                         </div>
 
-                        <div className="h-[70vh] overflow-y-auto p-3">
+                        {/* Lista de tablas */}
+                        <div className="p-3">
                             {filteredBoards.length === 0 ? (
                                 <EmptyState
                                     title="No hay tablas en esta categoría"
                                     description="Prueba con otro filtro para ver disponibilidad."
                                 />
                             ) : (
-                                <div className="space-y-2">
+                                <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
                                     {filteredBoards.map((s) => {
-                                        const name = s.name || `Tabla #${s.id}`;
-                                        const imgUrl = imageUrlFor(s);
+                                        const name     = s.name || `Tabla #${s.id}`;
+                                        const imgUrl   = imageUrlFor(s);
                                         const selected = selectedId === s.id;
                                         return (
-                                            <button
-                                                key={s.id}
-                                                type="button"
-                                                onClick={() => setSelectedId(s.id)}
-                                                className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${
-                                                    selected
-                                                        ? "border-sky-400 bg-sky-50 shadow-sm"
-                                                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                                                }`}
-                                            >
-                                                <div className="h-20 w-20 overflow-hidden rounded-lg bg-slate-100">
-                                                    <SafeImage
-                                                        src={imgUrl}
-                                                        alt={s.image_alt || name}
-                                                        className="h-full w-full object-cover"
-                                                        placeholderClassName="rounded-lg"
-                                                    />
-                                                </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="truncate text-base font-semibold text-slate-900">{name}</p>
-                                                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                                                        {s.category === "soft" ? "Softboard" : "Hardboard"}
-                                                    </p>
-                                                    <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                                                        Disponible
+                                            /* Cada tarjeta + su acordeón móvil envueltos en un fragment */
+                                            <React.Fragment key={s.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCardClick(s.id)}
+                                                    aria-expanded={selected}
+                                                    className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                                                        selected
+                                                            ? "border-sky-400 bg-sky-50 shadow-sm"
+                                                            : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                                                    }`}
+                                                >
+                                                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                                                        <SafeImage
+                                                            src={imgUrl}
+                                                            alt={s.image_alt || name}
+                                                            className="h-full w-full object-cover"
+                                                            placeholderClassName="rounded-lg"
+                                                        />
                                                     </div>
-                                                </div>
-                                            </button>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="truncate text-base font-semibold text-slate-900">
+                                                            {name}
+                                                        </p>
+                                                        <p className="text-xs uppercase tracking-wide text-slate-500">
+                                                            {s.category === "soft" ? "Softboard" : "Hardboard"}
+                                                        </p>
+                                                    </div>
+                                                    {/* Chevron indicador — solo visible en móvil */}
+                                                    <svg
+                                                        className={`md:hidden h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
+                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+                                                    >
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </button>
+
+                                                {/* ── Acordeón móvil: solo < md ── */}
+                                                {selected && (
+                                                    <div className="md:hidden col-span-1 overflow-hidden rounded-xl border border-sky-100 bg-white p-4 shadow-sm transition-all duration-300 ease-in-out">
+                                                        <BoardDetail
+                                                            board={s}
+                                                            onImageClick={setModalImage}
+                                                        />
+                                                    </div>
+                                                )}
+                                            </React.Fragment>
                                         );
                                     })}
                                 </div>
@@ -165,108 +292,25 @@ export default function Index({ surfboards, category }) {
                         </div>
                     </section>
 
-                    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-                        <div className="h-[80vh] overflow-y-auto p-5">
+                    {/* ── Panel lateral — solo >= md ── */}
+                    <section className="hidden md:block rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="p-5">
                             {!selectedBoard ? (
-                                <div className="grid h-full place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                                <div className="grid place-items-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                                     <div>
-                                        <p className="text-lg font-semibold text-slate-800">Selecciona una tabla para ver los detalles</p>
-                                        <p className="mt-1 text-sm text-slate-600">Aquí verás imágenes, especificaciones y opciones de reserva.</p>
+                                        <p className="text-lg font-semibold text-slate-800">
+                                            Selecciona una tabla para ver los detalles
+                                        </p>
+                                        <p className="mt-1 text-sm text-slate-600">
+                                            Aquí verás imágenes, especificaciones y opciones de reserva.
+                                        </p>
                                     </div>
                                 </div>
                             ) : (
-                                <>
-                                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                                        <div className="aspect-[16/10] w-full overflow-hidden">
-                                            <SafeImage
-                                                src={activeImage || imageUrlFor(selectedBoard)}
-                                                alt={selectedBoard.image_alt || selectedBoard.name || "Tabla"}
-                                                className="h-full w-full object-cover"
-                                                placeholderClassName="rounded-none"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {selectedImages.length > 1 ? (
-                                        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-                                            {selectedImages.map((img) => (
-                                                <button
-                                                    key={img}
-                                                    type="button"
-                                                    onClick={() => setActiveImage(img)}
-                                                    className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border ${
-                                                        activeImage === img ? "border-sky-500" : "border-slate-200"
-                                                    }`}
-                                                >
-                                                    <SafeImage src={img} alt="Miniatura tabla" className="h-full w-full object-cover" />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : null}
-
-                                    <div className="mt-6">
-                                        <h2 className="text-4xl font-extrabold tracking-tight text-slate-900">
-                                            {selectedBoard.name || `Tabla #${selectedBoard.id}`}
-                                        </h2>
-                                        <p className="mt-2 text-sm text-slate-600">
-                                            {selectedBoard.description || "Tabla premium optimizada para rendimiento, estabilidad y control en distintas condiciones de mar."}
-                                        </p>
-                                    </div>
-
-                                    <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
-                                        <p className="text-sm font-bold uppercase tracking-wide text-slate-500">Especificaciones técnicas</p>
-                                        <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                                            <div className="rounded-lg bg-slate-50 p-3">
-                                                <dt className="text-xs text-slate-500">Volumen</dt>
-                                                <dd className="mt-1 font-semibold text-slate-900">{selectedBoard.volume || "—"} {selectedBoard.volume ? "L" : ""}</dd>
-                                            </div>
-                                            <div className="rounded-lg bg-slate-50 p-3">
-                                                <dt className="text-xs text-slate-500">Medidas</dt>
-                                                <dd className="mt-1 font-semibold text-slate-900">{selectedBoard.dimensions || selectedBoard.size || "—"}</dd>
-                                            </div>
-                                            <div className="rounded-lg bg-slate-50 p-3">
-                                                <dt className="text-xs text-slate-500">Material</dt>
-                                                <dd className="mt-1 font-semibold text-slate-900">{selectedBoard.material || "Epoxy / Foam"}</dd>
-                                            </div>
-                                        </dl>
-                                    </div>
-
-                                    <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Precio 24h</p>
-                                            <p className="mt-1 text-2xl font-extrabold text-slate-900">{formatMoney(selectedBoard.price_schema?.price_24h)}</p>
-                                            <Link
-                                                href={route("rentals.surfboards.show", selectedBoard.id)}
-                                                className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700"
-                                            >
-                                                Añadir a la Reserva
-                                            </Link>
-                                        </div>
-                                        <div className="rounded-xl border border-slate-200 bg-white p-4">
-                                            <p className="text-xs uppercase tracking-wide text-slate-500">Precio semana</p>
-                                            <p className="mt-1 text-2xl font-extrabold text-slate-900">{formatMoney(selectedBoard.price_schema?.price_week)}</p>
-                                            <Link
-                                                href={route("rentals.surfboards.show", selectedBoard.id)}
-                                                className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                                            >
-                                                Ver calendario y reservar
-                                            </Link>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
-                                        <p className="text-sm font-semibold text-slate-700">Calendario (vista rápida)</p>
-                                        <p className="mt-1 text-sm text-slate-600">
-                                            Selecciona fechas y franja horaria en la vista de reserva de esta tabla.
-                                        </p>
-                                        <Link
-                                            href={route("rentals.surfboards.show", selectedBoard.id)}
-                                            className="mt-3 inline-flex items-center text-sm font-semibold text-sky-700 hover:text-sky-800"
-                                        >
-                                            Abrir calendario interactivo →
-                                        </Link>
-                                    </div>
-                                </>
+                                <BoardDetail
+                                    board={selectedBoard}
+                                    onImageClick={setModalImage}
+                                />
                             )}
                         </div>
                     </section>
@@ -289,6 +333,39 @@ export default function Index({ surfboards, category }) {
                     </div>
                 )}
             </div>
+
+            {/* Modal de imagen a pantalla completa */}
+            {modalImage ? (
+                <div
+                    className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm sm:p-8"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Imagen ampliada"
+                    onClick={() => setModalImage(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setModalImage(null)}
+                        aria-label="Cerrar"
+                        className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/30 transition hover:bg-white/20 sm:right-6 sm:top-6"
+                    >
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                    <div
+                        className="flex max-h-full w-full max-w-4xl items-center justify-center"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <SafeImage
+                            src={modalImage}
+                            alt="Imagen de la tabla"
+                            className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain"
+                            placeholderClassName="h-[60vh] w-full rounded-2xl"
+                        />
+                    </div>
+                </div>
+            ) : null}
         </>
     );
 }

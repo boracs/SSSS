@@ -148,13 +148,19 @@ export default function Header() {
                   { label: user ? "Reservar Clases" : "Clases", href: user ? route("academy.lessons.index") : route("servicios.surf"), match: (u) => u.startsWith("/academia") || u.startsWith("/servicios/surf") },
                   { label: "Alquilar Tabla", href: route("rentals.surfboards.index"), match: (u) => u.startsWith("/tablas-alquiler") },
                   { label: "Contacto", href: route("contacto"), match: (u) => u.startsWith("/contacto") },
-                  ...(!user ? [{ label: "Tienda", href: route("tienda"), match: (u) => u.startsWith("/tienda") }] : []),
+              ]
+            : [];
+
+        // Submenú Tienda (visible para invitados y alumnos; reemplaza el enlace directo anterior)
+        const tiendaLinks = !isAdmin
+            ? [
+                  { label: "Artículos", href: route("tienda"), icon: ShoppingBagIcon },
+                  { label: "Tablas de Segunda Mano", href: route("second-hand.index"), icon: BuildingStorefrontIcon },
               ]
             : [];
 
         const studentLinks = user && !isAdmin
             ? [
-                  { label: "Tienda", href: route("tienda"), match: (u) => u.startsWith("/tienda") },
                   { label: "Mis Reservas", href: route("my-reservations.index"), match: (u) => u.startsWith("/mis-reservas") },
                   ...(hasActiveLocker
                       ? [{ label: "Taquilla", href: route("taquillas.index.client"), match: (u) => u.startsWith("/taquilla/planes") }]
@@ -175,6 +181,7 @@ export default function Header() {
             ? [
                   { label: "Gestor de Productos", href: route("mostrar.productos"), icon: ShoppingBagIcon },
                   { label: "Gestor de Pedidos", href: route("gestor.pedidos"), icon: ShoppingBagIcon },
+                  { label: "Segunda Mano (Admin)", href: route("admin.second-hand.index"), icon: BuildingStorefrontIcon },
               ]
             : [];
 
@@ -195,6 +202,7 @@ export default function Header() {
                   { label: "Clases", href: route("academy.lessons.index"), icon: AcademicCapIcon },
                   { label: "Alquiler de Tablas", href: route("rentals.surfboards.index"), icon: BuildingStorefrontIcon },
                   { label: "Tienda", href: route("tienda"), icon: ShoppingBagIcon },
+                  { label: "Segunda Mano", href: route("second-hand.index"), icon: BuildingStorefrontIcon },
               ]
             : [];
 
@@ -206,7 +214,7 @@ export default function Header() {
               ]
             : [];
 
-        return { publicLinks, studentLinks, vipLinks, adminDirect, adminShopModule, classesModule, rentalsModule, lockersModule, adminClientView };
+        return { publicLinks, tiendaLinks, studentLinks, vipLinks, adminDirect, adminShopModule, classesModule, rentalsModule, lockersModule, adminClientView };
     }, [user, isAdmin, isVip, unreviewedPaymentsTotal, unreviewedLockersTotal, vipRenewalAlertCount]);
 
     return (
@@ -227,6 +235,22 @@ export default function Header() {
                         {links.studentLinks.map((l) => (
                             <NavItem key={l.label} href={l.href} active={active(l.match)}>{l.label}</NavItem>
                         ))}
+
+                        {/* Dropdown Tienda para invitados y alumnos */}
+                        {!isAdmin && links.tiendaLinks.length > 0 ? (
+                            <MenuDropdown label="Tienda">
+                                {links.tiendaLinks.map((l) => {
+                                    const Icon = l.icon;
+                                    return (
+                                        <Link key={l.label} href={l.href} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-gray-200 hover:bg-gray-700">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{l.label}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </MenuDropdown>
+                        ) : null}
+
                         {links.vipLinks.map((l) => (
                             <NavItem key={l.label} href={l.href} active={active(l.match)}>{l.label}</NavItem>
                         ))}
@@ -362,7 +386,7 @@ export default function Header() {
                         <h1 className="mt-2 text-3xl font-extrabold leading-tight text-white sm:text-5xl">
                             Domina el Cantabrico con <span className="text-emerald-400">S4</span>
                         </h1>
-                        <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en La Concha y Zurriola.</p>
+                        <p className="mt-2 max-w-2xl text-sm text-slate-200 sm:text-base">Escuela de surf premium en San Sebastian. Seguridad, tecnica y experiencia local en Zurriola.</p>
                     </div>
                 </div>
             ) : null}
@@ -385,6 +409,27 @@ export default function Header() {
                                     {l.label}
                                 </Link>
                             ))}
+
+                            {/* Submenú Tienda móvil — invitados y alumnos */}
+                            {!isAdmin && links.tiendaLinks.length > 0 ? (
+                                <details className="rounded-xl border border-gray-700">
+                                    <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-gray-200">
+                                        Tienda
+                                    </summary>
+                                    <div className="pb-2">
+                                        {links.tiendaLinks.map((l) => {
+                                            const Icon = l.icon;
+                                            return (
+                                                <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="mx-2 mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
+                                                    <Icon className="h-4 w-4" />
+                                                    <span>{l.label}</span>
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                </details>
+                            ) : null}
+
                             {links.vipLinks.map((l) => (
                                 <Link key={l.label} href={l.href} onClick={() => setMobileOpen(false)} className="block rounded-xl px-3 py-2 text-sm font-medium text-gray-200 hover:bg-gray-700">
                                     {l.label}

@@ -38,6 +38,7 @@
 │ Tienda          │ Producto, Carrito, Pedido    │ Productos, Tienda, Carrito, …    │
 │ Academia        │ Academy/*, Lesson*, Actions  │ Academy/, Admin/Academy/         │
 │ Alquileres      │ Rentals/*, BookingService    │ Rentals/Surfboards/, Admin/…     │
+│ Segunda Mano    │ SecondHandBoard, SecondHandStatus │ SecondHand/, Admin/SecondHand/ │
 │ Taquillas       │ Taquilla, PlanesTaquillas    │ PlanesTaquillas*, AsignarTaquilla│
 │ VIP / Bonos     │ BonoService, Client/Bono     │ Client/Bonos/, Admin/Bonos/      │
 │ Pagos admin     │ PaymentValidation            │ Admin/Payments/*                 │
@@ -97,6 +98,7 @@ maider_0/
 │   │   │   │       ├── BonoController.php
 │   │   │   │       ├── BookingController.php
 │   │   │   │       ├── PaymentValidationController.php
+│   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php
 │   │   │   │       ├── UserController.php
 │   │   │   │       ├── VipClassManagerController.php
@@ -141,6 +143,7 @@ maider_0/
 │   │   │       ├── ProfileController.php
 │   │   │       ├── ServicioController.php
 │   │   │       ├── TaquillaController.php         ──► lockForUpdate asignación
+│   │   │       ├── SecondHandBoardController.php  ──► Catálogo público segunda mano; NO expone purchase_price
 │   │   │       ├── TiendaController.php
 │   │   │       └── UserTaquillaController.php
 │   │   │
@@ -160,6 +163,8 @@ maider_0/
 │   │   │   │   ├── StoreBookingRequest.php
 │   │   │   │   ├── StoreSurfboardRequest.php
 │   │   │   │   └── UpdateSurfboardRequest.php
+│   │   │   ├── StoreSecondHandBoardRequest.php    ──► Valida + sanitiza; autorización role=admin
+│   │   │   └── UpdateSecondHandBoardRequest.php   ──► Same; reglas 'sometimes'
 │   │   │   ├── Auth/
 │   │   │   │   └── LoginRequest.php
 │   │   │   ├── Rentals/
@@ -171,6 +176,12 @@ maider_0/
 │   │   │
 │   │   └── Resources/
 │   │       └── PagoCuotaQueueResource.php
+│   │
+│   ├── Enums/
+│   │   └── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
+│   │
+│   ├── Jobs/
+│   │   └── SendContactMessageJob.php       ──► ShouldQueue; delega a ContactMessageService; 3 reintentos
 │   │
 │   ├── Listeners/
 │   │   ├── NotifyAdminLessonProofUploadedListener.php
@@ -198,6 +209,7 @@ maider_0/
 │   │   ├── PlanTaquilla.php
 │   │   ├── PriceSchema.php
 │   │   ├── Producto.php
+│   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; scopes: available/reserved/sold/publicCatalog; toPublicArray() sin datos financieros internos
 │   │   ├── StaffAssignment.php
 │   │   ├── Surfboard.php
 │   │   ├── User.php
@@ -372,7 +384,7 @@ resources/
         │
         ├── [DOMINIO: MARKETING / CMS]
         │   ├── Pag_principal.jsx
-        │   ├── Nosotros.jsx
+        │   ├── Nosotros.jsx            ──► Landing page premium club: Bento Grid instalaciones, tabla de ahorro socio, timeline Edy Mulder (dark/glassmorphic)
         │   ├── Contacto.jsx
         │   ├── Servicios.jsx
         │   ├── Servicios_ClasesDeSurf.jsx
@@ -388,6 +400,10 @@ resources/
         │   ├── Edit.jsx
         │   ├── ProductoCreado.jsx
         │   ├── ProductoModificado.jsx
+        │   │
+        │   └── SecondHand/
+        │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda; cards glassmorphic; specs Lucide icons
+        │       └── Show.jsx    ──► Detalle tabla; galería multi-imagen + modal zoom; CTA WhatsApp; specs técnicas
         │   ├── Carrito.jsx
         │   ├── Pedido.jsx
         │   ├── Pedidos.jsx
@@ -441,6 +457,8 @@ resources/
                 ├── Bonos/
                 │   └── Index.jsx
                 ├── Bookings/
+                ├── SecondHand/
+                │   └── Index.jsx           ──► CRUD admin; stats margen/ingresos; modal confirmación borrado
                 │   └── Index.jsx
                 ├── CheckManager.jsx
                 ├── Payments/
@@ -460,7 +478,8 @@ resources/
 ```
 
 **Páginas con `document.documentElement` modo claro forzado** (`app.jsx`):  
-`Pag_principal`, `Nosotros`, `Productos`, `Academy/Index`, `Servicios_ClasesDeSurf`, `Rentals/Surfboards/Index`, `Rentals/Surfboards/Show`.
+`Pag_principal`, `Productos`, `Academy/Index`, `Servicios_ClasesDeSurf`, `Rentals/Surfboards/Index`, `Rentals/Surfboards/Show`.  
+_(`Nosotros` ya NO fuerza modo claro — es dark/glassmorphic por diseño propio)_
 
 ---
 

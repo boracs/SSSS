@@ -111,6 +111,11 @@ class DatabaseSeeder extends Seeder
         $this->call(PriceSchemaSeeder::class);
 
         // ===============================
+        // 8️⃣ Tablas de segunda mano
+        // ===============================
+        $this->call(SecondHandBoardSeeder::class);
+
+        // ===============================
         // 6️⃣ Crear admin fijo
         // ===============================
         User::create([

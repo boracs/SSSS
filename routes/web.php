@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\PaymentValidationController;
+use App\Http\Controllers\Admin\SecondHandBoardController as AdminSecondHandBoardController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\VipClassManagerController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Rentals\BookingController as RentalsBookingController;
 use App\Http\Controllers\Rentals\SurfboardController as RentalsSurfboardController;
+use App\Http\Controllers\SecondHandBoardController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\User\MyReservationsController;
@@ -40,12 +42,17 @@ Route::get('/nosotros', function () {
 // TIENDA
 Route::get('/tienda', [TiendaController::class, 'index_mas_que_surf'])->name('tienda');
 Route::get('/tienda-oficial', [TiendaController::class, 'index_oficial'])->name('tienda.oficial');
+
+// SEGUNDA MANO — Catálogo público (accesible sin autenticación)
+Route::get('/segunda-mano', [SecondHandBoardController::class, 'index'])->name('second-hand.index');
+Route::get('/segunda-mano/{secondHandBoard}', [SecondHandBoardController::class, 'show'])->name('second-hand.show');
+
 // CONTACTO
 Route::get('/contacto', function () {
     return Inertia::render('Contacto');
 })->name('contacto');
 Route::post('/contacto', [ContactMessageController::class, 'store'])
-    ->middleware('throttle:contact-form')
+    ->middleware('throttle:3,1')
     ->name('contacto.store');
 // PRODUCTO INDIV
 Route::get('/producto-ver/{productoId}', [ProductoController::class, 'ver'])->name('producto.ver');
@@ -213,6 +220,14 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
     // Surfboards y reservas (prefijo /admin)
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('surfboards', AdminSurfboardController::class)->except(['show']);
+
+        // Segunda Mano — gestión admin completa
+        Route::resource('second-hand', AdminSecondHandBoardController::class)
+            ->except(['show'])
+            ->parameters(['second-hand' => 'secondHandBoard']);
+        // Cambio de estado rápido (inline desde el listado admin)
+        Route::patch('second-hand/{secondHandBoard}/status', [AdminSecondHandBoardController::class, 'updateStatus'])
+            ->name('second-hand.update-status');
         Route::get('bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
         Route::post('bookings', [AdminBookingController::class, 'store'])->name('bookings.store');
         Route::get('bookings/check-availability', [AdminBookingController::class, 'checkAvailability'])->name('bookings.check-availability');

@@ -14,7 +14,7 @@ const Titulo = () => {
           </h1>
           <p className="mt-2 text-xs sm:text-sm text-surf-sand/80 max-w-xl">
             Escuela de surf premium en San Sebastián. Seguridad, técnica y experiencia
-            local en La Concha y Zurriola.
+            local en Zurriola.
           </p>
         </div>
       </div>
