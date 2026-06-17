@@ -12,6 +12,9 @@ import {
     Ruler,
     Droplets,
     ChevronDown,
+    Search,
+    Filter,
+    X,
 } from "lucide-react";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -151,6 +154,12 @@ function BoardRow({ board, onDelete, onRequestStatusChange }) {
                         {board.brand && (
                             <p className="text-[10px] font-bold uppercase tracking-wider text-orange-400">{board.brand}</p>
                         )}
+                        {board.model && (
+                            <p className="text-[10px] text-slate-400">{board.model}</p>
+                        )}
+                        {board.board_type_label && (
+                            <p className="text-[10px] text-slate-500">{board.board_type_label}</p>
+                        )}
                         <p className="text-sm font-semibold text-white">{board.name}</p>
                         <p className="text-[11px] text-slate-500">#SH-{board.id}</p>
                     </div>
@@ -215,9 +224,63 @@ function BoardRow({ board, onDelete, onRequestStatusChange }) {
 
 // ── Página ─────────────────────────────────────────────────────────────────────
 
-export default function AdminSecondHandIndex({ boards }) {
+const FILTER_LABEL =
+    "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500";
+const FILTER_CONTROL =
+    "h-10 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-sm text-white placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
+
+export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes = [] }) {
     const { props } = usePage();
     const flash = props?.flash;
+
+    const [search, setSearch] = useState(filters.search || "");
+    const [status, setStatus] = useState(filters.status || "");
+    const [boardType, setBoardType] = useState(filters.board_type || "");
+    const [dateType, setDateType] = useState(filters.date_type || "created");
+    const [dateFrom, setDateFrom] = useState(filters.date_from || "");
+    const [dateTo, setDateTo] = useState(filters.date_to || "");
+
+    const buildQuery = ({
+        nextSearch = search,
+        nextStatus = status,
+        nextBoardType = boardType,
+        nextDateType = dateType,
+        nextDateFrom = dateFrom,
+        nextDateTo = dateTo,
+    } = {}) => ({
+        search: nextSearch || undefined,
+        status: nextStatus || undefined,
+        board_type: nextBoardType || undefined,
+        date_type: nextDateType || "created",
+        date_from: nextDateFrom || undefined,
+        date_to: nextDateTo || undefined,
+    });
+
+    const applyFilters = (overrides = {}) => {
+        router.get(route("admin.second-hand.index"), buildQuery(overrides), {
+            preserveState: true,
+            preserveScroll: true,
+            only: ["boards", "filters"],
+        });
+    };
+
+    const clearFilters = () => {
+        setSearch("");
+        setStatus("");
+        setBoardType("");
+        setDateType("created");
+        setDateFrom("");
+        setDateTo("");
+        router.get(route("admin.second-hand.index"), {}, {
+            preserveState: true,
+            preserveScroll: true,
+            only: ["boards", "filters"],
+        });
+    };
+
+    const hasActiveFilters = Boolean(
+        search || status || boardType || dateFrom || dateTo || dateType !== "created"
+    );
 
     // Modal borrado
     const [confirmDelete, setConfirmDelete] = useState(null);
@@ -312,6 +375,132 @@ export default function AdminSecondHandIndex({ boards }) {
                     ))}
                 </div>
 
+                {/* Filtros */}
+                <div className="mb-6 rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-sm">
+                    <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <Filter className="h-3.5 w-3.5" />
+                        Filtros
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                        <div>
+                            <label htmlFor="sh-filter-search" className={FILTER_LABEL}>
+                                Buscar
+                            </label>
+                            <div className="relative">
+                                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                                <input
+                                    id="sh-filter-search"
+                                    type="text"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    onKeyDown={(e) => e.key === "Enter" && applyFilters()}
+                                    placeholder="Marca o modelo…"
+                                    className={`${FILTER_CONTROL} pl-9`}
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label htmlFor="sh-filter-status" className={FILTER_LABEL}>
+                                Estado
+                            </label>
+                            <select
+                                id="sh-filter-status"
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                className={FILTER_CONTROL}
+                            >
+                                <option value="" className="bg-slate-900">Todos</option>
+                                <option value="available" className="bg-slate-900">Disponible</option>
+                                <option value="reserved" className="bg-slate-900">Reservada</option>
+                                <option value="sold" className="bg-slate-900">Vendida</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="sh-filter-board-type" className={FILTER_LABEL}>
+                                Tipo
+                            </label>
+                            <select
+                                id="sh-filter-board-type"
+                                value={boardType}
+                                onChange={(e) => setBoardType(e.target.value)}
+                                className={FILTER_CONTROL}
+                            >
+                                <option value="" className="bg-slate-900">Todos</option>
+                                {boardTypes.map((t) => (
+                                    <option key={t.value} value={t.value} className="bg-slate-900">
+                                        {t.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="sh-filter-date-type" className={FILTER_LABEL}>
+                                Fecha
+                            </label>
+                            <select
+                                id="sh-filter-date-type"
+                                value={dateType}
+                                onChange={(e) => setDateType(e.target.value)}
+                                className={FILTER_CONTROL}
+                            >
+                                <option value="created" className="bg-slate-900">Alta / Compra</option>
+                                <option value="sold" className="bg-slate-900">Venta</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label htmlFor="sh-filter-from" className={FILTER_LABEL}>
+                                Desde
+                            </label>
+                            <input
+                                id="sh-filter-from"
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className={FILTER_CONTROL}
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="sh-filter-to" className={FILTER_LABEL}>
+                                Hasta
+                            </label>
+                            <input
+                                id="sh-filter-to"
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className={FILTER_CONTROL}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-end gap-2">
+                        {hasActiveFilters && (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-300 transition hover:bg-white/10"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                                Limpiar
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={() => applyFilters()}
+                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-5 text-sm font-bold text-white transition hover:bg-orange-600"
+                        >
+                            <Filter className="h-3.5 w-3.5" />
+                            Filtrar
+                        </button>
+                    </div>
+                </div>
+
                 {/* Tabla */}
                 <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
                     <table className="w-full text-left">
@@ -328,7 +517,9 @@ export default function AdminSecondHandIndex({ boards }) {
                             {boards.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
-                                        No hay tablas registradas aún.
+                                        {hasActiveFilters
+                                            ? "No hay tablas que coincidan con los filtros aplicados."
+                                            : "No hay tablas registradas aún."}
                                     </td>
                                 </tr>
                             ) : (

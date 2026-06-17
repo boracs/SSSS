@@ -22,17 +22,30 @@ function Field({ label, error, children }) {
 function Input({ className = "", ...props }) {
     return (
         <input
-            className={`w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-500/20 ${className}`}
+            className={`h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 ${className}`}
             {...props}
         />
     );
 }
 
-export default function AdminSecondHandEdit({ board }) {
+function Select({ className = "", children, ...props }) {
+    return (
+        <select
+            className={`h-10 w-full rounded-xl border border-white/10 bg-slate-800 px-3 text-sm text-white outline-none transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 ${className}`}
+            {...props}
+        >
+            {children}
+        </select>
+    );
+}
+
+export default function AdminSecondHandEdit({ board, boardTypes = [] }) {
     const { data, setData, post, processing, errors } = useForm({
         _method:            "PUT",
         name:               board.name        ?? "",
         brand:              board.brand       ?? "",
+        model:              board.model       ?? "",
+        board_type:         board.board_type  ?? "",
         description:        board.description ?? "",
         height:             board.height      ?? "",
         width:              board.width       ?? "",
@@ -53,6 +66,8 @@ export default function AdminSecondHandEdit({ board }) {
         fd.append("_method", "PUT");
         fd.append("name",           data.name);
         fd.append("brand",          data.brand);
+        if (data.model)      fd.append("model",      data.model);
+        if (data.board_type) fd.append("board_type", data.board_type);
         fd.append("description",    data.description);
         fd.append("height",         data.height);
         fd.append("width",          data.width);
@@ -111,6 +126,17 @@ export default function AdminSecondHandEdit({ board }) {
                             <Field label="Marca" error={errors.brand}>
                                 <Input type="text" value={data.brand} onChange={(e) => setData("brand", e.target.value)} />
                             </Field>
+                            <Field label="Modelo" error={errors.model}>
+                                <Input type="text" value={data.model} onChange={(e) => setData("model", e.target.value)} />
+                            </Field>
+                            <Field label="Tipo de tabla" error={errors.board_type}>
+                                <Select value={data.board_type} onChange={(e) => setData("board_type", e.target.value)}>
+                                    <option value="">Sin especificar</option>
+                                    {boardTypes.map((t) => (
+                                        <option key={t.value} value={t.value}>{t.label}</option>
+                                    ))}
+                                </Select>
+                            </Field>
                         </div>
 
                         <Field label="Descripcion / Estado fisico" error={errors.description}>
@@ -153,12 +179,11 @@ export default function AdminSecondHandEdit({ board }) {
 
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                             <Field label="Estado *" error={errors.status}>
-                                <select value={data.status} onChange={(e) => setData("status", e.target.value)}
-                                    className="w-full rounded-xl border border-white/10 bg-slate-800 px-3 py-2.5 text-sm text-white outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-500/20">
+                                <Select value={data.status} onChange={(e) => setData("status", e.target.value)}>
                                     {STATUS_OPTIONS.map((s) => (
                                         <option key={s.value} value={s.value}>{s.label}</option>
                                     ))}
-                                </select>
+                                </Select>
                             </Field>
                             <Field label="Fecha de compra" error={errors.purchased_at}>
                                 <Input type="date" value={data.purchased_at} onChange={(e) => setData("purchased_at", e.target.value)} />

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\SecondHandStatus;
+use App\Enums\SecondHandBoardType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSecondHandBoardRequest;
 use App\Http\Requests\UpdateSecondHandBoardRequest;
@@ -22,15 +23,29 @@ use Inertia\Response;
  */
 class SecondHandBoardController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $dateType = trim((string) $request->query('date_type', 'created'));
+        if (! in_array($dateType, ['created', 'sold'], true)) {
+            $dateType = 'created';
+        }
+
+        $filters = [
+            'search'     => trim((string) $request->query('search', '')),
+            'status'     => trim((string) $request->query('status', '')),
+            'board_type' => trim((string) $request->query('board_type', '')),
+            'date_type'  => $dateType,
+            'date_from'  => trim((string) $request->query('date_from', '')),
+            'date_to'    => trim((string) $request->query('date_to', '')),
+        ];
+
         $boards = SecondHandBoard::query()
+            ->adminFilters($filters)
             ->orderByRaw("FIELD(status, 'available', 'reserved', 'sold')")
             ->orderBy('id', 'desc')
             ->get()
             ->map(fn (SecondHandBoard $b) => [
                 ...$b->toPublicArray(),
-                // Datos financieros solo visibles para admin
                 'purchase_price' => $b->purchase_price,
                 'profit_cents'   => $b->status === SecondHandStatus::SOLD
                     ? $b->effectiveSalePrice() - $b->purchase_price
@@ -38,7 +53,12 @@ class SecondHandBoardController extends Controller
             ]);
 
         return Inertia::render('Admin/SecondHand/Index', [
-            'boards' => $boards,
+            'boards'     => $boards,
+            'filters'    => $filters,
+            'boardTypes' => collect(SecondHandBoardType::cases())->map(fn ($t) => [
+                'value' => $t->value,
+                'label' => $t->label(),
+            ]),
         ]);
     }
 
@@ -48,6 +68,10 @@ class SecondHandBoardController extends Controller
             'statuses' => collect(SecondHandStatus::cases())->map(fn ($s) => [
                 'value' => $s->value,
                 'label' => $s->label(),
+            ]),
+            'boardTypes' => collect(SecondHandBoardType::cases())->map(fn ($t) => [
+                'value' => $t->value,
+                'label' => $t->label(),
             ]),
         ]);
     }
@@ -81,6 +105,10 @@ class SecondHandBoardController extends Controller
                 'value' => $s->value,
                 'label' => $s->label(),
             ]),
+            'boardTypes' => collect(SecondHandBoardType::cases())->map(fn ($t) => [
+                'value' => $t->value,
+                'label' => $t->label(),
+            ]),
         ]);
     }
 
@@ -89,7 +117,7 @@ class SecondHandBoardController extends Controller
         $data = $request->safe()->except('images');
 
         if ($request->hasFile('images')) {
-            // Borrar im뿯½genes anteriores del disco
+            // Borrar imágenes anteriores del disco
             foreach ($secondHandBoard->images ?? [] as $oldPath) {
                 Storage::disk('public')->delete($oldPath);
             }

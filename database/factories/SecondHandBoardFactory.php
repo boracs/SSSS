@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Factories;
 
 use App\Enums\SecondHandStatus;
+use App\Enums\SecondHandBoardType;
 use App\Models\SecondHandBoard;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -66,6 +67,8 @@ class SecondHandBoardFactory extends Factory
         return [
             'name'           => $this->faker->randomElement(self::$boardPool),
             'brand'          => $this->faker->randomElement(self::$brandPool),
+            'model'          => $this->faker->randomElement(['Ghost', 'Driver 2.0', 'Hypto Krypto', 'Seaside', 'Mid Twin']),
+            'board_type'     => $this->faker->randomElement(SecondHandBoardType::cases()),
             'description'    => $this->faker->randomElement(self::$descriptions),
             'height'         => round($this->faker->randomFloat(2, 5.4, 6.6), 2),
             'width'          => round($this->faker->randomFloat(2, 18.25, 21.0), 2),

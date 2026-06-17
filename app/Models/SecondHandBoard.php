@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\SecondHandStatus;
+use App\Enums\SecondHandBoardType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +17,8 @@ class SecondHandBoard extends Model
     protected $fillable = [
         'name',
         'brand',
+        'model',
+        'board_type',
         'description',
         'height',
         'width',
@@ -32,6 +35,7 @@ class SecondHandBoard extends Model
 
     protected $casts = [
         'status'         => SecondHandStatus::class,
+        'board_type'     => SecondHandBoardType::class,
         'images'         => 'array',
         'purchased_at'   => 'datetime',
         'sold_at'        => 'datetime',
@@ -63,8 +67,69 @@ class SecondHandBoard extends Model
 
     public function scopePublicCatalog(Builder $query): Builder
     {
-        return $query->orderByRaw("FIELD(status, 'available', 'reserved', 'sold')")
-                     ->orderBy('id', 'desc');
+        return $query
+            ->whereIn('status', [
+                SecondHandStatus::AVAILABLE->value,
+                SecondHandStatus::RESERVED->value,
+            ])
+            ->orderByRaw("FIELD(status, 'available', 'reserved')")
+            ->orderBy('id', 'desc');
+    }
+
+    /**
+     * Filtros combinados del listado admin (search, status, board_type, rango de fechas).
+     *
+     * @param  array<string, mixed>  $filters
+     */
+    public function scopeAdminFilters(Builder $query, array $filters): Builder
+    {
+        $search    = trim((string) ($filters['search'] ?? ''));
+        $status    = trim((string) ($filters['status'] ?? ''));
+        $boardType = trim((string) ($filters['board_type'] ?? ''));
+        $dateType  = trim((string) ($filters['date_type'] ?? 'created'));
+        $dateFrom  = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo    = trim((string) ($filters['date_to'] ?? ''));
+
+        if (! in_array($dateType, ['created', 'sold'], true)) {
+            $dateType = 'created';
+        }
+
+        return $query
+            ->when($search !== '', function (Builder $q) use ($search): void {
+                $term = '%' . $search . '%';
+                $q->where(function (Builder $sub) use ($term): void {
+                    $sub->where('brand', 'like', $term)
+                        ->orWhere('model', 'like', $term);
+                });
+            })
+            ->when(
+                $status !== '' && SecondHandStatus::tryFrom($status) !== null,
+                fn (Builder $q) => $q->where('status', $status)
+            )
+            ->when(
+                $boardType !== '' && SecondHandBoardType::tryFrom($boardType) !== null,
+                fn (Builder $q) => $q->where('board_type', $boardType)
+            )
+            ->when(
+                $dateFrom !== '' && strtotime($dateFrom) !== false,
+                function (Builder $q) use ($dateFrom, $dateType): void {
+                    if ($dateType === 'sold') {
+                        $q->whereDate('sold_at', '>=', $dateFrom);
+                    } else {
+                        $q->whereRaw('COALESCE(DATE(purchased_at), DATE(created_at)) >= ?', [$dateFrom]);
+                    }
+                }
+            )
+            ->when(
+                $dateTo !== '' && strtotime($dateTo) !== false,
+                function (Builder $q) use ($dateTo, $dateType): void {
+                    if ($dateType === 'sold') {
+                        $q->whereDate('sold_at', '<=', $dateTo);
+                    } else {
+                        $q->whereRaw('COALESCE(DATE(purchased_at), DATE(created_at)) <= ?', [$dateTo]);
+                    }
+                }
+            );
     }
 
     // Helpers
@@ -95,6 +160,9 @@ class SecondHandBoard extends Model
             'id'              => $this->id,
             'name'            => $this->name,
             'brand'           => $this->brand,
+            'model'           => $this->model,
+            'board_type'      => $this->board_type?->value,
+            'board_type_label'=> $this->board_type?->label(),
             'description'     => $this->description,
             'height'          => $this->height,
             'width'           => $this->width,

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests;
 
 use App\Enums\SecondHandStatus;
+use App\Enums\SecondHandBoardType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,6 +28,8 @@ class StoreSecondHandBoardRequest extends FormRequest
         return [
             'name'          => ['required', 'string', 'max:120'],
             'brand'         => ['nullable', 'string', 'max:80'],
+            'model'         => ['nullable', 'string', 'max:100'],
+            'board_type'    => ['nullable', Rule::enum(SecondHandBoardType::class)],
             'description'   => ['nullable', 'string', 'max:2000'],
             'height'        => ['required', 'numeric', 'min:0.1', 'max:15'],
             'width'         => ['required', 'numeric', 'min:0.1', 'max:60'],

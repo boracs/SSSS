@@ -98,7 +98,7 @@ maider_0/
 │   │   │   │       ├── BonoController.php
 │   │   │   │       ├── BookingController.php
 │   │   │   │       ├── PaymentValidationController.php
-│   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; expone purchase_price y margen; protegido VerificarAdmin
+│   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; filtros search/status/board_type/date_type/fechas; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php
 │   │   │   │       ├── UserController.php
 │   │   │   │       ├── VipClassManagerController.php
@@ -178,6 +178,7 @@ maider_0/
 │   │       └── PagoCuotaQueueResource.php
 │   │
 │   ├── Enums/
+│   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() descriptivo
 │   │   └── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
 │   │
 │   ├── Jobs/
@@ -209,7 +210,7 @@ maider_0/
 │   │   ├── PlanTaquilla.php
 │   │   ├── PriceSchema.php
 │   │   ├── Producto.php
-│   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; scopes: available/reserved/sold/publicCatalog; toPublicArray() sin datos financieros internos
+│   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; campos model/board_type; scope adminFilters; scopes publicCatalog (excluye sold); toPublicArray() sin datos financieros internos
 │   │   ├── StaffAssignment.php
 │   │   ├── Surfboard.php
 │   │   ├── User.php
@@ -261,7 +262,7 @@ maider_0/
 │
 ├── database/
 │   ├── factories/          (7)
-│   ├── migrations/         (47) — users, productos, pedidos, taquillas, lessons, bookings, bonos, pagos
+│   ├── migrations/         (49) — users, productos, pedidos, taquillas, lessons, bookings, bonos, pagos, second_hand_boards (+model, +board_type)
 │   └── seeders/            (10) — OperationalSuperSeeder, TaquillaSeeder, VIP seeders
 │
 ├── docs/
@@ -458,8 +459,9 @@ resources/
                 │   └── Index.jsx
                 ├── Bookings/
                 ├── SecondHand/
-                │   └── Index.jsx           ──► CRUD admin; stats margen/ingresos; modal confirmación borrado
-                │   └── Index.jsx
+                │   ├── Index.jsx           ──► CRUD admin; barra filtros (marca/modelo, estado, fechas); stats margen/ingresos; modal confirmación borrado
+                │   ├── Create.jsx
+                │   └── Edit.jsx
                 ├── CheckManager.jsx
                 ├── Payments/
                 │   ├── Dashboard.jsx
