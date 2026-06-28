@@ -25,13 +25,29 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
         $user = Auth::user();
 
         // 2. Verificar si el usuario tiene asignado un número de taquilla.
-        // Usamos la columna 'numeroTaquilla' de tu esquema.
         if ($user->numeroTaquilla === null) {
-            // Si no tiene taquilla, lo redirigimos a la tienda con un mensaje de error
             return redirect()->route('tienda')->with('error', 'Debes tener una taquilla asignada para acceder a esta funcionalidad.');
         }
 
-        // Si el usuario está logueado Y tiene taquilla, permitimos el acceso.
+        // 3. Cuota al día: obligatorio para compras; la renovación sigue accesible.
+        $renewalRoutes = [
+            'taquillas.index.client',
+            'taquillas.pago.client',
+            'taquillas.pago.upload-proof',
+            'taquillas.pago.proof',
+            'emergency-key.show',
+            'emergency-key.request',
+        ];
+
+        if (
+            ! $request->routeIs(...$renewalRoutes)
+            && ! $user->isLockerPaymentUpToDate()
+        ) {
+            return redirect()
+                ->route('taquillas.index.client')
+                ->with('error', 'Tu membresía de taquilla no está al día. Renueva tu plan para seguir usando el carrito y los servicios del club.');
+        }
+
         return $next($request);
     }
 }

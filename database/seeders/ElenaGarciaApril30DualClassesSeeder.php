@@ -45,7 +45,7 @@ class ElenaGarciaApril30DualClassesSeeder extends Seeder
         DB::transaction(function () use ($elena, $monitor) {
             $pack = PackBono::query()->firstOrCreate(
                 ['nombre' => 'Bono VIP Elena Seed'],
-                ['num_clases' => 20, 'precio' => 320, 'activo' => true]
+                ['num_clases' => 20, 'precio' => 320, 'activo' => false]
             );
 
             $bono = UserBono::query()->firstOrCreate(

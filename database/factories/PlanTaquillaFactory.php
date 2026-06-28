@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\PlanTaquilla;
+use App\Support\MoneyCents;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class PlanTaquillaFactory extends Factory
@@ -29,7 +30,7 @@ class PlanTaquillaFactory extends Factory
         return [
             'nombre' => 'Plan de Taquilla ' . $months . ' Meses (' . $basePricePerMonth . '€/mes)',
             'duracion_dias' => $months * 30, // Aproximación
-            'precio_total' => $totalPrice,
+            'precio_total_cents' => MoneyCents::eurosToCents($totalPrice),
             'activo' => true,
         ];
     }

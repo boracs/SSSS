@@ -52,7 +52,7 @@ class VipExtraStudentsConsumptionSeeder extends Seeder
                     [
                         'num_clases' => 15,
                         'precio' => 260,
-                        'activo' => true,
+                        'activo' => false,
                     ]
                 );
 

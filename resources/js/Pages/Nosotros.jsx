@@ -11,23 +11,19 @@ import {
     Coffee,
     Package,
     Star,
-    Users,
     Zap,
     ChevronRight,
+    ChevronDown,
     Wifi,
     Droplets,
     Plug,
     Heart,
     Scissors,
-    Lightbulb,
-    Shirt,
-    Recycle,
     Music,
-    Lock,
-    Bell,
     Ruler,
     Refrigerator,
-    Armchair,
+    Bath,
+    Info,
 } from "lucide-react";
 
 // ── Componentes auxiliares ─────────────────────────────────────────────────────
@@ -40,23 +36,137 @@ function SectionLabel({ children }) {
     );
 }
 
-function StepLine({ step, icon: Icon, title, body }) {
+function BenefitVerMas({ detail, trigger = "Ver dinámica" }) {
+    const [open, setOpen] = useState(false);
+
     return (
-        <div className="relative flex gap-5">
-            {/* Linea vertical */}
-            <div className="flex flex-col items-center">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/10 text-orange-400">
-                    <Icon className="h-5 w-5" />
+        <span className="mt-2 block">
+            <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                aria-expanded={open}
+                onClick={() => setOpen((v) => !v)}
+            >
+                <Info className="h-3 w-3" />
+                {trigger}
+                <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+            </button>
+
+            {open && (
+                <div className="mt-2 rounded-xl border border-orange-500/20 bg-slate-950/90 p-3 text-xs leading-relaxed text-slate-300 shadow-lg">
+                    {detail}
                 </div>
-                {step < 4 && <div className="mt-2 w-px flex-1 bg-white/10" />}
+            )}
+        </span>
+    );
+}
+
+function MicroServiceItem({ icon: Icon, label, sub, more, anchorId, anchorLabel = "Ver dinámica" }) {
+    const scrollToSection = () => {
+        document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
+    return (
+        <div className={`flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-3 ${more ? "sm:col-span-2" : ""}`}>
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+            <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold leading-tight text-white">{label}</p>
+                {sub && <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>}
+                {more && <BenefitVerMas detail={more} />}
+                {anchorId && !more && (
+                    <button
+                        type="button"
+                        onClick={scrollToSection}
+                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                    >
+                        <Info className="h-3 w-3" />
+                        {anchorLabel}
+                        <ChevronRight className="h-3 w-3" />
+                    </button>
+                )}
             </div>
-            {/* Contenido */}
-            <div className="pb-8">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-orange-400 mb-1">
+        </div>
+    );
+}
+
+const MICRO_SERVICES = [
+    { icon: Coffee,      label: "Maquina de cafe",             sub: "Trae tus capsulas" },
+    { icon: Refrigerator,label: "Frigorifico comunitario",      sub: "Guarda tus tapers, bebidas..." },
+    { icon: Zap,         label: "Vending tecnico",              sub: "Parafina, Solarez, quillas" },
+    { icon: Droplets,    label: "Ducha de agua caliente",       sub: "Aclarado post-sesion" },
+    { icon: Scissors,    label: "Secador de pelo",              sub: "Profesional de uso comun" },
+    { icon: Plug,        label: "Enchufes y carga USB",         sub: "En cada taquilla" },
+    { icon: Wifi,        label: "WiFi alta velocidad",          sub: "En toda la instalacion" },
+    { icon: Music,       label: "Alexa smart speaker",          sub: "Musica y domótica" },
+    { icon: Heart,       label: "Botiquin primeros auxilios",   sub: "Siempre disponible" },
+    { icon: Ruler,       label: "Zona de encerado y reparaciones pequenas", sub: "Material comun: Solarez, lijas, luz UV..." },
+    { icon: Wind,        label: "Zona de secado rapido para neoprenos", sub: "Baja humedad relativa" },
+    { icon: Bath,        label: "Baños",                        sub: "A disposicion de socios" },
+    { icon: Package,     label: "Taquillas",                    sub: "Espacio privado a pie de playa" },
+    {
+        icon: Wrench,
+        label: "Servicio de reparacion automatizado",
+        sub: "Pizarra fisica + seguimiento semanal",
+        anchorId: "taller-edy-mulder",
+    },
+];
+
+const TAQUILLA_BENEFITS = [
+    "Zona de secado rapido de trajes",
+    "Extras: Alexa, frigorifico y maquina de cafe",
+    "Zona de calentamiento (TRX, maquina multi ejercicios)",
+    "Descuentos de hasta el 50% en articulos para socios",
+    "1 vez al mes: alquiler de material gratis para un invitado (el socio responde del invitado)",
+    "Precios especiales en clases y bonos",
+    "Banos a disposicion",
+    "Rack para almacenar dos tablas + taquilla",
+    "Camara de vigilancia",
+    {
+        text: "Llave electronica — acceso inmediato al local mediante candado con contrasena (solicitud online con registro de accesos).",
+        tagline: "En caso de extravio de la llave no te quedas fuera.",
+        more: "Acceso a la contrasena del candado ubicada en la entrada del local y accesible desde fuera mediante la aplicacion web, a la que podra entrar desde cualquier movil y solicitar la contrasena del candado para poder abrirlo y adquirir la llave que contiene y poder acceder al local. Posteriormente el administrador podra desactivar la llave anterior en caso de extravio y asignar esta nueva al usuario que la solicito (mediante la aplicacion). Esto supondra un coste de dos euros por molestias ocasionadas mas coste de la llave en caso de extravio total. De no extraviarla no supondra ningun coste.",
+    },
+];
+
+const EDY_STEPS = [
+    {
+        step: 1,
+        icon: ClipboardList,
+        title: "Registro en Pizarra",
+        body: "El socio anota su numero de taquilla en la pizarra fisica del local antes del viernes. Sin aplicaciones ni formularios.",
+    },
+    {
+        step: 2,
+        icon: Search,
+        title: "Inspeccion y Marcado",
+        body: "Edy Mulder pasa los viernes. Primero revisa la pizarra para saber que numeros de taquilla tienen tablas para reparar. A continuacion se dirige a cada taquilla, recoge la tabla que tenga cinta azul marcando los toques a reparar y la traslada al taller.",
+    },
+    {
+        step: 3,
+        icon: Wrench,
+        title: "Reparacion en Taller",
+        body: "Traslado al taller especializado. La tabla vuelve al rack a la semana siguiente con su etiqueta de precio transparente.",
+    },
+    {
+        step: 4,
+        icon: ShieldCheck,
+        title: "Garantia de Entrega",
+        body: "Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparacion. El socio valida el arreglo en el local y abona el importe a Edy: por transferencia a su cuenta o en metalico introduciendo un sobre con su nombre y numero de taquilla en el buzon de su propiedad situado en el local.",
+    },
+];
+
+function StepCard({ step, icon: Icon, title, body }) {
+    return (
+        <div className="flex h-full gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/10 text-orange-400">
+                <Icon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-orange-400">
                     Paso {step}
                 </p>
-                <h4 className="text-base font-bold text-white mb-1">{title}</h4>
-                <p className="text-sm leading-relaxed text-slate-400">{body}</p>
+                <h4 className="mt-1 text-base font-bold text-white">{title}</h4>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">{body}</p>
             </div>
         </div>
     );
@@ -297,10 +407,10 @@ export default function SobreNosotros() {
                                 <Star className="h-3 w-3 fill-orange-400 text-orange-400" />
                                 Servicios VIP para socios
                             </div>
-                            <Package className="mb-4 h-8 w-8 text-orange-400" />
-                            <h3 className="text-xl font-extrabold text-white">Taquilla Premium</h3>
-                            <div className="mt-3 flex items-baseline gap-2">
-                                <span className="text-5xl font-extrabold text-orange-400">40€</span>
+                            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+                                <Package className="h-8 w-8 shrink-0 text-orange-400" />
+                                <h3 className="text-xl font-extrabold text-white">Pack premium</h3>
+                                <span className="text-4xl font-extrabold leading-none text-orange-400">40€</span>
                                 <span className="text-sm text-slate-400">/mes</span>
                             </div>
                             <p className="mt-3 text-sm text-slate-400">
@@ -308,23 +418,29 @@ export default function SobreNosotros() {
                             </p>
                             {/* Lista completa de beneficios */}
                             <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                {[
-                                    "Zona de secado rapido de trajes",
-                                    "Extras: Alexa, frigorifico y maquina de cafe",
-                                    "Zona de calentamiento (TRX, maquina multi ejercicios)",
-                                    "Descuentos de hasta el 50% en articulos para socios",
-                                    "1 vez al mes: alquiler de material gratis para un invitado (el socio responde del invitado)",
-                                    "Precios especiales en clases y bonos",
-                                    "Banos a disposicion",
-                                    "Rack para almacenar dos tablas + taquilla",
-                                    "Camara de vigilancia",
-                                    "Llave electronica — disponible al instante en la entrada del local a traves de un candado con contrasena. La contrasena se solicita online y queda registrado quien la pidio. En caso de perdida total, mediante comunicado se desactiva la anterior y se asigna una nueva (sobrecoste de 2 € de gestion + precio de llave)",
-                                ].map((item) => (
-                                    <li key={item} className="flex items-start gap-2 text-sm text-slate-300">
-                                        <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-400" />
-                                        <span>{item}</span>
-                                    </li>
-                                ))}
+                                {TAQUILLA_BENEFITS.map((item) => {
+                                    const text = typeof item === "string" ? item : item.text;
+                                    const tagline = typeof item === "object" ? item.tagline : null;
+                                    const more = typeof item === "object" ? item.more : null;
+
+                                    return (
+                                        <li
+                                            key={text}
+                                            className={`flex items-start gap-2 text-sm text-slate-300 ${more ? "sm:col-span-2" : ""}`}
+                                        >
+                                            <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-400" />
+                                            <span className="min-w-0 flex-1">
+                                                {text}
+                                                {tagline && (
+                                                    <span className="mt-1 block text-xs font-semibold text-orange-300/90">
+                                                        {tagline}
+                                                    </span>
+                                                )}
+                                                {more && <BenefitVerMas detail={more} />}
+                                            </span>
+                                        </li>
+                                    );
+                                })}
                             </ul>
                         </div>
 
@@ -348,57 +464,44 @@ export default function SobreNosotros() {
 
                         {/* Tarjeta — Performance Zone */}
                         <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md">
-                            <Dumbbell className="h-8 w-8 text-emerald-400" />
-                            <h3 className="text-lg font-bold text-white">Performance Zone</h3>
+                            <div className="flex items-center gap-3">
+                                <Dumbbell className="h-8 w-8 shrink-0 text-emerald-400" />
+                                <h3 className="text-lg font-bold text-white">Performance Zone</h3>
+                            </div>
                             <p className="text-sm leading-relaxed text-slate-400">
                                 Zona de calentamiento funcional orientada a la
                                 <strong className="text-white"> movilidad y preparacion fisica</strong> pre-baño.
                                 Activa los musculos correctos antes de entrar al agua.
                             </p>
-                            <p className="mt-auto text-sm leading-relaxed text-slate-400">
+                            <p className="text-sm leading-relaxed text-slate-400">
                                 Evita lesiones y mejora tu agilidad utilizando nuestros foam rollers, bandas
                                 elasticas y equipamiento de calentamiento.{" "}
                                 <strong className="text-emerald-400">¡Entra al agua al 100%!</strong>
                             </p>
+                            <div className="mt-auto overflow-hidden rounded-2xl border border-emerald-500/10">
+                                <img
+                                    src="/img/zona-calentamiento.png"
+                                    alt="Zona de calentamiento con maquina multi ejercicios del club"
+                                    className="h-44 w-full object-cover"
+                                />
+                            </div>
                         </div>
 
                         {/* Tarjeta — Micro-servicios (grid completo) */}
-                        <div className="flex flex-col gap-5 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md md:col-span-2">
+                        <div
+                            id="micro-servicios-club"
+                            className="flex scroll-mt-24 flex-col gap-5 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md md:col-span-2"
+                        >
                             <div className="flex items-center gap-3">
                                 <Layers className="h-8 w-8 shrink-0 text-amber-400" />
                                 <div>
                                     <h3 className="text-lg font-bold text-white">Micro-servicios del Club</h3>
-                                    <p className="text-xs text-slate-500">+15 servicios incluidos para socios</p>
+                                    <p className="text-xs text-slate-500">+14 servicios incluidos para socios</p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                {[
-                                    { icon: Coffee,      label: "Maquina de cafe",             sub: "Trae tus capsulas" },
-                                    { icon: Refrigerator,label: "Frigorifico comunitario",      sub: "Bebidas y snacks" },
-                                    { icon: Zap,         label: "Vending tecnico",              sub: "Parafina, Solarez, quillas" },
-                                    { icon: Droplets,    label: "Ducha de agua caliente",       sub: "Aclarado post-sesion" },
-                                    { icon: Wind,        label: "Manguera de aclarado",         sub: "Material y neoprenos" },
-                                    { icon: Scissors,    label: "Secador de pelo",              sub: "Profesional de uso comun" },
-                                    { icon: Plug,        label: "Enchufes y carga USB",         sub: "En cada taquilla" },
-                                    { icon: Wifi,        label: "WiFi alta velocidad",          sub: "En toda la instalacion" },
-                                    { icon: Music,       label: "Alexa smart speaker",          sub: "Musica y domótica" },
-                                    { icon: Lightbulb,   label: "Iluminacion LED individual",   sub: "Luz propia por taquilla" },
-                                    { icon: Heart,       label: "Botiquin primeros auxilios",   sub: "Siempre disponible" },
-                                    { icon: Lock,        label: "Consigna segura",              sub: "Llave electronica" },
-                                    { icon: Shirt,       label: "Colgadores de neopreno",       sub: "Rack dedicado" },
-                                    { icon: Ruler,       label: "Zona de wax y preparacion",   sub: "Mesa de encerado" },
-                                    { icon: Armchair,    label: "Zona de descanso",             sub: "Bancos y asientos" },
-                                    { icon: Bell,        label: "Avisos de condiciones",        sub: "Boletin diario de olas" },
-                                    { icon: Recycle,     label: "Reciclaje clasificado",        sub: "3 contenedores" },
-                                    { icon: Users,       label: "Zona social del club",         sub: "Comunidad de socios" },
-                                ].map(({ icon: Icon, label, sub }) => (
-                                    <div key={label} className="flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-3">
-                                        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-                                        <div>
-                                            <p className="text-xs font-semibold leading-tight text-white">{label}</p>
-                                            <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>
-                                        </div>
-                                    </div>
+                                {MICRO_SERVICES.map((item) => (
+                                    <MicroServiceItem key={item.label} {...item} />
                                 ))}
                             </div>
                         </div>
@@ -428,12 +531,6 @@ export default function SobreNosotros() {
                                 <p className="mt-1.5 text-sm text-slate-400">
                                     Como socio puedes traer hasta <strong className="text-white">2 invitados una vez al mes</strong> con acceso completo a tablas y neoprenos de test.
                                     A partir de la tercera persona, el resto abonara el precio estandar de alquiler.
-                                </p>
-                                <p className="mt-3 text-base font-extrabold text-white">
-                                    Si traes a{" "}
-                                    <span className="text-orange-400">4 amigos</span>{" "}
-                                    a lo largo del ano, acumulas un ahorro directo de{" "}
-                                    <span className="text-cyan-300">100€</span>
                                 </p>
                             </div>
                         </div>
@@ -483,7 +580,7 @@ export default function SobreNosotros() {
                 {/* ══════════════════════════════════════════
                     BLOQUE 3 — TIMELINE EDY MULDER
                 ══════════════════════════════════════════ */}
-                <section className="mb-16">
+                <section id="taller-edy-mulder" className="mb-16 scroll-mt-24">
                     <div className="mb-10 text-center">
                         <SectionLabel>Artesania Local</SectionLabel>
                         <h2 className="mt-2 text-3xl font-extrabold text-white">
@@ -495,35 +592,10 @@ export default function SobreNosotros() {
                         </p>
                     </div>
 
-                    <div className="mx-auto grid max-w-4xl grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-12">
-                        <div>
-                            <StepLine
-                                step={1}
-                                icon={ClipboardList}
-                                title="Registro en Pizarra"
-                                body="El socio anota su numero de taquilla en la pizarra fisica del local antes del viernes. Sin aplicaciones ni formularios."
-                            />
-                            <StepLine
-                                step={2}
-                                icon={Search}
-                                title="Inspeccion y Marcado"
-                                body="Edy Mulder pasa los viernes. Primero revisa la pizarra para saber que numeros de taquilla tienen tablas para reparar. A continuacion se dirige a cada taquilla, recoge la tabla que tenga cinta azul marcando los toques a reparar y la traslada al taller."
-                            />
-                        </div>
-                        <div className="sm:pt-12">
-                            <StepLine
-                                step={3}
-                                icon={Wrench}
-                                title="Reparacion en Taller"
-                                body="Traslado al taller especializado. La tabla vuelve al rack a la semana siguiente con su etiqueta de precio transparente."
-                            />
-                            <StepLine
-                                step={4}
-                                icon={ShieldCheck}
-                                title="Garantia de Entrega"
-                                body="Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparacion. El socio valida el arreglo en el local y abona el importe a Edy: por transferencia a su cuenta o en metalico introduciendo un sobre con su nombre y numero de taquilla en el buzon de su propiedad situado en el local."
-                            />
-                        </div>
+                    <div className="mx-auto grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-2">
+                        {EDY_STEPS.map((item) => (
+                            <StepCard key={item.step} {...item} />
+                        ))}
                     </div>
                 </section>
 
@@ -535,19 +607,13 @@ export default function SobreNosotros() {
                         Listo para unirte al club?
                     </h2>
                     <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
-                        Comienza con una clase de prueba o reserva tu taquilla hoy.
-                        La comunidad S4 te espera en Zurriola.
+                        La comunidad S4 te espera en Zurriola. Escríbenos y te contamos cómo unirte al club.
                     </p>
-                    <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-                        <a href="/servicios/surf"
-                            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-orange-600">
-                            Reservar una clase
-                            <ChevronRight className="h-4 w-4" />
-                        </a>
+                    <div className="mt-7 flex justify-center">
                         <button
                             type="button"
                             onClick={() => setShowContact(true)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-slate-200 transition hover:bg-white/10">
+                            className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-orange-600">
                             Contactar con nosotros
                         </button>
                     </div>

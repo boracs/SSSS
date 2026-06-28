@@ -26,7 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => VerificarAdmin::class, // Usa el import de arriba
             'verificarTaquilla' => VerificarTaquilla::class, // <-- PASO 2: Registrar el alias de Taquilla (¡NUEVO!)
-
+            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

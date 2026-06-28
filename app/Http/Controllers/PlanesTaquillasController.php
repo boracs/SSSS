@@ -1,797 +1,322 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use App\Http\Resources\PagoCuotaQueueResource;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use App\Models\PlanTaquilla;
+use App\Http\Requests\Taquilla\ConfirmarPagoTaquillaRequest;
+use App\Http\Requests\Taquilla\ReassignLockerRequest;
+use App\Http\Requests\Taquilla\RechazarPagoTaquillaRequest;
+use App\Http\Requests\Taquilla\RegistrarPagoTaquillaRequest;
+use App\Http\Requests\Taquilla\StorePlanTaquillaRequest;
+use App\Http\Requests\Taquilla\SubirJustificanteTaquillaRequest;
+use App\Http\Requests\Taquilla\UpdatePagoTaquillaCheckedStateRequest;
+use App\Http\Requests\Taquilla\UpdatePagoTaquillaPaymentStateRequest;
+use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Models\PagoCuota;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB; 
+use App\Models\PlanTaquilla;
+use App\Models\User;
+use App\Services\Taquilla\TaquillaMembershipService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Database\QueryException;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
-
-
-
-
 
 class PlanesTaquillasController extends Controller
 {
-    /**
-     * LADO DEL ADMINISTRADOR:
-     * PANEL DE ADMINISTRADOR DE TA1QUILLAS Y PAGOS DE LOS USUARIOS DERIVA PLANEStAQUILLASADMIN.JSX:
-     * Muestra la lista de planes activos y usuarios con sus planes.
-     */
- public function AdminIndex()
-{
-    if (!Auth::check()) {
-        return redirect()->route('login')
-            ->with('error', 'Debes iniciar sesión para acceder al panel de administración.');
-    }
+    public function __construct(
+        private readonly TaquillaMembershipService $taquillaService,
+    ) {}
 
-    $user = Auth::user();
-
-    if ($user->role !== 'admin') {
-        return redirect()->route('taquilla.index.client')
-            ->with('error', 'No tienes permisos para acceder al panel de administración.');
-    }
-
-    $planes = PlanTaquilla::query()
-        ->orderByDesc('activo')
-        ->orderBy('precio_total')
-        ->get();
-
-    // Cargamos relaciones necesarias
-    $today = now()->startOfDay();
-    $usuarios = User::with([
-        'planVigente',
-        'pagosCuotas' => function ($q) {
-            $q->where('status', PagoCuota::STATUS_CONFIRMED)
-                ->select('id', 'user_id', 'id_plan_pagado', 'periodo_inicio', 'periodo_fin', 'status')
-                ->orderBy('periodo_inicio');
-        }
-    ])->get()->map(function ($u) use ($today) {
-        $confirmedRows = $u->pagosCuotas;
-
-        // Tramo activo (hoy dentro del rango): base operativa para "Último pago" y "Vence".
-        $activeRow = $confirmedRows->first(function ($p) use ($today) {
-            return $p->periodo_inicio && $p->periodo_fin
-                && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today)
-                && Carbon::parse($p->periodo_fin)->startOfDay()->gte($today);
-        });
-
-        $diasRestantes = null;
-        $estado = 'sin plan';
-        $ultimoPagoStr = null;
-        $fechaFinStr = null;
-        $prepaidExtraDays = 0;
-
-        if ($activeRow && $activeRow->periodo_fin) {
-            $fechaFin = Carbon::parse($activeRow->periodo_fin);
-            $diasRestantes = $today->diffInDays($fechaFin, false);
-            $estado = 'activo';
-            $ultimoPagoStr = optional($activeRow->periodo_inicio)->toDateString();
-            $fechaFinStr = optional($activeRow->periodo_fin)->toDateString();
-
-            // Días precomprados: tramos confirmed encadenados que inician después del tramo activo.
-            $prepaidExtraDays = (int) $confirmedRows
-                ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($fechaFin->startOfDay()))
-                ->sum(function ($p) {
-                    if (! $p->periodo_inicio || ! $p->periodo_fin) {
-                        return 0;
-                    }
-                    $start = Carbon::parse($p->periodo_inicio)->startOfDay();
-                    $end = Carbon::parse($p->periodo_fin)->startOfDay();
-                    return $start->diffInDays($end) + 1;
-                });
-        } elseif ($u->numeroTaquilla) {
-            $estado = 'vencido';
+    public function AdminIndex(): Response|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesion para acceder al panel de administracion.');
         }
 
-        return [
-            'id' => $u->id,
-            'nombre' => $u->nombre,
-            'apellido' => $u->apellido,
-            'email' => $u->email,
-            'telefono' => $u->telefono,
-            'numeroTaquilla' => $u->numeroTaquilla,
-            'plan_vigente' => $u->planVigente
-                ? [
-                    'id' => $u->planVigente->id,
-                    'nombre' => $u->planVigente->nombre,
-                    'duracion_dias' => $u->planVigente->duracion_dias,
-                    'activo' => (bool) $u->planVigente->activo,
-                  ]
-                : null,
-            'ultimo_pago' => $ultimoPagoStr,
-            'fecha_fin' => $fechaFinStr,
-            'dias_restantes' => $diasRestantes,
-            'estado' => $estado,
-            'prepaid_extra_days' => $prepaidExtraDays,
-            'payment_status' => $activeRow?->status ?? PagoCuota::STATUS_PENDING,
-        ];
-    });
-    return Inertia::render('PlanesTaquillasAdmin', [
-        'planes' => $planes,
-        'usuarios' => $usuarios,
-        'flash' => [
-            'success' => session('success'),
-            'error' => session('error'),
-        ],
-    ]);
-}
+        $user = Auth::user();
+        if (($user->role ?? null) !== 'admin') {
+            return redirect()->route('taquillas.index.client')
+                ->with('error', 'No tienes permisos para acceder al panel de administracion.');
+        }
 
-public function userPaymentHistory(User $user)
-{
-    $admin = Auth::user();
-    if (! $admin || ($admin->role ?? null) !== 'admin') {
-        abort(403);
-    }
+        $dashboard = $this->taquillaService->buildAdminDashboard();
 
-    $rows = PagoCuota::query()
-        ->with('plan:id,nombre,duracion_dias')
-        ->where('user_id', $user->id)
-        ->orderByDesc('periodo_inicio')
-        ->limit(50)
-        ->get()
-        ->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'plan' => $p->plan?->nombre ?? 'Sin plan',
-                'periodo_inicio' => optional($p->periodo_inicio)->toDateString(),
-                'periodo_fin' => optional($p->periodo_fin)->toDateString(),
-                'status' => $p->status ?? PagoCuota::STATUS_PENDING,
-                'payment_method' => $p->payment_method,
-                'is_checked' => (bool) ($p->is_checked ?? false),
-                'proof_url' => $p->payment_proof_path ? route('taquilla.pagos.proof', $p->id) : null,
-            ];
-        })
-        ->values();
-
-    return response()->json([
-        'rows' => $rows,
-    ]);
-}
-
-
-
-
-//MOSTRAR detalles DEL USUARIO EN EL PANEL DE CLIENTE AL CLICAR EN "MI PERFIL"
-
-public function obtenerContactoUsuario($id)
-{
-    $admin = Auth::user();
-    if (!$admin || $admin->role !== 'admin') {
-        abort(403, 'No autorizado');
-    }
-
-    $usuario = User::findOrFail($id);
-
-    return response()->json([
-        'telefono' => $usuario->telefono,
-        'email' => $usuario->email,
-    ]);
-}
-
-
-
-    /**
-     * LADO DEL CLIENTE:
-     * PANEL DEL CLIENTE DE TAQUILLA Y PAGOS DE SUS PLANES DERIVA PLANESTAQUILLASCLIENT.JSX:
-     * Muestra la lista de planes activos y   su historial de planes.
-     */
-
-
-
-public function ClientIndex()
-{
-    if (!Auth::check()) {
-        return redirect()->route('login')->with('error', 'Debes iniciar sesión para ver tu taquilla.');
-    }
-
-    $user = Auth::user();
-    $user->load(['planVigente', 'pagosCuotas.plan']);
-
-    $diasRestantes = null;
-    if ($user->fecha_vencimiento_cuota) {
-        $vencimiento = \Carbon\Carbon::parse($user->fecha_vencimiento_cuota);
-        $diasRestantes = $vencimiento->diffInDays(\Carbon\Carbon::now(), false);
-    }
-
-    $planes = PlanTaquilla::where('activo', true)
-        ->select('id', 'nombre', 'duracion_dias', 'precio_total')
-        ->orderBy('precio_total', 'asc')
-        ->get();
-
-    $ultimoPago = $user->pagosCuotas->sortByDesc('periodo_fin')->first();
-
-    $historialPagos = $user->pagosCuotas->map(function ($pago) {
-        return [
-            'id' => $pago->id,
-            'status' => $pago->status ?? PagoCuota::STATUS_PENDING,
-            'monto_pagado' => $pago->monto_pagado,
-            'referencia_pago_externa' => $pago->referencia_pago_externa,
-            'payment_method' => $pago->payment_method,
-            'is_checked' => (bool) ($pago->is_checked ?? false),
-            'periodo_inicio' => optional($pago->periodo_inicio)->toDateString(),
-            'periodo_fin' => optional($pago->periodo_fin)->toDateString(),
-            'proof_url' => ! empty($pago->payment_proof_path) ? route('taquilla.pagos.proof', $pago->id) : null,
-            'plan' => [
-                'id' => $pago->plan->id ?? null,
-                'nombre' => $pago->plan->nombre ?? null,
+        return Inertia::render('PlanesTaquillasAdmin', [
+            'planes' => $dashboard['planes'],
+            'usuarios' => $dashboard['usuarios'],
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
             ],
-        ];
-    });
-
-    $userPlanData = [
-        'id' => $user->id,
-        'nombre_completo' => "{$user->nombre} {$user->apellido}",
-        'numero_taquilla' => $user->numeroTaquilla,
-        'vencimiento_cuota' => $user->fecha_vencimiento_cuota,
-        'dias_restantes' => $diasRestantes,
-        'plan_vigente' => $user->planVigente ? [
-            'nombre' => $user->planVigente->nombre,
-            'precio' => $user->planVigente->precio_total,
-            'descripcion' => $user->planVigente->descripcion ?? null,
-        ] : null,
-        'ultimo_plan_fin' => optional($ultimoPago)->periodo_fin,
-        'historial_pagos' => $historialPagos,
-    ];
-
-    $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
-    return Inertia::render('PlanesTaquillasClient', [
-        'userData' => $userPlanData,
-        'planes' => $planes,
-        'paymentIban' => config('services.academy.iban', '[IBAN]'),
-        'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-        'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
-    ]);
-}
-
-
-
-public function registrarPago(Request $request)
-{
-    $user = Auth::user();
-
-    $validatedData = $request->validate([
-        'plan_id' => 'required|integer|exists:planes_taquilla,id',
-        'monto_pagado' => 'nullable|numeric|min:0',
-        'referencia_pago_externa' => 'nullable|string|max:255',
-        'proof' => 'required|file|mimes:jpeg,jpg,png,pdf|max:10240',
-        'payment_method' => 'nullable|in:bizum,transferencia',
-    ]);
-
-    $plan = PlanTaquilla::findOrFail($validatedData['plan_id']);
-    if (! (bool) $plan->activo) {
-        throw ValidationException::withMessages([
-            'plan_id' => ['Este plan está desactivado. Selecciona uno vigente.'],
         ]);
     }
-    $precioRealPlan = (float) $plan->precio_total;
 
-    if (array_key_exists('monto_pagado', $validatedData) && $validatedData['monto_pagado'] !== null) {
-        $montoCliente = (float) $validatedData['monto_pagado'];
-        $epsilon = 0.01;
-        if (abs($montoCliente - $precioRealPlan) > $epsilon) {
-            throw ValidationException::withMessages([
-                'monto_pagado' => ['El importe no coincide con el precio real del plan.'],
-            ]);
+    public function userPaymentHistory(User $user): JsonResponse
+    {
+        $admin = Auth::user();
+        if (! $admin || ($admin->role ?? null) !== 'admin') {
+            abort(403);
         }
+
+        return response()->json([
+            'rows' => $this->taquillaService->userPaymentHistory($user),
+        ]);
     }
 
-    $ultimoPago = PagoCuota::where('user_id', $user->id)
-        ->orderBy('periodo_fin', 'desc')
-        ->first();
+    public function obtenerContactoUsuario(int $id): JsonResponse
+    {
+        $admin = Auth::user();
+        if (! $admin || $admin->role !== 'admin') {
+            abort(403, 'No autorizado');
+        }
 
-    $now = now()->startOfDay();
+        $usuario = User::query()->findOrFail($id);
 
-    if ($ultimoPago) {
-        $fechaInicio = Carbon::parse($ultimoPago->periodo_fin)->addDay()->startOfDay();
-    } else {
-        $fechaInicio = $now;
+        return response()->json($this->taquillaService->userContact($usuario));
     }
 
-    $fechaFin = (clone $fechaInicio)->addDays($plan->duracion_dias)->subDay()->endOfDay();
+    public function publicPlans(): Response
+    {
+        return Inertia::render('PlanesTaquillasPublic', [
+            'planes' => $this->taquillaService->buildPublicPlans(),
+        ]);
+    }
 
-    try {
-        DB::transaction(function () use ($user, $plan, $precioRealPlan, $validatedData, $fechaInicio, $fechaFin, $request) {
-            $pago = PagoCuota::create([
+    public function ClientIndex(): Response|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')->with('error', 'Debes iniciar sesion para ver tu taquilla.');
+        }
+
+        $user = Auth::user();
+        $payload = $this->taquillaService->buildClientIndex($user);
+        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
+        return Inertia::render('PlanesTaquillasClient', [
+            'userData' => $payload['userData'],
+            'planes' => $payload['planes'],
+            'paymentIban' => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+        ]);
+    }
+
+    public function registrarPago(RegistrarPagoTaquillaRequest $request): RedirectResponse
+    {
+        $user = Auth::user();
+
+        try {
+            $this->taquillaService->registerPayment(user: $user, request: $request);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            return redirect()->back()->with(
+                'error',
+                'Error al procesar el pago. Intentalo de nuevo o contacta con el club.',
+            );
+        }
+
+        return redirect()->route('taquillas.index.client')
+            ->with('success', 'Renovacion solicitada con justificante. Queda pendiente de validacion.');
+    }
+
+    public function obtenerDatosUsuario(): JsonResponse
+    {
+        $user = Auth::user();
+
+        try {
+            return response()->json($this->taquillaService->userDatosPayload($user));
+        } catch (Throwable $e) {
+            Log::error('taquilla.membership.user_data_failed', [
+                'action' => 'obtener_datos_usuario',
                 'user_id' => $user->id,
-                'id_plan_pagado' => $plan->id,
-                'monto_pagado' => $precioRealPlan,
-                'status' => PagoCuota::STATUS_PENDING,
-                'referencia_pago_externa' => $validatedData['referencia_pago_externa'] ?? null,
-                'periodo_inicio' => $fechaInicio,
-                'periodo_fin' => $fechaFin,
-                'fecha_pago' => now(),
+                'payload' => [],
+                'error' => $e->getMessage(),
             ]);
 
-            $ext = strtolower((string) $request->file('proof')->getClientOriginalExtension());
-            $fileName = Str::uuid()->toString().'.'.$ext;
-            $path = $request->file('proof')->storeAs('taquilla-proofs/'.$pago->id, $fileName, 'local');
-            $pago->update([
-                'payment_proof_path' => $path,
-                'proof_uploaded_at' => now(),
-                'payment_method' => $request->input('payment_method'),
-            ]);
+            return response()->json([
+                'success' => false,
+                'mensaje' => 'Error al cargar los datos del usuario.',
+            ], 500);
+        }
+    }
 
-            $this->syncUserLockerCacheFromConfirmedPayments($user);
-        });
-    } catch (QueryException $e) {
-        Log::error('FALLO CRÍTICO EN TRANSACCIÓN DE PAGO (DB):', [
-            'error_mensaje' => $e->getMessage(),
-            'user_id' => $user->id,
+    public function subirJustificante(SubirJustificanteTaquillaRequest $request, PagoCuota $pago): RedirectResponse
+    {
+        try {
+            $this->taquillaService->uploadProof(user: Auth::user(), pago: $pago, request: $request);
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo subir el justificante. Intentalo de nuevo.');
+        }
+
+        return back()->with('success', 'Justificante subido. Pendiente de validacion.');
+    }
+
+    public function colaPagos(Request $request): Response|JsonResponse
+    {
+        $status = (string) $request->query('status', 'all');
+        $search = trim((string) $request->query('search', ''));
+        $pendingOnly = $request->boolean('pending_review', false);
+
+        $payload = $this->taquillaService->buildPaymentQueuePayload(
+            status: $status,
+            search: $search,
+            pendingOnly: $pendingOnly,
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json($payload);
+        }
+
+        return Inertia::render('Admin/Taquillas/Queue', [
+            'pagos' => $payload,
         ]);
-
-        return redirect()->back()->with('error', 'Error de base de datos al guardar el pago. Inténtalo de nuevo.');
-    } catch (Throwable $e) {
-        Log::error('FALLO CRÍTICO EN TRANSACCIÓN DE PAGO (INESPERADO):', [
-            'error_mensaje' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'user_id' => $user->id,
-        ]);
-
-        return redirect()->back()->with('error', 'Error inesperado al procesar el pago.');
     }
 
-    return redirect()->route('taquillas.index.client')
-        ->with('success', 'Renovación solicitada con justificante. Queda pendiente de validación.');
-}
+    public function markPagoTaquillaReviewed(PagoCuota $pago): RedirectResponse
+    {
+        try {
+            $this->taquillaService->markReviewed($pago);
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo actualizar la marca de revision.');
+        }
 
-
-
-//para cargr los datso del cliente en client admins pagostaquillas
-public function obtenerDatosUsuario()
-{
-    $user = Auth::user();
-
-    try {
-        // Obtener plan vigente
-        $now = now();
-        $planVigente = PagoCuota::where('user_id', $user->id)
-            ->where('status', PagoCuota::STATUS_CONFIRMED)
-            ->where('periodo_inicio', '<=', $now)
-            ->where('periodo_fin', '>=', $now)
-            ->orderByDesc('periodo_fin')
-            ->with('plan')
-            ->first();
-
-        $diasRestantes = $planVigente ? $now->diffInDays($planVigente->periodo_fin, false) : 0;
-
-        // Historial completo
-        $historial = PagoCuota::where('user_id', $user->id)
-            ->with('plan')
-            ->orderBy('periodo_inicio', 'desc')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'nombre_completo' => trim(($user->nombre ?? '').' '.($user->apellido ?? '')),
-            'numero_taquilla' => $user->numeroTaquilla,
-            'vencimiento_actualizado' => $user->fecha_vencimiento_cuota?->toDateString(),
-            'plan_vigente' => $planVigente ? [
-                'nombre' => $planVigente->plan->nombre,
-                'precio' => $planVigente->plan->precio_total,
-                'dias_restantes' => $diasRestantes,
-                'fecha_fin' => $planVigente->periodo_fin->toDateString(),
-            ] : null,
-            'historial' => $historial->map(fn ($p) => [
-                'id' => $p->id,
-                'status' => $p->status ?? PagoCuota::STATUS_PENDING,
-                'monto_pagado' => $p->monto_pagado,
-                'referencia_pago_externa' => $p->referencia_pago_externa,
-                'periodo_inicio' => optional($p->periodo_inicio)->toDateString(),
-                'periodo_fin' => optional($p->periodo_fin)->toDateString(),
-                'plan' => [
-                    'id' => $p->plan->id ?? null,
-                    'nombre' => $p->plan->nombre ?? null,
-                ],
-            ]),
-            'ultimo_plan_fin' => $user->fecha_vencimiento_cuota?->toDateString(),
-        ]);
-    } catch (Throwable $e) {
-        Log::error("Error al obtener datos del usuario:", [
-            'error_mensaje' => $e->getMessage(),
-            'user_id' => $user->id,
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'mensaje' => 'Error al cargar los datos del usuario.',
-        ], 500);
-    }
-}
-
-
-
-
-public function subirJustificante(Request $request, PagoCuota $pago)
-{
-    $user = Auth::user();
-    if ((int) $pago->user_id !== (int) $user->id) {
-        abort(403);
+        return back()->with('success', 'Marca de pendiente retirada correctamente.');
     }
 
-    $request->validate([
-        'proof' => 'required|file|mimes:jpeg,jpg,png,pdf|max:10240',
-        'payment_method' => 'nullable|in:bizum,transferencia,tienda',
-    ]);
+    public function updatePagoTaquillaPaymentState(
+        UpdatePagoTaquillaPaymentStateRequest $request,
+        PagoCuota $pago,
+    ): RedirectResponse {
+        try {
+            $this->taquillaService->updatePaymentState(pago: $pago, request: $request);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo actualizar el estado del pago.');
+        }
 
-    $oldPath = $pago->payment_proof_path;
-    if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-        Storage::disk('local')->delete($oldPath);
+        return back()->with('success', 'Pago actualizado correctamente.');
     }
 
-    $ext = strtolower((string) $request->file('proof')->getClientOriginalExtension());
-    $fileName = Str::uuid()->toString().'.'.$ext;
-    $path = $request->file('proof')->storeAs('taquilla-proofs/'.$pago->id, $fileName, 'local');
-    $pago->update([
-        'payment_proof_path' => $path,
-        'proof_uploaded_at' => now(),
-        'reviewed_at' => null,
-        'payment_method' => $request->input('payment_method'),
-        'status' => PagoCuota::STATUS_PENDING,
-    ]);
+    public function updatePagoTaquillaCheckedState(
+        UpdatePagoTaquillaCheckedStateRequest $request,
+        PagoCuota $pago,
+    ): RedirectResponse {
+        try {
+            $this->taquillaService->updateCheckedState(pago: $pago, request: $request);
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo actualizar el estado de comprobacion.');
+        }
 
-    return back()->with('success', 'Justificante subido. Pendiente de validación.');
-}
-
-public function colaPagos(Request $request)
-{
-    $status = (string) $request->query('status', 'all');
-    $search = trim((string) $request->query('search', ''));
-    $pendingOnly = $request->boolean('pending_review', false);
-
-    $rows = PagoCuota::query()
-        ->with(['user:id,nombre,apellido,email,telefono,numeroTaquilla,fecha_vencimiento_cuota', 'plan:id,nombre,duracion_dias,precio_total'])
-        ->when($status !== 'all', fn ($q) => $q->where('status', $status))
-        ->when($pendingOnly, fn ($q) => $q->whereNull('reviewed_at'))
-        ->when($search !== '', function ($q) use ($search) {
-            $q->whereHas('user', function ($u) use ($search) {
-                $u->where('nombre', 'like', "%{$search}%")
-                    ->orWhere('apellido', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        })
-        ->orderByDesc('created_at')
-        ->limit(300)
-        ->get();
-
-    $payload = [
-        'rows' => PagoCuotaQueueResource::collection($rows)->resolve(),
-        'counts' => [
-            'all' => (int) PagoCuota::query()->count(),
-            'pending' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_PENDING)->count(),
-            'confirmed' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_CONFIRMED)->count(),
-            'rejected' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_REJECTED)->count(),
-            'unreviewed' => (int) PagoCuota::query()->whereNull('reviewed_at')->count(),
-        ],
-        'filters' => [
-            'status' => $status,
-            'search' => $search,
-            'pending_review' => $pendingOnly,
-        ],
-        'userOptions' => User::query()
-            ->select('id', 'nombre', 'apellido', 'email', 'telefono', 'numeroTaquilla', 'fecha_vencimiento_cuota')
-            ->orderBy('nombre')
-            ->orderBy('apellido')
-            ->get()
-            ->map(fn ($u) => [
-                'id' => $u->id,
-                'name' => trim(($u->nombre ?? '').' '.($u->apellido ?? '')),
-                'email' => $u->email,
-                'phone' => $u->telefono,
-                'locker' => $u->numeroTaquilla,
-                'plan_status' => $u->isLockerPaymentUpToDate() ? 'up_to_date' : ($u->numeroTaquilla ? 'outdated' : 'no_locker'),
-            ])
-            ->values(),
-        'lockerUsers' => User::query()
-            ->whereNotNull('numeroTaquilla')
-            ->orderBy('numeroTaquilla')
-            ->get(['id', 'nombre', 'apellido', 'email', 'telefono', 'numeroTaquilla', 'fecha_vencimiento_cuota'])
-            ->map(function ($u) {
-                $today = now()->startOfDay();
-                $start = optional($u->pagosCuotas()->where('status', PagoCuota::STATUS_CONFIRMED)->orderByDesc('periodo_inicio')->first()?->periodo_inicio)?->copy()?->startOfDay();
-                $end = $u->fecha_vencimiento_cuota ? Carbon::parse($u->fecha_vencimiento_cuota)->startOfDay() : null;
-                $progress = 0;
-                $daysRemaining = null;
-                $isExpired = false;
-                if ($start && $end && $end->gte($start)) {
-                    $total = max(1, $start->diffInDays($end));
-                    $daysRemaining = $today->diffInDays($end, false);
-                    $isExpired = $daysRemaining < 0;
-                    $magnitude = abs((int) $daysRemaining);
-                    $progress = (int) round((min($total, $magnitude) * 100) / $total);
-                }
-                return [
-                    'id' => $u->id,
-                    'name' => trim(($u->nombre ?? '').' '.($u->apellido ?? '')),
-                    'email' => $u->email,
-                    'phone' => $u->telefono,
-                    'locker' => $u->numeroTaquilla,
-                    'expires_at' => optional($u->fecha_vencimiento_cuota)->toDateString(),
-                    'up_to_date' => $u->isLockerPaymentUpToDate(),
-                    'progress' => $progress,
-                    'days_remaining' => $daysRemaining,
-                    'is_expired' => $isExpired,
-                ];
-            })
-            ->values(),
-        'lockerGrid' => (function () {
-            $occupied = User::query()->whereNotNull('numeroTaquilla')->pluck('numeroTaquilla')->map(fn ($n) => (int) $n)->unique()->values();
-            $max = max(60, ((int) $occupied->max() + 20));
-            return [
-                'max' => $max,
-                'occupied' => $occupied,
-            ];
-        })(),
-    ];
-
-    if ($request->wantsJson()) {
-        return response()->json($payload);
+        return back()->with('success', 'Estado de comprobacion actualizado.');
     }
 
-    return Inertia::render('Admin/Taquillas/Queue', [
-        'pagos' => $payload,
-    ]);
-}
+    public function confirmarPagoTaquilla(ConfirmarPagoTaquillaRequest $request, PagoCuota $pago): RedirectResponse
+    {
+        try {
+            $this->taquillaService->confirmPayment(
+                pago: $pago,
+                admin: Auth::user(),
+                request: $request,
+            );
+        } catch (ValidationException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo confirmar el pago.');
+        }
 
-public function markPagoTaquillaReviewed(PagoCuota $pago)
-{
-    $pago->update([
-        'reviewed_at' => now(),
-    ]);
-
-    return back()->with('success', 'Marca de pendiente retirada correctamente.');
-}
-
-public function updatePagoTaquillaPaymentState(Request $request, PagoCuota $pago)
-{
-    $validated = $request->validate([
-        'pago_state' => 'required|string|in:pending,transferencia,metalico,domiciliado,failed',
-        'failure_reason' => 'nullable|string|max:2000',
-    ]);
-
-    $mapMethod = [
-        'transferencia' => 'transferencia',
-        'metalico' => 'tienda',
-        'domiciliado' => 'domiciliado',
-    ];
-
-    $nextState = (string) $validated['pago_state'];
-    $nextStatus = match ($nextState) {
-        'pending' => PagoCuota::STATUS_PENDING,
-        'failed' => PagoCuota::STATUS_REJECTED,
-        default => PagoCuota::STATUS_CONFIRMED,
-    };
-
-    $failureReason = trim((string) ($validated['failure_reason'] ?? ''));
-    if ($nextState === 'failed' && $failureReason === '') {
-        return back()->with('error', 'Indica el motivo del pago fallido.');
+        return back()->with('success', 'Pago de taquilla confirmado.');
     }
 
-    $pago->update([
-        'status' => $nextStatus,
-        'payment_method' => $mapMethod[$nextState] ?? null,
-        'admin_notes' => $nextState === 'failed' ? $failureReason : null,
-        'reviewed_at' => null,
-    ]);
+    public function rechazarPagoTaquilla(RechazarPagoTaquillaRequest $request, PagoCuota $pago): RedirectResponse
+    {
+        try {
+            $this->taquillaService->rejectPayment(pago: $pago, request: $request);
+        } catch (ValidationException $e) {
+            return back()->with('error', $e->getMessage());
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo rechazar el pago.');
+        }
 
-    return back()->with('success', 'Pago actualizado correctamente.');
-}
-
-public function updatePagoTaquillaCheckedState(Request $request, PagoCuota $pago)
-{
-    $validated = $request->validate([
-        'is_checked' => 'required|boolean',
-    ]);
-
-    $pago->update([
-        'is_checked' => (bool) $validated['is_checked'],
-        'reviewed_at' => null,
-    ]);
-
-    return back()->with('success', 'Estado de comprobación actualizado.');
-}
-
-public function confirmarPagoTaquilla(Request $request, PagoCuota $pago)
-{
-    if (($pago->status ?? '') === PagoCuota::STATUS_CONFIRMED) {
-        return back()->with('error', 'Este pago ya está confirmado.');
+        return back()->with('success', 'Comprobante de taquilla rechazado.');
     }
 
-    $validated = $request->validate([
-        'locker_number' => 'nullable|integer|min:1|max:9999',
-    ]);
-    $admin = Auth::user();
+    public function showProof(PagoCuota $pago): StreamedResponse
+    {
+        $viewer = Auth::user();
+        if (! $viewer) {
+            abort(403);
+        }
 
-    DB::transaction(function () use ($pago, $validated, $admin) {
-        $targetUser = User::query()->whereKey($pago->user_id)->lockForUpdate()->firstOrFail();
-        $lockerNumber = isset($validated['locker_number']) ? (int) $validated['locker_number'] : null;
+        $isAdmin = (string) ($viewer->role ?? '') === 'admin';
+        $isOwner = (int) $pago->user_id === (int) $viewer->id;
 
-        if (! empty($lockerNumber)) {
-            $ocupante = User::query()
-                ->where('numeroTaquilla', $lockerNumber)
-                ->lockForUpdate()
-                ->first();
-            if ($ocupante && (int) $ocupante->id !== (int) $targetUser->id) {
-                abort(422, 'La taquilla seleccionada ya está ocupada. Elige otra.');
+        if (! $isAdmin && ! $isOwner) {
+            abort(403);
+        }
+
+        if (empty($pago->payment_proof_path) || ! Storage::disk('local')->exists($pago->payment_proof_path)) {
+            abort(404);
+        }
+
+        $mime = Storage::disk('local')->mimeType($pago->payment_proof_path);
+        $stream = Storage::disk('local')->readStream($pago->payment_proof_path);
+
+        return response()->stream(function () use ($stream): void {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
             }
-            $fromLocker = $targetUser->numeroTaquilla;
-            $targetUser->numeroTaquilla = $lockerNumber;
-            $targetUser->save();
-
-            DB::table('taquilla_audit_logs')->insert([
-                'admin_id' => $admin?->id,
-                'user_id' => $targetUser->id,
-                'action' => 'assign_from_payment_approval',
-                'from_locker' => $fromLocker,
-                'to_locker' => $lockerNumber,
-                'notes' => 'Asignación durante confirmación de pago.',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        $pago->update([
-            'status' => PagoCuota::STATUS_CONFIRMED,
-            'reviewed_at' => null,
+        }, 200, [
+            'Content-Type' => $mime ?: 'application/octet-stream',
+            'Cache-Control' => 'no-store, private',
         ]);
-
-        $this->syncUserLockerCacheFromConfirmedPayments($targetUser);
-    });
-
-    return back()->with('success', 'Pago de taquilla confirmado.');
-}
-
-public function rechazarPagoTaquilla(Request $request, PagoCuota $pago)
-{
-    if (($pago->status ?? '') === PagoCuota::STATUS_REJECTED) {
-        return back()->with('error', 'Este pago ya está rechazado.');
     }
 
-    $validated = $request->validate([
-        'admin_notes' => 'nullable|string|max:2000',
-    ]);
-
-    $pago->update([
-        'status' => PagoCuota::STATUS_REJECTED,
-        'admin_notes' => $validated['admin_notes'] ?? 'Comprobante rechazado.',
-        'reviewed_at' => null,
-    ]);
-
-    return back()->with('success', 'Comprobante de taquilla rechazado.');
-}
-
-public function showProof(PagoCuota $pago)
-{
-    $admin = Auth::user();
-    if (! $admin || (string) ($admin->role ?? '') !== 'admin') {
-        abort(403);
-    }
-
-    if (empty($pago->payment_proof_path) || ! Storage::disk('local')->exists($pago->payment_proof_path)) {
-        abort(404);
-    }
-
-    $mime = Storage::disk('local')->mimeType($pago->payment_proof_path);
-    $stream = Storage::disk('local')->readStream($pago->payment_proof_path);
-
-    return response()->stream(function () use ($stream) {
-        fpassthru($stream);
-        if (is_resource($stream)) {
-            fclose($stream);
+    public function reassignLocker(ReassignLockerRequest $request, User $user): RedirectResponse
+    {
+        try {
+            $this->taquillaService->reassignLocker(
+                target: $user,
+                admin: Auth::user(),
+                request: $request,
+            );
+        } catch (Throwable $e) {
+            return back()->with('error', 'No se pudo reasignar la taquilla.');
         }
-    }, 200, [
-        'Content-Type' => $mime ?: 'application/octet-stream',
-        'Cache-Control' => 'no-store, private',
-    ]);
-}
 
-private function syncUserLockerCacheFromConfirmedPayments(User $user): void
-{
-    $now = now();
-    $planVigente = PagoCuota::where('user_id', $user->id)
-        ->where('status', PagoCuota::STATUS_CONFIRMED)
-        ->where('periodo_inicio', '<=', $now)
-        ->where('periodo_fin', '>=', $now)
-        ->orderByDesc('periodo_fin')
-        ->first();
+        return back()->with('success', 'Taquilla reasignada correctamente.');
+    }
 
-    $user->update([
-        'fecha_vencimiento_cuota' => $planVigente?->periodo_fin,
-        'id_plan_vigente' => $planVigente?->id_plan_pagado,
-    ]);
-}
+    public function storePlan(StorePlanTaquillaRequest $request): RedirectResponse
+    {
+        $plan = $this->taquillaService->storePlan($request);
 
-public function reassignLocker(Request $request, User $user)
-{
-    $validated = $request->validate([
-        'locker_number' => 'required|integer|min:1|max:9999',
-    ]);
-    $admin = Auth::user();
+        return back()->with('success', "Plan {$plan->nombre} creado correctamente.");
+    }
 
-    DB::transaction(function () use ($validated, $user, $admin) {
-        $locker = (int) $validated['locker_number'];
-        $target = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-        $ocupante = User::query()->where('numeroTaquilla', $locker)->lockForUpdate()->first();
-        if ($ocupante && (int) $ocupante->id !== (int) $target->id) {
-            abort(422, 'La taquilla seleccionada ya está ocupada.');
-        }
-        $fromLocker = $target->numeroTaquilla;
-        $target->numeroTaquilla = $locker;
-        $target->save();
+    public function updatePlan(UpdatePlanTaquillaRequest $request, PlanTaquilla $plan): RedirectResponse
+    {
+        $this->taquillaService->updatePlan(plan: $plan, request: $request);
 
-        DB::table('taquilla_audit_logs')->insert([
-            'admin_id' => $admin?->id,
-            'user_id' => $target->id,
-            'action' => 'manual_reassign',
-            'from_locker' => $fromLocker,
-            'to_locker' => $locker,
-            'notes' => 'Reasignación manual desde tabla de taquillas.',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-    });
+        return back()->with('success', "Plan {$plan->nombre} actualizado.");
+    }
 
-    return back()->with('success', 'Taquilla reasignada correctamente.');
-}
+    public function togglePlanActive(PlanTaquilla $plan): RedirectResponse
+    {
+        $active = $this->taquillaService->togglePlanActive($plan);
+        $state = $active ? 'activado' : 'desactivado';
 
-public function storePlan(Request $request)
-{
-    $validated = $request->validate([
-        'nombre' => 'required|string|max:100',
-        'precio_total' => 'required|numeric|min:0',
-        'duracion_meses' => 'required|integer|min:1|max:36',
-        'visible' => 'nullable|boolean',
-    ]);
-
-    $plan = PlanTaquilla::create([
-        'nombre' => $validated['nombre'],
-        'precio_total' => (float) $validated['precio_total'],
-        'duracion_dias' => (int) $validated['duracion_meses'] * 30,
-        'activo' => (bool) ($validated['visible'] ?? true),
-    ]);
-
-    return back()->with('success', "Plan {$plan->nombre} creado correctamente.");
-}
-
-public function updatePlan(Request $request, PlanTaquilla $plan)
-{
-    $validated = $request->validate([
-        'nombre' => 'required|string|max:100',
-        'precio_total' => 'required|numeric|min:0',
-        'duracion_meses' => 'required|integer|min:1|max:36',
-        'visible' => 'nullable|boolean',
-    ]);
-
-    $plan->update([
-        'nombre' => $validated['nombre'],
-        'precio_total' => (float) $validated['precio_total'],
-        'duracion_dias' => (int) $validated['duracion_meses'] * 30,
-        'activo' => (bool) ($validated['visible'] ?? true),
-    ]);
-
-    return back()->with('success', "Plan {$plan->nombre} actualizado.");
-}
-
-public function togglePlanActive(PlanTaquilla $plan)
-{
-    $plan->update([
-        'activo' => ! (bool) $plan->activo,
-    ]);
-
-    $state = $plan->activo ? 'activado' : 'desactivado';
-    return back()->with('success', "Plan {$plan->nombre} {$state} correctamente.");
-}
-
+        return back()->with('success', "Plan {$plan->nombre} {$state} correctamente.");
+    }
 }

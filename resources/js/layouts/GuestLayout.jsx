@@ -1,6 +1,6 @@
-import ApplicationLogo from '@/Components/ApplicationLogo';
-import { Link } from '@inertiajs/react';
-
+/**
+ * Layout de auth invitado: sin Header/Footer para evitar duplicar la navegación global.
+ */
 export default function GuestLayout({ children }) {
     return (
         <div className="flex min-h-screen flex-col items-center bg-gray-900 pt-6 text-gray-100 sm:justify-center sm:pt-0">

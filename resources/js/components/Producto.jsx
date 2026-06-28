@@ -1,13 +1,8 @@
 import { usePage, router } from "@inertiajs/react";
-import React from "react";
+import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { Boxes, ShoppingCart, Lock } from "lucide-react";
-
-const EUR = new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 2,
-});
+import { formatEur } from "@/utils/money";
 
 const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) => {
     const { auth } = usePage().props;
@@ -36,8 +31,13 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
         : precioNum;
     const agotado   = Number(unidades) === 0;
     const stockBajo = Number(unidades) > 0 && Number(unidades) <= 3;
+    const [imageFailed, setImageFailed] = useState(false);
+    const [addingToCart, setAddingToCart] = useState(false);
+    const showImage = Boolean(imageSource) && !imageFailed;
 
     const handleAgregarAlCarrito = (productoId) => {
+        if (addingToCart) return;
+        setAddingToCart(true);
         router.post(
             route("carrito.agregar", productoId),
             {},
@@ -46,6 +46,7 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
                 onError: () => toast.error("Hubo un problema al agregar el producto al carrito"),
                 preserveState: true,
                 preserveScroll: true,
+                onFinish: () => setAddingToCart(false),
             }
         );
     };
@@ -65,34 +66,32 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
         >
             {/* ── Imagen ─────────────────────────────────────────────── */}
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-800/60">
-                {imageSource ? (
+                {showImage ? (
                     <img
                         src={imageSource}
-                        alt={nombre}
+                        alt=""
+                        onError={() => setImageFailed(true)}
                         className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${
                             agotado ? "opacity-50 grayscale" : ""
                         }`}
                     />
                 ) : (
-                    <div className="flex h-full items-center justify-center">
+                    <div className="flex h-full flex-col items-center justify-center gap-2 px-4 text-center">
                         <svg
-                            className="h-16 w-16 text-slate-600"
+                            className="h-12 w-12 text-slate-600"
                             viewBox="0 0 24 24"
                             fill="none"
                             stroke="currentColor"
                             strokeWidth={1}
+                            aria-hidden="true"
                         >
                             <rect x="3" y="3" width="18" height="18" rx="2" />
                             <circle cx="8.5" cy="8.5" r="1.5" />
                             <path d="M21 15l-5-5L5 21" />
                         </svg>
-                    </div>
-                )}
-
-                {/* Badge descuento */}
-                {descuentoNum > 0 && !agotado && (
-                    <div className="absolute left-2 top-2 rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-                        -{parseInt(descuentoNum)}%
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                            Sin imagen
+                        </span>
                     </div>
                 )}
 
@@ -142,17 +141,20 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
                 {/* Precio */}
                 <div className="mt-auto">
                     {descuentoNum > 0 ? (
-                        <div className="flex items-baseline gap-2">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className="text-lg font-extrabold text-orange-400">
-                                {EUR.format(precioFinal)}
+                                {formatEur(precioFinal)}
                             </span>
-                            <span className="text-xs text-slate-500 line-through">
-                                {EUR.format(precioNum)}
+                            <span className="inline-flex items-center rounded-md bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-orange-300 ring-1 ring-orange-400/25">
+                                -{parseInt(descuentoNum)}%
+                            </span>
+                            <span className="w-full text-xs text-slate-500 line-through sm:w-auto">
+                                {formatEur(precioNum)}
                             </span>
                         </div>
                     ) : (
                         <span className="text-lg font-extrabold text-cyan-300">
-                            {EUR.format(precioNum)}
+                            {formatEur(precioNum)}
                         </span>
                     )}
                 </div>
@@ -167,15 +169,17 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
                                     e.stopPropagation();
                                     handleAgregarAlCarrito(producto.id);
                                 }}
-                                disabled={agotado}
+                                disabled={agotado || addingToCart}
                                 className={`flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-bold tracking-wide text-white transition-all duration-200 ${
-                                    agotado
+                                    agotado || addingToCart
                                         ? "cursor-not-allowed bg-slate-700/60 text-slate-500"
                                         : "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.98]"
                                 }`}
                             >
                                 {agotado ? (
                                     "Agotado"
+                                ) : addingToCart ? (
+                                    "Anadiendo..."
                                 ) : (
                                     <>
                                         <ShoppingCart className="h-3.5 w-3.5" />

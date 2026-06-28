@@ -81,7 +81,7 @@ class AssignVipTaquillaPlansSeeder extends Seeder
         PagoCuota::query()->create([
             'user_id' => $user->id,
             'id_plan_pagado' => $plan->id,
-            'monto_pagado' => (float) $plan->precio_total,
+            'monto_pagado_cents' => (int) $plan->precio_total_cents,
             'referencia_pago_externa' => $ref,
             'status' => PagoCuota::STATUS_CONFIRMED,
             'is_checked' => true,

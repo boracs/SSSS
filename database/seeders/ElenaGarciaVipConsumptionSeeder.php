@@ -47,7 +47,7 @@ class ElenaGarciaVipConsumptionSeeder extends Seeder
                 [
                     'num_clases' => 20,
                     'precio' => 320,
-                    'activo' => true,
+                    'activo' => false,
                 ]
             );
 

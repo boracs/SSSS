@@ -117,10 +117,10 @@ class OperationalSuperSeeder extends Seeder
     private function createLockerPlans(): array
     {
         $defs = [
-            ['nombre' => 'Plan Mensual Superseed', 'duracion_dias' => 30, 'precio_total' => 60],
-            ['nombre' => 'Plan Trimestral Superseed', 'duracion_dias' => 90, 'precio_total' => 165],
-            ['nombre' => 'Plan Semestral Superseed', 'duracion_dias' => 180, 'precio_total' => 300],
-            ['nombre' => 'Plan Anual Superseed', 'duracion_dias' => 365, 'precio_total' => 480],
+            ['nombre' => 'Plan Mensual', 'duracion_dias' => 30, 'precio_total' => 60],
+            ['nombre' => 'Plan Trimestral', 'duracion_dias' => 90, 'precio_total' => 165],
+            ['nombre' => 'Plan Semestral', 'duracion_dias' => 180, 'precio_total' => 300],
+            ['nombre' => 'Plan Anual', 'duracion_dias' => 365, 'precio_total' => 480],
         ];
 
         return array_map(
@@ -128,7 +128,7 @@ class OperationalSuperSeeder extends Seeder
                 ['nombre' => $def['nombre']],
                 [
                     'duracion_dias' => $def['duracion_dias'],
-                    'precio_total' => $def['precio_total'],
+                    'precio_total_cents' => \App\Support\MoneyCents::eurosToCents($def['precio_total']),
                     'activo' => true,
                 ]
             ),
@@ -139,9 +139,9 @@ class OperationalSuperSeeder extends Seeder
     private function createBonoPacks(): array
     {
         $defs = [
-            ['nombre' => 'Bono 8 clases Superseed', 'num_clases' => 8, 'precio' => 170],
-            ['nombre' => 'Bono 12 clases Superseed', 'num_clases' => 12, 'precio' => 240],
-            ['nombre' => 'Bono 20 clases Superseed', 'num_clases' => 20, 'precio' => 380],
+            ['nombre' => 'Bono 8 Clases', 'num_clases' => 8, 'precio' => 170],
+            ['nombre' => 'Bono 12 Clases', 'num_clases' => 12, 'precio' => 240],
+            ['nombre' => 'Bono 20 Clases', 'num_clases' => 20, 'precio' => 380],
         ];
 
         return array_map(
@@ -421,7 +421,7 @@ class OperationalSuperSeeder extends Seeder
             PagoCuota::query()->create([
                 'user_id' => $student->id,
                 'id_plan_pagado' => $plan->id,
-                'monto_pagado' => (float) $plan->precio_total,
+                'monto_pagado_cents' => (int) $plan->precio_total_cents,
                 'referencia_pago_externa' => 'SEED-TAQ-'.strtoupper(Str::random(8)),
                 'status' => $status,
                 'payment_proof_path' => ($status === PagoCuota::STATUS_CONFIRMED || $pendingWithProof) ? "taquilla-proofs/seed/{$student->id}.pdf" : null,

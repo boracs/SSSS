@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
@@ -21,7 +23,7 @@ class PagoCuotaQueueResource extends JsonResource
             'payment_method' => $this->payment_method,
             'is_checked' => (bool) ($this->is_checked ?? false),
             'admin_notes' => $this->admin_notes,
-            'amount' => (float) $this->monto_pagado,
+            'amount' => $this->monto_pagado,
             'periodo_inicio' => optional($this->periodo_inicio)->toDateString(),
             'periodo_fin' => optional($this->periodo_fin)->toDateString(),
             'vencimiento_usuario' => optional($this->user?->fecha_vencimiento_cuota)->toDateString(),

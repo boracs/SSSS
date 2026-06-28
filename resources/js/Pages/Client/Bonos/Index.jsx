@@ -48,6 +48,75 @@ export default function ClientBonosIndex({
                     </div>
                 ) : null}
 
+                <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-950 via-gray-900 to-teal-950/50 p-[1px] shadow-xl shadow-amber-900/20">
+                    <div className="rounded-2xl bg-gray-950/90 px-4 pb-4 pt-3">
+                        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold tracking-tight text-transparent bg-gradient-to-r from-amber-200 via-orange-200 to-teal-200 bg-clip-text">
+                                    Historial de consumo
+                                </h2>
+                                <p className="mt-1 text-xs text-amber-100/70">
+                                    Cada sesión descuenta créditos del bono:{" "}
+                                    <span className="font-semibold text-teal-200/90">grupal o semanal = 1</span>
+                                    {" · "}
+                                    <span className="font-semibold text-amber-200/90">particular = 2</span> (equivale a dos grupales).
+                                </p>
+                            </div>
+                        </div>
+                        <div className="rounded-xl border border-white/5">
+                            <table className="w-full table-fixed text-sm">
+                                <colgroup>
+                                    <col className="w-[26%]" />
+                                    <col className="w-[40%]" />
+                                    <col className="w-[16%]" />
+                                    <col className="w-[18%]" />
+                                </colgroup>
+                                <thead className="bg-gradient-to-r from-amber-900/35 via-gray-900/80 to-teal-900/35 text-[11px] font-semibold uppercase tracking-wide text-amber-50/90">
+                                    <tr>
+                                        <th className="px-3 py-2.5 text-left">Fecha</th>
+                                        <th className="px-3 py-2.5 text-left">Clase asistida</th>
+                                        <th className="px-3 py-2.5 text-center">Créditos</th>
+                                        <th className="px-3 py-2.5 text-right">Saldo</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5 text-gray-100">
+                                    {consumptionHistory.map((row, idx) => {
+                                        const uc = Math.max(1, Number(row.credits_consumed ?? 1));
+                                        const ucBadge =
+                                            uc >= 2
+                                                ? "bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/40"
+                                                : "bg-teal-500/15 text-teal-100 ring-1 ring-teal-400/30";
+                                        return (
+                                            <tr
+                                                key={row.id}
+                                                className={idx % 2 === 0 ? "bg-gray-900/25 hover:bg-gray-800/40" : "bg-gray-900/10 hover:bg-gray-800/35"}
+                                            >
+                                                <td className="px-3 py-2.5 text-gray-200">{row.date_human || "—"}</td>
+                                                <td className="break-words px-3 py-2.5 text-gray-100">{row.lesson_name || "Clase de surf"}</td>
+                                                <td className="px-3 py-2.5 text-center">
+                                                    <span className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold ${ucBadge}`}>
+                                                        {uc === 1 ? "1" : "2"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2.5 text-right font-semibold text-teal-200 tabular-nums">
+                                                    {row.remaining_after}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {consumptionHistory.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-400">
+                                                Aún no hay consumos registrados.
+                                            </td>
+                                        </tr>
+                                    ) : null}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {packs.map((pack) => (
                         <div key={pack.id} className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
@@ -74,69 +143,6 @@ export default function ClientBonosIndex({
                         ))}
                         {myBonos.length === 0 ? <li className="text-gray-400">Aún no tienes bonos.</li> : null}
                     </ul>
-                </div>
-
-                <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-950 via-gray-900 to-teal-950/50 p-[1px] shadow-xl shadow-amber-900/20">
-                    <div className="rounded-2xl bg-gray-950/90 px-4 pb-4 pt-3">
-                        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                            <div>
-                                <h2 className="text-lg font-bold tracking-tight text-transparent bg-gradient-to-r from-amber-200 via-orange-200 to-teal-200 bg-clip-text">
-                                    Historial de consumo
-                                </h2>
-                                <p className="mt-1 text-xs text-amber-100/70">
-                                    Cada sesión descuenta créditos del bono:{" "}
-                                    <span className="font-semibold text-teal-200/90">grupal o semanal = 1</span>
-                                    {" · "}
-                                    <span className="font-semibold text-amber-200/90">particular = 2</span> (equivale a dos grupales).
-                                </p>
-                            </div>
-                        </div>
-                        <div className="overflow-x-auto rounded-xl border border-white/5">
-                            <table className="w-full min-w-[520px] text-sm">
-                                <thead className="bg-gradient-to-r from-amber-900/35 via-gray-900/80 to-teal-900/35 text-[11px] font-semibold uppercase tracking-wide text-amber-50/90">
-                                    <tr>
-                                        <th className="px-3 py-2.5 text-left">Fecha</th>
-                                        <th className="px-3 py-2.5 text-left">Clase asistida</th>
-                                        <th className="px-3 py-2.5 text-center">Créditos</th>
-                                        <th className="px-3 py-2.5 text-right">Saldo tras sesión</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5 text-gray-100">
-                                    {consumptionHistory.map((row, idx) => {
-                                        const uc = Math.max(1, Number(row.credits_consumed ?? 1));
-                                        const ucBadge =
-                                            uc >= 2
-                                                ? "bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/40"
-                                                : "bg-teal-500/15 text-teal-100 ring-1 ring-teal-400/30";
-                                        return (
-                                            <tr
-                                                key={row.id}
-                                                className={idx % 2 === 0 ? "bg-gray-900/25 hover:bg-gray-800/40" : "bg-gray-900/10 hover:bg-gray-800/35"}
-                                            >
-                                                <td className="whitespace-nowrap px-3 py-2.5 text-gray-200">{row.date_human || "—"}</td>
-                                                <td className="px-3 py-2.5 text-gray-100">{row.lesson_name || "Clase de surf"}</td>
-                                                <td className="px-3 py-2.5 text-center">
-                                                    <span className={`inline-flex min-w-[2.25rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold ${ucBadge}`}>
-                                                        {uc === 1 ? "1" : "2"}
-                                                    </span>
-                                                </td>
-                                                <td className="whitespace-nowrap px-3 py-2.5 text-right font-semibold text-teal-200 tabular-nums">
-                                                    {row.remaining_after}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {consumptionHistory.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-400">
-                                                Aún no hay consumos registrados.
-                                            </td>
-                                        </tr>
-                                    ) : null}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
                 </div>
             </div>
 

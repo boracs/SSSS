@@ -131,6 +131,11 @@ class User extends Authenticatable
         return $this->hasMany(AttendanceNote::class, 'user_id')->orderByDesc('created_at');
     }
 
+    public function emergencyKeyRequests(): HasMany
+    {
+        return $this->hasMany(EmergencyKeyRequest::class, 'user_id')->orderByDesc('requested_at');
+    }
+
     public function latestAttendanceNote(): HasOne
     {
         return $this->hasOne(AttendanceNote::class, 'user_id')->latestOfMany();

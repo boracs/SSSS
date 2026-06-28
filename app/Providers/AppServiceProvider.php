@@ -6,10 +6,14 @@ use App\Events\LessonRequestedEvent;
 use App\Events\LessonProofUploadedEvent;
 use App\Events\PrivateLessonRequestedEvent;
 use App\Events\SoloStudentLocked;
+use App\Events\Taquilla\PagoTaquillaConfirmado;
+use App\Events\Taquilla\PagoTaquillaRechazado;
 use App\Listeners\SendLessonRequestedMailListener;
 use App\Listeners\NotifyAdminLessonProofUploadedListener;
 use App\Listeners\SendPrivateLessonRequestedMailListener;
 use App\Listeners\SendSoloStudentNotification;
+use App\Listeners\Taquilla\EnviarCorreoConfirmacionTaquilla;
+use App\Listeners\Taquilla\EnviarCorreoRechazoTaquilla;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Observers\LessonObserver;
@@ -54,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(LessonRequestedEvent::class, SendLessonRequestedMailListener::class);
         Event::listen(LessonProofUploadedEvent::class, NotifyAdminLessonProofUploadedListener::class);
         Event::listen(PrivateLessonRequestedEvent::class, SendPrivateLessonRequestedMailListener::class);
+        Event::listen(PagoTaquillaConfirmado::class, EnviarCorreoConfirmacionTaquilla::class);
+        Event::listen(PagoTaquillaRechazado::class, EnviarCorreoRechazoTaquilla::class);
+
         Vite::prefetch(concurrency: 3);
         Inertia::setRootView('app');
 

@@ -2,10 +2,8 @@ import InputError from "@/Components/InputError";
 import InputLabel from "@/Components/InputLabel";
 import PrimaryButton from "@/Components/PrimaryButton";
 import TextInput from "@/Components/TextInput";
-import GuestLayout from "@/Layouts/GuestLayout";
 import { Head, Link, useForm } from "@inertiajs/react";
 import Boton_go_back from "../../components/Boton_go_back";
-import Layout1 from "@/layouts/Layout1";
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -26,8 +24,7 @@ export default function Register() {
     };
 
     return (
-        <Layout1>
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-gray-800 to-slate-900 px-4 text-white">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-gray-800 to-slate-900 px-4 text-white">
                 <Head title="Registro" />
 
                 <div className="w-full max-w-2xl p-10 backdrop-blur-xl bg-white/5 border border-white/10 rounded-2xl shadow-2xl">
@@ -212,6 +209,5 @@ export default function Register() {
                     </form>
                 </div>
             </div>
-        </Layout1>
     );
 }

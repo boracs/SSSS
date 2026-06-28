@@ -9,6 +9,7 @@ use App\Models\Carrito;
 use App\Models\Imagen;
 use App\Models\PlanTaquilla;
 use App\Models\PagoCuota;
+use App\Support\MoneyCents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -50,7 +51,7 @@ class DatabaseSeeder extends Seeder
             $planes[$tipo['nombre']] = PlanTaquilla::create([
                 'nombre' => "{$tipo['nombre']} ({$tipo['duracion_dias']} días)",
                 'duracion_dias' => $tipo['duracion_dias'],
-                'precio_total' => $tipo['precio_total'],
+                'precio_total_cents' => MoneyCents::eurosToCents($tipo['precio_total']),
                 'activo' => true,
             ]);
         }
@@ -75,7 +76,7 @@ class DatabaseSeeder extends Seeder
                 PagoCuota::create([
                     'user_id' => $user->id,
                     'id_plan_pagado' => $plan->id,
-                    'monto_pagado' => $plan->precio_total,
+                    'monto_pagado_cents' => (int) $plan->precio_total_cents,
                     'referencia_pago_externa' => $referenciaPago,
                     'fecha_pago' => $fechaPagoSimulada,
                     'periodo_inicio' => $inicio,
@@ -149,5 +150,13 @@ class DatabaseSeeder extends Seeder
                 $carrito->productos()->attach($producto->id, ['cantidad' => rand(1, 5)]);
             }
         }
+
+        // ===============================
+        // 9️⃣ Bonos VIP / consumos (fake data)
+        // ===============================
+        $this->call([
+            BorjaVipConsumptionSeeder::class,
+            TaquillaUsersBonoConsumptionSeeder::class,
+        ]);
     }
 }

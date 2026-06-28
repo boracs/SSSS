@@ -3,10 +3,8 @@ import InputError from "@/Components/InputError";
 import InputLabel from "@/Components/InputLabel";
 import PrimaryButton from "@/Components/PrimaryButton";
 import TextInput from "@/Components/TextInput";
-import GuestLayout from "@/Layouts/GuestLayout";
 import { Link, useForm } from "@inertiajs/react";
 import Boton_go_back from "../../components/Boton_go_back";
-import Layout1 from "../../layouts/Layout1";
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -23,8 +21,7 @@ export default function Login({ status, canResetPassword }) {
     };
 
     return (
-        <Layout1>
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 text-white px-4">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 text-white px-4">
                 <div className="backdrop-blur-xl bg-white/5 border border-white/10 shadow-xl rounded-2xl p-10 w-full max-w-md transition-all duration-300">
                     <h2 className="text-3xl font-bold text-white text-center mb-8">
                         Welcome Back 👋
@@ -131,6 +128,5 @@ export default function Login({ status, canResetPassword }) {
                     </div>
                 </div>
             </div>
-        </Layout1>
     );
 }

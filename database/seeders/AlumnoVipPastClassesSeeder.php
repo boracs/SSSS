@@ -48,7 +48,7 @@ class AlumnoVipPastClassesSeeder extends Seeder
                 [
                     'num_clases' => 30,
                     'precio' => 420,
-                    'activo' => true,
+                    'activo' => false,
                 ]
             );
 

@@ -39,14 +39,14 @@
 │ Academia        │ Academy/*, Lesson*, Actions  │ Academy/, Admin/Academy/         │
 │ Alquileres      │ Rentals/*, BookingService    │ Rentals/Surfboards/, Admin/…     │
 │ Segunda Mano    │ SecondHandBoard, SecondHandStatus │ SecondHand/, Admin/SecondHand/ │
-│ Taquillas       │ Taquilla, PlanesTaquillas    │ PlanesTaquillas*, AsignarTaquilla│
+│ Taquillas       │ Taquilla, PlanesTaquillas, EmergencyKey │ PlanesTaquillas*, MeQuedeSinLlave, Admin/EmergencyKeys │
 │ VIP / Bonos     │ BonoService, Client/Bono     │ Client/Bonos/, Admin/Bonos/      │
 │ Pagos admin     │ PaymentValidation            │ Admin/Payments/*                 │
 │ Auth / Perfil   │ Auth/*, ProfileController    │ Auth/, Partials/                 │
 └─────────────────┴──────────────────────────────┴────────────────────────────────────┘
 ```
 
-**Shell global:** `layouts/AuthenticatedLayout.jsx` → `components/Header.jsx` (menú activo) + `Footer` + `Chatbot` (no-admin).
+**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `Chatbot` (no-admin). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
 
 **Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`Header.jsx`) y políticas.
 
@@ -79,11 +79,22 @@ maider_0/
 │   │       ├── MakeUserVip.php
 │   │       └── OperationalSanityCheckCommand.php
 │   │
+│   ├── DTOs/
+│   │   ├── EmergencyKey/
+│   │   │   ├── EmergencyKeyRevealDto.php       ──► Código revelado post-solicitud (flash único)
+│   │   │   └── EmergencyLockStatusDto.php      ──► is_active + can_request (sin exponer código)
+│   │   └── Taquilla/
+│   │       └── PlanTaquillaPublicDto.php       ──► Catálogo planes: periodo, beneficios, VIP, descuento
+│   │
+│   ├── Exceptions/
+│   │   └── EmergencyKeyNotEligibleException.php
 │   ├── Events/                             ──► Desacoplamiento mail/notificaciones
 │   │   ├── LessonProofUploadedEvent.php
 │   │   ├── LessonRequestedEvent.php
 │   │   ├── PrivateLessonRequestedEvent.php
-│   │   └── SoloStudentLocked.php
+│   │   ├── SoloStudentLocked.php
+│   │   └── Taquilla/
+│   │       └── PagoTaquillaConfirmado.php      ──► Emitido tras commit confirmacion pago (pago+usuario+locker)
 │   │
 │   ├── Http/
 │   │   ├── Controllers/
@@ -98,6 +109,7 @@ maider_0/
 │   │   │   │       ├── BonoController.php
 │   │   │   │       ├── BookingController.php
 │   │   │   │       ├── PaymentValidationController.php
+│   │   │   │       ├── EmergencyKeyController.php ──► CRUD candado + histórico solicitudes
 │   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; filtros search/status/board_type/date_type/fechas; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php
 │   │   │   │       ├── UserController.php
@@ -138,7 +150,8 @@ maider_0/
 │   │   │       ├── Pag_principalController.php
 │   │   │       ├── PagoCuotaController.php        ──► lockForUpdate en verificación pagos
 │   │   │       ├── PedidoController.php
-│   │   │       ├── PlanesTaquillasController.php  ──► Pessimistic lock taquillas/usuarios
+│   │   │       ├── EmergencyKeyController.php   ──► Socio: show + request; código solo vía flash
+│   │   │       ├── PlanesTaquillasController.php  ──► Orquestador Inertia; delega TaquillaMembershipService
 │   │   │       ├── ProductoController.php
 │   │   │       ├── ProfileController.php
 │   │   │       ├── ServicioController.php
@@ -162,6 +175,7 @@ maider_0/
 │   │   │   │   ├── StoreAttendanceNoteRequest.php
 │   │   │   │   ├── StoreBookingRequest.php
 │   │   │   │   ├── StoreSurfboardRequest.php
+│   │   │   │   ├── UpdateEmergencyLockCodeRequest.php ──► digits:4; authorize admin
 │   │   │   │   └── UpdateSurfboardRequest.php
 │   │   │   ├── StoreSecondHandBoardRequest.php    ──► Valida + sanitiza; autorización role=admin
 │   │   │   └── UpdateSecondHandBoardRequest.php   ──► Same; reglas 'sometimes'
@@ -169,6 +183,16 @@ maider_0/
 │   │   │   │   └── LoginRequest.php
 │   │   │   ├── Rentals/
 │   │   │   │   └── StoreBookingRequest.php
+│   │   │   ├── Taquilla/
+│   │   │   │   ├── RegistrarPagoTaquillaRequest.php
+│   │   │   │   ├── SubirJustificanteTaquillaRequest.php
+│   │   │   │   ├── StorePlanTaquillaRequest.php
+│   │   │   │   ├── UpdatePlanTaquillaRequest.php
+│   │   │   │   ├── ConfirmarPagoTaquillaRequest.php
+│   │   │   │   ├── RechazarPagoTaquillaRequest.php
+│   │   │   │   ├── UpdatePagoTaquillaPaymentStateRequest.php
+│   │   │   │   ├── UpdatePagoTaquillaCheckedStateRequest.php
+│   │   │   │   └── ReassignLockerRequest.php
 │   │   │   ├── User/
 │   │   │   │   └── CancelLessonEnrollmentRequest.php
 │   │   │   ├── ProfileUpdateRequest.php
@@ -188,18 +212,24 @@ maider_0/
 │   │   ├── NotifyAdminLessonProofUploadedListener.php
 │   │   ├── SendLessonRequestedMailListener.php
 │   │   ├── SendPrivateLessonRequestedMailListener.php
-│   │   └── SendSoloStudentNotification.php
+│   │   ├── SendSoloStudentNotification.php
+│   │   └── Taquilla/
+│   │       └── EnviarCorreoConfirmacionTaquilla.php  ──► ShouldQueue; try/catch + Log::error; resiliente
 │   │
 │   ├── Mail/
 │   │   ├── RequestReceivedMail.php
-│   │   └── ReservationConfirmedMail.php
+│   │   ├── ReservationConfirmedMail.php
+│   │   └── Taquilla/
+│   │       └── PagoTaquillaConfirmadoMail.php   ──► view emails.taquilla.pago-confirmado
 │   │
-│   ├── Models/                               ──► 19 modelos Eloquent (ver tabla abajo)
+│   ├── Models/                               ──► 21 modelos Eloquent (ver tabla abajo)
 │   │   ├── AttendanceNote.php
 │   │   ├── BonoConsumption.php
 │   │   ├── Booking.php
 │   │   ├── Carrito.php
 │   │   ├── CreditTransaction.php
+│   │   ├── EmergencyKeyRequest.php         ──► Histórico solicitudes llave; toAdminArray()
+│   │   ├── EmergencyLockSetting.php        ──► Singleton candado; current_code + is_active
 │   │   ├── Imagen.php
 │   │   ├── Lesson.php
 │   │   ├── LessonUser.php                    ──► Pivot crítico: estados pago/enrollment
@@ -240,6 +270,11 @@ maider_0/
 │   │   ├── ContactMessageService.php
 │   │   ├── CreditEngineService.php             ──► DEGRADADO Fase 1: canAfford=true; runOneHourBeforeAudit OFF; [LEGACY_SIN_SALDO]
 │   │   ├── CuotaService.php                    ──► Ciclo vida cuotas taquilla
+│   │   ├── EmergencyKeyService.php             ──► lockForUpdate; requestCode atómico; updateLockCode ON
+│   │   ├── Taquilla/
+│   │   │   ├── TaquillaMembershipService.php   ──► Pagos/planes/cola; DB::transaction; MoneyCents; event PagoTaquillaConfirmado
+│   │   │   ├── TaquillaConfirmationMailService.php ──► Envio correo confirmacion cuota
+│   │   │   └── LockerPaymentIndexBuilder.php   ──► Indice agregado anti-N+1 cola admin
 │   │   ├── FirestoreService.php                ──► Inyección obligatoria FirestoreClient REST (AppServiceProvider)
 │   │   ├── GoogleAIService.php                 ──► Gemini HTTP; GEMINI_API_KEY requerida o 500
 │   │   ├── LessonProofStorageService.php       ──► Disco: storage/app/private/lesson-proofs
@@ -249,7 +284,8 @@ maider_0/
 │   └── Support/
 │       ├── AcademyContact.php
 │       ├── BusinessDateTime.php                ──► Now() negocio Europe/Madrid
-│       └── LessonBonoCreditUnits.php           ──► Unidades crédito bono por modalidad edad
+│       ├── LessonBonoCreditUnits.php           ──► Unidades crédito bono por modalidad edad
+│       └── MoneyCents.php                      ──► Conversion EUR <-> centimos (taquillas)
 │
 ├── bootstrap/
 │   ├── app.php
@@ -262,8 +298,9 @@ maider_0/
 │
 ├── database/
 │   ├── factories/          (7)
-│   ├── migrations/         (49) — users, productos, pedidos, taquillas, lessons, bookings, bonos, pagos, second_hand_boards (+model, +board_type)
-│   └── seeders/            (10) — OperationalSuperSeeder, TaquillaSeeder, VIP seeders
+│   ├── migrations/         (52) — … emergency_lock_settings, emergency_key_requests; planes_taquilla marketing fields
+│   └── seeders/            (14) — OperationalSuperSeeder, TaquillaSeeder, ProductoCatalogImagesSeeder, BorjaVipConsumptionSeeder, TaquillaUsersBonoConsumptionSeeder
+│       └── Concerns/       (1) — SeedsBonoConsumptions (trait reutilizable de consumos de bono/clases VIP)
 │
 ├── docs/
 │   ├── ai/
@@ -359,26 +396,33 @@ resources/
     │   ├── madridTime.js       ──► Helpers TZ cliente (alineado BusinessDateTime)
     │   └── utils.ts            ──► cn() shadcn
     │
+    ├── utils/
+    │   └── money.js            ──► formatEur(), formatEurFromCents() (Intl es-ES)
+    │
     ├── layouts/
-    │   ├── AuthenticatedLayout.jsx   ──► Header + main + Footer + Chatbot
-    │   ├── GuestLayout.jsx
-    │   ├── Layout1.jsx               ──► Home Pag_principal (sin Header duplicado)
+    │   ├── PublicLayout.jsx          ──► Header + main + Footer + Chatbot (shell único)
+    │   ├── AuthenticatedLayout.jsx   ──► Alias de PublicLayout
+    │   ├── GuestLayout.jsx           ──► Auth Breeze (sin Header global)
+    │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; evitar duplicar con PublicLayout)
     │   ├── Layout2_login_inicio.jsx
     │   └── Contenedor_productos.jsx
     │
     ├── components/
-    │   ├── Header.jsx                ──► Navegación global ACTIVA (adminStats badges)
-    │   ├── Menu_Principal.jsx        ──► LEGACY — no montado en AuthenticatedLayout
+    │   ├── Header.jsx                ──► Shell: logo + hero home; monta GlobalNav.jsx
+    │   ├── GlobalNav.jsx             ──► Menú flyout S4 por rol (hover+debounce 150ms); panel a todo el ancho; móvil acordeón
+    │   ├── NavigationMenu.tsx        ──► (legacy) Menú V3 Radix; no montado
+    │   ├── Menu_Principal.jsx        ──► @deprecated — usar Header.jsx + PublicLayout
     │   ├── Footer.jsx
     │   ├── Chatbot.jsx
     │   ├── OpcionesIntro.jsx         ──► Carrusel home (solo isHome en Header)
     │   ├── BookingCalendar.jsx
+    │   ├── SurfboardBookingSection.jsx   ──► calendario + Collapsible + pago alquiler
     │   ├── PaymentModal.jsx
     │   ├── ManualPaymentInstructionsModal.jsx
     │   ├── Taquilla.jsx
     │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx
     │   ├── FormularioContacto.jsx
-    │   ├── Breadcrumbs.jsx, SafeImage.jsx, EmptyState.jsx
+    │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx
     │   └── ui/                       ──► ~50 primitivos shadcn/Radix (.tsx)
     │
     └── Pages/                        ──► Resolución: ./Pages/{name}.jsx (eager glob)
@@ -391,7 +435,8 @@ resources/
         │   ├── Servicios_ClasesDeSurf.jsx
         │   ├── Servicios_SurfSkate.jsx
         │   ├── Servicios_SurfTrips.jsx
-        │   └── Servicios_Fotos.jsx
+        │   ├── Servicios_Fotos.jsx
+        │   └── Servicios_Videograbaciones.jsx   ──► Landing videograbación + análisis técnico
         │
         ├── [DOMINIO: TIENDA]
         │   ├── Tienda.jsx
@@ -431,8 +476,13 @@ resources/
         │       └── Dashboard/
         │           └── MyReservations.jsx
         │
+        ├── [DOMINIO: PERFIL]
+        │   └── Profile/
+        │       └── MeQuedeSinLlave.jsx       ──► Doble modal confirmación; código 4 dígitos post-POST
+        │
         ├── [DOMINIO: TAQUILLAS]
-        │   ├── PlanesTaquillasClient.jsx
+        │   ├── PlanesTaquillasPublic.jsx   ──► Catálogo público planes/cuotas (sin login)
+        │   ├── PlanesTaquillasClient.jsx   ──► Panel socio: renovación + historial pagos
         │   ├── PlanesTaquillasAdmin.jsx
         │   └── AsignarTaquilla.jsx
         │
@@ -463,6 +513,8 @@ resources/
                 │   ├── Create.jsx
                 │   └── Edit.jsx
                 ├── CheckManager.jsx
+                ├── EmergencyKeys/
+                │   └── Index.jsx             ──► Admin: reponer código (ON), histórico, marcar extravío
                 ├── Payments/
                 │   ├── Dashboard.jsx
                 │   └── GlobalDashboard.jsx

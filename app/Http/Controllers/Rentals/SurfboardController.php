@@ -23,11 +23,14 @@ class SurfboardController extends Controller
 
         $surfboards = $query->get();
 
+        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
         return Inertia::render('Rentals/Surfboards/Index', [
             'category' => $category,
             'surfboards' => $surfboards,
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
         ]);
     }
 

@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\PlanTaquilla;
 use App\Models\PagoCuota;
+use App\Support\MoneyCents;
 use Illuminate\Support\Carbon;
 use Faker\Factory as Faker;
 
@@ -34,7 +35,7 @@ class TaquillaSeeder extends Seeder
             $planes[] = PlanTaquilla::create([
                 'nombre' => $tipo['nombre'] . " (" . $tipo['duracion_dias'] . " días)",
                 'duracion_dias' => $tipo['duracion_dias'],
-                'precio_total' => $tipo['precio_total'],
+                'precio_total_cents' => MoneyCents::eurosToCents($tipo['precio_total']),
                 'activo' => true,
             ]);
         }
@@ -67,7 +68,7 @@ class TaquillaSeeder extends Seeder
             PagoCuota::create([
                 'user_id' => $user->id,
                 'id_plan_pagado' => $plan->id,
-                'monto_pagado' => $plan->precio_total,
+                'monto_pagado_cents' => (int) $plan->precio_total_cents,
                 'referencia_pago_externa' => strtoupper($faker->bothify('??#####')),
                 'periodo_inicio' => $inicio,
                 'periodo_fin' => $fin,

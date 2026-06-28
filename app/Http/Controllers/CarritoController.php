@@ -10,6 +10,7 @@ use Inertia\Response as InertiaResponse;
 use App\Models\Producto;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class CarritoController extends Controller
 {
@@ -78,86 +79,70 @@ class CarritoController extends Controller
         return $digits !== '' ? 'https://wa.me/'.$digits : null;
     }
 
-
-
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
     public function agregarAlCarrito(int $productoId): \Illuminate\Http\RedirectResponse
     {
-    $user = auth()->user();
+        $user = auth()->user();
 
-    try {
-        DB::beginTransaction(); // 🛡️ INICIO
+        try {
+            return DB::transaction(function () use ($user, $productoId) {
+                $producto = Producto::query()
+                    ->whereKey($productoId)
+                    ->lockForUpdate()
+                    ->first();
 
-        $producto = Producto::find($productoId);
+                if (! $producto) {
+                    return back()->with('error', 'El producto solicitado ya no está disponible.');
+                }
 
-        // 1. VERIFICACIÓN DEL PRODUCTO
-        if (!$producto) {
-            DB::rollBack();
-            return back()->with('error', 'El producto solicitado ya no está disponible.');
+                if ((int) $producto->unidades <= 0) {
+                    return back()->with('error', '¡Agotado! No queda stock disponible de '.$producto->nombre.'.');
+                }
+
+                $carrito = Carrito::query()
+                    ->where('user_id', $user->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $carrito) {
+                    $carrito = Carrito::create(['user_id' => $user->id]);
+                }
+
+                $productoEnCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
+
+                $cantidadAAgregar = 1;
+
+                if ($productoEnCarrito) {
+                    $nuevaCantidad = (int) $productoEnCarrito->pivot->cantidad + $cantidadAAgregar;
+
+                    if ($nuevaCantidad > (int) $producto->unidades) {
+                        return back()->with(
+                            'error',
+                            'Ya tienes la cantidad máxima ('.$producto->unidades.') de '.$producto->nombre.' del stock que nos queda.'
+                        );
+                    }
+
+                    $carrito->productos()->updateExistingPivot($productoId, [
+                        'cantidad' => DB::raw('cantidad + 1'),
+                    ]);
+                } else {
+                    $carrito->productos()->attach($productoId, ['cantidad' => $cantidadAAgregar]);
+                }
+
+                return back()->with('success', 'Producto agregado al carrito exitosamente.');
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error al agregar al carrito: '.$e->getMessage());
+
+            return back()->with('error', 'Ocurrió un error inesperado en el servidor. Por favor, intenta de nuevo.');
         }
-
-        // 2. VERIFICACIÓN DE STOCK INICIAL
-        if ($producto->unidades <= 0) {
-            DB::rollBack();
-            return back()->with('error', '¡Agotado! No queda stock disponible de ' . $producto->nombre . '.');
-        }
-
-        // 3. OBTENER O CREAR CARRITO (Atomicidad: si falla, se revierte)
-        // Usamos firstOrCreate para que la operación esté dentro del control transaccional
-        $carrito = Carrito::firstOrCreate(['user_id' => $user->id]);
-
-        $productoEnCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
-        $cantidadAAgregar = 1;
-
-        if ($productoEnCarrito) {
-            $nuevaCantidad = $productoEnCarrito->pivot->cantidad + $cantidadAAgregar;
-
-            // 4. VERIFICACIÓN AVANZADA: Cantidad vs. Stock
-            if ($nuevaCantidad > $producto->unidades) {
-                DB::rollBack();
-                return back()->with('error', 'Ya tienes la cantidad máxima (' . $producto->unidades . ') de ' . $producto->nombre . ' del tock que nos queda.');
-            }
-            
-            $carrito->productos()->updateExistingPivot($productoId, [
-                'cantidad' => DB::raw('cantidad + 1'), 
-            ]);
-        } else {
-            $carrito->productos()->attach($productoId, ['cantidad' => $cantidadAAgregar]);
-        }
-
-        DB::commit(); // ✅ COMMIT: Cambios guardados
-
-        // --- Lógica de Recálculo y Formateo (solo lectura) ---
-        // ... (Tu código de recálculo aquí)
-
-        // 5. RESPUESTA DE ÉXITO DE INERTIA
-        return back()->with('success', 'Producto agregado al carrito exitosamente.');
-
-    } catch (\Exception $e) {
-        // ❌ FALLO: Rollback y respuesta de error a Inertia
-        DB::rollBack();
-        
-        \Log::error('Error al agregar al carrito: ' . $e->getMessage()); 
-        
-        // ¡IMPORTANTE! Siempre devolvemos back()->with()
-        return back()->with('error', 'Ocurrió un error inesperado en el servidor. Por favor, intenta de nuevo.');
     }
-}
-
-
 
     public function eliminarProducto(int $productoId): \Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
         $carrito = Carrito::where('user_id', $user->id)->first();
 
-        if (!$carrito) {
-            // Si el carrito no existe, redirigimos con un error, ya que es una petición Inertia
+        if (! $carrito) {
             return Redirect::back()->with('error', 'Carrito no encontrado.');
         }
 
@@ -167,37 +152,9 @@ class CarritoController extends Controller
             $nombreProducto = $producto->nombre;
             $carrito->productos()->detach($productoId);
 
-            // ¡SOLUCIÓN! Redirigimos a la misma página del carrito (carrito.index).
-            // Inertia interceptará esto y recargará los props 'productos' y 'total'.
             return Redirect::route('carrito')->with('success', "El producto \"$nombreProducto\" ha sido eliminado del carrito.");
         }
 
         return Redirect::back()->with('error', 'Producto no encontrado en el carrito.');
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

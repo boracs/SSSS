@@ -8,7 +8,16 @@ import { createInertiaApp } from "@inertiajs/react";
 import { createRoot } from "react-dom/client";
 import { ToastContainer, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import AuthenticatedLayout from "./layouts/AuthenticatedLayout";
+import PublicLayout from "./layouts/PublicLayout";
+
+const GUEST_SHELL_PAGES = new Set([
+    "Auth/Login",
+    "Auth/Register",
+    "Auth/ForgotPassword",
+    "Auth/ResetPassword",
+    "Auth/ConfirmPassword",
+    "Auth/VerifyEmail",
+]);
 
 // Obtenemos el nombre de la app desde las variables de entorno
 const appName = import.meta.env.VITE_APP_NAME || "Laravel";
@@ -42,11 +51,12 @@ createInertiaApp({
             document.documentElement.classList.toggle("dark", !shouldUseLightMode);
         }
 
-        // Layout por defecto (Single Source of Truth): AuthenticatedLayout
-        // Si una página define page.layout, se respeta.
+        // Layout por defecto: PublicLayout (Header único) o GuestLayout (auth sin nav).
         const page = module.default;
         if (!page.layout) {
-            page.layout = (pageNode) => <AuthenticatedLayout>{pageNode}</AuthenticatedLayout>;
+            page.layout = GUEST_SHELL_PAGES.has(name)
+                ? (pageNode) => pageNode
+                : (pageNode) => <PublicLayout>{pageNode}</PublicLayout>;
         }
 
         return page;

@@ -1,83 +1,80 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Head, Link } from "@inertiajs/react";
+import { ChevronDown, Plus } from "lucide-react";
 import EmptyState from "../../../components/EmptyState";
+import ImageLightbox from "../../../components/ImageLightbox";
 import SafeImage from "../../../components/SafeImage";
+import SurfboardBookingSection from "../../../components/SurfboardBookingSection";
 
-function imageUrlFor(surfboard) {
-    if (surfboard.first_image_url) return surfboard.first_image_url;
-    if (!surfboard.image_url) return null;
-    try {
-        const parsed = JSON.parse(surfboard.image_url);
-        if (Array.isArray(parsed) && parsed[0])
-            return `/storage/${String(parsed[0]).replace(/^\/+/, "")}`;
-    } catch {
-        // ignore
-    }
-    const p = surfboard.image_url;
-    return String(p).startsWith("http")
-        ? p
-        : `/storage/${String(p).replace(/^\/+/, "")}`;
+/** Imagen demo temporal — sustituir cuando cada tabla tenga foto real */
+const DEMO_BOARD_IMAGE = "/img/tabla-demo.png";
+
+function imageUrlFor(_surfboard) {
+    return DEMO_BOARD_IMAGE;
 }
 
-function imageListFor(surfboard) {
-    if (!surfboard) return [];
-    const list = [];
-    if (surfboard.first_image_url) list.push(surfboard.first_image_url);
-    if (surfboard.image_url) {
-        try {
-            const parsed = JSON.parse(surfboard.image_url);
-            if (Array.isArray(parsed)) {
-                parsed.forEach((p) =>
-                    list.push(
-                        String(p).startsWith("http")
-                            ? p
-                            : `/storage/${String(p).replace(/^\/+/, "")}`,
-                    ),
-                );
-            } else {
-                list.push(
-                    String(surfboard.image_url).startsWith("http")
-                        ? surfboard.image_url
-                        : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`,
-                );
-            }
-        } catch {
-            list.push(
-                String(surfboard.image_url).startsWith("http")
-                    ? surfboard.image_url
-                    : `/storage/${String(surfboard.image_url).replace(/^\/+/, "")}`,
-            );
-        }
-    }
-    return [...new Set(list.filter(Boolean))];
+function imageListFor(_surfboard) {
+    return [DEMO_BOARD_IMAGE];
 }
 
 /** Bloque de detalle reutilizado tanto en el acordeón móvil como en el panel lateral de escritorio. */
-function BoardDetail({ board, onImageClick }) {
+function BoardDetail({
+    board,
+    onImageClick,
+    paymentIban,
+    paymentBizumNumber,
+    whatsappHelpUrl,
+}) {
     const images = useMemo(() => imageListFor(board), [board]);
     const name = board.name || `Tabla #${board.id}`;
 
+    const displayImages = useMemo(() => {
+        const list = images.length ? images : [imageUrlFor(board)].filter(Boolean);
+        return list;
+    }, [images, board]);
+
+    const openImage = useCallback(
+        (src) => {
+            if (!src) return;
+            onImageClick({ src, alt: board.image_alt || name });
+        },
+        [board.image_alt, name, onImageClick],
+    );
+
     return (
         <>
-            {/* Imágenes mini en fila — clic abre modal */}
-            <div className="flex flex-wrap gap-2">
-                {(images.length ? images : [imageUrlFor(board)]).map(
-                    (img, i) => (
+            {/* Imagen principal — doble tamaño; + abre visor ampliado */}
+            <div className="flex flex-wrap gap-3">
+                {displayImages.length > 0 ? (
+                    displayImages.map((img, i) => (
                         <button
                             key={img || i}
                             type="button"
-                            onClick={() => onImageClick(img)}
+                            onClick={() => openImage(img)}
                             aria-label="Ampliar imagen"
-                            className="group h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 transition hover:border-sky-300"
+                            className="group relative h-32 w-48 shrink-0 cursor-zoom-in overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition hover:border-sky-400 hover:shadow-md"
                         >
                             <SafeImage
                                 src={img}
                                 alt={board.image_alt || name}
-                                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                className="pointer-events-none h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 placeholderClassName="rounded-none"
                             />
+                            <span
+                                className="pointer-events-none absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/70 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm transition group-hover:bg-sky-600/90"
+                                aria-hidden="true"
+                            >
+                                <Plus className="h-5 w-5" strokeWidth={2.5} />
+                            </span>
                         </button>
-                    ),
+                    ))
+                ) : (
+                    <div
+                        className="flex h-32 w-48 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-100 text-xs text-slate-500"
+                        aria-hidden="true"
+                    >
+                        Sin imagen
+                    </div>
                 )}
             </div>
 
@@ -116,18 +113,25 @@ function BoardDetail({ board, onImageClick }) {
                     "Tabla premium optimizada para rendimiento, estabilidad y control en distintas condiciones de mar."}
             </p>
 
-            {/* Botón único de reserva */}
-            <Link
-                href={route("rentals.surfboards.show", board.id)}
-                className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-sky-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-sky-700"
-            >
-                Reservar
-            </Link>
+            <SurfboardBookingSection
+                key={board.id}
+                surfboard={board}
+                paymentIban={paymentIban}
+                paymentBizumNumber={paymentBizumNumber}
+                whatsappHelpUrl={whatsappHelpUrl}
+                embedded
+            />
         </>
     );
 }
 
-export default function Index({ surfboards, category }) {
+export default function Index({
+    surfboards,
+    category,
+    paymentIban = "[IBAN]",
+    paymentBizumNumber = "[BIZUM_NUMBER]",
+    whatsappHelpUrl = null,
+}) {
     const allBoards = (surfboards || []).filter((s) => {
         const active = s.is_active ?? s.isActive;
         return active === true || active === 1;
@@ -135,19 +139,9 @@ export default function Index({ surfboards, category }) {
 
     const [activeCategory, setActiveCategory] = useState(category || "all");
     const [selectedId, setSelectedId]         = useState(null);
-    const [modalImage, setModalImage]         = useState(null);
+    const [lightbox, setLightbox]             = useState(null);
 
-    /* Bloquea scroll del body cuando el modal está abierto */
-    useEffect(() => {
-        if (!modalImage) return;
-        const onKey = (e) => { if (e.key === "Escape") setModalImage(null); };
-        document.addEventListener("keydown", onKey);
-        document.body.style.overflow = "hidden";
-        return () => {
-            document.removeEventListener("keydown", onKey);
-            document.body.style.overflow = "";
-        };
-    }, [modalImage]);
+    const closeLightbox = useCallback(() => setLightbox(null), []);
 
     const counts = useMemo(() => {
         const soft = allBoards.filter((s) => s.category === "soft").length;
@@ -160,11 +154,10 @@ export default function Index({ surfboards, category }) {
         return allBoards.filter((s) => s.category === activeCategory);
     }, [allBoards, activeCategory]);
 
-    /* Auto-selecciona el primero al cambiar filtro */
+    /* Si la tabla abierta deja de estar en el filtro, cerrar sin abrir otra */
     useEffect(() => {
-        if (!filteredBoards.length) { setSelectedId(null); return; }
-        if (!selectedId || !filteredBoards.some((s) => s.id === selectedId)) {
-            setSelectedId(filteredBoards[0].id);
+        if (selectedId && !filteredBoards.some((s) => s.id === selectedId)) {
+            setSelectedId(null);
         }
     }, [filteredBoards, selectedId]);
 
@@ -173,9 +166,14 @@ export default function Index({ surfboards, category }) {
         [filteredBoards, selectedId],
     );
 
-    /* Toggle: clic en la tarjeta ya seleccionada la deselecciona (cierra el acordeón) */
+    /* Toggle: abrir al clicar; cerrar si ya estaba abierta */
     const handleCardClick = (id) =>
         setSelectedId((prev) => (prev === id ? null : id));
+
+    const handleCategoryChange = (categoryId) => {
+        setActiveCategory(categoryId);
+        setSelectedId(null);
+    };
 
     return (
         <>
@@ -211,7 +209,7 @@ export default function Index({ surfboards, category }) {
                                         type="button"
                                         role="tab"
                                         aria-selected={activeCategory === f.id}
-                                        onClick={() => setActiveCategory(f.id)}
+                                        onClick={() => handleCategoryChange(f.id)}
                                         className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-colors ${
                                             activeCategory === f.id
                                                 ? "bg-sky-900 text-white ring-sky-900"
@@ -244,6 +242,7 @@ export default function Index({ surfboards, category }) {
                                                     type="button"
                                                     onClick={() => handleCardClick(s.id)}
                                                     aria-expanded={selected}
+                                                    aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
                                                     className={`group flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all ${
                                                         selected
                                                             ? "border-sky-400 bg-sky-50 shadow-sm"
@@ -266,13 +265,19 @@ export default function Index({ surfboards, category }) {
                                                             {s.category === "soft" ? "Softboard" : "Hardboard"}
                                                         </p>
                                                     </div>
-                                                    {/* Chevron indicador — solo visible en móvil */}
-                                                    <svg
-                                                        className={`md:hidden h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
-                                                        fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+                                                    <span
+                                                        className={`md:hidden inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
+                                                            selected
+                                                                ? "bg-sky-600 text-white shadow-md ring-2 ring-sky-200"
+                                                                : "bg-slate-100 text-slate-500 ring-1 ring-slate-200 group-hover:bg-sky-50 group-hover:text-sky-700 group-hover:ring-sky-200"
+                                                        }`}
+                                                        aria-hidden="true"
                                                     >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
+                                                        <ChevronDown
+                                                            className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
+                                                            strokeWidth={2.5}
+                                                        />
+                                                    </span>
                                                 </button>
 
                                                 {/* ── Acordeón móvil: solo < md ── */}
@@ -280,7 +285,10 @@ export default function Index({ surfboards, category }) {
                                                     <div className="md:hidden col-span-1 overflow-hidden rounded-xl border border-sky-100 bg-white p-4 shadow-sm transition-all duration-300 ease-in-out">
                                                         <BoardDetail
                                                             board={s}
-                                                            onImageClick={setModalImage}
+                                                            onImageClick={setLightbox}
+                                                            paymentIban={paymentIban}
+                                                            paymentBizumNumber={paymentBizumNumber}
+                                                            whatsappHelpUrl={whatsappHelpUrl}
                                                         />
                                                     </div>
                                                 )}
@@ -309,7 +317,10 @@ export default function Index({ surfboards, category }) {
                             ) : (
                                 <BoardDetail
                                     board={selectedBoard}
-                                    onImageClick={setModalImage}
+                                    onImageClick={setLightbox}
+                                    paymentIban={paymentIban}
+                                    paymentBizumNumber={paymentBizumNumber}
+                                    whatsappHelpUrl={whatsappHelpUrl}
                                 />
                             )}
                         </div>
@@ -334,38 +345,12 @@ export default function Index({ surfboards, category }) {
                 )}
             </div>
 
-            {/* Modal de imagen a pantalla completa */}
-            {modalImage ? (
-                <div
-                    className="fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/85 p-4 backdrop-blur-sm sm:p-8"
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label="Imagen ampliada"
-                    onClick={() => setModalImage(null)}
-                >
-                    <button
-                        type="button"
-                        onClick={() => setModalImage(null)}
-                        aria-label="Cerrar"
-                        className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/30 transition hover:bg-white/20 sm:right-6 sm:top-6"
-                    >
-                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                    <div
-                        className="flex max-h-full w-full max-w-4xl items-center justify-center"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <SafeImage
-                            src={modalImage}
-                            alt="Imagen de la tabla"
-                            className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain"
-                            placeholderClassName="h-[60vh] w-full rounded-2xl"
-                        />
-                    </div>
-                </div>
-            ) : null}
+            <ImageLightbox
+                open={Boolean(lightbox?.src)}
+                src={lightbox?.src ?? null}
+                alt={lightbox?.alt ?? "Imagen de la tabla"}
+                onClose={closeLightbox}
+            />
         </>
     );
 }

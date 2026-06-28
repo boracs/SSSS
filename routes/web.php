@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\PaymentValidationController;
+use App\Http\Controllers\Admin\EmergencyKeyController as AdminEmergencyKeyController;
 use App\Http\Controllers\Admin\SecondHandBoardController as AdminSecondHandBoardController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Admin\VipController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\Client\BonoController as ClientBonoController;
 use App\Http\Controllers\ContactMessageController;
+use App\Http\Controllers\EmergencyKeyController;
 use App\Http\Controllers\Pag_principalController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PlanesTaquillasController;
@@ -76,6 +78,13 @@ Route::get('/servicios/surf-trips', function () {
 Route::get('/servicios/fotos', function () {
     return Inertia::render('Servicios_Fotos');
 })->name('servicios.fotografia');
+Route::get('/servicios/videograbaciones', function () {
+    return Inertia::render('Servicios_Videograbaciones');
+})->name('servicios.videograbaciones');
+
+// Taquillas — catálogo público de planes y tarifas (sin login)
+Route::get('/taquillas/planes-y-cuotas', [PlanesTaquillasController::class, 'publicPlans'])
+    ->name('taquillas.planes');
 
 // ==========================
 // ACADEMIA (clases con créditos)
@@ -154,9 +163,19 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     // CLIENT PANEL DE TAQUILLAS (REQUIERE TAQUILLA)
     // 2. Ruta para la vista del cliente/usuario regular donde ve su plan activo y su historial de pagos
     Route::get('/taquilla/planes', [PlanesTaquillasController::class, 'ClientIndex'])->name('taquillas.index.client');
-    Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])->name('taquillas.pago.client');
-    Route::post('/taquilla/pagos/{pago}/subir-justificante', [PlanesTaquillasController::class, 'subirJustificante'])->name('taquillas.pago.upload-proof');
+    Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])
+        ->middleware('throttle:10,1')
+        ->name('taquillas.pago.client');
+    Route::post('/taquilla/pagos/{pago}/subir-justificante', [PlanesTaquillasController::class, 'subirJustificante'])
+        ->middleware('throttle:10,1')
+        ->name('taquillas.pago.upload-proof');
+    Route::get('/taquilla/pagos/{pago}/justificante', [PlanesTaquillasController::class, 'showProof'])
+        ->name('taquillas.pago.proof');
     Route::get('/taquilla/usuario-datos', [PlanesTaquillasController::class, 'obtenerDatosUsuario'])->name('taquillas.usuario.datos');
+
+    // Llave de emergencia — socio con taquilla activa
+    Route::get('/profile/me-quede-sin-llave', [EmergencyKeyController::class, 'show'])->name('emergency-key.show');
+    Route::post('/profile/me-quede-sin-llave', [EmergencyKeyController::class, 'request'])->name('emergency-key.request');
 });
 
 // ///ADMINISTRADORES////////////
@@ -228,6 +247,7 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         // Cambio de estado rápido (inline desde el listado admin)
         Route::patch('second-hand/{secondHandBoard}/status', [AdminSecondHandBoardController::class, 'updateStatus'])
             ->name('second-hand.update-status');
+
         Route::get('bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
         Route::post('bookings', [AdminBookingController::class, 'store'])->name('bookings.store');
         Route::get('bookings/check-availability', [AdminBookingController::class, 'checkAvailability'])->name('bookings.check-availability');
@@ -283,6 +303,17 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('enrollments/bulk-delete-stale', [\App\Http\Controllers\Admin\AcademyController::class, 'bulkDeleteStale'])->name('enrollments.bulk-delete-stale');
     });
 });
+
+// Llave de emergencia — panel admin (auth + email verificado + rol admin)
+Route::middleware(['auth', 'verified', 'role:admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('emergency-keys', [AdminEmergencyKeyController::class, 'index'])->name('emergency-keys.index');
+        Route::post('emergency-keys/lock-code', [AdminEmergencyKeyController::class, 'updateCode'])->name('emergency-keys.update-code');
+        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/deactivate', [AdminEmergencyKeyController::class, 'markKeyDeactivated'])
+            ->name('emergency-keys.mark-deactivated');
+    });
 
 // Rutas de pedidos
 
