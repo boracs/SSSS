@@ -6,6 +6,7 @@ use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class BonoService
@@ -57,6 +58,93 @@ class BonoService
         $userBono->save();
 
         return $userBono;
+    }
+
+    /**
+     * Estado de consumo visible al alumno (FIFO: el bono confirmado más antiguo con saldo es el activo).
+     *
+     * @param  iterable<UserBono>  $bonos
+     * @return array<int, array{usage_status: string, usage_label: string}>
+     */
+    public function resolveUsageStates(iterable $bonos): array
+    {
+        $collection = $bonos instanceof Collection ? $bonos : collect($bonos);
+
+        $confirmedAsc = $collection
+            ->filter(fn (UserBono $b) => $b->status === UserBono::STATUS_CONFIRMED)
+            ->sortBy(fn (UserBono $b) => sprintf(
+                '%s-%010d',
+                (string) ($b->created_at?->format('YmdHisu') ?? '00000000000000000000'),
+                (int) $b->id
+            ))
+            ->values();
+
+        $activeBonoId = $this->resolveActiveBonoId($confirmedAsc);
+
+        $states = [];
+        foreach ($collection as $bono) {
+            $states[(int) $bono->id] = $this->resolveSingleUsageState($bono, $activeBonoId);
+        }
+
+        return $states;
+    }
+
+    /**
+     * Un solo bono activo: primero el más antiguo ya empezado; si ninguno, el más antiguo con saldo.
+     */
+    private function resolveActiveBonoId(Collection $confirmedAsc): ?int
+    {
+        $partiallyUsed = $confirmedAsc->first(function (UserBono $b) {
+            $remaining = (int) $b->clases_restantes;
+            $packSize = (int) ($b->pack?->num_clases ?? 0);
+
+            return $remaining > 0 && $packSize > 0 && $remaining < $packSize;
+        });
+
+        if ($partiallyUsed !== null) {
+            return (int) $partiallyUsed->id;
+        }
+
+        return $confirmedAsc
+            ->first(fn (UserBono $b) => (int) $b->clases_restantes > 0)
+            ?->id;
+    }
+
+    /**
+     * @return array{usage_status: string, usage_label: string}
+     */
+    private function resolveSingleUsageState(UserBono $bono, ?int $activeBonoId): array
+    {
+        return match ($bono->status) {
+            UserBono::STATUS_PENDING => [
+                'usage_status' => 'pending_validation',
+                'usage_label' => 'Pendiente de validación',
+            ],
+            UserBono::STATUS_REJECTED => [
+                'usage_status' => 'rejected',
+                'usage_label' => 'Rechazado',
+            ],
+            default => $this->resolveConfirmedUsageState($bono, $activeBonoId),
+        };
+    }
+
+    /**
+     * @return array{usage_status: string, usage_label: string}
+     */
+    private function resolveConfirmedUsageState(UserBono $bono, ?int $activeBonoId): array
+    {
+        $remaining = (int) $bono->clases_restantes;
+        $packSize = (int) ($bono->pack?->num_clases ?? 0);
+
+        if ($remaining <= 0) {
+            return ['usage_status' => 'consumed', 'usage_label' => 'Consumido'];
+        }
+
+        if ($activeBonoId !== null && (int) $bono->id === (int) $activeBonoId) {
+            return ['usage_status' => 'in_use', 'usage_label' => 'En uso'];
+        }
+
+        return ['usage_status' => 'queued', 'usage_label' => 'En cola'];
     }
 }
 

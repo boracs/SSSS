@@ -1,197 +1,273 @@
-import React from "react";
-import { usePage } from "@inertiajs/react";
-import Layout1 from "../layouts/Layout1"; // Asegúrate de que esta ruta sea correcta
+import React, { useState } from "react";
+import { Head, usePage, Link } from "@inertiajs/react";
+import {
+    CheckCircle2,
+    Package,
+    CreditCard,
+    User,
+    Calendar,
+    FileCheck2,
+    Truck,
+    ShoppingBag,
+    ReceiptText,
+    ImageOff,
+} from "lucide-react";
+import Layout1 from "../layouts/Layout1";
+import { formatEur } from "@/utils/money";
 
-// Función auxiliar para formatear fechas
-const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    // Utiliza la configuración local para un formato legible
-    return new Date(dateString).toLocaleDateString("es-ES", {
+const formatDate = (value) => {
+    if (!value) return null;
+    return new Date(value).toLocaleDateString("es-ES", {
         year: "numeric",
         month: "long",
         day: "numeric",
     });
 };
 
-// Función auxiliar para determinar el estado visual del pedido
-const getEstadoPedido = (isPaid, isDelivered) => {
-    // 1. Verde: Pagado (true) y entregado (true)
-    if (isPaid && isDelivered) {
-        return {
-            text: "Pagado y Entregado",
-            color: "Verde",
-            className: "bg-green-100 text-green-800 border-green-500",
-        };
+const formatDateTime = (value) => {
+    if (!value) return null;
+    return new Date(value).toLocaleString("es-ES", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+const paymentLabel = (method) => {
+    if (!method) return "No especificado";
+    const map = { bizum: "Bizum", transferencia: "Transferencia bancaria" };
+    return map[method] ?? method;
+};
+
+const StatusPill = ({ active, activeLabel, inactiveLabel, icon: Icon }) => (
+    <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+            active
+                ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                : "bg-amber-50 text-amber-700 ring-amber-200"
+        }`}
+    >
+        <Icon className="h-3.5 w-3.5" />
+        {active ? activeLabel : inactiveLabel}
+    </span>
+);
+
+const InfoRow = ({ icon: Icon, label, value }) => (
+    <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
+            <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {label}
+            </p>
+            <p className="truncate text-sm font-semibold text-slate-800">
+                {value || "—"}
+            </p>
+        </div>
+    </div>
+);
+
+const ProductThumb = ({ src, alt }) => {
+    const [failed, setFailed] = useState(false);
+    if (!src || failed) {
+        return (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-300">
+                <ImageOff className="h-5 w-5" />
+            </div>
+        );
     }
-    // 2. Rojo: Entregado (true) pero no pagado (false)
-    if (isDelivered && !isPaid) {
-        return {
-            text: "Entregado, Pago Pendiente",
-            color: "Rojo",
-            className: "bg-red-100 text-red-800 border-red-500",
-        };
-    }
-    // 3. Amarillo: Pagado (true) pero no entregado (false)
-    if (isPaid && !isDelivered) {
-        return {
-            text: "Pagado, Pendiente de Envío",
-            color: "Amarillo",
-            className: "bg-yellow-100 text-yellow-800 border-yellow-500",
-        };
-    }
-    // 4. Gris: No pagado (false) y no entregado (false)
-    return {
-        text: "Pendiente de Pago y Envío",
-        color: "Gris",
-        className: "bg-gray-100 text-gray-700 border-gray-500",
-    };
+    return (
+        <img
+            src={src}
+            alt={alt}
+            onError={() => setFailed(true)}
+            className="h-16 w-16 shrink-0 rounded-xl border border-slate-200 object-cover"
+        />
+    );
 };
 
 const ConfirmacionPedido = () => {
-    // Extraemos el objeto 'pedido' que Laravel nos envía con toda la información anidada
     const { pedido } = usePage().props;
 
-    // Función auxiliar para formatear moneda
-    const formatCurrency = (value) =>
-        new Intl.NumberFormat("es-ES", {
-            style: "currency",
-            currency: "EUR",
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        }).format(value);
-
-    // EXTRACCIÓN Y DEFENSA CONTRA UNDEFINED
-    const productosDelPedido = pedido?.productos || [];
-    const totalFinal = pedido?.precio_total || 0;
-    const id_pedido = pedido?.id;
-
-    // Información clave
-    const fechaRealizacion = pedido?.created_at
-        ? formatDate(pedido.created_at)
-        : "Pendiente";
-    const fechaEntregaEstimada = pedido?.fecha_entrega
-        ? formatDate(pedido.fecha_entrega)
-        : "No especificada";
-
-    // Determinar el estado visual
-    const estadoVisual = getEstadoPedido(pedido?.pagado, pedido?.entregado);
-
-    // Manejo de estado de carga/error
     if (!pedido) {
-        // Esto debería ocurrir si el usuario intenta acceder a un pedido que no existe o no le pertenece (404)
         return (
             <Layout1>
-                <div className="text-center py-20 text-xl text-gray-700">
+                <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-lg text-slate-600">
                     No se pudo cargar el pedido o no existe.
                 </div>
             </Layout1>
         );
     }
 
+    const productos = pedido.productos || [];
+    const fechaPedido = formatDate(pedido.created_at) || "Pendiente";
+    const justificante = formatDateTime(pedido.proof_uploaded_at);
+
     return (
         <Layout1>
-            <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8">
-                <div className="max-w-4xl w-full bg-white p-8 rounded-xl shadow-2xl">
-                    <h2 className="text-4xl font-extrabold text-green-600 mb-2 text-center">
-                        ¡Pedido Confirmado!
-                    </h2>
+            <Head title={`Pedido #${pedido.id}`} />
+            <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+                <div className="mx-auto w-full max-w-3xl">
+                    {/* Cabecera */}
+                    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                        <div className="flex flex-col items-center gap-3 border-b border-slate-100 bg-gradient-to-b from-emerald-50/80 to-white px-6 py-8 text-center">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                                <CheckCircle2 className="h-8 w-8" />
+                            </div>
+                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                                ¡Pedido confirmado!
+                            </h1>
+                            <p className="max-w-md text-sm text-slate-500">
+                                Gracias por tu compra. Tu pedido{" "}
+                                <span className="font-semibold text-slate-700">
+                                    #{pedido.id}
+                                </span>{" "}
+                                ha sido registrado correctamente.
+                            </p>
+                            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+                                <StatusPill
+                                    active={pedido.pagado}
+                                    activeLabel="Pagado"
+                                    inactiveLabel="Pago pendiente"
+                                    icon={CreditCard}
+                                />
+                                <StatusPill
+                                    active={pedido.entregado}
+                                    activeLabel="Entregado"
+                                    inactiveLabel="Pendiente de envío"
+                                    icon={Truck}
+                                />
+                            </div>
+                        </div>
 
-                    {/* ESTADO DEL PEDIDO */}
-                    <div
-                        className={`p-3 rounded-lg border-l-8 font-bold text-center text-xl mb-6 ${estadoVisual.className}`}
-                    >
-                        Estado del Pedido: {estadoVisual.text}
+                        {/* Datos del pedido */}
+                        <div className="grid grid-cols-1 gap-5 px-6 py-6 sm:grid-cols-2">
+                            <InfoRow
+                                icon={User}
+                                label="Cliente"
+                                value={pedido.cliente?.nombre}
+                            />
+                            <InfoRow
+                                icon={Calendar}
+                                label="Fecha del pedido"
+                                value={fechaPedido}
+                            />
+                            <InfoRow
+                                icon={CreditCard}
+                                label="Método de pago"
+                                value={paymentLabel(pedido.payment_method)}
+                            />
+                            <InfoRow
+                                icon={FileCheck2}
+                                label="Justificante"
+                                value={
+                                    justificante
+                                        ? `Subido el ${justificante}`
+                                        : "Pendiente"
+                                }
+                            />
+                        </div>
                     </div>
 
-                    <p className="text-xl text-gray-700 mb-6 text-center">
-                        Gracias por tu compra. Tu pedido{" "}
-                        <span className="font-bold">#{id_pedido}</span> ha sido
-                        registrado.
-                    </p>
-
-                    {/* DATOS CLAVE DEL PEDIDO */}
-                    <div className="flex justify-around bg-green-50 p-4 rounded-lg border-l-4 border-green-500 mb-6 text-gray-700">
-                        <div className="text-center">
-                            <p className="font-semibold text-lg">
-                                Fecha de Pedido:
-                            </p>
-                            <p className="text-xl">{fechaRealizacion}</p>
+                    {/* Productos */}
+                    <div className="mt-6 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+                        <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+                            <Package className="h-5 w-5 text-slate-400" />
+                            <h2 className="text-base font-semibold text-slate-800">
+                                Resumen de productos
+                            </h2>
+                            <span className="ml-auto rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-500">
+                                {productos.length}{" "}
+                                {productos.length === 1 ? "artículo" : "artículos"}
+                            </span>
                         </div>
-                        <div className="text-center">
-                            <p className="font-semibold text-lg">
-                                Entrega Estimada:
-                            </p>
-                            <p className="text-xl">{fechaEntregaEstimada}</p>
-                        </div>
-                    </div>
 
-                    <div className="bg-gray-50 p-5 rounded-lg shadow-inner mb-6">
-                        <h3 className="text-2xl font-semibold text-gray-800 mb-4 border-b pb-2">
-                            Resumen de Productos
-                        </h3>
-                        <ul className="space-y-4">
-                            {productosDelPedido.map((producto) => {
-                                // Usamos los datos guardados en la tabla pivote para la máxima precisión
-                                const cantidad = producto.pivot.cantidad;
-                                const precioPagadoUnidad =
-                                    producto.pivot.precio_pagado || 0;
-                                const subtotal = precioPagadoUnidad * cantidad;
-
-                                return (
-                                    <li
-                                        key={producto.id}
-                                        className="flex justify-between items-start border-b border-gray-200 py-3 last:border-b-0"
-                                    >
-                                        <div className="flex flex-col">
-                                            <p className="text-lg font-medium text-gray-800">
-                                                {producto.nombre}
-                                            </p>
-                                            <p className="text-sm text-gray-600">
-                                                Cantidad: {cantidad} x{" "}
-                                                {formatCurrency(
-                                                    precioPagadoUnidad
-                                                )}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            {/* Opcional: Mostrar descuento si el campo existe y es mayor que 0 */}
-                                            {producto.pivot.descuento_aplicado >
-                                                0 && (
-                                                <p className="text-xs text-gray-500">
-                                                    Dto:{" "}
-                                                    {
-                                                        producto.pivot
-                                                            .descuento_aplicado
-                                                    }
-                                                    %
-                                                </p>
-                                            )}
-                                            <p className="text-xl text-gray-800 font-bold">
-                                                {formatCurrency(subtotal)}
-                                            </p>
-                                        </div>
-                                    </li>
-                                );
-                            })}
+                        <ul className="divide-y divide-slate-100">
+                            {productos.map((producto) => (
+                                <li
+                                    key={producto.id}
+                                    className="flex items-center gap-4 px-6 py-4"
+                                >
+                                    <ProductThumb
+                                        src={producto.imagen}
+                                        alt={producto.nombre}
+                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-semibold text-slate-800">
+                                            {producto.nombre}
+                                        </p>
+                                        <p className="mt-0.5 text-sm text-slate-500">
+                                            {producto.cantidad} ×{" "}
+                                            {formatEur(producto.precio_pagado)}
+                                        </p>
+                                        {producto.descuento_aplicado > 0 && (
+                                            <span className="mt-1 inline-flex items-center rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-semibold text-orange-600 ring-1 ring-orange-200">
+                                                -{parseInt(producto.descuento_aplicado, 10)}% dto.
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="shrink-0 text-base font-bold text-slate-900">
+                                        {formatEur(producto.subtotal)}
+                                    </p>
+                                </li>
+                            ))}
                         </ul>
+
+                        {/* Totales */}
+                        <div className="space-y-2 border-t border-slate-100 bg-slate-50/60 px-6 py-5">
+                            {pedido.descuentos > 0 && (
+                                <>
+                                    <div className="flex items-center justify-between text-sm text-slate-500">
+                                        <span>Subtotal</span>
+                                        <span>{formatEur(pedido.subtotal)}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm font-medium text-emerald-600">
+                                        <span>Descuentos</span>
+                                        <span>−{formatEur(pedido.descuentos)}</span>
+                                    </div>
+                                </>
+                            )}
+                            <div className="flex items-center justify-between border-t border-slate-200 pt-3">
+                                <span className="text-base font-bold text-slate-800">
+                                    Total
+                                </span>
+                                <span className="text-2xl font-extrabold text-slate-900">
+                                    {formatEur(pedido.precio_total)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* TOTAL FINAL */}
-                    <div className="flex justify-between items-center border-t border-gray-400 pt-4 mt-6">
-                        <p className="text-2xl text-gray-700 font-bold">
-                            TOTAL PAGADO
-                        </p>
-                        <p className="text-3xl text-red-600 font-extrabold">
-                            {formatCurrency(totalFinal)}
+                    {/* Aviso de validación de pago manual */}
+                    <div className="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4">
+                        <ReceiptText className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+                        <p className="text-sm text-sky-900">
+                            Hemos recibido tu justificante de pago. Nuestro equipo
+                            lo verificará y actualizará el estado del pedido. Para
+                            cualquier consulta, indícanos el identificador{" "}
+                            <span className="font-semibold">#{pedido.id}</span>.
                         </p>
                     </div>
 
-                    <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-gray-700">
-                            Para cualquier consulta sobre este pedido (
-                            <span className="font-medium">#{id_pedido}</span>),
-                            por favor, contáctanos mencionando el ID.
-                        </p>
+                    {/* Acciones */}
+                    <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                        <Link
+                            href={route("tienda")}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                        >
+                            <ShoppingBag className="h-4 w-4" />
+                            Seguir comprando
+                        </Link>
+                        <Link
+                            href={route("pedidos")}
+                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                        >
+                            <Package className="h-4 w-4" />
+                            Ver mis pedidos
+                        </Link>
                     </div>
                 </div>
             </div>

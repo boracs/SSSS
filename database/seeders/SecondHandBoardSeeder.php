@@ -21,5 +21,7 @@ class SecondHandBoardSeeder extends Seeder
             ->sold()
             ->count(5)
             ->create();
+
+        $this->call(SecondHandBoardImageSeeder::class);
     }
 }

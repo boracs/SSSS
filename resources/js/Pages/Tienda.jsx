@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { usePage } from "@inertiajs/react"; // 💡 Paso 1: Importar usePage
+import { Head, Link, usePage } from "@inertiajs/react";
 import Producto from "../components/Producto";
 import Layout1 from "../layouts/Layout1";
 
@@ -60,6 +60,7 @@ const Tienda = ({ productos }) => {
 
     return (
         <Layout1>
+            <Head title="Tienda oficial S4" />
             {/* 💡 Paso 5: Toast unificado para éxito o error */}{" "}
             {mensajeToast && (
                 <div
@@ -72,7 +73,7 @@ const Tienda = ({ productos }) => {
             )}{" "}
             <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
                 <div className="mb-5 flex items-end justify-between gap-3">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl">Tienda</h2>
+                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl">Tienda oficial S4</h2>
                     <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
                         {productos.length} productos
                     </p>

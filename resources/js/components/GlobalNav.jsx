@@ -18,6 +18,11 @@ function safeRoute(name, params) {
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
 function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
+    const aboutAndContact = [
+        { type: "link", id: "nosotros", label: "Sobre nosotros", href: safeRoute("nosotros") },
+        { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") },
+    ];
+
     if (isAdmin) {
         return [
             {
@@ -112,6 +117,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                     },
                 ],
             },
+            ...aboutAndContact,
         ];
     }
 
@@ -136,6 +142,14 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     }
     taquillasLinks.push({ label: "Planes y Cuotas", href: safeRoute("taquillas.planes"), featured: !hasLocker });
 
+    const tiendaLinks = [
+        { label: "Tienda oficial S4", href: safeRoute("tienda"), featured: true },
+        { label: "Tablas de Segunda Mano", href: safeRoute("second-hand.index") },
+    ];
+    if (isAuth && !isAdmin) {
+        tiendaLinks.splice(1, 0, { label: "Mis Pedidos", href: safeRoute("pedidos") });
+    }
+
     const servicios = {
         type: "flyout",
         id: "servicios",
@@ -143,10 +157,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         groups: [
             {
                 title: "Tienda",
-                links: [
-                    { label: "Articulos", href: safeRoute("tienda"), featured: true },
-                    { label: "Tablas de Segunda Mano", href: safeRoute("second-hand.index") },
-                ],
+                links: tiendaLinks,
             },
             {
                 title: "Servicios",
@@ -174,9 +185,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     };
 
     return [
+        { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
+        aboutAndContact[0],
         servicios,
-        { type: "link", id: "nosotros", label: "Nosotros", href: safeRoute("nosotros") },
-        { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") },
+        aboutAndContact[1],
     ];
 }
 
@@ -189,11 +201,7 @@ function FlyoutGroup({ group }) {
                     <li key={link.label}>
                         <Link
                             href={link.href}
-                            className={
-                                link.featured
-                                    ? "block text-[15px] font-semibold text-white transition-colors hover:text-cyan-300"
-                                    : "block text-sm text-slate-300 transition-colors hover:text-white"
-                            }
+                            className="block text-sm text-slate-200 transition-colors hover:text-cyan-300"
                         >
                             {link.label}
                         </Link>

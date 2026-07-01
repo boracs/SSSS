@@ -299,7 +299,7 @@ maider_0/
 ├── database/
 │   ├── factories/          (7)
 │   ├── migrations/         (52) — … emergency_lock_settings, emergency_key_requests; planes_taquilla marketing fields
-│   └── seeders/            (14) — OperationalSuperSeeder, TaquillaSeeder, ProductoCatalogImagesSeeder, BorjaVipConsumptionSeeder, TaquillaUsersBonoConsumptionSeeder
+│   └── seeders/            (15) — OperationalSuperSeeder, TaquillaSeeder, BorjaVipConsumptionSeeder, BorjaAcademyDemoLessonsSeeder, TaquillaUsersBonoConsumptionSeeder, …
 │       └── Concerns/       (1) — SeedsBonoConsumptions (trait reutilizable de consumos de bono/clases VIP)
 │
 ├── docs/
@@ -307,6 +307,7 @@ maider_0/
 │   │   ├── 01-cto-protocol.md
 │   │   └── 02-master-prompt-v3-ultra.md
 │   ├── PROJECT_TREE.md
+│   ├── INFORME_TECNICO_COTIZACION.md           ← informe estructural/funcional para cotización
 │   └── PROJECT_TREE_FOR_GEMINI.md              ← este documento
 │
 ├── public/

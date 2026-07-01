@@ -291,10 +291,31 @@ export default function NavigationMenuMain() {
                                                 )}
                                             >
                                                 <ShoppingBag className="h-4 w-4 text-sky-500" />
-                                                Artículos
+                                                Tienda oficial S4
                                             </Link>
                                         </NavigationMenuLink>
                                     </li>
+                                    {user && String(user.role) !== "admin" ? (
+                                        <li>
+                                            <NavigationMenuLink asChild>
+                                                <Link
+                                                    href={route("pedidos")}
+                                                    onClick={() =>
+                                                        setOptimisticPath("/pedidos")
+                                                    }
+                                                    className={cn(
+                                                        "flex items-center gap-2 rounded-lg px-2 py-2 text-sm",
+                                                        darkMode
+                                                            ? "hover:bg-slate-900 hover:text-sky-400"
+                                                            : "hover:bg-slate-100 hover:text-sky-600",
+                                                    )}
+                                                >
+                                                    <PackageCheck className="h-4 w-4 text-sky-500" />
+                                                    Mis Pedidos
+                                                </Link>
+                                            </NavigationMenuLink>
+                                        </li>
+                                    ) : null}
                                     <li>
                                         <NavigationMenuLink asChild>
                                             <Link

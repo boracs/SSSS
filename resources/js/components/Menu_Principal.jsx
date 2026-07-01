@@ -83,16 +83,17 @@ const Menu_Principal = () => {
 
     const links = useMemo(() => {
         const publicLinks = !isAdmin ? [
-            { label: "Home", href: route("Pag_principal") },
-            { label: "Nosotros", href: route("nosotros") },
+            { label: "Inicio", href: route("Pag_principal") },
+            { label: "Sobre nosotros", href: route("nosotros") },
             { label: "Alquilar Tabla", href: route("rentals.surfboards.index") },
             { label: user ? "Reservar Clases" : "Clases", href: user ? route("academy.lessons.index") : route("servicios.surf") },
             { label: "Contacto", href: route("contacto") },
-            ...(!user ? [{ label: "Tienda", href: route("tienda") }] : []),
+            ...(!user ? [{ label: "Tienda oficial S4", href: route("tienda") }] : []),
         ] : [];
 
         const studentLinks = user && !isAdmin ? [
-            { label: "Tienda", href: route("tienda") },
+            { label: "Tienda oficial S4", href: route("tienda") },
+            { label: "Mis Pedidos", href: route("pedidos") },
             { label: "Mis Reservas", href: route("my-reservations.index") },
             ...(hasActiveLocker ? [{ label: "Taquilla", href: route("taquillas.index.client") }] : []),
             { label: "Perfil", href: route("profile.edit") },
@@ -121,7 +122,7 @@ const Menu_Principal = () => {
         const adminClientView = isAdmin ? [
             { label: "Clases", href: route("academy.lessons.index"), icon: AcademicCapIcon },
             { label: "Alquiler de Tablas", href: route("rentals.surfboards.index"), icon: BuildingStorefrontIcon },
-            { label: "Tienda", href: route("tienda"), icon: ShoppingBagIcon },
+            { label: "Tienda oficial S4", href: route("tienda"), icon: ShoppingBagIcon },
         ] : [];
 
         const lockersModule = isAdmin ? [

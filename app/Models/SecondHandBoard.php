@@ -174,13 +174,24 @@ class SecondHandBoard extends Model
             'status'          => $this->status->value,
             'status_label'    => $this->status->label(),
             'images'          => array_map(
-                fn (string $p) => asset('storage/' . $p),
+                fn (string $p) => self::publicImageUrl($p),
                 $this->images ?? []
             ),
             'first_image'     => $this->firstImage()
-                ? asset('storage/' . $this->firstImage())
+                ? self::publicImageUrl($this->firstImage())
                 : null,
             'sold_at'         => $this->sold_at?->toDateString(),
         ];
+    }
+
+    public static function publicImageUrl(string $path): string
+    {
+        $path = ltrim($path, '/');
+
+        if (str_starts_with($path, 'img/') || str_starts_with($path, 'images/')) {
+            return asset($path);
+        }
+
+        return asset('storage/' . $path);
     }
 }

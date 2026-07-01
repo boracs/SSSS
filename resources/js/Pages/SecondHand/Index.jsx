@@ -1,18 +1,7 @@
 import React, { useState, useMemo } from "react";
-import { Link, usePage } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
-import {
-    Ruler,
-    Droplets,
-    Tag,
-    Search,
-    SlidersHorizontal,
-    CheckCircle2,
-    Clock,
-    Archive,
-} from "lucide-react";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { Ruler, Droplets, Tag, Search } from "lucide-react";
 
 const EUR = new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -24,38 +13,42 @@ function formatEur(cents) {
     return EUR.format(cents / 100);
 }
 
-function StatusBadge({ status, label }) {
-    const cfg = {
-        available: { icon: CheckCircle2, bg: "bg-emerald-500/20", text: "text-emerald-300", border: "border-emerald-500/30" },
-        reserved:  { icon: Clock,        bg: "bg-amber-500/20",   text: "text-amber-300",  border: "border-amber-500/30" },
-        sold:      { icon: Archive,       bg: "bg-slate-500/20",   text: "text-slate-400",  border: "border-slate-500/30" },
-    };
-    const c = cfg[status] ?? cfg.available;
-    const Icon = c.icon;
-    return (
-        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${c.bg} ${c.text} ${c.border}`}>
-            <Icon className="h-3 w-3" />
-            {label}
-        </span>
-    );
+function formatHeight(feetDecimal) {
+    const feet = Math.floor(feetDecimal);
+    const inches = Math.round((feetDecimal - feet) * 12);
+    return `${feet}'${inches}"`;
 }
+
+const HEIGHT_FILTERS = [
+    { value: "all", label: "Todas las alturas" },
+    { value: "short", label: "Hasta 5'8\"", match: (h) => h <= 5.67 },
+    { value: "mid-short", label: "5'8\" – 6'0\"", match: (h) => h > 5.67 && h <= 6.0 },
+    { value: "mid-long", label: "6'0\" – 6'4\"", match: (h) => h > 6.0 && h <= 6.33 },
+    { value: "long", label: "Más de 6'4\"", match: (h) => h > 6.33 },
+];
+
+const VOLUME_FILTERS = [
+    { value: "all", label: "Todos los volúmenes" },
+    { value: "low", label: "Menos de 30 L", match: (v) => v < 30 },
+    { value: "mid-low", label: "30 – 34 L", match: (v) => v >= 30 && v < 34 },
+    { value: "mid", label: "34 – 38 L", match: (v) => v >= 34 && v < 38 },
+    { value: "high", label: "Más de 38 L", match: (v) => v >= 38 },
+];
 
 function BoardCard({ board }) {
     const hasDiscount = board.discount_pct > 0;
-    const isSold = board.status === "sold";
 
     return (
         <Link
             href={route("second-hand.show", board.id)}
             className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-orange-400/40 hover:bg-white/10 hover:shadow-[0_8px_32px_rgba(251,146,60,0.15)]"
         >
-            {/* Imagen */}
             <div className="relative aspect-[4/3] overflow-hidden bg-slate-800/60">
                 {board.first_image ? (
                     <img
                         src={board.first_image}
                         alt={board.name}
-                        className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${isSold ? "opacity-60 grayscale" : ""}`}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : (
                     <div className="flex h-full items-center justify-center">
@@ -66,53 +59,33 @@ function BoardCard({ board }) {
                     </div>
                 )}
 
-                {/* Badge de descuento */}
-                {hasDiscount && !isSold && (
+                {hasDiscount && (
                     <div className="absolute left-2 top-2 rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
                         -{board.discount_pct}%
                     </div>
                 )}
-
-                {/* Overlay vendida */}
-                {isSold && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
-                        <span className="rounded-xl border border-slate-400/30 bg-slate-900/80 px-3 py-1.5 text-xs font-bold tracking-wider text-slate-300 uppercase">
-                            Vendida
-                        </span>
-                    </div>
-                )}
             </div>
 
-            {/* Cuerpo */}
             <div className="flex flex-1 flex-col p-4">
-                <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                        {board.brand && (
-                            <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-400">
-                                {board.brand}
-                            </p>
-                        )}
-                        <h3 className="text-sm font-bold leading-tight text-white line-clamp-2">
-                            {board.name}
-                        </h3>
-                    </div>
-                    <StatusBadge status={board.status} label={board.status_label} />
+                <div className="mb-2">
+                    {board.brand && (
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-400">
+                            {board.brand}
+                        </p>
+                    )}
+                    <h3 className="text-sm font-bold leading-tight text-white line-clamp-2">
+                        {board.name}
+                    </h3>
                 </div>
 
-                {/* Specs t뿯½cnicas */}
                 <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
-                    <SpecPill icon={Ruler} label={`${board.height}' 뿯½ ${board.width}"`} />
+                    <SpecPill icon={Ruler} label={`${formatHeight(board.height)} × ${board.width}"`} />
                     <SpecPill icon={Ruler} label={`${board.thickness}"`} suffix="grosor" />
                     <SpecPill icon={Droplets} label={`${board.volume} L`} />
                 </div>
 
-                {/* Precio */}
                 <div className="mt-auto">
-                    {isSold ? (
-                        <p className="text-xs text-slate-500">
-                            Vendida{board.sold_at ? ` 뿯½ ${board.sold_at}` : ""}
-                        </p>
-                    ) : hasDiscount ? (
+                    {hasDiscount ? (
                         <div className="flex items-baseline gap-2">
                             <span className="text-lg font-extrabold text-orange-400">
                                 {formatEur(board.effective_price)}
@@ -142,43 +115,50 @@ function SpecPill({ icon: Icon, label, suffix }) {
     );
 }
 
-// ─── Filtros ──────────────────────────────────────────────────────────────────
-
-const STATUS_FILTERS = [
-    { value: "all",       label: "Todas" },
-    { value: "available", label: "Disponibles" },
-    { value: "reserved",  label: "Reservadas" },
-    { value: "sold",      label: "Vendidas" },
-];
-
-// ─── P뿯½gina principal ─────────────────────────────────────────────────────────
+const selectClass =
+    "w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-8 text-sm text-slate-200 outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 sm:w-auto sm:min-w-[180px]";
 
 export default function SecondHandIndex({ boards }) {
-    const [search, setSearch]         = useState("");
-    const [statusFilter, setStatus]   = useState("all");
+    const [search, setSearch] = useState("");
+    const [heightFilter, setHeightFilter] = useState("all");
+    const [volumeFilter, setVolumeFilter] = useState("all");
 
     const filtered = useMemo(() => {
+        const heightRule = HEIGHT_FILTERS.find((f) => f.value === heightFilter);
+        const volumeRule = VOLUME_FILTERS.find((f) => f.value === volumeFilter);
+        const q = search.toLowerCase().trim();
+
         return boards.filter((b) => {
-            const matchStatus = statusFilter === "all" || b.status === statusFilter;
-            const q = search.toLowerCase();
             const matchSearch =
                 !q ||
                 b.name.toLowerCase().includes(q) ||
-                (b.brand ?? "").toLowerCase().includes(q);
-            return matchStatus && matchSearch;
-        });
-    }, [boards, search, statusFilter]);
+                (b.brand ?? "").toLowerCase().includes(q) ||
+                (b.model ?? "").toLowerCase().includes(q);
 
-    const availableCount = boards.filter((b) => b.status === "available").length;
+            const h = Number(b.height);
+            const v = Number(b.volume);
+            const matchHeight = heightFilter === "all" || (heightRule?.match?.(h) ?? true);
+            const matchVolume = volumeFilter === "all" || (volumeRule?.match?.(v) ?? true);
+
+            return matchSearch && matchHeight && matchVolume;
+        });
+    }, [boards, search, heightFilter, volumeFilter]);
+
+    const hasActiveFilters =
+        search.trim() !== "" || heightFilter !== "all" || volumeFilter !== "all";
+
+    const clearFilters = () => {
+        setSearch("");
+        setHeightFilter("all");
+        setVolumeFilter("all");
+    };
 
     return (
         <Layout1>
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-
-                {/* Cabecera */}
                 <div className="mb-8">
                     <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-400">
-                        Segunda Mano 뿯½ San Sebastian Surf School
+                        Segunda Mano · San Sebastian Surf School
                     </p>
                     <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
                         Tablas de Segunda Mano
@@ -187,17 +167,21 @@ export default function SecondHandIndex({ boards }) {
                         Tablas revisadas y garantizadas por nuestra escuela. Equipo de calidad
                         a precios justos para todos los niveles.
                     </p>
-                    {availableCount > 0 && (
+                    {boards.length > 0 && (
                         <p className="mt-3 text-sm font-semibold text-emerald-400">
-                            {availableCount} tabla{availableCount !== 1 ? "s" : ""} disponible{availableCount !== 1 ? "s" : ""}
+                            {boards.length} tabla{boards.length !== 1 ? "s" : ""} en venta
+                            {hasActiveFilters && filtered.length !== boards.length ? (
+                                <span className="font-normal text-slate-400">
+                                    {" "}
+                                    · {filtered.length} coinciden con tu búsqueda
+                                </span>
+                            ) : null}
                         </p>
                     )}
                 </div>
 
-                {/* Barra de filtros */}
-                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    {/* Buscador */}
-                    <div className="relative flex-1">
+                <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:flex-wrap">
+                    <div className="relative flex-1 min-w-[220px]">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                         <input
                             type="text"
@@ -208,35 +192,70 @@ export default function SecondHandIndex({ boards }) {
                         />
                     </div>
 
-                    {/* Filtro estado */}
-                    <div className="flex items-center gap-2">
-                        <SlidersHorizontal className="h-4 w-4 shrink-0 text-slate-500" />
-                        <div className="flex gap-1">
-                            {STATUS_FILTERS.map((f) => (
-                                <button
-                                    key={f.value}
-                                    type="button"
-                                    onClick={() => setStatus(f.value)}
-                                    className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors ${
-                                        statusFilter === f.value
-                                            ? "bg-orange-500 text-white"
-                                            : "border border-white/10 bg-white/5 text-slate-400 hover:bg-white/10"
-                                    }`}
-                                >
-                                    {f.label}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                        <label className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Altura
+                            </span>
+                            <select
+                                value={heightFilter}
+                                onChange={(e) => setHeightFilter(e.target.value)}
+                                className={selectClass}
+                            >
+                                {HEIGHT_FILTERS.map((f) => (
+                                    <option key={f.value} value={f.value} className="bg-slate-900 text-slate-100">
+                                        {f.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Volumen
+                            </span>
+                            <select
+                                value={volumeFilter}
+                                onChange={(e) => setVolumeFilter(e.target.value)}
+                                className={selectClass}
+                            >
+                                {VOLUME_FILTERS.map((f) => (
+                                    <option key={f.value} value={f.value} className="bg-slate-900 text-slate-100">
+                                        {f.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        {hasActiveFilters ? (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/10 sm:self-end"
+                            >
+                                Limpiar filtros
+                            </button>
+                        ) : null}
                     </div>
                 </div>
 
-                {/* Grid de tablas */}
                 {filtered.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 text-center">
                         <Tag className="mb-3 h-10 w-10 text-slate-600" />
                         <p className="text-sm font-medium text-slate-400">
-                            No hay tablas que coincidan con tu b뿯½squeda.
+                            {boards.length === 0
+                                ? "No hay tablas en venta en este momento."
+                                : "No hay tablas que coincidan con tu búsqueda."}
                         </p>
+                        {hasActiveFilters && boards.length > 0 ? (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="mt-4 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-400"
+                            >
+                                Ver todas las tablas en venta
+                            </button>
+                        ) : null}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -245,23 +264,6 @@ export default function SecondHandIndex({ boards }) {
                         ))}
                     </div>
                 )}
-
-                {/* Leyenda */}
-                <div className="mt-10 flex flex-wrap gap-4 rounded-2xl border border-white/5 bg-white/5 px-5 py-4">
-                    <p className="w-full text-xs font-semibold uppercase tracking-wider text-slate-500">Leyenda</p>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                        Disponible — puedes comprar
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <Clock className="h-3.5 w-3.5 text-amber-400" />
-                        Reservada — contacta con nosotros
-                    </div>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <Archive className="h-3.5 w-3.5 text-slate-500" />
-                        Vendida — historial
-                    </div>
-                </div>
             </div>
         </Layout1>
     );

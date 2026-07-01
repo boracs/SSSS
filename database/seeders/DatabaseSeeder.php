@@ -156,6 +156,7 @@ class DatabaseSeeder extends Seeder
         // ===============================
         $this->call([
             BorjaVipConsumptionSeeder::class,
+            BorjaAcademyDemoLessonsSeeder::class,
             TaquillaUsersBonoConsumptionSeeder::class,
         ]);
     }

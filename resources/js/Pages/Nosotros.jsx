@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
+import { Head, Link } from "@inertiajs/react";
 import Layout1 from "../layouts/Layout1";
 import {
     Wind,
@@ -24,7 +25,200 @@ import {
     Refrigerator,
     Bath,
     Info,
+    MapPin,
+    Waves,
+    X,
+    ZoomIn,
 } from "lucide-react";
+
+const GALLERY_IMAGES = [
+    {
+        src: "/img/nosotros/galeria/instalaciones-01.png",
+        alt: "Vista general del club S4 con taquillas, duchas y rack de tablas",
+        caption: "Instalaciones premium a pie de Zurriola",
+    },
+    {
+        src: "/img/nosotros/galeria/instalaciones-02.png",
+        alt: "Sala de secado de neoprenos con cristalera industrial",
+        caption: "Secadero de trajes de alta eficiencia",
+    },
+    {
+        src: "/img/nosotros/galeria/instalaciones-03.png",
+        alt: "Zona de entrenamiento funcional junto al secadero",
+        caption: "Performance zone y preparación pre-surf",
+    },
+    {
+        src: "/img/nosotros/galeria/instalaciones-04.png",
+        alt: "Club La Concha — taquillas, gimnasio y acceso socios",
+        caption: "La Concha Ocean Club · Donostia",
+    },
+];
+
+const INTRO_PILLARS = [
+    {
+        icon: Waves,
+        title: "Escuela de surf",
+        body: "Clases para todos los niveles en la playa de Zurriola, con instructores certificados y material de primer nivel.",
+    },
+    {
+        icon: MapPin,
+        title: "A pie de playa",
+        body: "Instalaciones propias en Donostia: taquillas, secado, duchas y zona de calentamiento antes y después del baño.",
+    },
+    {
+        icon: ShieldCheck,
+        title: "Comunidad S4",
+        body: "Más de 200 socios activos, bonos VIP, alquiler de tablas y un club pensado para quien vive el surf en serio.",
+    },
+];
+
+function GalleryLightbox({ images, index, onClose, onNavigate }) {
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.key === "Escape") onClose();
+            if (e.key === "ArrowLeft") onNavigate(-1);
+            if (e.key === "ArrowRight") onNavigate(1);
+        };
+        window.addEventListener("keydown", handler);
+        document.body.style.overflow = "hidden";
+        return () => {
+            window.removeEventListener("keydown", handler);
+            document.body.style.overflow = "";
+        };
+    }, [onClose, onNavigate]);
+
+    const item = images[index];
+    if (!item) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-[900] flex items-center justify-center bg-black/95 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Visor de galería"
+            onClick={onClose}
+        >
+            <button
+                type="button"
+                onClick={onClose}
+                className="absolute right-4 top-4 z-10 rounded-full border border-white/15 bg-black/50 p-2 text-white transition hover:bg-white/10"
+                aria-label="Cerrar"
+            >
+                <X className="h-5 w-5" />
+            </button>
+            {images.length > 1 ? (
+                <>
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onNavigate(-1); }}
+                        className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/15 bg-black/50 p-3 text-white hover:bg-white/10"
+                        aria-label="Anterior"
+                    >
+                        <ChevronRight className="h-5 w-5 rotate-180" />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onNavigate(1); }}
+                        className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-white/15 bg-black/50 p-3 text-white hover:bg-white/10"
+                        aria-label="Siguiente"
+                    >
+                        <ChevronRight className="h-5 w-5" />
+                    </button>
+                </>
+            ) : null}
+            <figure className="relative max-h-[85vh] max-w-5xl" onClick={(e) => e.stopPropagation()}>
+                <img
+                    src={item.src}
+                    alt={item.alt}
+                    className="max-h-[80vh] w-full rounded-2xl object-contain shadow-2xl"
+                />
+                <figcaption className="mt-3 text-center text-sm text-slate-300">
+                    {item.caption}
+                    <span className="ml-2 text-xs text-slate-500">
+                        {index + 1} / {images.length}
+                    </span>
+                </figcaption>
+            </figure>
+        </div>
+    );
+}
+
+function InstalacionesGallery() {
+    const [lightboxIndex, setLightboxIndex] = useState(null);
+
+    const openAt = useCallback((i) => setLightboxIndex(i), []);
+    const close = useCallback(() => setLightboxIndex(null), []);
+    const navigate = useCallback(
+        (dir) => {
+            setLightboxIndex((current) => {
+                if (current === null) return null;
+                return (current + dir + GALLERY_IMAGES.length) % GALLERY_IMAGES.length;
+            });
+        },
+        [],
+    );
+
+    return (
+        <section id="galeria-instalaciones" className="mb-16 scroll-mt-24">
+            <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <SectionLabel>Galería</SectionLabel>
+                    <h2 className="text-3xl font-extrabold text-white">Nuestras instalaciones</h2>
+                    <p className="mt-2 max-w-xl text-sm text-slate-400">
+                        Un espacio diseñado para el surfista moderno: almacenamiento, secado, entrenamiento y confort
+                        a escasos metros del Cantábrico.
+                    </p>
+                </div>
+                <p className="text-xs text-slate-500">Pulsa una foto para ampliar</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-12 lg:grid-rows-2 lg:gap-4">
+                {GALLERY_IMAGES.map((img, idx) => {
+                    const layout =
+                        idx === 0
+                            ? "col-span-2 row-span-2 lg:col-span-7 lg:row-span-2 min-h-[220px] sm:min-h-[280px] lg:min-h-[420px]"
+                            : idx === 1
+                              ? "col-span-1 lg:col-span-5 min-h-[140px] sm:min-h-[160px]"
+                              : idx === 2
+                                ? "col-span-1 lg:col-span-5 min-h-[140px] sm:min-h-[160px]"
+                                : "col-span-2 lg:col-span-12 min-h-[160px] sm:min-h-[200px]";
+
+                    return (
+                        <button
+                            key={img.src}
+                            type="button"
+                            onClick={() => openAt(idx)}
+                            className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 text-left shadow-lg transition hover:border-cyan-500/30 hover:shadow-cyan-500/10 ${layout}`}
+                        >
+                            <img
+                                src={img.src}
+                                alt={img.alt}
+                                loading={idx === 0 ? "eager" : "lazy"}
+                                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent opacity-80 transition group-hover:opacity-100" />
+                            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-3 sm:p-4">
+                                <p className="text-xs font-semibold text-white sm:text-sm">{img.caption}</p>
+                                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-sm transition group-hover:bg-cyan-500/30">
+                                    <ZoomIn className="h-4 w-4" />
+                                </span>
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+
+            {lightboxIndex !== null ? (
+                <GalleryLightbox
+                    images={GALLERY_IMAGES}
+                    index={lightboxIndex}
+                    onClose={close}
+                    onNavigate={navigate}
+                />
+            ) : null}
+        </section>
+    );
+}
 
 // ── Componentes auxiliares ─────────────────────────────────────────────────────
 
@@ -297,6 +491,8 @@ export default function SobreNosotros() {
 
     return (
         <Layout1>
+            <Head title="Sobre nosotros | San Sebastian Surf School" />
+
             {/* ── Fondo premium aislado ── */}
             <div className="relative min-h-screen overflow-hidden bg-slate-950">
 
@@ -330,7 +526,7 @@ export default function SobreNosotros() {
                 <header className="mb-16 text-center">
                     {/* Overline institucional */}
                     <p className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-[#4ecde6]">
-                        Escuela oficial de surf · Zurriola, San Sebastián
+                        Sobre nosotros · Escuela oficial de surf · Zurriola
                     </p>
 
                     {/* Título principal */}
@@ -339,14 +535,14 @@ export default function SobreNosotros() {
                             San Sebastian Surf School
                         </span>
                         <span className="mt-2 block bg-gradient-to-r from-[#0f5f74] via-[#1aa3c0] to-[#4ecde6] bg-clip-text text-transparent">
-                            Lockers &amp; Club de Socios
+                            Tu escuela y club en el Cantábrico
                         </span>
                     </h1>
 
                     {/* Subtítulo */}
                     <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg">
-                        Taquillas privadas a pie de playa, zona de secado, calentamiento y acceso
-                        a los mejores servicios del club. Todo lo que necesitas antes y después del agua.
+                        Somos la escuela de surf de referencia en Donostia. Formación, alquiler de material,
+                        bonos VIP y un club de socios con instalaciones premium a pie de la playa de Zurriola.
                     </p>
                     {/* Barra de métricas premium */}
                     <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm">
@@ -388,6 +584,47 @@ export default function SobreNosotros() {
                         </div>
                     </div>
                 </header>
+
+                {/* ══════════════════════════════════════════
+                    INTRO — Quiénes somos
+                ══════════════════════════════════════════ */}
+                <section className="mb-16">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        {INTRO_PILLARS.map(({ icon: Icon, title, body }) => (
+                            <div
+                                key={title}
+                                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition hover:border-cyan-500/20"
+                            >
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+                                    <Icon className="h-5 w-5" />
+                                </div>
+                                <h2 className="text-lg font-bold text-white">{title}</h2>
+                                <p className="mt-2 text-sm leading-relaxed text-slate-400">{body}</p>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-6 flex flex-wrap justify-center gap-3">
+                        <Link
+                            href={route("servicios.surf")}
+                            className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                        >
+                            Ver clases de surf
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                        <Link
+                            href={route("taquillas.planes")}
+                            className="inline-flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2.5 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/20"
+                        >
+                            Planes de taquilla
+                            <ChevronRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+                </section>
+
+                {/* ══════════════════════════════════════════
+                    GALERÍA DE INSTALACIONES
+                ══════════════════════════════════════════ */}
+                <InstalacionesGallery />
 
                 {/* ══════════════════════════════════════════
                     BLOQUE 1 — BENTO GRID INSTALACIONES

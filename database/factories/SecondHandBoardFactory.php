@@ -63,6 +63,7 @@ class SecondHandBoardFactory extends Factory
         $purchasePrice = $this->faker->numberBetween(15000, 30000);
         $margin        = $this->faker->numberBetween(10000, 20000);
         $hasDiscount   = $this->faker->boolean(30);
+        $images        = $this->randomImages();
 
         return [
             'name'           => $this->faker->randomElement(self::$boardPool),
@@ -80,7 +81,7 @@ class SecondHandBoardFactory extends Factory
                 ? $this->faker->randomElement([5, 10, 15, 20])
                 : 0,
             'status'         => SecondHandStatus::AVAILABLE,
-            'images'         => null,
+            'images'         => $images !== [] ? $images : null,
             'purchased_at'   => $this->faker->dateTimeBetween('-6 months', 'now'),
             'sold_at'        => null,
         ];
@@ -107,5 +108,31 @@ class SecondHandBoardFactory extends Factory
                 'sold_at' => $soldAt,
             ];
         });
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function randomImages(): array
+    {
+        $pool = [];
+
+        $surfboardDir = storage_path('app/public/surfboards');
+        if (is_dir($surfboardDir)) {
+            foreach (glob($surfboardDir . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: [] as $file) {
+                $pool[] = 'surfboards/' . basename($file);
+            }
+        }
+
+        if ($pool === []) {
+            return is_file(public_path('img/tabla-demo.png'))
+                ? ['img/tabla-demo.png']
+                : [];
+        }
+
+        shuffle($pool);
+        $count = min(count($pool), $this->faker->numberBetween(1, 2));
+
+        return array_slice($pool, 0, $count);
     }
 }

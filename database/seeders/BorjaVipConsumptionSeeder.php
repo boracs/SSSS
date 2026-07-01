@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Datos VIP para Borja (borjauser@mail.com):
+ * Datos VIP para Borja (borjauser@gmail.com):
  *  - 4 bonos completamente consumidos (clases_restantes = 0)
  *  - 1 bono vigente (con clases restantes)
  *  - Clases VIP pasadas (las del consumo) + 2 clases VIP programadas.
@@ -37,7 +37,7 @@ class BorjaVipConsumptionSeeder extends Seeder
         }
 
         $borja = User::query()->firstOrCreate(
-            ['email' => 'borjauser@mail.com'],
+            ['email' => 'borjauser@gmail.com'],
             [
                 'nombre' => 'Borja',
                 'apellido' => 'User',

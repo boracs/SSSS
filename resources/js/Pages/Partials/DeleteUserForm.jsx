@@ -1,5 +1,9 @@
 import { useForm } from "@inertiajs/react";
 import { useRef, useState } from "react";
+import { AlertTriangle, Trash2 } from "lucide-react";
+
+const fieldClass =
+    "mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-rose-500 focus:outline-none focus:ring-2 focus:ring-rose-500/20";
 
 export default function DeleteUserForm({ className = "" }) {
     const [confirmingUserDeletion, setConfirmingUserDeletion] = useState(false);
@@ -39,86 +43,100 @@ export default function DeleteUserForm({ className = "" }) {
     };
 
     return (
-        <section className={`space-y-6 ${className}`}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Delete Account
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-600">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Before deleting your account,
-                    please download any data or information that you wish to
-                    retain.
-                </p>
-            </header>
-
-            {/* Danger Button */}
-            <button
-                onClick={confirmUserDeletion}
-                className="inline-flex items-center justify-center bg-gradient-to-r from-red-500 to-red-700 px-6 py-3 text-white font-semibold uppercase text-xs tracking-wider rounded-md transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg focus:ring-4 focus:ring-red-500 focus:ring-offset-2 focus:outline-none active:scale-95 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Delete Account
-            </button>
-
-            {/* Modal */}
-            {confirmingUserDeletion && (
-                <div className="fixed inset-0 flex justify-center items-center bg-gray-800 bg-opacity-50 z-50">
-                    <div className="bg-white p-6 rounded-lg w-96">
-                        <h2 className="text-lg font-medium text-gray-900">
-                            Are you sure you want to delete your account?
+        <section
+            className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-rose-200 ${className}`}
+        >
+            <div className="border-b border-rose-100 bg-gradient-to-r from-rose-950 via-rose-900 to-slate-900 px-6 py-5">
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/20">
+                        <Trash2 className="h-5 w-5 text-rose-200" />
+                    </div>
+                    <div>
+                        <h2 className="text-lg font-bold text-white">
+                            Eliminar cuenta
                         </h2>
-
-                        <p className="mt-1 text-sm text-gray-600">
-                            Once your account is deleted, all of its resources
-                            and data will be permanently deleted. Please enter
-                            your password to confirm you would like to
-                            permanently delete your account.
+                        <p className="text-sm text-rose-100/80">
+                            Esta acción es permanente y no se puede deshacer.
                         </p>
+                    </div>
+                </div>
+            </div>
 
-                        <div className="mt-6">
-                            {/* Password Input */}
-                            <label htmlFor="password" className="sr-only">
-                                Password
-                            </label>
-                            <input
-                                id="password"
-                                type="password"
-                                name="password"
-                                ref={passwordInput}
-                                value={data.password}
-                                onChange={(e) =>
-                                    setData("password", e.target.value)
-                                }
-                                className="mt-1 block w-3/4 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ease-in-out"
-                                placeholder="Password"
-                            />
+            <div className="space-y-4 p-6 sm:p-8">
+                <p className="text-sm leading-relaxed text-slate-600">
+                    Al eliminar tu cuenta se borrarán de forma definitiva todos tus datos,
+                    reservas e historial asociados. Descarga cualquier información que
+                    quieras conservar antes de continuar.
+                </p>
 
-                            {errors.password && (
-                                <p className="mt-2 text-sm text-red-600">
-                                    {errors.password}
-                                </p>
-                            )}
+                <button
+                    type="button"
+                    onClick={confirmUserDeletion}
+                    className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700"
+                >
+                    <AlertTriangle className="h-4 w-4" />
+                    Eliminar mi cuenta
+                </button>
+            </div>
+
+            {confirmingUserDeletion && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200">
+                        <div className="border-b border-rose-100 bg-rose-50 px-6 py-4">
+                            <h3 className="text-lg font-bold text-rose-950">
+                                ¿Confirmar eliminación?
+                            </h3>
+                            <p className="mt-1 text-sm text-rose-800/80">
+                                Introduce tu contraseña para confirmar que deseas eliminar
+                                tu cuenta de forma permanente.
+                            </p>
                         </div>
 
-                        <div className="mt-6 flex justify-end">
-                            {/* Secondary Button */}
-                            <button
-                                onClick={closeModal}
-                                className="px-6 py-3 text-sm font-medium text-gray-600 bg-gray-200 rounded-md hover:bg-gray-300 transition-all duration-300 ease-in-out focus:outline-none"
-                            >
-                                Cancel
-                            </button>
+                        <form onSubmit={deleteUser} className="space-y-4 p-6">
+                            <div>
+                                <label
+                                    htmlFor="password"
+                                    className="text-sm font-medium text-slate-700"
+                                >
+                                    Contraseña
+                                </label>
+                                <input
+                                    id="password"
+                                    type="password"
+                                    name="password"
+                                    ref={passwordInput}
+                                    value={data.password}
+                                    onChange={(e) =>
+                                        setData("password", e.target.value)
+                                    }
+                                    className={fieldClass}
+                                    placeholder="Tu contraseña actual"
+                                />
 
-                            {/* Danger Button (Delete) */}
-                            <button
-                                onClick={deleteUser}
-                                className="ml-3 px-6 py-3 text-sm font-medium text-white bg-gradient-to-r from-red-500 to-red-700 rounded-md hover:scale-105 hover:shadow-lg transition-all duration-300 ease-in-out active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                                disabled={processing}
-                            >
-                                {processing ? "Deleting..." : "Delete Account"}
-                            </button>
-                        </div>
+                                {errors.password && (
+                                    <p className="mt-2 text-sm text-rose-600">
+                                        {errors.password}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex flex-wrap justify-end gap-3 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                                >
+                                    {processing ? "Eliminando…" : "Sí, eliminar cuenta"}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

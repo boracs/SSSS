@@ -41,9 +41,9 @@ Route::get('/', [Pag_principalController::class, 'index'])->name('Pag_principal'
 Route::get('/nosotros', function () {
     return Inertia::render('Nosotros');
 })->name('nosotros');
-// TIENDA
-Route::get('/tienda', [TiendaController::class, 'index_mas_que_surf'])->name('tienda');
-Route::get('/tienda-oficial', [TiendaController::class, 'index_oficial'])->name('tienda.oficial');
+// TIENDA — tienda única oficial S4
+Route::get('/tienda', [TiendaController::class, 'index'])->name('tienda');
+Route::redirect('/tienda-oficial', '/tienda')->name('tienda.oficial');
 
 // SEGUNDA MANO — Catálogo público (accesible sin autenticación)
 Route::get('/segunda-mano', [SecondHandBoardController::class, 'index'])->name('second-hand.index');

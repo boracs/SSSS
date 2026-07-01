@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { router, usePage } from "@inertiajs/react";
+import { router, usePage, Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
 import {
     Ruler,
@@ -14,7 +14,6 @@ import {
     ChevronRight,
     X,
     ZoomIn,
-    Grid2X2,
     ImageOff,
 } from "lucide-react";
 
@@ -53,12 +52,6 @@ const DEMO_IMAGES = [
 ];
 
 // ── Constantes de layout ───────────────────────────────────────────────────────
-
-const MOSAIC_TOP   = 3; // Imagen principal + 2 laterales
-const STRIP_CELLS  = 2; // Celdas en la tira inferior
-const GRID_VISIBLE = MOSAIC_TOP + STRIP_CELLS;
-
-// ── Placeholder sin imágenes ───────────────────────────────────────────────────
 
 function GalleryPlaceholder() {
     return (
@@ -210,144 +203,62 @@ function Lightbox({ images, index, open, onClose }) {
     );
 }
 
-// ── MosaicGallery ──────────────────────────────────────────────────────────────
+// ── Galería uniforme (mismo tamaño por imagen) ────────────────────────────────
 
-function MosaicGallery({ images: rawImages, name }) {
-    // Normalización defensiva: JSON string, null, array vacío → siempre array limpio
+function UniformGallery({ images: rawImages, name }) {
     const realImages = normalizeImages(rawImages);
     const images = realImages.length > 0 ? realImages : DEMO_IMAGES;
 
-    const [lbOpen,  setLbOpen]  = useState(false);
+    const [lbOpen, setLbOpen] = useState(false);
     const [lbIndex, setLbIndex] = useState(0);
 
-    const openAt  = useCallback((i) => { setLbIndex(i); setLbOpen(true); }, []);
+    const openAt = useCallback((i) => {
+        setLbIndex(i);
+        setLbOpen(true);
+    }, []);
     const closeLb = useCallback(() => setLbOpen(false), []);
 
-    // Sin imágenes → placeholder
     if (images.length === 0) return <GalleryPlaceholder />;
 
-    const overflow    = Math.max(0, images.length - GRID_VISIBLE);
-    const stripImages = images.slice(MOSAIC_TOP, GRID_VISIBLE);
-
-    const cellBase =
-        "group relative overflow-hidden bg-slate-100 cursor-zoom-in focus-visible:outline-2 focus-visible:outline-orange-400 focus-visible:outline-offset-2";
+    const cellClass =
+        "group relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-slate-800/60 cursor-zoom-in focus-visible:outline-2 focus-visible:outline-orange-400 focus-visible:outline-offset-2";
 
     return (
         <>
-            <div className="select-none" role="region" aria-label={`Galería de ${name}`}>
-
-                {/* ── Bloque superior 3×2 ── */}
-                <div
-                    className="grid grid-cols-3 grid-rows-2 gap-1.5 overflow-hidden rounded-2xl"
-                    style={{ aspectRatio: "4/2.4" }}
-                >
-                    {/* [0] Main — col-span-2, row-span-2 */}
-                    {images[0] && (
-                        <button
-                            type="button"
-                            className={`${cellBase} col-span-2 row-span-2 rounded-none`}
-                            onClick={() => openAt(0)}
-                            aria-label={`Ampliar imagen principal de ${name}`}
-                        >
-                            <img
-                                src={images[0]}
-                                alt={name}
-                                decoding="async"
-                                fetchpriority="high"
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                            />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                                <div className="rounded-full bg-black/40 p-3 backdrop-blur-sm">
-                                    <ZoomIn className="h-5 w-5 text-white" />
-                                </div>
-                            </div>
-                        </button>
-                    )}
-
-                    {/* [1] Superior derecha */}
-                    {images[1] && (
-                        <button
-                            type="button"
-                            className={`${cellBase} rounded-none`}
-                            onClick={() => openAt(1)}
-                            aria-label={`Ampliar vista 2 de ${name}`}
-                        >
-                            <img
-                                src={images[1]}
-                                alt={`${name} — vista 2`}
-                                decoding="async"
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                            />
-                        </button>
-                    )}
-
-                    {/* [2] Inferior derecha */}
-                    {images[2] && (
-                        <button
-                            type="button"
-                            className={`${cellBase} rounded-none`}
-                            onClick={() => openAt(2)}
-                            aria-label={`Ampliar vista 3 de ${name}`}
-                        >
-                            <img
-                                src={images[2]}
-                                alt={`${name} — vista 3`}
-                                decoding="async"
-                                loading="lazy"
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                            />
-                        </button>
-                    )}
-                </div>
-
-                {/* ── Tira inferior ── */}
-                {images.length > MOSAIC_TOP && (
-                    <div
-                        className="mt-1.5 grid gap-1.5 overflow-hidden rounded-xl"
-                        style={{
-                            gridTemplateColumns: `repeat(${Math.min(
-                                stripImages.length + (overflow > 0 ? 1 : 0), 4
-                            )}, 1fr)`,
-                        }}
+            <div
+                className={
+                    images.length === 1
+                        ? "grid grid-cols-1"
+                        : "grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-2.5"
+                }
+                role="region"
+                aria-label={`Galería de ${name}`}
+            >
+                {images.map((src, idx) => (
+                    <button
+                        key={`${src}-${idx}`}
+                        type="button"
+                        className={cellClass}
+                        onClick={() => openAt(idx)}
+                        aria-label={`Ampliar imagen ${idx + 1} de ${name}`}
                     >
-                        {stripImages.map((src, idx) => {
-                            const globalIdx      = MOSAIC_TOP + idx;
-                            const isLastWithMore = idx === stripImages.length - 1 && overflow > 0;
-
-                            return (
-                                <button
-                                    key={globalIdx}
-                                    type="button"
-                                    className={`${cellBase} aspect-square rounded-xl`}
-                                    onClick={() => openAt(globalIdx)}
-                                    aria-label={
-                                        isLastWithMore
-                                            ? `Ver todas las imágenes (+${overflow} más)`
-                                            : `Ampliar imagen ${globalIdx + 1} de ${name}`
-                                    }
-                                >
-                                    <img
-                                        src={src}
-                                        alt={`${name} — vista ${globalIdx + 1}`}
-                                        decoding="async"
-                                        loading="lazy"
-                                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                                    />
-                                    {isLastWithMore && (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/65 backdrop-blur-[2px]">
-                                            <Grid2X2 className="h-5 w-5 text-white/80" />
-                                            <span className="text-base font-extrabold text-white">+{overflow} más</span>
-                                        </div>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                )}
+                        <img
+                            src={src}
+                            alt={`${name} — vista ${idx + 1}`}
+                            decoding="async"
+                            loading={idx === 0 ? "eager" : "lazy"}
+                            fetchpriority={idx === 0 ? "high" : "auto"}
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/20 group-hover:opacity-100">
+                            <div className="rounded-full bg-black/45 p-2 backdrop-blur-sm">
+                                <ZoomIn className="h-4 w-4 text-white" />
+                            </div>
+                        </div>
+                    </button>
+                ))}
             </div>
 
-            {/* Lightbox — createPortal, sin Radix, overflow limpio */}
             <Lightbox images={images} index={lbIndex} open={lbOpen} onClose={closeLb} />
         </>
     );
@@ -372,24 +283,151 @@ function StatusBadge({ status, label }) {
 
 // ── SpecRow ────────────────────────────────────────────────────────────────────
 
-function SpecRow({ icon: Icon, label, value, unit }) {
+function SpecCell({ icon: Icon, label, value, unit }) {
     return (
-        <div className="flex items-center justify-between rounded-xl border border-white/5 bg-white/5 px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-                <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+        <div className="rounded-lg border border-white/5 bg-white/5 px-2.5 py-2 sm:px-3 sm:py-2.5">
+            <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <Icon className="h-3 w-3 shrink-0" />
                 {label}
             </div>
-            <span className="text-sm font-bold text-white">{value}{unit ?? ""}</span>
+            <p className="mt-0.5 text-sm font-bold text-white sm:text-base">
+                {value}
+                {unit ?? ""}
+            </p>
         </div>
+    );
+}
+
+function BoardSummaryHeader({ board, status, statusLabel, compact = false }) {
+    return (
+        <div className={compact ? "mb-3 lg:hidden" : "mb-3 hidden lg:block"}>
+            {board.brand && (
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-orange-400 sm:text-xs">
+                    {board.brand}
+                </p>
+            )}
+            <h1 className={`font-extrabold leading-tight tracking-tight text-white ${compact ? "text-xl" : "text-2xl sm:text-3xl"}`}>
+                {board.name}
+            </h1>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <p className="text-[11px] text-slate-500">Ref. #SH-{board.id}</p>
+                <StatusBadge status={status} label={statusLabel} />
+            </div>
+        </div>
+    );
+}
+
+function PriceBlock({ board, hasDiscount, isSold }) {
+    if (isSold) {
+        return (
+            <div className="rounded-xl border border-slate-500/20 bg-slate-500/10 px-3 py-2.5 sm:p-4">
+                <p className="text-sm font-semibold text-slate-400">Esta tabla ya ha sido vendida.</p>
+                {board.sold_at && (
+                    <p className="mt-0.5 text-xs text-slate-500">Fecha de venta: {board.sold_at}</p>
+                )}
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-xl border border-white/10 bg-slate-950/40 px-3 py-2.5 sm:p-4">
+            {hasDiscount ? (
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                                -{board.discount_pct}%
+                            </span>
+                            <span className="text-xs text-slate-400 line-through sm:text-sm">
+                                {formatEur(board.sale_price)}
+                            </span>
+                        </div>
+                        <p className="text-2xl font-extrabold text-orange-400 sm:text-3xl">
+                            {formatEur(board.effective_price)}
+                        </p>
+                    </div>
+                    <p className="text-[11px] text-slate-500">IVA incluido</p>
+                </div>
+            ) : (
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                    <p className="text-2xl font-extrabold text-cyan-300 sm:text-3xl">
+                        {formatEur(board.sale_price)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">IVA incluido</p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── Navegación entre tablas (inline, bajo descripción) ───────────────────────────
+
+function BoardInlineNavigation({ previousBoard, nextBoard }) {
+    if (!previousBoard && !nextBoard) {
+        return null;
+    }
+
+    const linkClass =
+        "group flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 transition hover:bg-orange-500/10 sm:gap-3 sm:px-3";
+
+    return (
+        <nav
+            aria-label="Navegar entre tablas"
+            className="mt-4 overflow-hidden rounded-xl border border-orange-500/25 bg-gradient-to-r from-orange-950/25 via-slate-900/40 to-orange-950/25"
+        >
+            <div className="flex divide-x divide-orange-500/15">
+                {previousBoard ? (
+                    <Link href={route("second-hand.show", previousBoard.id)} className={linkClass}>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 transition group-hover:border-orange-400/50 group-hover:bg-orange-500/20">
+                            <ChevronLeft className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-orange-400/90">
+                                Tabla anterior
+                            </span>
+                            <span className="block truncate text-sm font-semibold text-slate-100">
+                                {previousBoard.name}
+                            </span>
+                        </span>
+                    </Link>
+                ) : (
+                    <div className="min-w-0 flex-1" aria-hidden />
+                )}
+
+                {nextBoard ? (
+                    <Link
+                        href={route("second-hand.show", nextBoard.id)}
+                        className={`${linkClass} justify-end text-right`}
+                    >
+                        <span className="min-w-0">
+                            <span className="block text-[10px] font-bold uppercase tracking-wider text-orange-400/90">
+                                Siguiente tabla
+                            </span>
+                            <span className="block truncate text-sm font-semibold text-slate-100">
+                                {nextBoard.name}
+                            </span>
+                        </span>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 transition group-hover:border-orange-400/50 group-hover:bg-orange-500/20">
+                            <ChevronRight className="h-4 w-4" />
+                        </span>
+                    </Link>
+                ) : (
+                    <div className="min-w-0 flex-1" aria-hidden />
+                )}
+            </div>
+        </nav>
     );
 }
 
 // ── Página ─────────────────────────────────────────────────────────────────────
 
 export default function SecondHandShow(props) {
-    const { board } = props;
+    const { board, navigation = {} } = props;
     const { props: pageProps } = usePage();
     const academyWhatsapp = pageProps?.academyWhatsappDisplay ?? "";
+
+    const previousBoard = navigation?.previous ?? null;
+    const nextBoard = navigation?.next ?? null;
 
     const hasDiscount = board.discount_pct > 0;
     const isSold      = board.status === "sold";
@@ -422,95 +460,78 @@ export default function SecondHandShow(props) {
                 </div>
 
                 {/* Card principal */}
-                <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800/60 to-slate-900/80 p-4 shadow-2xl backdrop-blur-sm sm:p-6 lg:p-8">
-                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+                <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800/60 to-slate-900/80 p-3 shadow-2xl backdrop-blur-sm sm:p-5 lg:p-6">
+                    <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
 
-                        {/* Galería + descripción */}
+                        {/* Galería + descripción + navegación */}
                         <section className="lg:col-span-7">
-                            <MosaicGallery images={board.images} name={board.name} />
+                            <BoardSummaryHeader
+                                board={board}
+                                status={board.status}
+                                statusLabel={board.status_label}
+                                compact
+                            />
+
+                            <div className="mb-3 grid grid-cols-2 gap-2 lg:hidden">
+                                <SpecCell icon={Ruler} label="Longitud" value={`${board.height}'`} />
+                                <SpecCell icon={Ruler} label="Anchura" value={`${board.width}"`} />
+                                <SpecCell icon={Ruler} label="Grosor" value={`${board.thickness}"`} />
+                                <SpecCell icon={Droplets} label="Volumen" value={board.volume} unit=" L" />
+                            </div>
+
+                            <div className="mb-3 lg:hidden">
+                                <PriceBlock board={board} hasDiscount={hasDiscount} isSold={isSold} />
+                            </div>
+
+                            <UniformGallery images={board.images} name={board.name} />
 
                             {board.description && (
-                                <div className="mt-6 rounded-2xl border border-white/5 bg-slate-900/40 p-5">
-                                    <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-400">
+                                <div className="mt-4 rounded-xl border border-white/5 bg-slate-900/40 p-3 sm:p-4">
+                                    <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                                         Descripción
                                     </h2>
                                     <p className="text-sm leading-relaxed text-slate-300">{board.description}</p>
                                 </div>
                             )}
+
+                            <BoardInlineNavigation
+                                previousBoard={previousBoard}
+                                nextBoard={nextBoard}
+                            />
                         </section>
 
-                        {/* Ficha técnica */}
+                        {/* Ficha técnica — desktop + CTA en móvil */}
                         <section className="lg:col-span-5">
-                            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 lg:sticky lg:top-6">
+                            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 sm:p-4 lg:sticky lg:top-6">
+                                <BoardSummaryHeader
+                                    board={board}
+                                    status={board.status}
+                                    statusLabel={board.status_label}
+                                />
 
-                                <div className="mb-4">
-                                    {board.brand && (
-                                        <p className="mb-1 text-xs font-extrabold uppercase tracking-[0.15em] text-orange-400">
-                                            {board.brand}
-                                        </p>
-                                    )}
-                                    <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-3xl">
-                                        {board.name}
-                                    </h1>
-                                    <p className="mt-1 text-xs text-slate-500">Ref. #SH-{board.id}</p>
-                                </div>
-
-                                <StatusBadge status={board.status} label={board.status_label} />
-
-                                <div className="mt-5 space-y-2">
-                                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                <div className="hidden lg:block">
+                                    <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
                                         Especificaciones
                                     </p>
-                                    <SpecRow icon={Ruler}    label="Longitud" value={`${board.height}'`}   />
-                                    <SpecRow icon={Ruler}    label="Anchura"  value={`${board.width}"`}    />
-                                    <SpecRow icon={Ruler}    label="Grosor"   value={`${board.thickness}"`} />
-                                    <SpecRow icon={Droplets} label="Volumen"  value={board.volume} unit=" L" />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <SpecCell icon={Ruler} label="Longitud" value={`${board.height}'`} />
+                                        <SpecCell icon={Ruler} label="Anchura" value={`${board.width}"`} />
+                                        <SpecCell icon={Ruler} label="Grosor" value={`${board.thickness}"`} />
+                                        <SpecCell icon={Droplets} label="Volumen" value={board.volume} unit=" L" />
+                                    </div>
                                 </div>
 
-                                {!isSold && (
-                                    <div className="mt-5 rounded-xl border border-white/10 bg-slate-950/40 p-4">
-                                        {hasDiscount ? (
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white">
-                                                        -{board.discount_pct}%
-                                                    </span>
-                                                    <span className="text-sm text-slate-400 line-through">
-                                                        {formatEur(board.sale_price)}
-                                                    </span>
-                                                </div>
-                                                <p className="text-3xl font-extrabold text-orange-400">
-                                                    {formatEur(board.effective_price)}
-                                                </p>
-                                                <p className="text-xs text-slate-500">IVA incluido</p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <p className="text-3xl font-extrabold text-cyan-300">
-                                                    {formatEur(board.sale_price)}
-                                                </p>
-                                                <p className="mt-0.5 text-xs text-slate-500">IVA incluido</p>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
+                                <div className="mt-3 hidden lg:block">
+                                    <PriceBlock board={board} hasDiscount={hasDiscount} isSold={isSold} />
+                                </div>
 
-                                {isSold && (
-                                    <div className="mt-5 rounded-xl border border-slate-500/20 bg-slate-500/10 p-4">
-                                        <p className="text-sm font-semibold text-slate-400">Esta tabla ya ha sido vendida.</p>
-                                        {board.sold_at && (
-                                            <p className="mt-0.5 text-xs text-slate-500">Fecha de venta: {board.sold_at}</p>
-                                        )}
-                                    </div>
-                                )}
-
-                                <div className="mt-5">
+                                <div className="mt-3 lg:mt-4">
                                     {isAvailable && (
                                         <a
                                             href={whatsappHref}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-teal-600"
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-teal-600 sm:py-3"
                                         >
                                             <Phone className="h-4 w-4" />
                                             Consultar por WhatsApp

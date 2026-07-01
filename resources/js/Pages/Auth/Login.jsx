@@ -75,7 +75,6 @@ export default function Login({ status, canResetPassword }) {
                                 onChange={(e) =>
                                     setData("password", e.target.value)
                                 }
-                                placeholder="••••••••"
                             />
                             <InputError
                                 message={errors.password}

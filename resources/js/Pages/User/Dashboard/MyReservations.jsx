@@ -177,20 +177,34 @@ function formatDateMadrid(iso) {
 }
 
 function skuColorToken(sku = "") {
-    if (!sku) return { bg: "", border: "border-slate-200/60" };
+    if (!sku) {
+        return {
+            bg: "bg-slate-900/50",
+            border: "border-slate-700/60",
+            skuText: "text-slate-400",
+        };
+    }
     const palette = [
-        { bg: "bg-sky-50/70", border: "border-sky-200/80" },
-        { bg: "bg-emerald-50/70", border: "border-emerald-200/80" },
-        { bg: "bg-violet-50/70", border: "border-violet-200/80" },
-        { bg: "bg-amber-50/70", border: "border-amber-200/80" },
-        { bg: "bg-rose-50/70", border: "border-rose-200/80" },
-        { bg: "bg-cyan-50/70", border: "border-cyan-200/80" },
+        { bg: "bg-sky-950/40", border: "border-sky-500/30", skuText: "text-sky-300" },
+        { bg: "bg-emerald-950/40", border: "border-emerald-500/30", skuText: "text-emerald-300" },
+        { bg: "bg-violet-950/40", border: "border-violet-500/30", skuText: "text-violet-300" },
+        { bg: "bg-amber-950/40", border: "border-amber-500/30", skuText: "text-amber-300" },
+        { bg: "bg-rose-950/40", border: "border-rose-500/30", skuText: "text-rose-300" },
+        { bg: "bg-cyan-950/40", border: "border-cyan-500/30", skuText: "text-cyan-300" },
     ];
     const hash = Array.from(String(sku)).reduce(
         (acc, ch) => acc + ch.charCodeAt(0),
         0,
     );
     return palette[hash % palette.length];
+}
+
+function creditConsumptionBadgeClass(units) {
+    const uc = Math.max(1, Number(units || 1));
+    if (uc >= 2) {
+        return "rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-200 ring-1 ring-red-400/35";
+    }
+    return "rounded-full bg-amber-500/25 px-2.5 py-0.5 text-xs font-semibold text-amber-100 ring-1 ring-amber-400/45";
 }
 
 function BonoWallet({ performanceData = null }) {
@@ -1679,9 +1693,9 @@ function MyReservationsView() {
                                         className="mt-3 overflow-auto"
                                     >
                                         {performanceData?.activeBono ? (
-                                            <div className="mb-4 rounded-xl border border-emerald-200/90 bg-gradient-to-r from-emerald-50/95 via-teal-50/80 to-emerald-50/90 px-4 py-3 shadow-sm">
+                                            <div className="mb-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/50 via-slate-900 to-teal-950/40 px-4 py-3">
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                                                    <p className="text-sm font-bold leading-snug text-emerald-950">
+                                                    <p className="text-sm font-bold leading-snug text-emerald-100">
                                                         {
                                                             performanceData
                                                                 .activeBono.name
@@ -1693,17 +1707,17 @@ function MyReservationsView() {
                                                         ) > 0
                                                             ? ` · ${performanceData.activeBono.num_classes} créditos`
                                                             : ""}
-                                                        <span className="ml-1.5 font-semibold text-emerald-800">
+                                                        <span className="ml-1.5 font-semibold text-emerald-300/90">
                                                             (Última Recarga de
                                                             Créditos)
                                                         </span>
                                                     </p>
-                                                    <p className="shrink-0 text-sm tabular-nums text-emerald-900">
-                                                        <span className="font-medium text-emerald-700">
+                                                    <p className="shrink-0 text-sm tabular-nums text-emerald-100">
+                                                        <span className="font-medium text-emerald-300/90">
                                                             Créditos restantes
                                                             totales:
                                                         </span>{" "}
-                                                        <span className="text-lg font-extrabold tracking-tight text-emerald-950">
+                                                        <span className="text-lg font-extrabold tracking-tight text-white">
                                                             {Number(
                                                                 performanceData
                                                                     .activeBono
@@ -1718,39 +1732,44 @@ function MyReservationsView() {
                                                 </div>
                                             </div>
                                         ) : null}
+                                        <div className="overflow-hidden rounded-xl border border-slate-700/80">
                                         <table className="min-w-full text-sm">
-                                            <thead className="bg-gray-800 text-white">
+                                            <thead className="bg-slate-800 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                                                 <tr>
-                                                    <th className="px-3 py-2 text-left">
+                                                    <th className="px-3 py-2.5 text-left">
                                                         Fecha
                                                     </th>
-                                                    <th className="px-3 py-2 text-left">
+                                                    <th className="px-3 py-2.5 text-left">
                                                         Clase
                                                     </th>
-                                                    <th className="px-3 py-2 text-left">
+                                                    <th className="px-3 py-2.5 text-left">
                                                         SKU
                                                     </th>
-                                                    <th className="px-3 py-2 text-left">
+                                                    <th className="px-3 py-2.5 text-left">
                                                         Créditos
                                                     </th>
-                                                    <th className="px-3 py-2 text-left">
+                                                    <th className="px-3 py-2.5 text-right">
                                                         Restante
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="bg-gray-900 text-gray-100">
+                                            <tbody className="bg-slate-950 text-slate-200">
                                                 {consumptionHistoryRows.map(
                                                     (h) => {
                                                         const tone =
                                                             skuColorToken(
                                                                 h.bono_sku,
                                                             );
+                                                        const uc = Math.max(
+                                                            1,
+                                                            Number(h.uc_cost || 1),
+                                                        );
                                                         return (
                                                             <tr
                                                                 key={h.id}
-                                                                className={`border-t ${tone.border} ${tone.bg}`}
+                                                                className={`border-t ${tone.border} ${tone.bg} hover:brightness-110`}
                                                             >
-                                                                <td className="px-3 py-2">
+                                                                <td className="whitespace-nowrap px-3 py-2.5 text-slate-300">
                                                                     {h.lesson
                                                                         ?.starts_at
                                                                         ? formatDateMadrid(
@@ -1760,23 +1779,23 @@ function MyReservationsView() {
                                                                           )
                                                                         : "—"}
                                                                 </td>
-                                                                <td className="px-3 py-2">
+                                                                <td className="px-3 py-2.5 font-medium text-slate-100">
                                                                     {h.lesson
                                                                         ?.title ||
                                                                         "Sesión"}
                                                                 </td>
-                                                                <td className="px-3 py-2 text-[11px] font-semibold text-gray-300">
+                                                                <td className={`px-3 py-2.5 text-[11px] font-semibold ${tone.skuText}`}>
                                                                     {h.bono_sku ||
                                                                         "—"}
                                                                 </td>
-                                                                <td className="px-3 py-2">
+                                                                <td className="px-3 py-2.5">
                                                                     <span
-                                                                        className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700"
+                                                                        className={creditConsumptionBadgeClass(uc)}
                                                                     >
-                                                                        Consumo: {Math.max(1, Number(h.uc_cost || 1))} {Math.max(1, Number(h.uc_cost || 1)) === 1 ? "Crédito" : "Créditos"}
+                                                                        Consumo: {uc} {uc === 1 ? "Crédito" : "Créditos"}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 py-2 tabular-nums font-medium text-white">
+                                                                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-teal-300">
                                                                     {
                                                                         h.remaining_after
                                                                     }
@@ -1787,6 +1806,7 @@ function MyReservationsView() {
                                                 )}
                                             </tbody>
                                         </table>
+                                        </div>
                                     </motion.div>
                                 )}
                             </div>

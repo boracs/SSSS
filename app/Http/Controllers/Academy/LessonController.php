@@ -311,17 +311,26 @@ class LessonController extends Controller
             ], 422);
         }
 
-        // Generar slots (inicio cada 15 min) de 08:00 a 19:00.
+        // Generar slots (inicio cada 15 min) de 08:00 hasta que la sesión termine como máximo a las 22:00.
         $slots = [];
         $cursor = $day->copy()->setTime(8, 0);
-        $lastStart = $day->copy()->setTime(19, 0);
+        $dayEnd = $day->copy()->setTime(22, 0);
+        $lastStart = $dayEnd->copy()->subMinutes($durationMinutes);
+        if ($lastStart->lt($cursor)) {
+            return response()->json([
+                'date' => $day->format('Y-m-d'),
+                'duration_minutes' => $durationMinutes,
+                'slots' => [],
+            ]);
+        }
+
         while ($cursor->lte($lastStart)) {
             $slotStart = $cursor->copy();
             $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
 
             // Solo futuro (hoy: no permitir horarios pasados)
             if ($slotEnd->lessThanOrEqualTo(BusinessDateTime::now())) {
-                $cursor->addMinutes(30);
+                $cursor->addMinutes(15);
 
                 continue;
             }
@@ -339,6 +348,7 @@ class LessonController extends Controller
 
         return response()->json([
             'date' => $day->format('Y-m-d'),
+            'duration_minutes' => $durationMinutes,
             'slots' => $slots,
         ]);
     }

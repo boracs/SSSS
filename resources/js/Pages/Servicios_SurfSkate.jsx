@@ -1,147 +1,192 @@
-import React from 'react';
-import Layout1 from '@/layouts/Layout1';
-import CartaServicio_skate from  '@/components/CartaServicio_skate';
+import React from "react";
+import { Link } from "@inertiajs/react";
+import {
+    Activity,
+    CheckCircle2,
+    Users,
+    User,
+    CalendarDays,
+    ArrowRight,
+} from "lucide-react";
 
-const Servicio_SurfSkate = () => {
-
-    // Definir las opciones en un array
-    const opcionesClases = [
-      {
-        titulo: "Individual - Principiante",
-        descripcion: "Clase privada de 1,5 horas ideal para quienes nunca han practicado skate o surf. Recibe atención personalizada y aprende lo básico.",
-        opciones: [
-          { duracion: "1,5 horas", precio: "50", material: "No incluido", descripcion: "Clase personalizada" },
-        ]
-      },
-      {
-        titulo: "Grupal - Principiante",
-        descripcion: "Clase grupal de 1,5 horas dirigida a quienes nunca han practicado skate o surf. Aprende lo básico de manera divertida con otros principiantes.",
-        opciones: [
-          { duracion: "1,5 horas", precio: "25", material: "No incluido", descripcion: "Grupo de principiantes" },
-        ]
-      },
-      {
-        titulo: "Grupal - Intermedio",
-        descripcion: "Clase grupal de 1,5 horas para quienes ya tienen nociones de skate o surf y buscan mejorar su técnica en grupo.",
-        opciones: [
-          { duracion: "1,5 horas", precio: "25", material: "No incluido", descripcion: "Mejora tu técnica en grupo" },
-        ]
-      },
-      {
-        titulo: "Grupal - Avanzado",
-        descripcion: "Clase grupal de 1,5 horas diseñada para niveles avanzados. Perfecciona tu técnica y aprende trucos nuevos con un grupo de igual nivel.",
-        opciones: [
-          { duracion: "1,5 horas", precio: "25", material: "No incluido", descripcion: "Nivel avanzado" },
-        ]
-      },
-      {
+const CLASES = [
+    {
+        titulo: "Individual · Principiante",
+        descripcion:
+            "Clase privada ideal para quienes nunca han practicado skate o surf. Atención personalizada para aprender lo básico con confianza.",
+        detalles: ["1,5 horas", "Clase personalizada", "Material no incluido"],
+        precio: "50 €",
+        nota: "por clase",
+        icon: User,
+    },
+    {
+        titulo: "Grupal · Principiante",
+        descripcion:
+            "Clase grupal dirigida a quienes nunca han practicado skate o surf. Aprende lo básico de forma divertida junto a otros principiantes.",
+        detalles: ["1,5 horas", "Grupo de principiantes", "Material no incluido"],
+        precio: "25 €",
+        nota: "por persona",
+        icon: Users,
+    },
+    {
+        titulo: "Grupal · Intermedio",
+        descripcion:
+            "Para quienes ya tienen nociones de skate o surf y buscan mejorar su técnica en grupo en un ambiente motivador.",
+        detalles: ["1,5 horas", "Mejora tu técnica", "Material no incluido"],
+        precio: "25 €",
+        nota: "por persona",
+        icon: Users,
+    },
+    {
+        titulo: "Grupal · Avanzado",
+        descripcion:
+            "Diseñada para niveles avanzados. Perfecciona tu técnica y aprende trucos nuevos con un grupo de tu mismo nivel.",
+        detalles: ["1,5 horas", "Nivel avanzado", "Material no incluido"],
+        precio: "25 €",
+        nota: "por persona",
+        icon: Users,
+    },
+    {
         titulo: "Surf & Skate Experience",
-        descripcion: "Una experiencia combinada única: 2 horas de surf y 2 horas de skate para mejorar tu equilibrio y técnica.",
-        opciones: [
-          { duracion: "5 días (lunes a viernes)", precio: "50", material: "Incluye tabla de surf, traje de neopreno y equipo de skate", descripcion: "Mejora tu equilibrio" },
-        ]
-      },
-      {
-        titulo: "Mensual (1 clase por semana)",
-        descripcion: "Opción mensual para quienes desean clases regulares. 1 clase por semana para avanzar progresivamente en skate o surf.",
-        opciones: [
-          { duracion: "1 mes (4 clases)", precio: "100", material: "No incluido", descripcion: "Opción mensual" },
-        ]
-      },
-      {
-        titulo: "Mensual (2 clases por semana)",
-        descripcion: "Opción mensual para quienes desean clases regulares dos veces por semana, acelerando su progreso en skate o surf.",
-        opciones: [
-          { duracion: "1 mes (8 clases)", precio: "150", material: "No incluido", descripcion: "Opción mensual avanzada" },
-        ]
-      },
-    ];
-  
-    // Función de reserva (puedes personalizarla)
-    const onReservar = (opcion) => {
-      console.log("Reservado:", opcion);
-    };
-  
+        descripcion:
+            "Una experiencia combinada única: surf y skate para mejorar tu equilibrio y tu técnica a lo largo de la semana.",
+        detalles: [
+            "5 días (lunes a viernes)",
+            "Incluye tabla de surf, neopreno y equipo de skate",
+        ],
+        precio: "50 €",
+        nota: "por persona",
+        icon: CalendarDays,
+        destacado: true,
+    },
+    {
+        titulo: "Mensual · 1 clase/semana",
+        descripcion:
+            "Para quienes desean clases regulares. Una sesión por semana para avanzar de forma progresiva en skate o surf.",
+        detalles: ["1 mes (4 clases)", "Progreso constante", "Material no incluido"],
+        precio: "100 €",
+        nota: "al mes",
+        icon: CalendarDays,
+    },
+    {
+        titulo: "Mensual · 2 clases/semana",
+        descripcion:
+            "Para quienes quieren acelerar su progreso con dos sesiones semanales de skate o surf.",
+        detalles: ["1 mes (8 clases)", "Progreso acelerado", "Material no incluido"],
+        precio: "150 €",
+        nota: "al mes",
+        icon: CalendarDays,
+    },
+];
+
+const ClaseCard = ({ clase }) => {
+    const Icon = clase.icon;
     return (
-      <Layout1>
-                <div className="max-w-6xl mx-auto p-8 bg-gradient-to-r from-blue-50 to-blue-100 shadow-2xl rounded-2xl">
-                <h1 className="text-5xl font-extrabold text-center text-blue-900 mb-12">
-                    Clases de Skate <span className="text-blue-600">Profesionales</span>
-                </h1>
-        
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                    {opcionesClases.map((clase, index) => (
-                    <CartaServicio_skate
-                        key={index}
-                        titulo={clase.titulo}
-                        descripcion={clase.descripcion}
-                        opciones={clase.opciones}
-                        onReservar={onReservar}
-                    />
+        <div
+            className={`relative flex flex-col rounded-2xl border p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 ${
+                clase.destacado
+                    ? "border-orange-400/40 bg-gradient-to-b from-orange-500/10 to-white/5 shadow-lg shadow-orange-950/30"
+                    : "border-white/10 bg-white/5 hover:border-orange-400/30 hover:bg-white/10"
+            }`}
+        >
+            {clase.destacado && (
+                <span className="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-orange-400 to-amber-300 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-900">
+                    Experiencia top
+                </span>
+            )}
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
+                <Icon className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-bold text-white">{clase.titulo}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                {clase.descripcion}
+            </p>
+            <ul className="mt-4 space-y-2">
+                {clase.detalles.map((d) => (
+                    <li
+                        key={d}
+                        className="flex items-start gap-2 text-sm text-slate-300"
+                    >
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+                        {d}
+                    </li>
+                ))}
+            </ul>
+            <div className="mt-6 flex items-end justify-between border-t border-white/10 pt-4">
+                <div>
+                    <p className="text-2xl font-extrabold text-white">
+                        {clase.precio}
+                    </p>
+                    <p className="text-xs text-slate-500">{clase.nota}</p>
+                </div>
+                <Link
+                    href={route("contacto")}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-4 py-2 text-sm font-semibold text-orange-200 ring-1 ring-orange-400/30 transition hover:bg-orange-500/25"
+                >
+                    Reservar
+                    <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+            </div>
+        </div>
+    );
+};
+
+export default function ServiciosSurfSkate() {
+    return (
+        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#241405] to-slate-950 text-white">
+            {/* Hero */}
+            <section className="relative overflow-hidden border-b border-orange-950/60">
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(120,53,15,0.4),_transparent_55%)]" />
+                <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-400/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-orange-200">
+                        <Activity className="h-3.5 w-3.5" />
+                        Surfskate S4
+                    </div>
+                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                        Clases de surfskate para{" "}
+                        <span className="bg-gradient-to-r from-orange-300 to-amber-300 bg-clip-text text-transparent">
+                            llevar tu surf a tierra
+                        </span>
+                    </h1>
+                    <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
+                        Mejora tu equilibrio, fluidez y técnica de bottom turn sin
+                        depender de las olas. Sesiones individuales, grupales y
+                        bonos mensuales para todos los niveles.
+                    </p>
+                    <div className="mt-8 flex flex-wrap gap-3">
+                        <Link
+                            href={route("contacto")}
+                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:brightness-110"
+                        >
+                            <Activity className="h-4 w-4" />
+                            Reservar mi clase
+                        </Link>
+                        <Link
+                            href={route("servicios.surf")}
+                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                        >
+                            Ver clases de surf
+                        </Link>
+                    </div>
+                </div>
+            </section>
+
+            {/* Cards */}
+            <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
+                <div className="mb-10 text-center">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
+                        Modalidades
+                    </p>
+                    <h2 className="mt-2 text-3xl font-extrabold text-white">
+                        Encuentra tu ritmo sobre el skate
+                    </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {CLASES.map((clase) => (
+                        <ClaseCard key={clase.titulo} clase={clase} />
                     ))}
                 </div>
-                </div>
-                <div>
-                    <div className="mt-16 bg-white p-8 rounded-xl shadow-lg">
-
-                        <h2 className="text-4xl font-bold text-blue-900 mb-6 text-center"> Clases de Skate 1,5 h</h2>
-                        <table className="table-auto w-full text-left border-collapse border border-gray-300">
-                        <thead>
-                            <tr>
-                            <th className="border border-gray-300 px-4 py-2">Tipo de Clase</th>
-                            <th className="border border-gray-300 px-4 py-2">Duración</th>
-                            <th className="border border-gray-300 px-4 py-2">Precio</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Individual - Principiante</td>
-                            <td className="border border-gray-300 px-4 py-2">1,5 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">50 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Grupal - Principiante</td>
-                            <td className="border border-gray-300 px-4 py-2">1,5 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">25 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Grupal - Intermedio</td>
-                            <td className="border border-gray-300 px-4 py-2">1,5 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">25 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Grupal - Avanzado</td>
-                            <td className="border border-gray-300 px-4 py-2">1,5 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">25 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Surf y Skate - 4 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">4 horas</td>
-                            <td className="border border-gray-300 px-4 py-2">80 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Mensual (1 clase por semana)</td>
-                            <td className="border border-gray-300 px-4 py-2">1 mes (4 clases)</td>
-                            <td className="border border-gray-300 px-4 py-2">100 €</td>
-                            </tr>
-                            <tr>
-                            <td className="border border-gray-300 px-4 py-2">Mensual (2 clases por semana)</td>
-                            <td className="border border-gray-300 px-4 py-2">1 mes (8 clases)</td>
-                            <td className="border border-gray-300 px-4 py-2">150 €</td>
-                            </tr>
-                        </tbody>
-                        </table>
-                    </div>
-                    <div className="mt-16 bg-white p-8 rounded-xl shadow-lg">
-
-
-                    </div> 
-                </div>
-
-
-</Layout1>
-
-);
+            </section>
+        </div>
+    );
 }
-export default Servicio_SurfSkate;

@@ -43,9 +43,12 @@ createInertiaApp({
                 "Nosotros",
                 "Productos",
                 "Academy/Index",
-                "Servicios_ClasesDeSurf",
                 "Rentals/Surfboards/Index",
                 "Rentals/Surfboards/Show",
+                "Pedido",
+                "Pedidos",
+                "PedidoConfirmacion",
+                "Edit",
             ];
             const shouldUseLightMode = lightModePages.includes(name);
             document.documentElement.classList.toggle("dark", !shouldUseLightMode);

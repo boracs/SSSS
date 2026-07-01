@@ -124,53 +124,131 @@ class PedidoController extends Controller
 
     public function mostrarPedido(int $id_pedido): InertiaResponse
     {
-    $query = Pedido::where('id', $id_pedido)->with('productos');
+        $query = Pedido::where('id', $id_pedido)
+            ->with(['usuario', 'productos.imagenes']);
 
-    // Si no es admin, solo puede ver sus propios pedidos
-    if (Auth::user()->role !== 'admin') {
-        $query->where('user_id', Auth::id());
+        // Si no es admin, solo puede ver sus propios pedidos
+        if (Auth::user()->role !== 'admin') {
+            $query->where('user_id', Auth::id());
+        }
+
+        $pedido = $query->firstOrFail();
+
+        $resolveImagen = static function (Producto $producto): ?string {
+            $imagen = $producto->imagenes->firstWhere('es_principal', true)
+                ?? $producto->imagenes->first();
+
+            if (! $imagen || ! $imagen->ruta) {
+                return null;
+            }
+
+            $ruta = $imagen->ruta;
+
+            if (str_starts_with($ruta, 'http') || str_starts_with($ruta, '/')) {
+                return $ruta;
+            }
+
+            return '/storage/'.ltrim($ruta, '/');
+        };
+
+        $items = $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
+            $cantidad = (int) $producto->pivot->cantidad;
+            $precioPagado = (float) $producto->pivot->precio_pagado;
+            $descuento = (float) $producto->pivot->descuento_aplicado;
+
+            return [
+                'id' => $producto->id,
+                'nombre' => $producto->nombre,
+                'imagen' => $resolveImagen($producto),
+                'cantidad' => $cantidad,
+                'precio_pagado' => $precioPagado,
+                'descuento_aplicado' => $descuento,
+                'subtotal' => round($precioPagado * $cantidad, 2),
+            ];
+        })->values();
+
+        $subtotalSinDescuento = $pedido->productos->reduce(function (float $carry, Producto $producto) {
+            $cantidad = (int) $producto->pivot->cantidad;
+            $descuento = (float) $producto->pivot->descuento_aplicado;
+            $precioPagado = (float) $producto->pivot->precio_pagado;
+            $precioBase = $descuento > 0
+                ? $precioPagado / (1 - ($descuento / 100))
+                : $precioPagado;
+
+            return $carry + ($precioBase * $cantidad);
+        }, 0.0);
+
+        $totalDescuentos = round($subtotalSinDescuento - (float) $pedido->precio_total, 2);
+
+        return Inertia::render('Pedido', [
+            'pedido' => [
+                'id' => $pedido->id,
+                'precio_total' => (float) $pedido->precio_total,
+                'subtotal' => round($subtotalSinDescuento, 2),
+                'descuentos' => $totalDescuentos > 0 ? $totalDescuentos : 0.0,
+                'pagado' => (bool) $pedido->pagado,
+                'entregado' => (bool) $pedido->entregado,
+                'payment_method' => $pedido->payment_method,
+                'created_at' => optional($pedido->created_at)->toIso8601String(),
+                'proof_uploaded_at' => optional($pedido->proof_uploaded_at)->toIso8601String(),
+                'cliente' => [
+                    'nombre' => trim(($pedido->usuario->nombre ?? '').' '.($pedido->usuario->apellido ?? '')),
+                    'email' => $pedido->usuario->email ?? null,
+                    'telefono' => $pedido->usuario->telefono ?? null,
+                ],
+                'productos' => $items,
+            ],
+        ]);
     }
-
-    $pedido = $query->firstOrFail();
-
-    return Inertia::render('Pedido', [
-        'pedido' => $pedido,
-    ]);
-}
 
 
     public function mostrarPedidos(): InertiaResponse
     {
     $user_id = auth()->id();
-    
-    // Obtener los pedidos con sus productos y los datos de la tabla pivote, ordenados por id descendente
+
+    // Obtener los pedidos con sus productos (incluyendo imágenes), ordenados por id descendente
     $pedidos = Pedido::where('user_id', $user_id)
-        ->with(['productos' => function ($query) {
-            $query->select('productos.id', 'nombre', 'precio') // Campos de productos
-                  ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado'); // Campos de la pivote
-        }])
-        ->orderBy('id', 'desc') // Ordenar por id descendente
+        ->with(['productos.imagenes'])
+        ->orderBy('id', 'desc')
         ->get();
-    
-    // Transformar los datos para incluir los timestamps
+
+    $resolveImagen = static function (Producto $producto): ?string {
+        $imagen = $producto->imagenes->firstWhere('es_principal', true)
+            ?? $producto->imagenes->first();
+
+        if (! $imagen || ! $imagen->ruta) {
+            return null;
+        }
+
+        $ruta = $imagen->ruta;
+
+        if (str_starts_with($ruta, 'http') || str_starts_with($ruta, '/')) {
+            return $ruta;
+        }
+
+        return '/storage/'.ltrim($ruta, '/');
+    };
+
     return Inertia::render('Pedidos', [
-        'pedidos' => $pedidos->map(function ($pedido) {
+        'pedidos' => $pedidos->map(function ($pedido) use ($resolveImagen) {
             return [
                 'id' => $pedido->id,
-                'precio_total' => $pedido->precio_total,
-                'pagado' => $pedido->pagado,
-                'entregado' => $pedido->entregado,
-                'created_at' => $pedido->created_at->toIso8601String(), // Formato ISO
-                'productos' => $pedido->productos->map(function ($producto) {
+                'precio_total' => (float) $pedido->precio_total,
+                'pagado' => (bool) $pedido->pagado,
+                'entregado' => (bool) $pedido->entregado,
+                'payment_method' => $pedido->payment_method,
+                'created_at' => optional($pedido->created_at)->toIso8601String(),
+                'total_articulos' => (int) $pedido->productos->sum(fn ($p) => (int) $p->pivot->cantidad),
+                'productos' => $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
                     return [
                         'id' => $producto->id,
                         'nombre' => $producto->nombre,
-                        'precio' => $producto->precio,
-                        'cantidad' => $producto->pivot->cantidad,
-                        'descuento_aplicado' => $producto->pivot->descuento_aplicado,
-                        'precio_pagado' => $producto->pivot->precio_pagado,
+                        'imagen' => $resolveImagen($producto),
+                        'cantidad' => (int) $producto->pivot->cantidad,
+                        'descuento_aplicado' => (float) $producto->pivot->descuento_aplicado,
+                        'precio_pagado' => (float) $producto->pivot->precio_pagado,
                     ];
-                }),
+                })->values(),
             ];
         }),
     ]);
