@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use App\Support\VipVirtualLocker;
 
 class User extends Authenticatable
 {
@@ -203,11 +204,51 @@ class User extends Authenticatable
     }
 
     /**
-     * Regla de negocio de tienda: solo compra finalizable con taquilla activa.
+     * Taquilla física en el club (excluye taquillas compartidas #500, #600…).
+     */
+    public function hasPhysicalLocker(): bool
+    {
+        $numero = $this->numeroTaquilla;
+
+        if ($numero === null || $numero === '' || $numero === '0' || $numero === 0) {
+            return false;
+        }
+
+        return ! VipVirtualLocker::isShared($numero);
+    }
+
+    /**
+     * Taquilla compartida asignada manualmente (descuento tienda sin cuota de casillero).
+     */
+    public function hasSharedLocker(): bool
+    {
+        return VipVirtualLocker::isShared($this->numeroTaquilla);
+    }
+
+    /** @deprecated Usar hasSharedLocker */
+    public function hasVirtualLockerOnly(): bool
+    {
+        return $this->hasSharedLocker();
+    }
+
+    /**
+     * Puede comprar en tienda con descuento de socio.
+     */
+    public function canAccessStoreWithMemberDiscount(): bool
+    {
+        if ($this->hasSharedLocker()) {
+            return true;
+        }
+
+        return $this->hasPhysicalLocker() && $this->isLockerPaymentUpToDate();
+    }
+
+    /**
+     * Número de taquilla asignado (físico o compartido).
      */
     public function hasActiveLocker(): bool
     {
-        return ! empty($this->numeroTaquilla);
+        return $this->hasPhysicalLocker() || $this->hasSharedLocker();
     }
 
     /**
@@ -216,6 +257,10 @@ class User extends Authenticatable
      */
     public function isLockerPaymentUpToDate(): bool
     {
+        if ($this->hasSharedLocker()) {
+            return true;
+        }
+
         if (empty($this->numeroTaquilla) || empty($this->fecha_vencimiento_cuota)) {
             return false;
         }

@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('planes_taquilla', function (Blueprint $table) {
-            $table->text('descripcion')->nullable()->after('precio_total');
+            $table->text('descripcion')->nullable()->after('precio_total_cents');
             $table->unsignedTinyInteger('porcentaje_descuento')->default(50)->after('descripcion');
             $table->boolean('es_vip')->default(false)->after('porcentaje_descuento');
         });

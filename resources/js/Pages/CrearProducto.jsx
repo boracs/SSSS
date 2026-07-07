@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import Layout1 from '../layouts/Layout1';
 import { router } from '@inertiajs/react';
+import ProductTagSelector from '../components/ProductTagSelector';
 
-const CrearProducto = () => {
+const CrearProducto = ({ productTagOptions = [] }) => {
   const [formData, setFormData] = useState({
     nombre: '',
     precio: '',
     unidades: '',
-    imagenes: [], // 👈 ahora es un array
+    imagenes: [],
     descuento: '',
-    eliminado: false
+    eliminado: false,
+    tags: [],
   });
 
-  // Inputs normales
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -21,7 +22,6 @@ const CrearProducto = () => {
     });
   };
 
-  // Varias imágenes
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     setFormData({
@@ -40,9 +40,12 @@ const CrearProducto = () => {
     form.append('descuento', formData.descuento);
     form.append('eliminado', formData.eliminado ? 1 : 0);
 
-    // 👇 Añadir todas las imágenes
-  formData.imagenes.forEach((img) => {
-      form.append('imagenes[]', img); // 👈 el nombre con [] simple
+    formData.tags.forEach((tag) => {
+      form.append('tags[]', tag);
+    });
+
+    formData.imagenes.forEach((img) => {
+      form.append('imagenes[]', img);
     });
 
     router.post('/producto-store', form, {
@@ -58,7 +61,6 @@ const CrearProducto = () => {
         <h2 className="text-xl font-semibold mb-4">Crear Nuevo Producto</h2>
         <form onSubmit={handleSubmit} className="space-y-4" encType="multipart/form-data">
           
-          {/* Nombre */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Nombre</label>
             <input
@@ -71,7 +73,6 @@ const CrearProducto = () => {
             />
           </div>
 
-          {/* Precio */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Precio</label>
             <input
@@ -84,7 +85,6 @@ const CrearProducto = () => {
             />
           </div>
 
-          {/* Unidades */}
           <div>
             <label className="block text-sm font-medium text-gray-700">Unidades</label>
             <input
@@ -97,19 +97,17 @@ const CrearProducto = () => {
             />
           </div>
 
-          {/* Varias Imágenes */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Imágenes</label>
             <input
               id="imagenes"
               type="file"
               name="imagenes"
-              multiple // 👈 clave para subir varias
+              multiple
               onChange={handleImageChange}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:border-0 file:rounded-lg file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
               accept="image/*"
             />
-            {/* Previsualización */}
             {formData.imagenes.length > 0 && (
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {formData.imagenes.map((img, i) => (
@@ -124,7 +122,13 @@ const CrearProducto = () => {
             )}
           </div>
 
-          {/* Descuento */}
+          <ProductTagSelector
+            options={productTagOptions}
+            selected={formData.tags}
+            onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
+            idPrefix="create-product-tag"
+          />
+
           <div>
             <label className="block text-sm font-medium text-gray-700">Descuento (%)</label>
             <input
@@ -136,7 +140,6 @@ const CrearProducto = () => {
             />
           </div>
 
-          {/* Eliminado */}
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -148,7 +151,6 @@ const CrearProducto = () => {
             <label className="ml-2 text-sm text-gray-700">Producto Eliminado</label>
           </div>
 
-          {/* Botón */}
           <div>
             <button
               type="submit"

@@ -10,6 +10,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
+Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
 
 Artisan::command('attendance-notes:relink-orphans {--user= : ID de usuario (opcional)}', function () {
     $uid = $this->option('user');

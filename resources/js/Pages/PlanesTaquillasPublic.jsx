@@ -28,9 +28,9 @@ const MICRO_SERVICIOS_URL = "/nosotros#micro-servicios-club";
 const MEMBERSHIP_BENEFITS = [
     { icon: Lock, text: "1 taquilla privada a pie de playa con seguridad." },
     { icon: Shirt, text: "Espacio para 2 tablas en rack y 2 trajes en el secadero rapido." },
-    { icon: Wrench, text: "Servicio de reparacion de tablas con seguimiento semanal." },
-    { icon: Percent, text: "Hasta un 45% de descuento en tienda (50% para miembros VIP)." },
     { icon: Bath, text: "Banos, duchas y zona de calentamiento a tu disposicion." },
+    { icon: Percent, text: "Hasta 45% de descuento en tienda (50% con plan VIP anual)." },
+    { icon: Wrench, text: "Reparacion de tablas y acceso a micro-servicios del club." },
 ];
 
 // Lista completa de micro-servicios, identica a la presentacion de /nosotros.

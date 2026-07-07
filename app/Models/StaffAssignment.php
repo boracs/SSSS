@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class StaffAssignment extends Model
 {
     public const ROLE_MONITOR = 'monitor';
+    public const ROLE_MONITOR_SECOND = 'monitor_2';
     public const ROLE_FOTOGRAFO = 'fotografo';
 
     protected $fillable = [

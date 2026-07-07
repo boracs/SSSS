@@ -8,7 +8,7 @@ const inputClass =
     "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
 
 export default function AsignarTaquilla() {
-    const { usuarios = [], flash = {}, success } = usePage().props;
+    const { usuarios = [], flash = {}, success, sharedLockerNumbers = [500, 600] } = usePage().props;
     const [query, setQuery] = useState("");
     const [selectedUser, setSelectedUser] = useState(null);
     const [numeroTaquilla, setNumeroTaquilla] = useState("");
@@ -36,14 +36,25 @@ export default function AsignarTaquilla() {
         [sortedUsers],
     );
 
+    const sharedSet = useMemo(
+        () => new Set(sharedLockerNumbers.map((n) => Number(n))),
+        [sharedLockerNumbers],
+    );
+
     const occupiedMap = useMemo(() => {
         const map = new Map();
-        usersWithLocker.forEach((u) => map.set(Number(u.numeroTaquilla), u));
+        usersWithLocker.forEach((u) => {
+            const num = Number(u.numeroTaquilla);
+            if (!sharedSet.has(num)) {
+                map.set(num, u);
+            }
+        });
         return map;
-    }, [usersWithLocker]);
+    }, [usersWithLocker, sharedSet]);
 
     const lockerValue = Number(numeroTaquilla);
-    const occupiedBy = Number.isFinite(lockerValue) ? occupiedMap.get(lockerValue) : null;
+    const occupiedBy =
+        Number.isFinite(lockerValue) && !sharedSet.has(lockerValue) ? occupiedMap.get(lockerValue) : null;
     const conflict =
         !!occupiedBy &&
         (!selectedUser || Number(occupiedBy.id) !== Number(selectedUser.id));
@@ -62,6 +73,13 @@ export default function AsignarTaquilla() {
         }
         return list;
     }, [occupiedMap, selectedUser]);
+
+    const sharedLockersSorted = useMemo(
+        () => [...sharedLockerNumbers].map(Number).sort((a, b) => a - b),
+        [sharedLockerNumbers],
+    );
+
+    const isSharedLocker = (n) => sharedSet.has(Number(n));
 
     const handleAssign = (e) => {
         e.preventDefault();
@@ -135,7 +153,11 @@ export default function AsignarTaquilla() {
                             <h2 className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-orange-300/90">
                                 Formulario de asignación
                             </h2>
-                            <p className="mb-5 text-xs text-slate-500">Busca un usuario y elige una taquilla libre.</p>
+                            <p className="mb-5 text-xs text-slate-500">
+                                Busca un usuario y elige una taquilla libre. Las taquillas{" "}
+                                {sharedLockersSorted.map((n) => `#${n}`).join(" y ")} son compartidas: puedes
+                                asignarlas a varios usuarios (descuento tienda sin casillero físico).
+                            </p>
 
                             <form onSubmit={handleAssign} className="space-y-4">
                                 <div>
@@ -197,11 +219,24 @@ export default function AsignarTaquilla() {
                                         required
                                     >
                                         <option value="">Selecciona una taquilla disponible</option>
-                                        {availableLockers.map((n) => (
-                                            <option key={n} value={n}>
-                                                Taquilla #{n}
-                                            </option>
-                                        ))}
+                                        {availableLockers.length > 0 ? (
+                                            <optgroup label="Taquillas físicas (1–200)">
+                                                {availableLockers.map((n) => (
+                                                    <option key={n} value={n}>
+                                                        Taquilla #{n}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ) : null}
+                                        {sharedLockersSorted.length > 0 ? (
+                                            <optgroup label="Compartidas (varios usuarios)">
+                                                {sharedLockersSorted.map((n) => (
+                                                    <option key={`shared-${n}`} value={n}>
+                                                        Taquilla #{n} · compartida
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ) : null}
                                     </select>
                                     {conflict ? (
                                         <p className="mt-1.5 text-xs font-semibold text-rose-300">
@@ -298,8 +333,15 @@ export default function AsignarTaquilla() {
                                                             <p className="text-xs text-slate-500">{u.email || "sin email"}</p>
                                                         </td>
                                                         <td className="px-3 py-2.5">
-                                                            <span className="inline-flex rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/30">
+                                                            <span
+                                                                className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${
+                                                                    isSharedLocker(u.numeroTaquilla)
+                                                                        ? "bg-violet-500/15 text-violet-200 ring-violet-500/30"
+                                                                        : "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30"
+                                                                }`}
+                                                            >
                                                                 #{u.numeroTaquilla}
+                                                                {isSharedLocker(u.numeroTaquilla) ? " · comp." : ""}
                                                             </span>
                                                         </td>
                                                         <td className="px-3 py-2.5 text-right">

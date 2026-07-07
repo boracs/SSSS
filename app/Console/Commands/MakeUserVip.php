@@ -3,12 +3,19 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\Vip\VipMembershipService;
 use Illuminate\Console\Command;
 
 class MakeUserVip extends Command
 {
     protected $signature = 'user:make-vip {email : Email del usuario}';
     protected $description = 'Marca un usuario como VIP (is_vip = true) por email';
+
+    public function __construct(
+        private readonly VipMembershipService $vipMembershipService,
+    ) {
+        parent::__construct();
+    }
 
     public function handle(): int
     {
@@ -20,10 +27,15 @@ class MakeUserVip extends Command
             return self::FAILURE;
         }
 
-        $user->is_vip = true;
-        $user->save();
+        if ((bool) $user->is_vip) {
+            $this->info("Usuario {$user->email} ya era VIP.");
+            return self::SUCCESS;
+        }
 
-        $this->info("Usuario {$user->email} marcado como VIP correctamente.");
+        $updated = $this->vipMembershipService->activate($user);
+
+        $this->info("Usuario {$updated->email} marcado como VIP correctamente.");
+
         return self::SUCCESS;
     }
 }

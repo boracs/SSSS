@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\User;
+use App\Support\VipVirtualLocker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +29,7 @@ class TaquillaController extends Controller
         return Inertia::render('AsignarTaquilla', [
             'usuarios' => $usuarios,
             'success' => $success,
+            'sharedLockerNumbers' => VipVirtualLocker::sharedNumbers(),
         ]);
     }
 
@@ -40,6 +42,17 @@ class TaquillaController extends Controller
 
         DB::transaction(function () use ($request) {
             $numero = (int) $request->numero_taquilla;
+
+            if (VipVirtualLocker::allowsMultipleAssignments($numero)) {
+                $usuario = User::query()
+                    ->whereKey((int) $request->usuario_id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+                $usuario->numeroTaquilla = $numero;
+                $usuario->save();
+
+                return;
+            }
 
             $ocupante = User::query()
                 ->where('numeroTaquilla', $numero)
@@ -69,5 +82,26 @@ class TaquillaController extends Controller
         });
 
         return back()->with('success', 'Taquilla liberada correctamente.');
+    }
+
+    public function listaUsuarios()
+    {
+        $usuarios = User::query()
+            ->orderByRaw('numeroTaquilla IS NULL')
+            ->orderBy('numeroTaquilla')
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->get([
+                'id',
+                'nombre',
+                'apellido',
+                'email',
+                'telefono',
+                'numeroTaquilla',
+            ]);
+
+        return Inertia::render('ListaUsuarios', [
+            'usuarios' => $usuarios,
+        ]);
     }
 }

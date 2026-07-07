@@ -6,6 +6,7 @@ namespace App\Actions\Academy;
 
 use App\Models\LessonUser;
 use App\Services\CreditEngineService;
+use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 
 final class CancelEnrollmentAction
@@ -17,13 +18,17 @@ final class CancelEnrollmentAction
     /**
      * @return array{ok: bool, message: string}
      */
-    public function execute(LessonUser $enrollment, ?string $latePolicy = null): array
+    public function execute(LessonUser $enrollment, ?string $latePolicy = null, bool $isAdmin = false): array
     {
         $enrollment->loadMissing('lesson');
         $lesson = $enrollment->lesson;
 
         if ($lesson?->starts_at && BusinessDateTime::now()->gte($lesson->starts_at)) {
             return ['ok' => false, 'message' => 'La clase ya ha comenzado; no se puede cancelar desde aquí.'];
+        }
+
+        if (! $isAdmin && ! AcademyEnrollmentPolicy::canCancelByTime($lesson)) {
+            return ['ok' => false, 'message' => AcademyEnrollmentPolicy::cancelBlockedMessage()];
         }
 
         if (in_array($enrollment->status, [
@@ -68,8 +73,9 @@ final class CancelEnrollmentAction
             }
 
             $hoursUntilStart = BusinessDateTime::now()->diffInHours($startsAt, false);
+            $cancelHours = AcademyEnrollmentPolicy::cancelCutoffHours();
 
-            if ($hoursUntilStart >= 24) {
+            if ($hoursUntilStart >= $cancelHours) {
                 $this->creditEngine->cancelByStudent($enrollment);
 
                 return ['ok' => true, 'message' => 'Inscripción cancelada.'];
@@ -78,7 +84,7 @@ final class CancelEnrollmentAction
             if (! in_array($latePolicy, ['lose', 'rescue'], true)) {
                 return [
                     'ok' => false,
-                    'message' => 'Cancelación con menos de 24h: indica si aceptas perder la clase o solicitar rescate (lose/rescue).',
+                    'message' => "Cancelación con menos de {$cancelHours}h: indica si aceptas perder la clase o solicitar rescate (lose/rescue).",
                 ];
             }
 

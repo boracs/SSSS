@@ -45,9 +45,10 @@ function BookingModal({
 
     const total = Number(lesson.total_students || 0);
     const maxSlots = Number(lesson.max_slots || 6);
+    const standardCap = 6;
+    const wouldExceedStandard = total + quantity > standardCap;
+    const requestExtra = wouldExceedStandard;
     const available = Math.max(0, maxSlots - total);
-    const overBy = quantity > available;
-    const requestExtra = overBy;
 
     const hasAdults = !!lesson?.age_mix?.has_adults;
     const hasChildren = !!lesson?.age_mix?.has_children;
@@ -179,11 +180,9 @@ function BookingModal({
 
                         {requestExtra && (
                             <div className="rounded-2xl border border-sky-300/50 bg-sky-500/15 px-4 py-3 text-xs font-medium text-sky-100">
-                                ¡Sois un gran grupo! Superamos el límite de 6
-                                alumnos por monitor. Si confirmas, solicitaremos
-                                un segundo monitor de refuerzo para vuestra
-                                seguridad. El precio no cambia y la calidad
-                                mejora.
+                                Superáis las {standardCap} plazas estándar por monitor.
+                                La solicitud quedará pendiente hasta que un administrador
+                                confirme que hay cupo y monitor disponible.
                             </div>
                         )}
                     </div>
@@ -208,7 +207,7 @@ function BookingModal({
                         {processing
                             ? "Procesando..."
                             : requestExtra
-                              ? "Solicitar ampliación"
+                              ? "Solicitar permiso admin"
                               : "Continuar al pago"}
                     </button>
                 </div>
@@ -287,6 +286,10 @@ const MODALITY_FILTER_OPTIONS = [
     { id: "semanal", label: "Semanales", dot: "bg-sky-500" },
     { id: "vip", label: "VIP", dot: "bg-rose-500 ring-1 ring-rose-700/50" },
 ];
+
+const FUTURE_DAYS_BATCH = 10;
+const INITIAL_VISIBLE_DAYS = 3;
+const DAYS_LOAD_STEP = 3;
 
 function CalendarCommander({
     monthDate,
@@ -651,16 +654,35 @@ const DESCRIPTION_FALLBACK =
 
 const LevelStyleMap = {
     iniciacion:
-        "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
-    intermedio: "border border-sky-500/20 bg-sky-500/10 text-sky-400",
-    avanzado: "border border-rose-500/20 bg-rose-500/10 text-rose-400",
+        "border border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+    intermedio: "border border-sky-500/25 bg-sky-500/10 text-sky-300",
+    avanzado: "border border-rose-500/25 bg-rose-500/10 text-rose-300",
+};
+
+const LevelAccentMap = {
+    iniciacion: "from-emerald-400 to-emerald-600",
+    intermedio: "from-sky-400 to-cyan-500",
+    avanzado: "from-rose-400 to-orange-500",
 };
 
 const ModalityMap = {
-    particular: { icon: "🔒", label: "Privada (1-6 pax)" },
-    grupal: { icon: "👥", label: "Clase Abierta" },
-    semanal: { icon: "🗓️", label: "Curso Semanal" },
+    particular: { icon: "🔒", label: "Privada (1-6 pax)", chip: "border-violet-500/25 bg-violet-500/10 text-violet-200" },
+    grupal: { icon: "👥", label: "Clase Abierta", chip: "border-indigo-500/25 bg-indigo-500/10 text-indigo-200" },
+    semanal: { icon: "🗓️", label: "Curso Semanal", chip: "border-cyan-500/25 bg-cyan-500/10 text-cyan-200" },
+    vip: { icon: "⭐", label: "VIP", chip: "border-rose-500/25 bg-rose-500/10 text-rose-200" },
 };
+
+function splitDayLabel(dayStr) {
+    const long = formatLongDateLabelMadrid(dayStr);
+    const commaIdx = long.indexOf(",");
+    if (commaIdx === -1) {
+        return { weekday: "", dateLine: long };
+    }
+    return {
+        weekday: long.slice(0, commaIdx).trim(),
+        dateLine: long.slice(commaIdx + 1).trim(),
+    };
+}
 
 function levelLabel(level) {
     if (level === "avanzado") return "Avanzado";
@@ -691,6 +713,8 @@ function ClassStackCard({
     enrollmentAdminNotes = null,
     canReserve = false,
     onReserve = null,
+    canVipEnroll = false,
+    onVipEnroll = null,
     isProcessing = false,
     onOpenGroupBooking = null,
 }) {
@@ -705,8 +729,12 @@ function ClassStackCard({
     const modality = lesson.modality || (isPrivate ? "particular" : "grupal");
     const modalityMeta = ModalityMap[modality] || ModalityMap.grupal;
     const levelStyle = LevelStyleMap[level] || LevelStyleMap.iniciacion;
+    const levelAccent = LevelAccentMap[level] || LevelAccentMap.iniciacion;
     const maxSlots = Number(lesson.max_slots ?? 6);
     const totalStudents = Number(lesson.total_students ?? 0);
+    const confirmedCount = Number(lesson.confirmed_count ?? 0);
+    const pendingCount = Number(lesson.pending_count ?? 0);
+    const fillRatio = maxSlots > 0 ? Math.min(1, totalStudents / maxSlots) : 0;
     const canOfferReinforcement =
         (modality === "grupal" || modality === "semanal") &&
         totalStudents >= maxSlots;
@@ -714,92 +742,124 @@ function ClassStackCard({
     return (
         <article
             className={[
-                "rounded-2xl border border-slate-800 bg-slate-800/40 p-4 transition-all duration-300 ease-in-out",
+                "group relative overflow-hidden rounded-xl border border-white/[0.07] bg-gradient-to-br from-slate-900/95 via-slate-900/80 to-slate-950/95 shadow-sm transition-all duration-300",
                 isClosed
-                    ? "text-slate-400 opacity-90"
-                    : "cursor-pointer hover:-translate-y-0.5 hover:border-slate-700 hover:shadow-md",
-                weeklyJoinTop ? "rounded-t-none" : "",
-                weeklyJoinBottom ? "rounded-b-none" : "",
+                    ? "opacity-75"
+                    : "hover:border-white/12 hover:shadow-md hover:shadow-cyan-950/25",
+                weeklyJoinTop ? "rounded-t-none border-t-0" : "",
+                weeklyJoinBottom ? "rounded-b-none border-b-0" : "",
                 modality === "semanal" && (weeklyJoinTop || weeklyJoinBottom)
-                    ? "border-l-4 border-l-sky-400"
+                    ? "ring-1 ring-inset ring-cyan-500/20"
                     : "",
             ].join(" ")}
         >
-            <div className="-mx-4 -mt-4 mb-3 flex flex-wrap items-start justify-between gap-2 rounded-t-2xl border-b border-slate-800 bg-slate-900/80 px-4 py-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm">
-                    <span className="font-semibold text-slate-100">
-                        {timeStr}
-                    </span>
-                    <span className="text-slate-700">|</span>
-                    <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${levelStyle}`}
-                    >
-                        {levelLabel(level)}
-                    </span>
-                    <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-xs font-medium text-slate-200">
-                        {modalityMeta.icon} {modalityMeta.label}
-                    </span>
-                    <span className="text-slate-400">· {locationLabel}</span>
+            <div
+                className={`absolute inset-y-0 left-0 w-1 bg-gradient-to-b ${levelAccent}`}
+                aria-hidden
+            />
+
+            <div className="p-4 pl-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+                        <div className="flex shrink-0 flex-col items-center rounded-lg border border-white/10 bg-slate-950/70 px-3 py-1.5">
+                            <span className="text-lg font-bold tabular-nums leading-none tracking-tight text-white">
+                                {timeStr}
+                            </span>
+                        </div>
+                        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                            <span
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${levelStyle}`}
+                            >
+                                {levelLabel(level)}
+                            </span>
+                            <span
+                                className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${modalityMeta.chip}`}
+                            >
+                                {modalityMeta.icon} {modalityMeta.label}
+                            </span>
+                        </div>
+                    </div>
+                    {price != null && (
+                        <div className="shrink-0 text-right">
+                            <span className="text-xl font-bold tabular-nums text-white">
+                                {price.toFixed(0)}
+                                <span className="ml-0.5 text-sm font-semibold text-slate-400">€</span>
+                            </span>
+                        </div>
+                    )}
                 </div>
-                {price != null && (
-                    <span className="text-sm font-bold text-slate-100">
-                        {price.toFixed(0)}€
-                    </span>
-                )}
-            </div>
+
+                <p className="mt-2.5 flex items-center gap-1.5 text-xs text-slate-500">
+                    <span className="inline-block h-1 w-1 rounded-full bg-slate-600" aria-hidden />
+                    {locationLabel}
+                </p>
+
             {modality === "semanal" &&
                 weeklyDayIndex != null &&
                 weeklyDayIndex > 1 && (
-                    <div className="-mt-1 mb-2 text-[11px] font-semibold text-sky-700">
-                        Día {weeklyDayIndex} del Curso Semanal
+                    <div className="mt-2 inline-flex rounded-md bg-cyan-500/10 px-2 py-0.5 text-[11px] font-semibold text-cyan-300 ring-1 ring-cyan-500/25">
+                        Día {weeklyDayIndex} del curso semanal
                     </div>
                 )}
             {isClosed && (
-                <div className="-mt-1 mb-2 inline-flex rounded-full bg-slate-700 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">
-                    GRUPO CERRADO
+                <div className="mt-2 inline-flex rounded-full bg-slate-700/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-200">
+                    Grupo cerrado
                 </div>
             )}
-            <p className="mt-1 text-sm leading-relaxed text-slate-300">
+            <p className="mt-2.5 text-sm leading-relaxed text-slate-300/90">
                 {description}
             </p>
             {enrollmentStatus === "cancelled" && enrollmentAdminNotes && (
-                <div className="mt-3 rounded-xl border border-rose-700 bg-rose-900/30 px-3 py-2 text-sm font-medium text-rose-200">
+                <div className="mt-3 rounded-lg border border-rose-500/30 bg-rose-950/40 px-3 py-2 text-sm font-medium text-rose-200">
                     Pago rechazado: {enrollmentAdminNotes}
                 </div>
             )}
+            {enrollmentStatus === "pending_extra_monitor" && (
+                <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/40 px-3 py-2 text-sm font-medium text-amber-200">
+                    Solicitud enviada: un administrador debe habilitar tu cupo (supera las 6 plazas estándar).
+                </div>
+            )}
             {enrollmentStatus === "pending" && enrollmentHasProof && (
-                <div className="mt-3 rounded-xl border border-sky-700 bg-sky-900/30 px-3 py-2 text-sm font-medium text-sky-200">
+                <div className="mt-3 rounded-lg border border-sky-500/30 bg-sky-950/40 px-3 py-2 text-sm font-medium text-sky-200">
                     Verificando tu pago...
                 </div>
             )}
-            <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-                <span className="inline-flex items-center gap-1 text-emerald-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Confirmados {lesson.confirmed_count ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-slate-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    Pendientes {lesson.pending_count ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1 text-slate-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
-                    Total {lesson.total_students ?? 0}
-                </span>
-                {canOfferReinforcement && (
-                    <span className="inline-flex items-center gap-1 text-rose-300">
-                        🔥 ¡Casi lleno! Refuerzo disponible
-                    </span>
-                )}
-            </div>
+
+                <div className="mt-4 border-t border-white/[0.06] pt-3">
+                    <div className="mb-2 h-1 overflow-hidden rounded-full bg-slate-800/80">
+                        <div
+                            className={`h-full rounded-full bg-gradient-to-r ${levelAccent} transition-all`}
+                            style={{ width: `${Math.max(fillRatio * 100, confirmedCount > 0 ? 8 : 0)}%` }}
+                        />
+                    </div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                            <span className="inline-flex items-center gap-1.5 text-emerald-300/90">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                                Confirmados {confirmedCount}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-amber-300/80">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                                Pendientes {pendingCount}
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 text-slate-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-sky-400/80" />
+                                {totalStudents}/{maxSlots || "—"} plazas
+                            </span>
+                            {canOfferReinforcement && (
+                                <span className="inline-flex items-center gap-1 text-rose-300/90">
+                                    🔥 Refuerzo disponible
+                                </span>
+                            )}
+                        </div>
             {canReserve && (
-                <div className="mt-3">
                     <button
                         type="button"
                         onClick={() => onOpenGroupBooking?.(lesson)}
                         disabled={isProcessing}
                         className={[
-                            "w-full rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white transition-all duration-300 ease-in-out hover:bg-sky-700",
-                            "disabled:opacity-70 disabled:cursor-not-allowed hover:disabled:bg-sky-600",
+                            "w-full shrink-0 rounded-lg bg-gradient-to-r from-cyan-600 to-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-cyan-950/30 transition-all duration-200 hover:from-cyan-500 hover:to-sky-500 sm:w-auto",
+                            "disabled:cursor-not-allowed disabled:opacity-70",
                         ].join(" ")}
                     >
                         {isProcessing ? (
@@ -828,11 +888,26 @@ function ClassStackCard({
                                 Procesando...
                             </span>
                         ) : (
-                            "Reservar Plaza"
+                            "Reservar plaza"
                         )}
                     </button>
-                </div>
             )}
+            {canVipEnroll && (
+                    <button
+                        type="button"
+                        onClick={() => onVipEnroll?.(lesson)}
+                        disabled={isProcessing}
+                        className={[
+                            "w-full shrink-0 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-violet-950/30 transition-all duration-200 hover:from-violet-500 hover:to-fuchsia-500 sm:w-auto",
+                            "disabled:cursor-not-allowed disabled:opacity-70",
+                        ].join(" ")}
+                    >
+                        {isProcessing ? "Procesando..." : "Apuntarme con bono VIP"}
+                    </button>
+            )}
+                    </div>
+                </div>
+            </div>
         </article>
     );
 }
@@ -899,6 +974,11 @@ export default function AcademyIndex({
     canSeeVip = false,
     optimalDates = [],
     creditsBalance = 0,
+    enrollmentPolicy = {
+        enroll_cutoff_minutes: 30,
+        cancel_cutoff_hours: 4,
+        standard_monitor_capacity: 6,
+    },
     myEnrollmentLessonIds = [],
     myEnrollmentStatusByLesson = {},
     myEnrollmentExpiresAtByLesson = {},
@@ -971,7 +1051,7 @@ export default function AcademyIndex({
             if (!out[d])
                 out[d] = { pending: false, verifying: false, rejected: false };
             if (st === "pending" && hasProof) out[d].verifying = true;
-            else if (st === "pending") out[d].pending = true;
+            else if (st === "pending" || st === "pending_extra_monitor") out[d].pending = true;
             else if (st === "cancelled" && notes) out[d].rejected = true;
         }
         return out;
@@ -1140,9 +1220,37 @@ export default function AcademyIndex({
     }, [filteredFeedLessons]);
 
     const dayKeys = useMemo(() => Object.keys(feedByDay).sort(), [feedByDay]);
-    const feedWrapRef = useRef(null);
+    const [visibleDaysCount, setVisibleDaysCount] = useState(INITIAL_VISIBLE_DAYS);
     const dayRefMap = useRef({});
     const [highlightDay, setHighlightDay] = useState(null);
+
+    const visibleDayKeys = useMemo(
+        () => dayKeys.slice(0, visibleDaysCount),
+        [dayKeys, visibleDaysCount],
+    );
+    const remainingDayCount = Math.max(0, dayKeys.length - visibleDayKeys.length);
+
+    useEffect(() => {
+        setVisibleDaysCount(INITIAL_VISIBLE_DAYS);
+    }, [date, modalityFilter, futureDaysWindow]);
+
+    useEffect(() => {
+        if (modalityFilter === "vip") return;
+        const target = date < todayStr ? todayStr : date;
+        const idx = dayKeys.indexOf(target);
+        if (idx >= 0) {
+            setVisibleDaysCount((prev) => Math.max(prev, idx + 1));
+        }
+    }, [date, todayStr, dayKeys, modalityFilter]);
+    const submitVipEnroll = (lesson) => {
+        if (!lesson?.id) return;
+        setProcessingId(lesson.id);
+        router.post(route("lessons.enroll", lesson.id), {}, {
+            preserveScroll: true,
+            onFinish: () => setProcessingId(null),
+        });
+    };
+
     const submitGroupBooking = (lesson, payload) => {
         if (!lesson?.id) return;
         setProcessingId(lesson.id);
@@ -1178,6 +1286,72 @@ export default function AcademyIndex({
         scrollToDay._t = window.setTimeout(() => setHighlightDay(null), 1400);
     };
 
+    const effectiveFeedDate = date < todayStr ? todayStr : date;
+    const rangeEndDate = addDaysToYmd(effectiveFeedDate, futureDaysWindow);
+    const isTenDayView = futureDaysWindow >= FUTURE_DAYS_BATCH;
+
+    const expandToTenDays = () => {
+        setFutureDaysWindow(FUTURE_DAYS_BATCH);
+    };
+
+    const collapseToSingleDay = () => {
+        setFutureDaysWindow(0);
+        requestAnimationFrame(() => scrollToDay(effectiveFeedDate));
+    };
+
+    const renderLoadMoreDays = () => {
+        if (remainingDayCount <= 0) return null;
+
+        return (
+            <div className="flex justify-center pt-2">
+                <button
+                    type="button"
+                    onClick={() =>
+                        setVisibleDaysCount((count) =>
+                            Math.min(count + DAYS_LOAD_STEP, dayKeys.length),
+                        )
+                    }
+                    className="inline-flex items-center gap-2 rounded-xl border border-slate-600/50 bg-slate-800/70 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-cyan-500/30 hover:bg-slate-800 hover:text-white"
+                >
+                    Ver más días
+                    <span className="text-xs font-normal text-slate-400">
+                        ({remainingDayCount} restantes)
+                    </span>
+                </button>
+            </div>
+        );
+    };
+
+    const renderTenDayRangeControl = () => {
+        if (modalityFilter === "vip") return null;
+
+        if (isTenDayView) {
+            return (
+                <div className="mt-4 flex justify-center">
+                    <button
+                        type="button"
+                        onClick={collapseToSingleDay}
+                        className="rounded-xl border border-slate-600/50 bg-slate-800/60 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
+                    >
+                        Ver solo {formatLongDateLabelMadrid(effectiveFeedDate)}
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <div className="mt-4 flex justify-center">
+                <button
+                    type="button"
+                    onClick={expandToTenDays}
+                    className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/20"
+                >
+                    Ver clases de los próximos 10 días
+                </button>
+            </div>
+        );
+    };
+
     const navigateMonth = (dir) => {
         const next = addMonths(monthDate, dir);
         const nextMonthStr = ymd(next);
@@ -1198,39 +1372,54 @@ export default function AcademyIndex({
                         <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                             Clases de surf
                         </h1>
-                        <p className="mt-2 text-sm text-slate-400">
-                            Tu saldo:{" "}
-                            <strong className="text-lg font-bold text-teal-300">
-                                {creditsBalance} créditos
-                            </strong>
-                        </p>
+                        {isVipUser ? (
+                            <p className="mt-2 text-sm text-slate-400">
+                                Tu saldo VIP:{" "}
+                                <strong className="text-lg font-bold text-teal-300">
+                                    {creditsBalance} créditos
+                                </strong>
+                            </p>
+                        ) : (
+                            <p className="mt-2 max-w-xl mx-auto text-sm text-slate-500">
+                                Reserva clases grupales con pago directo. Los bonos de créditos
+                                son solo para{" "}
+                                <span className="font-medium text-teal-300/90">miembros VIP</span>.
+                            </p>
+                        )}
                     </div>
 
                     {/* Acciones principales */}
-                    <div className="mb-6 flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setShowPrivateModal(true);
-                                loadPrivateSlots(privateDate);
-                            }}
-                            className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:from-amber-400 hover:to-orange-400"
-                        >
-                            Solicitar clase particular
-                        </button>
-                        <Link
-                            href={route(
-                                isVipUser ? "bonos.index" : "taquillas.planes",
-                            )}
-                            className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-5 py-3 text-sm font-semibold text-teal-200 transition hover:bg-teal-500/20"
-                        >
-                            {isVipUser
-                                ? "Recargar créditos"
-                                : "Ver planes y cuotas"}
-                        </Link>
-                        <p className="w-full text-center text-xs text-slate-500 sm:w-auto">
-                            Las clases particulares no aparecen en la oferta
-                            pública.
+                    <div className="mb-6 flex flex-col items-center gap-4">
+                        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-center">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowPrivateModal(true);
+                                    loadPrivateSlots(privateDate);
+                                }}
+                                className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-500/20 transition hover:from-amber-400 hover:to-orange-400"
+                            >
+                                Solicitar clase particular
+                            </button>
+                            <div className="flex flex-col items-center gap-1.5 text-center sm:items-center">
+                                <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-400/85">
+                                    {isVipUser ? "Área VIP · bonos" : "¿Eres VIP?"}
+                                </span>
+                                <Link
+                                    href={route("bonos.index")}
+                                    className="inline-flex rounded-xl border border-teal-500/30 bg-teal-500/10 px-5 py-3 text-sm font-semibold text-teal-200 transition hover:bg-teal-500/20"
+                                >
+                                    {isVipUser ? "Recargar créditos" : "Ver bonos y activación"}
+                                </Link>
+                                <span className="max-w-[14rem] text-[11px] leading-snug text-slate-500">
+                                    {isVipUser
+                                        ? "Compra y gestiona packs de clases con tu cuenta VIP."
+                                        : "Consulta precios y cómo activar el acceso VIP."}
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-center text-xs text-slate-500">
+                            Las clases particulares no aparecen en la oferta pública.
                         </p>
                     </div>
 
@@ -1324,6 +1513,19 @@ export default function AcademyIndex({
                                                 en adelante.
                                             </p>
                                         )}
+                                        {modalityFilter !== "vip" && isTenDayView && (
+                                            <p className="mt-3 text-xs text-amber-200/80">
+                                                Mostrando clases del{" "}
+                                                <span className="font-semibold text-amber-100">
+                                                    {formatLongDateLabelMadrid(effectiveFeedDate)}
+                                                </span>{" "}
+                                                al{" "}
+                                                <span className="font-semibold text-amber-100">
+                                                    {formatLongDateLabelMadrid(rangeEndDate)}
+                                                </span>
+                                                .
+                                            </p>
+                                        )}
                                         {vipCalendarNotice &&
                                             modalityFilter === "vip" && (
                                                 <p className="mt-2 text-xs text-amber-300">
@@ -1333,34 +1535,39 @@ export default function AcademyIndex({
                                                     concreto.
                                                 </p>
                                             )}
-                                        <div
-                                            ref={feedWrapRef}
-                                            className="mt-4 max-h-[70vh] overflow-y-auto pr-1"
-                                        >
+                                        <div className="mt-4">
                                             {dayKeys.length === 0 ? (
                                                 <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/60 px-6 py-10 text-center">
                                                     <p className="text-sm font-medium text-slate-300">
-                                                        No hay clases
-                                                        disponibles para estos
-                                                        criterios.
+                                                        {isTenDayView
+                                                            ? "No hay clases disponibles en los próximos 10 días desde esta fecha."
+                                                            : "No hay clases disponibles para este día."}
                                                     </p>
                                                     <p className="mt-1 text-xs text-slate-500">
-                                                        Prueba otra fecha o
-                                                        amplía el rango de
-                                                        búsqueda.
+                                                        {isTenDayView
+                                                            ? "Prueba otra fecha en el calendario o cambia el filtro de modalidad."
+                                                            : "Amplía el rango o prueba otra fecha en el calendario."}
                                                     </p>
+                                                    {renderTenDayRangeControl()}
                                                 </div>
                                             ) : (
-                                                <div className="rounded-xl bg-slate-950 p-3">
+                                                <div className="relative rounded-2xl border border-white/[0.06] bg-slate-950/40 p-4 sm:p-5">
+                                                    <div
+                                                        className="pointer-events-none absolute inset-0 rounded-2xl opacity-[0.35]"
+                                                        style={{
+                                                            backgroundImage:
+                                                                "repeating-linear-gradient(-45deg, transparent, transparent 12px, rgba(148,163,184,0.03) 12px, rgba(148,163,184,0.03) 13px)",
+                                                        }}
+                                                        aria-hidden
+                                                    />
+                                                    <div className="relative space-y-8">
                                                     {(() => {
                                                         const batchIndex = {};
                                                         let prevLesson = null;
-                                                        return dayKeys.map(
+                                                        return visibleDayKeys.map(
                                                             (dayStr) => {
-                                                                const pretty =
-                                                                    formatLongDateLabelMadrid(
-                                                                        dayStr,
-                                                                    ).toUpperCase();
+                                                                const { weekday, dateLine } =
+                                                                    splitDayLabel(dayStr);
                                                                 const isHot =
                                                                     highlightDay ===
                                                                     dayStr;
@@ -1385,25 +1592,58 @@ export default function AcademyIndex({
                                                                                 ] =
                                                                                     el;
                                                                         }}
-                                                                        className="mb-6 last:mb-0 scroll-mt-4"
+                                                                        className="relative scroll-mt-6 pl-8 last:pb-0"
                                                                     >
-                                                                        <div className="sticky top-0 z-10 -mx-3 mb-3 border-b border-slate-800 bg-slate-950/95 px-3 py-2 backdrop-blur">
-                                                                            <div
+                                                                        <div
+                                                                            className="absolute bottom-0 left-[13px] top-10 w-px bg-gradient-to-b from-cyan-500/35 via-slate-600/40 to-transparent last:hidden"
+                                                                            aria-hidden
+                                                                        />
+                                                                        <div
+                                                                            className={[
+                                                                                "absolute left-0 top-2 flex h-7 w-7 items-center justify-center rounded-full border-2 bg-slate-950 transition-all",
+                                                                                isHot
+                                                                                    ? "border-cyan-400 shadow-md shadow-cyan-500/30"
+                                                                                    : "border-slate-600/80",
+                                                                            ].join(" ")}
+                                                                            aria-hidden
+                                                                        >
+                                                                            <span
                                                                                 className={[
-                                                                                    "inline-flex rounded-lg px-2 py-1 text-xs font-extrabold tracking-wider text-slate-100 transition-all duration-300",
+                                                                                    "h-2 w-2 rounded-full",
                                                                                     isHot
-                                                                                        ? "bg-slate-900 ring-2 ring-sky-500/45 shadow-sm"
-                                                                                        : "bg-slate-900/80 ring-1 ring-slate-700",
-                                                                                ].join(
-                                                                                    " ",
-                                                                                )}
-                                                                            >
-                                                                                {
-                                                                                    pretty
-                                                                                }
-                                                                            </div>
+                                                                                        ? "bg-cyan-400"
+                                                                                        : "bg-slate-500",
+                                                                                ].join(" ")}
+                                                                            />
                                                                         </div>
-                                                                        <div className="space-y-0">
+
+                                                                        <header className="mb-4 border-b border-white/[0.06] pb-3">
+                                                                            {weekday ? (
+                                                                                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-400/90">
+                                                                                    {weekday}
+                                                                                </p>
+                                                                            ) : null}
+                                                                            <div className="mt-0.5 flex flex-wrap items-baseline justify-between gap-2">
+                                                                                <h3
+                                                                                    className={[
+                                                                                        "text-sm font-bold capitalize text-white sm:text-base",
+                                                                                        isHot
+                                                                                            ? "text-cyan-50"
+                                                                                            : "",
+                                                                                    ].join(" ")}
+                                                                                >
+                                                                                    {dateLine || dayStr}
+                                                                                </h3>
+                                                                                <span className="rounded-full bg-slate-800/80 px-2.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400 ring-1 ring-white/5">
+                                                                                    {lessons.length}{" "}
+                                                                                    {lessons.length === 1
+                                                                                        ? "sesión"
+                                                                                        : "sesiones"}
+                                                                                </span>
+                                                                            </div>
+                                                                        </header>
+
+                                                                        <div className="space-y-3">
                                                                             {lessons.map(
                                                                                 (
                                                                                     l,
@@ -1443,12 +1683,28 @@ export default function AcademyIndex({
                                                                                             ? totalStudents <
                                                                                               maxSlots
                                                                                             : true;
+                                                                                    const enrollCutoffMinutes =
+                                                                                        Number(enrollmentPolicy?.enroll_cutoff_minutes ?? 30);
+                                                                                    const minutesUntilStart = l.starts_at
+                                                                                        ? Math.floor(
+                                                                                              (new Date(l.starts_at).getTime() - Date.now()) / 60000,
+                                                                                          )
+                                                                                        : 0;
+                                                                                    const withinEnrollWindow =
+                                                                                        minutesUntilStart >= enrollCutoffMinutes;
                                                                                     const enrollmentStatus =
                                                                                         myEnrollmentStatusByLesson?.[
                                                                                             l
                                                                                                 .id
                                                                                         ] ??
                                                                                         null;
+                                                                                    const hasActiveEnrollment = [
+                                                                                        "pending",
+                                                                                        "pending_extra_monitor",
+                                                                                        "confirmed",
+                                                                                        "enrolled",
+                                                                                        "attended",
+                                                                                    ].includes(enrollmentStatus);
                                                                                     const isActiveEnrollment =
                                                                                         enrollmentStatus ===
                                                                                             "pending" ||
@@ -1459,9 +1715,18 @@ export default function AcademyIndex({
                                                                                             "grupal" ||
                                                                                             modality ===
                                                                                                 "semanal") &&
-                                                                                        isFutureOrToday;
+                                                                                        isFutureOrToday &&
+                                                                                        withinEnrollWindow &&
+                                                                                        !hasActiveEnrollment;
                                                                                     const canReserve =
                                                                                         canReserveGroupOrWeekly;
+                                                                                    const canVipEnroll =
+                                                                                        (modality === "vip" ||
+                                                                                            isVipLesson(l)) &&
+                                                                                        isVipUser &&
+                                                                                        isFutureOrToday &&
+                                                                                        withinEnrollWindow &&
+                                                                                        !hasActiveEnrollment;
                                                                                     const batchId =
                                                                                         l.batch_id ||
                                                                                         null;
@@ -1524,8 +1789,8 @@ export default function AcademyIndex({
                                                                                             }
                                                                                             className={
                                                                                                 prevSameBatch
-                                                                                                    ? "mb-0"
-                                                                                                    : "mb-4"
+                                                                                                    ? "-mt-px"
+                                                                                                    : ""
                                                                                             }
                                                                                         >
                                                                                             <ClassStackCard
@@ -1563,6 +1828,12 @@ export default function AcademyIndex({
                                                                                                 canReserve={
                                                                                                     canReserve
                                                                                                 }
+                                                                                                canVipEnroll={
+                                                                                                    canVipEnroll
+                                                                                                }
+                                                                                                onVipEnroll={
+                                                                                                    submitVipEnroll
+                                                                                                }
                                                                                                 onReserve={
                                                                                                     submitGroupBooking
                                                                                                 }
@@ -1584,23 +1855,9 @@ export default function AcademyIndex({
                                                             },
                                                         );
                                                     })()}
-                                                </div>
-                                            )}
-                                            {modalityFilter !== "vip" && (
-                                                <div className="mt-4 flex justify-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            setFutureDaysWindow(
-                                                                (prev) =>
-                                                                    prev + 10,
-                                                            )
-                                                        }
-                                                        className="rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/20"
-                                                    >
-                                                        Ver clases de los
-                                                        próximos 10 días
-                                                    </button>
+                                                    {renderLoadMoreDays()}
+                                                    </div>
+                                                    {renderTenDayRangeControl()}
                                                 </div>
                                             )}
                                         </div>

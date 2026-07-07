@@ -2,7 +2,14 @@ import React from 'react';
 
 const ListaUsuarios = ({ usuarios }) => {
     // Ordenar los usuarios por el número de taquilla
-    const usuariosOrdenados = usuarios.sort((a, b) => a.numeroTaquilla - b.numeroTaquilla);
+    const usuariosOrdenados = [...usuarios].sort((a, b) => {
+        const taqA = a.numeroTaquilla ?? Number.MAX_SAFE_INTEGER;
+        const taqB = b.numeroTaquilla ?? Number.MAX_SAFE_INTEGER;
+        if (taqA !== taqB) return taqA - taqB;
+        return `${a.nombre ?? ""} ${a.apellido ?? ""}`.localeCompare(
+            `${b.nombre ?? ""} ${b.apellido ?? ""}`
+        );
+    });
 
     return (
         <div className="min-h-screen bg-gray-100 flex items-center justify-center py-8">

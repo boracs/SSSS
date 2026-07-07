@@ -62,6 +62,12 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PagoTaquillaRechazado::class, EnviarCorreoRechazoTaquilla::class);
 
         Vite::prefetch(concurrency: 3);
+
+        // Dev Tunnels: rutas relativas en CSS/JS evitan ERR_CERT_AUTHORITY_INVALID en assets absolutos.
+        if (filter_var(env('TUNNEL_SHARE', false), FILTER_VALIDATE_BOOLEAN)) {
+            Vite::createAssetPathsUsing(static fn (string $path, ?bool $secure = null) => '/'.ltrim($path, '/'));
+        }
+
         Inertia::setRootView('app');
 
         Relation::morphMap([

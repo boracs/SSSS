@@ -1,15 +1,32 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
 import { ShoppingCart, Menu as MenuIcon, X as XIcon, ChevronDown, UserCircle } from "lucide-react";
+import BrandLogo from "./BrandLogo";
 
 const HOVER_CLOSE_DELAY_MS = 150;
 
-function safeRoute(name, params) {
+function safeRoute(name, params, fallback = "#") {
     try {
         return route(name, params);
     } catch (e) {
-        return "#";
+        return fallback;
     }
+}
+
+function AccountMenuIdentity({ user }) {
+    if (!user) return null;
+
+    const displayName =
+        [user.nombre, user.apellido].filter(Boolean).join(" ").trim() || String(user.name || "").trim();
+
+    if (!displayName && !user.email) return null;
+
+    return (
+        <div className="mb-1 border-b border-white/10 px-3 pb-2 pt-1">
+            {displayName ? <p className="truncate text-xs font-semibold text-white">{displayName}</p> : null}
+            {user.email ? <p className="truncate text-[10px] text-slate-500">{user.email}</p> : null}
+        </div>
+    );
 }
 
 /**
@@ -18,98 +35,61 @@ function safeRoute(name, params) {
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
 function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
-    const aboutAndContact = [
+    const publicTopLinks = [
+        { type: "link", id: "autocoach", label: "Comparador de maniobras", href: safeRoute("autocoach.index") },
         { type: "link", id: "nosotros", label: "Sobre nosotros", href: safeRoute("nosotros") },
-        { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") },
     ];
+    const contactoLink = { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") };
 
     if (isAdmin) {
         return [
+            { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
             {
                 type: "flyout",
-                id: "admin-clases",
-                label: "Clases",
+                id: "admin-gestion",
+                label: "Gestión",
                 groups: [
                     {
-                        title: "Academia",
+                        title: "Taquillas",
                         links: [
-                            { label: "Gestor de Clases", href: safeRoute("admin.academy.index"), featured: true },
-                            { label: "Gestor de Clases VIP", href: safeRoute("admin.vip-manager.index") },
-                            { label: "Packs de Bonos", href: safeRoute("admin.bonos.index") },
+                            { label: "Planes y Vigencia", href: safeRoute("taquilla.index.admin"), featured: true },
+                            { label: "Verificar Pagos", href: safeRoute("taquilla.pagos.queue") },
+                            { label: "Mapa de Taquillas", href: safeRoute("asignar.taquilla.mostrar") },
+                            { label: "Candado emergencia", href: safeRoute("admin.emergency-keys.index") },
                         ],
                     },
-                ],
-            },
-            {
-                type: "flyout",
-                id: "admin-alquileres",
-                label: "Alquileres",
-                groups: [
                     {
-                        title: "Tablas",
+                        title: "Tienda",
+                        links: [
+                            { label: "Gestor de Pedidos", href: safeRoute("gestor.pedidos"), featured: true },
+                            { label: "Gestor de Productos", href: safeRoute("mostrar.productos") },
+                        ],
+                    },
+                    {
+                        title: "Alquileres",
                         links: [
                             { label: "Inventario de Tablas", href: safeRoute("admin.surfboards.index"), featured: true },
                             { label: "Reservas de Alquiler", href: safeRoute("admin.bookings.index") },
                             { label: "Segunda Mano", href: safeRoute("admin.second-hand.index") },
                         ],
                     },
-                ],
-            },
-            {
-                type: "flyout",
-                id: "admin-tienda",
-                label: "Tienda",
-                groups: [
                     {
-                        title: "Catalogo",
+                        title: "Clases",
                         links: [
-                            { label: "Gestor de Productos", href: safeRoute("mostrar.productos"), featured: true },
-                            { label: "Gestor de Pedidos", href: safeRoute("gestor.pedidos") },
-                        ],
-                    },
-                ],
-            },
-            {
-                type: "flyout",
-                id: "admin-taquillas",
-                label: "Taquillas",
-                groups: [
-                    {
-                        title: "Gestion",
-                        links: [
-                            { label: "Planes y Vigencia", href: safeRoute("taquilla.index.admin"), featured: true },
-                            { label: "Verificar Pagos", href: safeRoute("taquilla.pagos.queue") },
-                            { label: "Mapa de Taquillas", href: safeRoute("asignar.taquilla.mostrar") },
+                            { label: "Gestor de Clases", href: safeRoute("admin.class-manager.index"), featured: true },
+                            { label: "Packs de Bonos", href: safeRoute("admin.bonos.index") },
                         ],
                     },
                     {
-                        title: "Seguridad",
-                        links: [{ label: "Llaves de Emergencia", href: safeRoute("admin.emergency-keys.index") }],
-                    },
-                ],
-            },
-            {
-                type: "flyout",
-                id: "admin-usuarios",
-                label: "Usuarios",
-                groups: [
-                    {
-                        title: "Comunidad",
+                        title: "Usuarios",
                         links: [
                             { label: "Usuarios y VIP", href: safeRoute("admin.users.index"), featured: true },
                             { label: "Seguimiento VIP", href: safeRoute("admin.vips.index") },
                             { label: "Lista de Usuarios", href: safeRoute("listaUsuarios") },
                         ],
                     },
-                ],
-            },
-            {
-                type: "flyout",
-                id: "admin-pagos",
-                label: "Pagos",
-                groups: [
                     {
-                        title: "Validacion",
+                        title: "Pagos",
                         links: [
                             { label: "Dashboard Global", href: safeRoute("admin.payments.global"), featured: true },
                             { label: "Validacion de Bonos", href: safeRoute("admin.payment-validation.index") },
@@ -117,7 +97,21 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                     },
                 ],
             },
-            ...aboutAndContact,
+            {
+                type: "flyout",
+                id: "admin-extras",
+                label: "Extras",
+                groups: [
+                    {
+                        title: "Herramientas",
+                        links: [
+                            { label: "Comparador de maniobras", href: safeRoute("autocoach.index"), featured: true },
+                            { label: "Webcams", href: safeRoute("servicios.webcams") },
+                        ],
+                    },
+                ],
+            },
+            contactoLink,
         ];
     }
 
@@ -125,6 +119,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     const clasesLinks = [];
     if (isAuth) {
         clasesLinks.push({ label: "Reservar Clases", href: safeRoute("academy.lessons.index"), featured: true });
+        clasesLinks.push({
+            label: "Mis clases reservadas",
+            href: `${safeRoute("my-reservations.index")}?tab=classes`,
+        });
     }
     clasesLinks.push(
         { label: "Surf", href: safeRoute("servicios.surf"), featured: !isAuth },
@@ -136,11 +134,29 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     const taquillasLinks = [];
     if (hasLocker) {
         taquillasLinks.push({ label: "Mi Taquilla", href: safeRoute("taquillas.index.client"), featured: true });
+        taquillasLinks.push({
+            label: "Me quedé sin llave",
+            href: safeRoute("emergency-key.show"),
+        });
+    }
+    if (isAuth && !isVip) {
+        clasesLinks.push({ label: "Bonos VIP (solicitar acceso)", href: safeRoute("bonos.index") });
     }
     if (isVip) {
-        taquillasLinks.push({ label: "Mis Bonos", href: safeRoute("bonos.index") });
+        clasesLinks.push({ label: "Mis Bonos VIP", href: safeRoute("bonos.index"), featured: !hasLocker });
     }
-    taquillasLinks.push({ label: "Planes y Cuotas", href: safeRoute("taquillas.planes"), featured: !hasLocker });
+    taquillasLinks.push({
+        label: "Planes y Cuotas",
+        href: isAuth ? safeRoute("taquillas.index.client") : safeRoute("taquillas.planes"),
+        featured: !hasLocker,
+    });
+
+    const alquileresLinks = [
+        { label: "Tablas de alquiler", href: safeRoute("rentals.surfboards.index"), featured: true },
+    ];
+    if (isAuth && !isAdmin) {
+        alquileresLinks.push({ label: "Mis reservas · alquileres", href: `${safeRoute("my-reservations.index")}?tab=rentals` });
+    }
 
     const tiendaLinks = [
         { label: "Tienda oficial S4", href: safeRoute("tienda"), featured: true },
@@ -150,11 +166,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         tiendaLinks.splice(1, 0, { label: "Mis Pedidos", href: safeRoute("pedidos") });
     }
 
-    const servicios = {
-        type: "flyout",
-        id: "servicios",
-        label: "Servicios",
-        groups: [
+    const serviciosGroups = [
             {
                 title: "Tienda",
                 links: tiendaLinks,
@@ -162,9 +174,16 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             {
                 title: "Servicios",
                 links: [
-                    { label: "Reparacion de Tablas", href: safeRoute("servicios"), featured: true },
-                    { label: "Reparacion de Neoprenos", href: safeRoute("servicios") },
+                    { label: "Reparaciones", href: safeRoute("servicios"), featured: true },
+                    {
+                        label: "Neoprenos",
+                        href: safeRoute("servicios.reparacionNeoprenos", undefined, "/servicios/reparacion-neoprenos"),
+                    },
                 ],
+            },
+            {
+                title: "Alquileres",
+                links: alquileresLinks,
             },
             {
                 title: "Taquillas",
@@ -174,21 +193,38 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                 title: "Clases",
                 links: clasesLinks,
             },
-            {
+    ];
+
+    if (isAuth && !isAdmin) {
+        serviciosGroups.push({
+            title: "Mi Perfil",
+            links: [{ label: "Mi Perfil", href: safeRoute("my-profile.index"), featured: true }],
+        });
+    }
+
+    serviciosGroups.push({
                 title: "Multimedia",
                 links: [
-                    { label: "Fotografia", href: safeRoute("servicios.fotografia"), featured: true },
+                    { label: "Comparador de maniobras", href: safeRoute("autocoach.index"), featured: true },
+                    { label: "Fotografia", href: safeRoute("servicios.fotografia") },
                     { label: "Videograbaciones", href: safeRoute("servicios.videograbaciones") },
+                    { label: "Webcams", href: safeRoute("servicios.webcams") },
                 ],
-            },
-        ],
+            });
+
+    const servicios = {
+        type: "flyout",
+        id: "servicios",
+        label: "Servicios",
+        groups: serviciosGroups,
     };
 
     return [
         { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
-        aboutAndContact[0],
+        publicTopLinks[0],
+        publicTopLinks[1],
         servicios,
-        aboutAndContact[1],
+        contactoLink,
     ];
 }
 
@@ -219,11 +255,7 @@ export default function GlobalNav() {
     const isAdmin = isAuth && String(user?.role) === "admin";
     const isVip = user?.is_vip === true || String(user?.is_vip) === "1";
     const hasLocker =
-        user?.has_active_locker === true ||
-        String(user?.has_active_locker) === "1" ||
-        user?.has_locker === true ||
-        String(user?.has_locker) === "1" ||
-        Boolean(user?.numeroTaquilla);
+        user?.has_physical_locker === true || String(user?.has_physical_locker) === "1";
     const cartCount = Number(props?.cart?.count ?? props?.cartCount ?? 0);
 
     const menus = buildMenus({ isAdmin, isAuth, isVip, hasLocker });
@@ -279,20 +311,27 @@ export default function GlobalNav() {
     const accountLinks = [{ label: "Editar mi cuenta", href: safeRoute("profile.edit") }];
     if (!isAdmin) {
         accountLinks.push(
-            { label: "Mis Reservas", href: safeRoute("my-reservations.index") },
+            { label: "Mis clases reservadas", href: `${safeRoute("my-reservations.index")}?tab=classes` },
+            { label: "Mis alquileres", href: `${safeRoute("my-reservations.index")}?tab=rentals` },
             { label: "Mis Pedidos", href: safeRoute("pedidos") },
         );
+        if (hasLocker) {
+            accountLinks.push({ label: "Me quedé sin llave", href: safeRoute("emergency-key.show") });
+        }
         if (isVip) {
-            accountLinks.push({ label: "Mis Bonos", href: safeRoute("bonos.index") });
+            accountLinks.push(
+                { label: "Mi Perfil", href: safeRoute("my-profile.index") },
+                { label: "Recargar bono", href: safeRoute("bonos.index") },
+            );
         }
     }
 
     return (
         <div className="relative z-[600] w-full bg-[#071326] text-slate-100" onMouseLeave={scheduleClose}>
             <nav aria-label="Navegacion global" className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-                <Link href={safeRoute("Pag_principal")} aria-label="Inicio" className="inline-flex shrink-0 items-center gap-2">
-                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 text-sm font-extrabold text-white">S4</span>
-                    <span className="hidden text-sm font-bold leading-tight text-white sm:inline">San Sebastian Surf School</span>
+                <Link href={safeRoute("Pag_principal")} aria-label="San Sebastián Surf School — Inicio" className="inline-flex shrink-0 items-center gap-2.5">
+                    <BrandLogo variant="whiteNav" className="h-10 w-10 sm:h-11 sm:w-11" priority />
+                    <span className="hidden text-sm font-bold leading-tight text-white lg:inline">San Sebastian Surf School</span>
                 </Link>
 
                 <ul className="hidden flex-1 items-center justify-center gap-1 lg:flex">
@@ -364,9 +403,10 @@ export default function GlobalNav() {
                                     <UserCircle className="h-6 w-6" />
                                 </button>
                                 <div
-                                    className={`absolute right-0 top-full z-[40] w-52 pt-2 transition-all ${accountOpen ? "opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}
+                                    className={`absolute right-0 top-full z-[40] w-56 pt-2 transition-all ${accountOpen ? "opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}
                                 >
                                     <div className="rounded-2xl border border-white/10 bg-[#0b1d33] p-2 shadow-xl">
+                                        <AccountMenuIdentity user={user} />
                                         {accountLinks.map((link) => (
                                             <Link
                                                 key={link.label}
@@ -474,6 +514,7 @@ export default function GlobalNav() {
                         <div className="mt-3 space-y-1">
                             {isAuth ? (
                                 <>
+                                    <AccountMenuIdentity user={user} />
                                     {accountLinks.map((link) => (
                                         <Link
                                             key={link.label}

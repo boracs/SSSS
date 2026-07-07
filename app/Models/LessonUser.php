@@ -31,6 +31,11 @@ class LessonUser extends Model
     protected $fillable = [
         'lesson_id',
         'user_id',
+        'guest_first_name',
+        'guest_last_name',
+        'guest_phone',
+        'guest_email',
+        'is_admin_guest',
         'party_size',
         'quantity',
         'age_bracket',
@@ -55,6 +60,7 @@ class LessonUser extends Model
         'expires_at' => 'datetime',
         'proof_uploaded_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'is_admin_guest' => 'boolean',
     ];
 
     public function lesson(): BelongsTo
@@ -74,7 +80,17 @@ class LessonUser extends Model
 
     public function isOwnedBy(User $user): bool
     {
-        return (int) $this->user_id === (int) $user->id;
+        return $this->user_id !== null && (int) $this->user_id === (int) $user->id;
+    }
+
+    public function displayName(): string
+    {
+        $guest = trim((string) (($this->guest_first_name ?? '').' '.($this->guest_last_name ?? '')));
+        if ($guest !== '') {
+            return $guest;
+        }
+
+        return trim((string) (($this->user?->nombre ?? '').' '.($this->user?->apellido ?? '')));
     }
 
     /**

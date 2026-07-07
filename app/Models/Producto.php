@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductTag;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,8 +20,70 @@ class Producto extends Model
         'precio',
         'unidades',
         'descuento',
+        'tags',
         'eliminado',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'tags' => 'array',
+            'eliminado' => 'boolean',
+        ];
+    }
+
+    /**
+     * @param  list<string|null>|null  $tags
+     */
+    public function syncTags(?array $tags): void
+    {
+        $this->tags = ProductTag::normalize($tags);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function normalizedTags(): array
+    {
+        return ProductTag::normalize($this->tags);
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function tagOptionsForFrontend(): array
+    {
+        return array_map(
+            static fn (string $slug) => [
+                'value' => $slug,
+                'label' => ProductTag::from($slug)->label(),
+            ],
+            $this->normalizedTags()
+        );
+    }
+
+    /**
+     * Payload mínimo para listados de tienda / home.
+     *
+     * @return array<string, mixed>
+     */
+    public function toStorePayload(?string $imagenRuta = null): array
+    {
+        return [
+            'id' => $this->id,
+            'nombre' => (string) $this->nombre,
+            'precio' => $this->precio,
+            'unidades' => (int) $this->unidades,
+            'descuento' => $this->descuento,
+            'tags' => $this->normalizedTags(),
+            'tag_labels' => ProductTag::labelsFor($this->normalizedTags()),
+            'imagen' => $imagenRuta,
+            'imagenPrincipal' => $imagenRuta,
+        ];
+    }
 
     /**
      * Relación con la tabla pedido_producto (un producto puede estar en muchos pedidos).

@@ -24,14 +24,18 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
 
         $user = Auth::user();
 
-        // 2. Verificar si el usuario tiene asignado un número de taquilla.
-        if ($user->numeroTaquilla === null) {
+        // VIP con taquilla compartida (#500, #600…): tienda con descuento sin cuota de casillero.
+        if ($user->hasSharedLocker()) {
+            return $next($request);
+        }
+
+        // 2. Verificar si el usuario tiene asignado un número de taquilla física.
+        if (! $user->hasPhysicalLocker()) {
             return redirect()->route('tienda')->with('error', 'Debes tener una taquilla asignada para acceder a esta funcionalidad.');
         }
 
         // 3. Cuota al día: obligatorio para compras; la renovación sigue accesible.
         $renewalRoutes = [
-            'taquillas.index.client',
             'taquillas.pago.client',
             'taquillas.pago.upload-proof',
             'taquillas.pago.proof',

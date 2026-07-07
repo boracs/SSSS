@@ -1,34 +1,74 @@
-import React, { useState, useEffect } from "react";
-import { Head, Link, usePage } from "@inertiajs/react";
+import React, { useMemo, useState } from "react";
+import { Head, usePage } from "@inertiajs/react";
+import { ArrowDown, ArrowUpDown } from "lucide-react";
 import Producto from "../components/Producto";
 import Layout1 from "../layouts/Layout1";
 
-const Tienda = ({ productos }) => {
-    // 💡 Paso 2: Obtener los props de la página, incluyendo 'flash'
+const SORT_OPTIONS = [
+    { value: "nombre", label: "Nombre (A–Z)" },
+    { value: "descuento_desc", label: "Mayor descuento" },
+    { value: "descuento_asc", label: "Menor descuento" },
+];
+
+const Tienda = ({ productos, productTagOptions = [] }) => {
     const { props } = usePage();
     const { flash } = props;
 
     const productosPorPagina = 18;
-    const [paginaActual, setPaginaActual] = useState(1); // 💡 Paso 3: Estado local para el mensaje de notificación (Toast)
+    const [paginaActual, setPaginaActual] = useState(1);
+    const [tagActivo, setTagActivo] = useState("all");
+    const [orden, setOrden] = useState("nombre");
 
     const [mensajeToast, setMensajeToast] = useState("");
-    const [tipoToast, setTipoToast] = useState(""); // 'success' o 'error' // --- Lógica de ordenación y paginación ---
+    const [tipoToast, setTipoToast] = useState("");
 
-    const productosOrdenados = [...productos].sort((a, b) => {
-        const nameA = a.nombre.toLowerCase();
-        const nameB = b.nombre.toLowerCase();
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return a.id - b.id; // Orden secundario por id
-    });
+    React.useEffect(() => {
+        if (flash && flash.success) {
+            setMensajeToast(flash.success);
+            setTipoToast("success");
+            setTimeout(() => setMensajeToast(""), 4000);
+        }
+        if (flash && flash.error) {
+            setMensajeToast(flash.error);
+            setTipoToast("error");
+            setTimeout(() => setMensajeToast(""), 4000);
+        }
+    }, [flash]);
+
+    const productosFiltrados = useMemo(() => {
+        const base = [...productos].filter((producto) => {
+            if (tagActivo === "all") return true;
+            return (producto.tags || []).includes(tagActivo);
+        });
+
+        return base.sort((a, b) => {
+            if (orden === "descuento_desc" || orden === "descuento_asc") {
+                const descA = Number(a.descuento || 0);
+                const descB = Number(b.descuento || 0);
+                if (descA !== descB) {
+                    return orden === "descuento_desc" ? descB - descA : descA - descB;
+                }
+            }
+
+            const nameA = a.nombre.toLowerCase();
+            const nameB = b.nombre.toLowerCase();
+            if (nameA < nameB) return -1;
+            if (nameA > nameB) return 1;
+            return a.id - b.id;
+        });
+    }, [productos, tagActivo, orden]);
 
     const obtenerProductosDePagina = () => {
         const inicio = (paginaActual - 1) * productosPorPagina;
         const fin = inicio + productosPorPagina;
-        return productosOrdenados.slice(inicio, fin);
+        return productosFiltrados.slice(inicio, fin);
     };
 
-    const totalPaginas = Math.ceil(productos.length / productosPorPagina);
+    const totalPaginas = Math.max(1, Math.ceil(productosFiltrados.length / productosPorPagina));
+
+    React.useEffect(() => {
+        setPaginaActual(1);
+    }, [tagActivo, orden]);
 
     const irAAnterior = () => {
         if (paginaActual > 1) setPaginaActual(paginaActual - 1);
@@ -36,21 +76,7 @@ const Tienda = ({ productos }) => {
 
     const irASiguiente = () => {
         if (paginaActual < totalPaginas) setPaginaActual(paginaActual + 1);
-    }; // 💡 Paso 4: EFECTO para manejar mensajes flash de Laravel
-
-    useEffect(() => {
-        // Muestra el mensaje de éxito
-        if (flash && flash.success) {
-            setMensajeToast(flash.success);
-            setTipoToast("success");
-            setTimeout(() => setMensajeToast(""), 4000);
-        } // Muestra el mensaje de error (por si el servidor devuelve un error)
-        if (flash && flash.error) {
-            setMensajeToast(flash.error);
-            setTipoToast("error");
-            setTimeout(() => setMensajeToast(""), 4000);
-        }
-    }, [flash]); // Determinar las clases de Toast (igual que en Carrito)
+    };
 
     const toastClasses =
         tipoToast === "success"
@@ -61,24 +87,83 @@ const Tienda = ({ productos }) => {
     return (
         <Layout1>
             <Head title="Tienda oficial S4" />
-            {/* 💡 Paso 5: Toast unificado para éxito o error */}{" "}
             {mensajeToast && (
                 <div
                     className={`fixed top-5 right-5 px-4 py-3 rounded-lg shadow-lg animate-fade-in-down ${toastClasses} z-50`}
                 >
-                    {" "}
                     <strong className="font-semibold">{toastIcon}</strong>
-                    <div className="text-sm">{mensajeToast}</div>{" "}
+                    <div className="text-sm">{mensajeToast}</div>
                 </div>
-            )}{" "}
-            <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-                <div className="mb-5 flex items-end justify-between gap-3">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-slate-100 sm:text-3xl">Tienda oficial S4</h2>
-                    <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                        {productos.length} productos
-                    </p>
+            )}
+            <div className="mx-auto w-full max-w-[96rem] px-2 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
+                    <h2 className="text-xl font-extrabold tracking-tight text-slate-100 sm:text-2xl lg:text-3xl">
+                        Tienda oficial S4
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <label className="flex items-center gap-1.5 text-slate-400">
+                            <span className="sr-only">Ordenar productos</span>
+                            {orden.startsWith("descuento") ? (
+                                <ArrowDown className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden />
+                            ) : (
+                                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            )}
+                            <select
+                                value={orden}
+                                onChange={(e) => setOrden(e.target.value)}
+                                aria-label="Ordenar productos"
+                                className="rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40 sm:text-xs"
+                            >
+                                {SORT_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 sm:text-xs">
+                            {productosFiltrados.length} productos
+                        </p>
+                    </div>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+
+                {productTagOptions.length > 0 ? (
+                    <div
+                        className="mb-4 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-5 sm:flex-wrap sm:overflow-visible"
+                        role="group"
+                        aria-label="Filtrar por categoría"
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setTagActivo("all")}
+                            aria-pressed={tagActivo === "all"}
+                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition sm:text-xs ${
+                                tagActivo === "all"
+                                    ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+                                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                            }`}
+                        >
+                            Todos
+                        </button>
+                        {productTagOptions.map((option) => (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => setTagActivo(option.value)}
+                                aria-pressed={tagActivo === option.value}
+                                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition sm:text-xs ${
+                                    tagActivo === option.value
+                                        ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+                                        : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                                }`}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                    </div>
+                ) : null}
+
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(6.75rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] md:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(11.5rem,1fr))] lg:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] 2xl:grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))]">
                     {obtenerProductosDePagina().map((producto) => (
                         <Producto
                             key={producto.id}
@@ -91,6 +176,13 @@ const Tienda = ({ productos }) => {
                         />
                     ))}
                 </div>
+
+                {productosFiltrados.length === 0 ? (
+                    <p className="mt-8 text-center text-sm text-slate-400">
+                        No hay productos en esta categoría.
+                    </p>
+                ) : null}
+
                 <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
                     <button
                         onClick={irAAnterior}
@@ -101,7 +193,7 @@ const Tienda = ({ productos }) => {
                     </button>
                     <span className="text-sm text-slate-300">
                         Página <span className="font-bold text-slate-100">{paginaActual}</span> de{" "}
-                        <span className="font-bold text-slate-100">{Math.max(1, totalPaginas)}</span>
+                        <span className="font-bold text-slate-100">{totalPaginas}</span>
                     </span>
                     <button
                         onClick={irASiguiente}

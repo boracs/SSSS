@@ -52,13 +52,31 @@ class HandleInertiaRequests extends Middleware
                         'role' => $request->user()->role ?? 'user',
                         'is_vip' => (bool) ($request->user()->is_vip ?? false),
                         'numeroTaquilla' => $request->user()->numeroTaquilla,
-                        'has_active_locker' => (bool) $request->user()->hasActiveLocker(),
-                        'has_locker' => (bool) $request->user()->hasActiveLocker(),
+                        'has_physical_locker' => $request->user()->hasPhysicalLocker(),
+                        'has_virtual_locker' => $request->user()->hasSharedLocker(),
+                        'has_active_locker' => $request->user()->hasPhysicalLocker(),
+                        'has_locker' => $request->user()->hasPhysicalLocker(),
+                        'has_store_discount_access' => $request->user()->canAccessStoreWithMemberDiscount(),
                     ]
                     : null,
             ],
 
             'academyClassReservationDepositEur' => (float) config('services.academy.class_reservation_deposit_eur', 30),
+
+            'sponsors' => collect(config('services.sponsors', []))
+                ->map(function (array $sponsor, string $id) {
+                    return [
+                        'id' => $id,
+                        'name' => $sponsor['name'] ?? $id,
+                        'url' => $sponsor['url'] ?? null,
+                        'tagline' => $sponsor['tagline'] ?? null,
+                        'logo' => $id,
+                        'active' => filter_var($sponsor['active'] ?? true, FILTER_VALIDATE_BOOLEAN),
+                    ];
+                })
+                ->values()
+                ->filter(fn (array $sponsor) => $sponsor['active'])
+                ->all(),
 
             /** Texto genérico del WhatsApp de la escuela (plantillas, enlaces, etc.). */
             'academyWhatsappDisplay' => AcademyContact::whatsappDisplay(),

@@ -3,6 +3,8 @@ import Layout1 from "../layouts/Layout1";
 import "../../css/pagina_principal.css";
 import Contenedor_productos from "../layouts/Contenedor_productos";
 import { Head, Link } from "@inertiajs/react";
+import BrandLogo from "../components/BrandLogo";
+import SponsorsStrip from "../components/SponsorsStrip";
 import Por_que_escogernos_motivo from "../components/Por_que_escogernos_motivo";
 import {
     ShieldCheck,
@@ -39,13 +41,14 @@ const motivos = [
 ];
 
 const seccionesRapidas = [
-    { label: "Sobre nosotros", href: "/nosotros", icon: MapPin },
-    { label: "Clases de surf", href: "/servicios/surf", icon: Waves },
-    { label: "Surftrips", href: "/servicios/surf-trips", icon: Compass },
-    { label: "Surfskate", href: "/servicios/surf-skate", icon: Sparkles },
-    { label: "Tienda S4", href: "/tienda", icon: Star },
-    { label: "Taquillas", href: "/taquilla/planes", icon: ShieldCheck },
-    { label: "Fotografía", href: "/servicios/fotografia", icon: Camera },
+    { label: "Sobre nosotros", href: route("nosotros"), icon: MapPin },
+    { label: "Clases de surf", href: route("servicios.surf"), icon: Waves },
+    { label: "Surftrips", href: route("servicios.surfTrips"), icon: Compass },
+    { label: "Surfskate", href: route("servicios.surfSkate"), icon: Sparkles },
+    { label: "Tienda S4", href: route("tienda"), icon: Star },
+    { label: "Taquillas", href: route("taquillas.planes"), icon: ShieldCheck },
+    { label: "Webcam", href: route("servicios.webcams"), icon: Camera },
+    { label: "Fotografía", href: route("servicios.fotografia"), icon: Camera },
 ];
 
 const testimonios = [
@@ -77,6 +80,10 @@ const Pag_principal = ({ productos = [] }) => (
                 name="description"
                 content="Domina el Cantábrico con San Sebastian Surf School (S4). Clases de surf, club de socios e instalaciones premium en Zurriola, Donostia."
             />
+            <meta property="og:title" content="San Sebastián Surf School · S4" />
+            <meta property="og:description" content="Escuela de surf premium en Zurriola, Donostia." />
+            <meta property="og:image" content="/img/brand/og-share.jpg" />
+            <meta property="og:type" content="website" />
         </Head>
 
         <div className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
@@ -94,12 +101,7 @@ const Pag_principal = ({ productos = [] }) => (
                 >
                     <div className="grid lg:grid-cols-2">
                         <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
-                            <p className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#0f5f74]">
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0f5f74] text-[10px] font-black text-white">
-                                    S4
-                                </span>
-                                Escuela oficial · Zurriola
-                            </p>
+                            <BrandLogo variant="navyHero" className="h-24 w-24 sm:h-28 sm:w-28" priority />
 
                             <h1
                                 id="hero-heading"
@@ -167,12 +169,7 @@ const Pag_principal = ({ productos = [] }) => (
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-[#0f5f74]/80 via-[#0f5f74]/20 to-transparent lg:bg-gradient-to-r lg:from-white/20 lg:via-transparent lg:to-transparent" />
                             <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white sm:bottom-6 sm:left-6 sm:right-6">
-                                <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-200">
-                                        Spot local
-                                    </p>
-                                    <p className="text-sm font-semibold">Zurriola · Donostia</p>
-                                </div>
+                                <BrandLogo variant="whiteMark" className="h-16 w-16 drop-shadow-lg sm:h-20 sm:w-20" decorative />
                                 <div className="rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-right backdrop-blur-sm">
                                     <p className="text-[10px] uppercase tracking-wide text-cyan-200">Cantábrico</p>
                                     <p className="text-xs font-semibold">Seguridad & técnica</p>
@@ -367,6 +364,13 @@ const Pag_principal = ({ productos = [] }) => (
                                 </figcaption>
                             </figure>
                         ))}
+                    </div>
+                </section>
+
+                {/* ── Patrocinadores ── */}
+                <section className="mt-16 sm:mt-20">
+                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:p-8">
+                        <SponsorsStrip variant="light" logoVariant="navyMark" />
                     </div>
                 </section>
 

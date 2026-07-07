@@ -26,14 +26,21 @@ class BonoController extends Controller
     public function index()
     {
         $user = auth()->user();
-        if (! $user || ! (bool) ($user->is_vip ?? false)) {
-            abort(403, 'Acceso restringido a usuarios VIP.');
+        if (! $user) {
+            return redirect()->route('login');
         }
 
-        $packs = PackBono::query()
-            ->where('activo', true)
-            ->orderBy('precio')
-            ->get();
+        if (! (bool) ($user->is_vip ?? false)) {
+            $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+
+            return Inertia::render('Client/Bonos/VipRequired', [
+                'packs' => $this->activePacks(),
+                'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+                'contactUrl' => route('contacto'),
+            ]);
+        }
+
+        $packs = $this->activePacks();
 
         $userBonos = UserBono::query()
             ->with('pack:id,nombre,num_clases,precio')
@@ -81,11 +88,9 @@ class BonoController extends Controller
                     ->all();
             }
 
-            $consumptionHistory = collect($consumptionsByBonoId)
-                ->flatten(1)
-                ->sortByDesc(fn (array $r) => strtotime((string) ($r['date'] ?? '')))
-                ->values()
-                ->take(50);
+            $consumptionHistory = $this->buildUnifiedMovementHistory($userBonos, $consumptionsByBonoId);
+        } else {
+            $consumptionHistory = $this->buildUnifiedMovementHistory($userBonos, []);
         }
 
         $myBonos = $userBonos
@@ -147,6 +152,49 @@ class BonoController extends Controller
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    private function mapPurchaseRow(UserBono $b): ?array
+    {
+        if ($b->status === UserBono::STATUS_REJECTED) {
+            return null;
+        }
+
+        $pack = $b->pack;
+        $numClases = (int) ($pack?->num_clases ?? 0);
+        $packName = trim((string) ($pack?->nombre ?? 'Bono'));
+        $isPending = $b->status === UserBono::STATUS_PENDING;
+        $date = $isPending
+            ? $b->created_at
+            : ($b->reviewed_at ?? $b->updated_at ?? $b->created_at);
+
+        $label = $isPending
+            ? "Solicitud de compra · {$packName}"
+            : ($numClases > 0
+                ? "Compra bono {$numClases} ".($numClases === 1 ? 'clase' : 'clases')
+                : "Compra · {$packName}");
+
+        return [
+            'id' => 'purchase-'.$b->id,
+            'entry_type' => $isPending ? 'purchase_pending' : 'purchase',
+            'user_bono_id' => (int) $b->id,
+            'date' => $date?->toIso8601String(),
+            'date_human' => $date?->locale('es')->translatedFormat('d/m/Y H:i'),
+            'lesson_name' => $label,
+            'credits_consumed' => 0,
+            'credits_added' => $isPending ? null : max(0, $numClases),
+            'remaining_after' => null,
+            'details' => null,
+            'purchase' => [
+                'pack_name' => $packName,
+                'num_clases' => $numClases,
+                'precio' => (float) ($pack?->precio ?? 0),
+                'status' => $b->status,
+            ],
+        ];
+    }
+
+    /**
      * @param  array<int, array{classmates: list<string>, monitor_comment: ?string, monitor_name: ?string}>  $detailsByLesson
      * @param  int|null  $running  Saldo recalculado por bono (referencia)
      * @return array<string, mixed>
@@ -173,6 +221,7 @@ class BonoController extends Controller
 
         return [
             'id' => $c->id,
+            'entry_type' => 'consumption',
             'user_bono_id' => (int) ($c->user_bono_id ?? 0),
             'date' => $c->consumed_at?->toIso8601String(),
             'date_human' => $c->consumed_at?->locale('es')->translatedFormat('d/m/Y H:i'),
@@ -334,6 +383,77 @@ class BonoController extends Controller
         }
 
         return true;
+    }
+
+    /**
+     * Timeline unificado con saldo global acumulado (suma de todos los bonos confirmados).
+     *
+     * @param  array<int, list<array<string, mixed>>>  $consumptionsByBonoId
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function buildUnifiedMovementHistory(Collection $userBonos, array $consumptionsByBonoId): Collection
+    {
+        $events = [];
+
+        foreach ($userBonos as $b) {
+            $row = $this->mapPurchaseRow($b);
+            if ($row !== null) {
+                $events[] = $row;
+            }
+        }
+
+        foreach ($consumptionsByBonoId as $rows) {
+            foreach ($rows as $row) {
+                $events[] = $row;
+            }
+        }
+
+        if ($events === []) {
+            return collect();
+        }
+
+        $sorted = collect($events)->sortBy(function (array $r): array {
+            $ts = strtotime((string) ($r['date'] ?? '')) ?: 0;
+            $priority = match ($r['entry_type'] ?? 'consumption') {
+                'purchase' => 0,
+                'purchase_pending' => 1,
+                default => 2,
+            };
+
+            return [$ts, $priority, (string) ($r['id'] ?? '')];
+        })->values();
+
+        $balance = 0;
+
+        $computed = $sorted->map(function (array $row) use (&$balance): array {
+            $type = $row['entry_type'] ?? 'consumption';
+
+            if ($type === 'purchase') {
+                $balance += max(0, (int) ($row['credits_added'] ?? 0));
+                $row['remaining_after'] = $balance;
+            } elseif ($type === 'purchase_pending') {
+                $row['remaining_after'] = $balance;
+            } else {
+                $balance = max(0, $balance - max(1, (int) ($row['credits_consumed'] ?? 1)));
+                $row['remaining_after'] = $balance;
+            }
+
+            return $row;
+        });
+
+        return $computed
+            ->sortByDesc(fn (array $r) => strtotime((string) ($r['date'] ?? '')))
+            ->values()
+            ->take(80);
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Collection<int, PackBono> */
+    private function activePacks()
+    {
+        return PackBono::query()
+            ->where('activo', true)
+            ->orderBy('precio')
+            ->get(['id', 'nombre', 'num_clases', 'precio']);
     }
 }
 

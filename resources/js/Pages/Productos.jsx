@@ -1,99 +1,138 @@
 import Layout1 from "../layouts/Layout1";
-import { Link, router } from "@inertiajs/react";
-import React, { useRef, useState, useEffect } from "react";
+import { router } from "@inertiajs/react";
+import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import ProductoGestor from "../components/ProductoGestor";
+import ProductoEditModal from "../components/ProductoEditModal";
+import ProductoCreateModal from "../components/ProductoCreateModal";
 
-export default function Productos({ productos: productosIniciales }) {
-    // Renombramos la prop 'productos' que viene del backend como 'productosIniciales' Esto evita conflictos de nombres con el estado interno que vamos a crear.
+const emptyForm = {
+    nombre: "",
+    precio: "",
+    unidades: "",
+    descuento: "",
+    imagenes: [],
+    imagenes_ids: [],
+    tags: [],
+};
+
+function snapshotForm(data) {
+    return JSON.stringify({
+        nombre: data.nombre,
+        precio: String(data.precio),
+        unidades: String(data.unidades),
+        descuento: String(data.descuento ?? ""),
+        tags: [...(data.tags || [])].sort(),
+        hasNewImages: data.imagenes?.[0] instanceof File,
+    });
+}
+
+export default function Productos({
+    productos: productosIniciales,
+    productTagOptions = [],
+    openCreateModal = false,
+}) {
     const [productos, setProductos] = useState(productosIniciales);
     const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-    const contenedorDerechoRef = useRef(null);
+    const [formData, setFormData] = useState(emptyForm);
+    const [cargandoPanel, setCargandoPanel] = useState(false);
+    const [formSnapshot, setFormSnapshot] = useState(null);
+    const [guardando, setGuardando] = useState(false);
+    const [createOpen, setCreateOpen] = useState(openCreateModal);
+    const [creando, setCreando] = useState(false);
+    const closeAfterSaveRef = useRef(false);
 
-    // ✅ Estado del formulario: 'imagenes' se usará para almacenar *URLs* (para mostrar) O *Archivos File* (para subir).
-    const [formData, setFormData] = useState({
-        nombre: "",
-        precio: "",
-        unidades: "",
-        descuento: "",
-        imagenes: [], // Contiene URLs (al cargar) o objetos File (al seleccionar nuevos archivos)
-        imagenes_ids: [],
-    });
-
-    // Carga inicial y reset de estado
     useEffect(() => {
-        if (productos.length > 0 && !productoSeleccionado) {
-            const p = productos[0];
-            // No cargamos las imágenes aquí, esperamos a handleProductoClick para cargar las URLs
-            setProductoSeleccionado(p);
-            setFormData({
-                nombre: p.nombre,
-                precio: p.precio,
-                unidades: p.unidades,
-                descuento: p.descuento,
-                imagenes: [], // Inicialmente vacío
-                imagenes_ids: [], // Inicialmente vacío
-            });
-            handleProductoClick(p); // Llama a la carga de imágenes para el primer producto
-        }
-    }, [productos, productoSeleccionado]);
+        setProductos(productosIniciales);
+    }, [productosIniciales]);
 
-    //cargo el modal de la derecha o lo acutalzioa al clicar en unn producto
-    const handleProductoClick = async (producto) => {
-        setProductoSeleccionado(producto);
+    useEffect(() => {
+        if (openCreateModal) {
+            setCreateOpen(true);
+        }
+    }, [openCreateModal]);
+
+    const productosOrdenados = useMemo(
+        () => [...productos].sort((a, b) => a.nombre.localeCompare(b.nombre)),
+        [productos]
+    );
+
+    const isDirty = formSnapshot !== null && snapshotForm(formData) !== formSnapshot;
+
+    const cargarProductoEnPanel = async (producto) => {
+        setCargandoPanel(true);
 
         try {
             const res = await fetch(`/productos/${producto.id}/imagenes`);
             const data = await res.json();
 
             const imagenPrincipal = data.imagenes[0]?.url || null;
-            const imagenesSecundarias = data.imagenes
-                .slice(1)
-                .map((i) => i.url);
+            const imagenesSecundarias = data.imagenes.slice(1).map((i) => i.url);
 
-            setFormData({
+            const nextForm = {
                 nombre: producto.nombre,
                 precio: producto.precio,
                 unidades: producto.unidades,
-                descuento: producto.descuento,
-                // **IMPORTANTE:** Aquí cargamos las URLs (cadenas de texto)
+                descuento: producto.descuento ?? "",
                 imagenes: imagenPrincipal
                     ? [imagenPrincipal, ...imagenesSecundarias]
                     : imagenesSecundarias,
-                imagenes_ids: data.imagenes.map((i) => i.id), // para el doble click
-            });
+                imagenes_ids: data.imagenes.map((i) => i.id),
+                tags: producto.tags || [],
+            };
+
+            setFormData(nextForm);
+            setFormSnapshot(snapshotForm(nextForm));
         } catch (error) {
             console.error("Error cargando imágenes:", error);
+            const fallback = {
+                nombre: producto.nombre,
+                precio: producto.precio,
+                unidades: producto.unidades,
+                descuento: producto.descuento ?? "",
+                imagenes: [],
+                imagenes_ids: [],
+                tags: producto.tags || [],
+            };
+            setFormData(fallback);
+            setFormSnapshot(snapshotForm(fallback));
+        } finally {
+            setCargandoPanel(false);
         }
     };
 
-    const handleDoubleClick = async (img, idx) => {
-        if (!productoSeleccionado) return;
+    const handleClosePanel = useCallback(() => {
+        setProductoSeleccionado(null);
+        setFormData(emptyForm);
+        setFormSnapshot(null);
+        closeAfterSaveRef.current = false;
+    }, []);
+
+    const handleRequestClose = useCallback(() => {
+        if (isDirty && !window.confirm("¿Cerrar sin guardar los cambios?")) {
+            return;
+        }
+        handleClosePanel();
+    }, [isDirty, handleClosePanel]);
+
+    const handleProductoOpen = async (producto) => {
+        setProductoSeleccionado(producto);
+        await cargarProductoEnPanel(producto);
+    };
+
+    const handleSetMainImage = async (img, idx) => {
+        if (!productoSeleccionado || idx === 0) return;
 
         try {
-            // ... (Tu lógica para enviar la petición POST a la base de datos)
-            await fetch(
-                `/productos/${productoSeleccionado.id}/imagen-principal`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-CSRF-TOKEN": document.querySelector(
-                            'meta[name="csrf-token"]'
-                        ).content,
-                    },
-                    body: JSON.stringify({
-                        imagen_id: formData.imagenes_ids[idx],
-                    }),
-                }
-            );
+            await fetch(`/productos/${productoSeleccionado.id}/imagen-principal`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector('meta[name="csrf-token"]').content,
+                },
+                body: JSON.stringify({ imagen_id: formData.imagenes_ids[idx] }),
+            });
 
-            // 1. Actualizamos el modal (reordenamos el array de URLs/Files)
-            const nuevasImagenes = [
-                img,
-                ...formData.imagenes.filter((_, iIdx) => iIdx !== idx),
-            ];
-
-            // Reordenamos también los IDs
+            const nuevasImagenes = [img, ...formData.imagenes.filter((_, iIdx) => iIdx !== idx)];
             const nuevosIds = [
                 formData.imagenes_ids[idx],
                 ...formData.imagenes_ids.filter((_, iIdx) => iIdx !== idx),
@@ -102,18 +141,15 @@ export default function Productos({ productos: productosIniciales }) {
             setFormData((prev) => ({
                 ...prev,
                 imagenes: nuevasImagenes,
-                imagenes_ids: nuevosIds, // Actualizamos los IDs
+                imagenes_ids: nuevosIds,
             }));
 
-            // 2. Actualizamos el listado de productos (la izquierda)
             setProductos((prev) =>
                 prev.map((p) =>
                     p.id === productoSeleccionado.id
                         ? {
                               ...p,
                               imagen_principal:
-                                  // Si 'img' es un File, usamos la URL anterior (ya que no cambia en la DB, solo en la lista).
-                                  // Si es URL (cadena), la usamos.
                                   img instanceof File
                                       ? productoSeleccionado.imagen_principal
                                       : img,
@@ -126,388 +162,221 @@ export default function Productos({ productos: productosIniciales }) {
         }
     };
 
-    // Maneja el cambio en los campos del formulario
     const handleChange = (e) => {
         const { name, value } = e.target;
-        setFormData({
-            ...formData,
-            [name]: value,
-        });
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // 🚩 FUNCIÓN MODIFICADA: Ahora reemplaza las URLs por los objetos File
+    const handleTagsChange = (tags) => {
+        setFormData((prev) => ({ ...prev, tags }));
+    };
+
     const handleFileChange = (e) => {
-        const files = Array.from(e.target.files);
-        // Al seleccionar archivos, sobrescribimos 'imagenes' con los objetos File.
-        // Esto garantiza que solo se enviarán archivos nuevos al backend.
-        setFormData((prev) => ({
-            ...prev,
-            imagenes: files,
-        }));
+        const files = Array.from(e.target.files || []);
+        setFormData((prev) => ({ ...prev, imagenes: files, imagenes_ids: [] }));
     };
 
     const handleEliminar = () => {
         if (!productoSeleccionado) return;
 
-        router.put(
-            route("producto.eliminar", { id: productoSeleccionado.id }),
-            {},
-            {
-                onSuccess: () => {
-                    // Actualizamos el estado local de 'productoSeleccionado' y 'productos'
-                    const nuevoEstado = productoSeleccionado.eliminado ? 0 : 1;
+        router.put(route("producto.eliminar", { id: productoSeleccionado.id }), {}, {
+            onSuccess: () => {
+                const nuevoEstado = productoSeleccionado.eliminado ? 0 : 1;
 
-                    setProductoSeleccionado((prev) => ({
-                        ...prev,
-                        eliminado: nuevoEstado,
-                    }));
-
-                    setProductos((prev) =>
-                        prev.map((p) =>
-                            p.id === productoSeleccionado.id
-                                ? { ...p, eliminado: nuevoEstado }
-                                : p
-                        )
-                    );
-                },
-                onError: (errors) => {
-                    console.error(
-                        "Error al cambiar el estado del producto:",
-                        errors
-                    );
-                },
-            }
-        );
+                setProductoSeleccionado((prev) => (prev ? { ...prev, eliminado: nuevoEstado } : prev));
+                setProductos((prev) =>
+                    prev.map((p) =>
+                        p.id === productoSeleccionado.id ? { ...p, eliminado: nuevoEstado } : p
+                    )
+                );
+            },
+            onError: (errors) => console.error("Error al cambiar el estado del producto:", errors),
+        });
     };
 
-    // 🚀 FUNCIÓN MODIFICADA: Lógica para enviar solo los archivos si existen y son objetos File
-    const handleModificar = async (event) => {
-        event.preventDefault();
+    const persistProducto = () => {
+        if (!productoSeleccionado) return;
 
-        if (!productoSeleccionado) {
-            alert("Selecciona un producto para modificar.");
-            return;
-        }
-
-        if (!formData.nombre || !formData.precio || !formData.unidades) {
+        if (!formData.nombre || formData.precio === "" || formData.unidades === "") {
             alert("Por favor, rellena todos los campos requeridos.");
             return;
         }
 
         const formDataToSend = new FormData();
-
         formDataToSend.append("nombre", formData.nombre);
         formDataToSend.append("precio", formData.precio);
         formDataToSend.append("unidades", formData.unidades);
         formDataToSend.append("descuento", formData.descuento || 0);
 
-        // 🎯 LÓGICA CLAVE: Solo enviamos 'imagenes[]' si contienen objetos File.
-        // Si no hay imágenes seleccionadas, 'formData.imagenes' contendrá URLs (cadenas),
-        // por lo que no entrará en el 'if' y el campo no se enviará.
-        if (formData.imagenes && formData.imagenes.length > 0) {
-            // Comprobamos si el primer elemento es un objeto File (nuevo archivo subido).
-            if (formData.imagenes[0] instanceof File) {
-                console.log("Se enviarán nuevas imágenes (objetos File).");
-                formData.imagenes.forEach((file) => {
-                    formDataToSend.append("imagenes[]", file);
-                });
-            } else {
-                // Si no es un File, asumimos que son URLs de las imágenes existentes.
-                // En este caso, NO añadimos el campo 'imagenes[]' al FormData,
-                // y el backend entenderá que debe mantener las imágenes existentes.
-                console.log(
-                    "No se seleccionaron archivos nuevos (solo URLs). Se mantendrán las imágenes existentes."
-                );
-            }
-        } else {
-            // Si el array está vacío, tampoco se envía nada.
-            console.log(
-                "No hay imágenes seleccionadas. Se mantendrán las existentes."
-            );
-        }
+        (formData.tags || []).forEach((tag) => {
+            formDataToSend.append("tags[]", tag);
+        });
 
-        // Depuración (opcional)
-        for (let [key, value] of formDataToSend.entries()) {
-            console.log(key, value);
-        }
-
-        // 6️⃣ Enviar los datos al backend usando Inertia
-        router.post(
-            route("producto.edit", { id: productoSeleccionado.id }),
-            formDataToSend,
-            {
-                // Necesario para que Inertia envíe los archivos
-                forceFormData: true,
-
-                // 🔑 OPCIÓN CLAVE 1: Recarga Parcial (Partial Reload)
-                // Especifica el/los props que deben recargarse desde el backend.
-                // ASUME que el prop que alimenta la lista izquierda se llama 'productos_list'
-                only: ["productos_list"], // <-- AÑADE ESTA LÍNEA
-
-                // Opcional: mantiene el estado del formulario después de la recarga
-                preserveState: true,
-
-                onSuccess: () => {
-                    console.log(
-                        "Producto actualizado y lista recargada correctamente"
-                    );
-
-                    // Si el prop del producto actualizado también está en la lista de 'only' (productos_list),
-                    // la lista de la izquierda se actualizará automáticamente.
-
-                    // 🎯 Opcional: Si quieres deseleccionar el producto o resetear el formulario
-                    // resetForm();
-
-                    // 7️⃣ Scroll al contenedor derecho (mantienes tu lógica)
-                    if (contenedorDerechoRef.current) {
-                        contenedorDerechoRef.current.scrollIntoView({
-                            behavior: "smooth",
-                            block: "start",
-                            inline: "nearest",
-                        });
-                    }
-                },
-                onError: (errors) => {
-                    console.error("Error actualizando producto:", errors);
-                },
-            }
-        );
-
-        // 7️⃣ Scroll al contenedor derecho
-        if (contenedorDerechoRef.current) {
-            contenedorDerechoRef.current.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-                inline: "nearest",
+        if (formData.imagenes?.length > 0 && formData.imagenes[0] instanceof File) {
+            formData.imagenes.forEach((file) => {
+                formDataToSend.append("imagenes[]", file);
             });
         }
+
+        setGuardando(true);
+
+        router.post(route("producto.edit", { id: productoSeleccionado.id }), formDataToSend, {
+            forceFormData: true,
+            preserveState: true,
+            onSuccess: () => {
+                const tagLabels = (formData.tags || [])
+                    .map((slug) => productTagOptions.find((o) => o.value === slug)?.label)
+                    .filter(Boolean);
+
+                setProductos((prev) =>
+                    prev.map((p) =>
+                        p.id === productoSeleccionado.id
+                            ? {
+                                  ...p,
+                                  nombre: formData.nombre,
+                                  precio: formData.precio,
+                                  unidades: formData.unidades,
+                                  descuento: formData.descuento,
+                                  tags: formData.tags || [],
+                                  tag_labels: tagLabels,
+                              }
+                            : p
+                    )
+                );
+
+                if (closeAfterSaveRef.current) {
+                    handleClosePanel();
+                } else {
+                    setProductoSeleccionado((prev) =>
+                        prev
+                            ? {
+                                  ...prev,
+                                  nombre: formData.nombre,
+                                  tags: formData.tags || [],
+                                  tag_labels: tagLabels,
+                              }
+                            : prev
+                    );
+                    setFormSnapshot(snapshotForm(formData));
+                }
+            },
+            onError: (errors) => console.error("Error actualizando producto:", errors),
+            onFinish: () => {
+                setGuardando(false);
+                closeAfterSaveRef.current = false;
+            },
+        });
     };
 
-    // 🖼️ Helper para obtener la URL de la imagen
-    const getImageUrl = (img) => {
-        return img instanceof File ? URL.createObjectURL(img) : img;
+    const handleModificar = (event) => {
+        event.preventDefault();
+        persistProducto();
     };
+
+    const handleSaveAndClose = (event) => {
+        event.preventDefault();
+        closeAfterSaveRef.current = true;
+        persistProducto();
+    };
+
+    const handleCloseCreate = useCallback(() => {
+        setCreateOpen(false);
+
+        if (window.location.search.includes("create")) {
+            router.get(route("mostrar.productos"), {}, { preserveState: true, preserveScroll: true, replace: true });
+        }
+    }, []);
+
+    const handleCreateSubmit = (data) => {
+        const formDataToSend = new FormData();
+        formDataToSend.append("nombre", data.nombre);
+        formDataToSend.append("precio", data.precio);
+        formDataToSend.append("unidades", data.unidades);
+        formDataToSend.append("descuento", data.descuento || 0);
+        formDataToSend.append("eliminado", data.eliminado ? "1" : "0");
+
+        (data.tags || []).forEach((tag) => {
+            formDataToSend.append("tags[]", tag);
+        });
+
+        data.imagenes.forEach((file) => {
+            formDataToSend.append("imagenes[]", file);
+        });
+
+        setCreando(true);
+
+        router.post(route("producto.create"), formDataToSend, {
+            forceFormData: true,
+            onSuccess: () => setCreateOpen(false),
+            onError: (errors) => console.error("Error creando producto:", errors),
+            onFinish: () => setCreando(false),
+        });
+    };
+
+    const getImageUrl = (img) => (img instanceof File ? URL.createObjectURL(img) : img);
+
+    const editorProps = productoSeleccionado
+        ? {
+              producto: productoSeleccionado,
+              formData,
+              productTagOptions,
+              onChange: handleChange,
+              onTagsChange: handleTagsChange,
+              onFileChange: handleFileChange,
+              onSubmit: handleModificar,
+              onToggleActive: handleEliminar,
+              onSetMainImage: handleSetMainImage,
+              getImageUrl,
+          }
+        : null;
 
     return (
         <Layout1>
-            <div className="bg-[#111826] flex flex-col lg:flex-row p-3 sm:p-4 space-y-3 lg:space-y-0 lg:space-x-4">
-                <div className="bg-[#111826] flex-1 lg:w-full overflow-auto p-2 sm:p-3 lg:p-4">
-                    <h2 className="text-lg sm:text-xl font-semibold mb-2 text-gray-100">Productos</h2>
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(138px,1fr))] lg:grid-cols-[repeat(auto-fill,minmax(146px,1fr))] 2xl:grid-cols-[repeat(auto-fill,minmax(154px,1fr))] min-[2100px]:grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3 sm:gap-4">
-                        {productos
-                            .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                            .map((producto) => (
-                                <ProductoGestor
-                                    key={producto.id}
-                                    producto={producto}
-                                    // Pasamos el ID del seleccionado para que el hijo sepa si debe mostrar el overlay oscuro
-                                    productoSeleccionadoId={
-                                        productoSeleccionado?.id
-                                    }
-                                    // Pasamos el handler para que el hijo pueda notificar el clic
-                                    onClick={handleProductoClick}
-                                />
-                            ))}
-                    </div>
-
-                    <div className="flex justify-center mt-8 bg-black/10 items-center py-4">
-                        <button
-                            type="button"
-                            className="py-2 px-8 sm:px-12 bg-green-600 text-white font-semibold rounded-lg shadow-sm hover:bg-green-700"
-                            onClick={() =>
-                                router.visit(route("producto.crear"))
-                            }
-                        >
-                            Crear Producto
-                        </button>
-                    </div>
+            <div className="bg-[#111826] p-2 sm:p-4">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-1.5 lg:mb-3">
+                    <h2 className="text-base font-semibold text-gray-100 sm:text-xl">Productos</h2>
+                    <p className="text-[9px] text-slate-400 sm:text-xs">Toca para editar</p>
                 </div>
 
-                {productoSeleccionado && (
-                    <div
-                        className="sticky top-4 lg:w-[250px] max-h-[80vh] overflow-y-auto p-4 border rounded-lg shadow-sm bg-white"
-                        ref={contenedorDerechoRef}
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2 md:grid-cols-4 lg:grid-cols-[repeat(auto-fill,minmax(132px,1fr))] lg:gap-3 xl:grid-cols-[repeat(auto-fill,minmax(148px,1fr))]">
+                    {productosOrdenados.map((producto) => (
+                        <ProductoGestor
+                            key={producto.id}
+                            producto={producto}
+                            productoSeleccionadoId={productoSeleccionado?.id}
+                            onClick={handleProductoOpen}
+                        />
+                    ))}
+                </div>
+
+                <div className="mt-5 flex justify-center py-3 lg:mt-8 lg:py-4">
+                    <button
+                        type="button"
+                        className="rounded-lg bg-emerald-600 px-6 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 sm:px-12 sm:py-2.5 sm:text-sm"
+                        onClick={() => setCreateOpen(true)}
                     >
-                        <h3 className="text-xl font-semibold mb-3">
-                            Opciones para: {productoSeleccionado.nombre}
-                        </h3>
-                        <div className="mb-4">
-                            {/* Imagen principal + miniaturas con scroll (usa formData.imagenes) */}
-                            {Array.isArray(formData.imagenes) &&
-                                formData.imagenes.length > 0 && (
-                                    <div className="mb-4">
-                                        {/* Imagen principal */}
-                                        <div className="flex justify-center mb-2">
-                                            <img
-                                                // ✅ Usamos la función auxiliar para URLs de objetos File o cadenas
-                                                src={getImageUrl(
-                                                    formData.imagenes[0]
-                                                )}
-                                                alt={
-                                                    productoSeleccionado.nombre
-                                                }
-                                                className="w-48 h-48 object-cover rounded-lg shadow-sm"
-                                            />
-                                        </div>
-
-                                        {/* Miniaturas con scroll horizontal */}
-                                        {formData.imagenes.length > 1 && (
-                                            <div className="flex overflow-x-auto space-x-2 max-w-full p-1 rounded-lg scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-                                                {formData.imagenes
-                                                    .slice(1)
-                                                    .map((img, index) => (
-                                                        <img
-                                                            key={index}
-                                                            // ✅ Usamos la función auxiliar para URLs de objetos File o cadenas
-                                                            src={getImageUrl(
-                                                                img
-                                                            )}
-                                                            alt={`${
-                                                                productoSeleccionado.nombre
-                                                            } ${index + 2}`}
-                                                            className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 flex-shrink-0"
-                                                            // Doble click: cambiar la imagen principal en la DB
-                                                            onDoubleClick={() =>
-                                                                handleDoubleClick(
-                                                                    img,
-                                                                    index + 1
-                                                                )
-                                                            }
-                                                        />
-                                                    ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                        </div>
-
-                        <div className="space-y-4">
-                            <button
-                                className={`w-full py-2 px-4 ${
-                                    productoSeleccionado.eliminado
-                                        ? "bg-green-600"
-                                        : "bg-red-600"
-                                } text-white font-semibold rounded-lg shadow-sm hover:${
-                                    productoSeleccionado.eliminado
-                                        ? "bg-green-700"
-                                        : "bg-red-700"
-                                } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                    productoSeleccionado.eliminado
-                                        ? "focus:ring-green-500"
-                                        : "focus:ring-red-500"
-                                }`}
-                                onClick={handleEliminar}
-                            >
-                                {productoSeleccionado.eliminado
-                                    ? "Activar Producto"
-                                    : "Desactivar Producto"}
-                            </button>
-
-                            <div className="mt-4">
-                                <h4 className="text-lg font-semibold mb-3">
-                                    Modificar Producto
-                                </h4>
-                                <form
-                                    className="space-y-3"
-                                    method="POST"
-                                    encType="multipart/form-data"
-                                    onSubmit={handleModificar}
-                                >
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700">
-                                            Imagen
-                                        </label>
-                                        <div
-                                            className="mt-2 px-4 py-6 border-2 border-dashed border-gray-300 rounded-lg text-center cursor-pointer hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            onClick={() =>
-                                                document
-                                                    .getElementById(
-                                                        "image-input"
-                                                    )
-                                                    .click()
-                                            }
-                                        >
-                                            <span className="text-sm text-gray-600">
-                                                Haz clic para seleccionar
-                                                imágenes
-                                            </span>
-                                            <input
-                                                type="file"
-                                                name="imagenes"
-                                                onChange={handleFileChange}
-                                                accept="image/*"
-                                                multiple
-                                                className="hidden"
-                                                id="image-input"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700">
-                                            Nombre
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="nombre"
-                                            value={formData.nombre}
-                                            onChange={handleChange}
-                                            className="mt-1 block w-full px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700">
-                                            Precio
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="precio"
-                                            value={formData.precio}
-                                            onChange={handleChange}
-                                            className="mt-1 block w-full px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700">
-                                            Unidades
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="unidades"
-                                            value={formData.unidades}
-                                            onChange={handleChange}
-                                            className="mt-1 block w-full px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700">
-                                            Descuento (%)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="descuento"
-                                            value={formData.descuento}
-                                            onChange={handleChange}
-                                            className="mt-1 block w-full px-3 py-1.5 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <button
-                                            type="submit"
-                                            className="w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        >
-                                            Guardar Cambios
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                        Crear producto
+                    </button>
+                </div>
             </div>
+
+            <ProductoCreateModal
+                open={createOpen}
+                productTagOptions={productTagOptions}
+                onClose={handleCloseCreate}
+                onSubmit={handleCreateSubmit}
+                submitting={creando}
+            />
+
+            <ProductoEditModal
+                open={Boolean(productoSeleccionado)}
+                producto={productoSeleccionado}
+                formData={formData}
+                cargando={cargandoPanel || guardando}
+                editorProps={editorProps}
+                onCloseWithoutSave={handleRequestClose}
+                onSaveAndClose={handleSaveAndClose}
+            />
         </Layout1>
     );
 }

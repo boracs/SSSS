@@ -8,12 +8,14 @@ test('registration screen can be rendered', function () {
 
 test('new users can register', function () {
     $response = $this->post('/register', [
-        'name' => 'Test User',
+        'nombre' => 'Test',
+        'apellido' => 'User',
         'email' => 'test@example.com',
+        'telefono' => '600000000',
         'password' => 'password',
         'password_confirmation' => 'password',
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertRedirect(route('Pag_principal', absolute: false));
 });

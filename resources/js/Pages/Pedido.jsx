@@ -11,6 +11,8 @@ import {
     ShoppingBag,
     ReceiptText,
     ImageOff,
+    ArrowLeft,
+    LayoutDashboard,
 } from "lucide-react";
 import Layout1 from "../layouts/Layout1";
 import { formatEur } from "@/utils/money";
@@ -90,7 +92,9 @@ const ProductThumb = ({ src, alt }) => {
 };
 
 const ConfirmacionPedido = () => {
-    const { pedido } = usePage().props;
+    const { pedido, isAdminView: isAdminViewProp, auth } = usePage().props;
+    const isAdmin =
+        isAdminViewProp === true || String(auth?.user?.role) === "admin";
 
     if (!pedido) {
         return (
@@ -114,18 +118,36 @@ const ConfirmacionPedido = () => {
                     {/* Cabecera */}
                     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
                         <div className="flex flex-col items-center gap-3 border-b border-slate-100 bg-gradient-to-b from-emerald-50/80 to-white px-6 py-8 text-center">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                                <CheckCircle2 className="h-8 w-8" />
+                            <div
+                                className={`flex h-14 w-14 items-center justify-center rounded-full ${
+                                    isAdmin ? "bg-sky-100 text-sky-600" : "bg-emerald-100 text-emerald-600"
+                                }`}
+                            >
+                                {isAdmin ? (
+                                    <LayoutDashboard className="h-8 w-8" />
+                                ) : (
+                                    <CheckCircle2 className="h-8 w-8" />
+                                )}
                             </div>
                             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                                ¡Pedido confirmado!
+                                {isAdmin ? `Detalle del pedido #${pedido.id}` : "¡Pedido confirmado!"}
                             </h1>
                             <p className="max-w-md text-sm text-slate-500">
-                                Gracias por tu compra. Tu pedido{" "}
-                                <span className="font-semibold text-slate-700">
-                                    #{pedido.id}
-                                </span>{" "}
-                                ha sido registrado correctamente.
+                                {isAdmin ? (
+                                    <>
+                                        Vista de administración del pedido de{" "}
+                                        <span className="font-semibold text-slate-700">
+                                            {pedido.cliente?.nombre || "cliente"}
+                                        </span>
+                                        .
+                                    </>
+                                ) : (
+                                    <>
+                                        Gracias por tu compra. Tu pedido{" "}
+                                        <span className="font-semibold text-slate-700">#{pedido.id}</span> ha sido
+                                        registrado correctamente.
+                                    </>
+                                )}
                             </p>
                             <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
                                 <StatusPill
@@ -245,29 +267,60 @@ const ConfirmacionPedido = () => {
                     <div className="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4">
                         <ReceiptText className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
                         <p className="text-sm text-sky-900">
-                            Hemos recibido tu justificante de pago. Nuestro equipo
-                            lo verificará y actualizará el estado del pedido. Para
-                            cualquier consulta, indícanos el identificador{" "}
-                            <span className="font-semibold">#{pedido.id}</span>.
+                            {isAdmin ? (
+                                <>
+                                    Revisa el justificante y actualiza el estado de pago o entrega desde el{" "}
+                                    <span className="font-semibold">gestor de pedidos</span>. Referencia:{" "}
+                                    <span className="font-semibold">#{pedido.id}</span>.
+                                </>
+                            ) : (
+                                <>
+                                    Hemos recibido tu justificante de pago. Nuestro equipo lo verificará y
+                                    actualizará el estado del pedido. Para cualquier consulta, indícanos el
+                                    identificador <span className="font-semibold">#{pedido.id}</span>.
+                                </>
+                            )}
                         </p>
                     </div>
 
                     {/* Acciones */}
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                        <Link
-                            href={route("tienda")}
-                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                        >
-                            <ShoppingBag className="h-4 w-4" />
-                            Seguir comprando
-                        </Link>
-                        <Link
-                            href={route("pedidos")}
-                            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-                        >
-                            <Package className="h-4 w-4" />
-                            Ver mis pedidos
-                        </Link>
+                        {isAdmin ? (
+                            <>
+                                <Link
+                                    href={route("gestor.pedidos")}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                >
+                                    <LayoutDashboard className="h-4 w-4" />
+                                    Volver al gestor de pedidos
+                                </Link>
+                                <button
+                                    type="button"
+                                    onClick={() => window.history.back()}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                                >
+                                    <ArrowLeft className="h-4 w-4" />
+                                    Volver atrás
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                <Link
+                                    href={route("tienda")}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                >
+                                    <ShoppingBag className="h-4 w-4" />
+                                    Seguir comprando
+                                </Link>
+                                <Link
+                                    href={route("pedidos")}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                                >
+                                    <Package className="h-4 w-4" />
+                                    Ver mis pedidos
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

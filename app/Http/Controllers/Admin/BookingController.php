@@ -8,13 +8,13 @@ use App\Models\Booking;
 use App\Models\Surfboard;
 use App\Services\BookingService;
 use App\Support\BusinessDateTime;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 
 class BookingController extends Controller
 {
@@ -71,39 +71,35 @@ class BookingController extends Controller
         $start = BusinessDateTime::parseRentalHandoffDate((string) $data['start_date']);
         $end = BusinessDateTime::parseRentalHandoffDate((string) $data['end_date']);
 
-        if (! $this->bookingService->isAvailable((int) $surfboard->id, $start, $end)) {
+        try {
+            $booking = $this->bookingService->createPendingBooking(
+                $surfboard,
+                $start,
+                $end,
+                [
+                    'client_name' => $data['client_name'],
+                    'client_email' => $data['client_email'] ?? null,
+                    'client_phone' => $data['client_phone'] ?? null,
+                    'payment_method' => $data['payment_method'] ?? null,
+                ],
+                null,
+                $request->user()?->id,
+            );
+        } catch (InvalidArgumentException $e) {
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'La tabla no está disponible en ese rango. Ya existe una reserva (pendiente o confirmada) que la bloquea.',
-                    'collision' => true,
+                    'message' => $e->getMessage(),
+                    'collision' => str_contains($e->getMessage(), 'disponible'),
                 ], 422);
             }
+
             return redirect()->back()->withErrors([
-                'start_date' => 'La tabla no está disponible en ese rango. Comprueba el calendario o elija otras fechas.',
+                'start_date' => $e->getMessage(),
             ]);
         }
 
-        $schema = $surfboard->priceSchema;
-        $totalPrice = $this->bookingService->calculateBestPrice($schema, $start, $end);
-        $depositAmount = $this->bookingService->calculateDeposit($totalPrice, 30.0);
-        $expiresAt = Carbon::now()->addDays(7);
-
-        $booking = Booking::create([
-            'surfboard_id' => $surfboard->id,
-            'user_id' => $request->user()?->id,
-            'client_name' => $data['client_name'],
-            'client_email' => $data['client_email'] ?? null,
-            'client_phone' => $data['client_phone'] ?? null,
-            'start_date' => $start,
-            'end_date' => $end,
-            'expires_at' => $expiresAt,
-            'status' => Booking::STATUS_PENDING,
-            'payment_status' => Booking::PAYMENT_PENDING,
-            'total_price' => $totalPrice,
-            'deposit_amount' => $depositAmount,
-            'payment_proof_note' => null,
-        ]);
+        $depositAmount = (float) $booking->deposit_amount;
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -114,7 +110,7 @@ class BookingController extends Controller
         }
 
         return redirect()->back()->with([
-            'success' => 'Reserva creada (pendiente). Depósito: ' . number_format((float) $depositAmount, 2, ',', '') . ' €. Caduca en 7 días.',
+            'success' => 'Reserva creada (pendiente). Depósito: '.number_format($depositAmount, 2, ',', '').' €. Caduca en 7 días.',
             'booking_id' => $booking->id,
         ]);
     }
@@ -171,7 +167,7 @@ class BookingController extends Controller
             'status' => Booking::STATUS_CONFIRMED,
             'payment_status' => Booking::PAYMENT_CONFIRMED,
             'refund_status' => null,
-            'payment_proof_note' => $booking->payment_proof_note ?? 'Confirmado por admin ' . now()->toDateTimeString(),
+            'payment_proof_note' => $booking->payment_proof_note ?? 'Confirmado por admin '.now()->toDateTimeString(),
         ]);
 
         return redirect()->back()->with('success', 'Reserva confirmada. Pago verificado.');

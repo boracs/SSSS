@@ -345,7 +345,7 @@ const EDY_STEPS = [
         step: 4,
         icon: ShieldCheck,
         title: "Garantia de Entrega",
-        body: "Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparacion. El socio valida el arreglo en el local y abona el importe a Edy: por transferencia a su cuenta o en metalico introduciendo un sobre con su nombre y numero de taquilla en el buzon de su propiedad situado en el local.",
+        body: "Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparacion. El socio valida el arreglo en el local y abona el importe a Edy: por Bizum o en metalico introduciendo un sobre con su nombre y numero de taquilla en el buzon exclusivo de Edy situado en el local.",
     },
 ];
 

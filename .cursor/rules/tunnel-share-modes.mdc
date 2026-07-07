@@ -1,0 +1,92 @@
+---
+description: Cambiar entre desarrollo local y URL pública (Cloudflare Tunnel) cuando el usuario lo pida
+alwaysApply: true
+---
+
+# Modos: local ↔ compartir (túnel público)
+
+Cuando el usuario pida **volver a local** o **compartir / URL pública / túnel / opiniones de amigos**, ejecutar el flujo correspondiente sin pedir confirmación extra.
+
+**Túnel recomendado:** Cloudflare (`npx cloudflared tunnel --url http://127.0.0.1:8000`).  
+**Dev Tunnels (VS Code Ports)** solo como fallback; suele fallar con JS grande (`ERR_CERT_AUTHORITY_INVALID`, `ERR_HTTP2_PROTOCOL_ERROR`, pantalla blanca).
+
+## Frases disparadoras
+
+- **→ Local:** "modo local", "vuelvo a local", "desarrollo local", "parar el túnel"
+- **→ Público:** "modo compartir", "URL pública", "túnel", "cloudflare", "compartir con amigos"
+
+---
+
+## Modo LOCAL (desarrollo diario)
+
+1. Parar `cloudflared` y cerrar túnel Dev Tunnels (VS Code Ports) si activos.
+2. Parar procesos en puerto **5173** si quedaron colgados (`npm run dev` previo).
+3. En `.env`:
+   - `APP_URL=http://127.0.0.1:8000`
+   - `TUNNEL_SHARE=false`
+   - `SESSION_SECURE_COOKIE=false` (si existe)
+   - **Quitar / no usar** `ASSET_URL`
+4. `php artisan config:clear`
+5. `php artisan ziggy:generate resources/js/ziggy.js`
+6. Arrancar **dos terminales**: `npm run dev` + `php artisan serve`
+7. Verificar: no existe `public/hot` apuntando mal; Vite en `localhost:5173`; app en `http://127.0.0.1:8000` con HMR.
+
+---
+
+## Modo COMPARTIR (URL pública — Cloudflare)
+
+### Pre-requisitos (ya en el repo, no tocar salvo regresión)
+
+- `bootstrap/app.php`: `trustProxies(at: '*')` en `APP_ENV=local`
+- `AppServiceProvider`: con `TUNNEL_SHARE=true` → `Vite::createAssetPathsUsing()` rutas relativas `/build/...`
+- `resources/js/bootstrap.js`: `Ziggy.url = window.location.origin` en runtime
+- `vite.config.js`: `resolve.dedupe: ['react','react-dom']`; casi todo `node_modules` → chunk `vendor-react` (evita `createContext undefined` por `framer-motion` en chunk aparte)
+- **MySQL/XAMPP encendido** (la BD sigue siendo local)
+
+### Pasos (orden estricto)
+
+1. **Parar** `npm run dev` (Ctrl+C). Si persiste puerto 5173, matar proceso.
+2. `npm run share:tunnel` → build producción + borra `public/hot`.
+3. `php artisan serve` (solo **una** instancia, puerto **8000**).
+4. En **otra terminal**: `npx cloudflared tunnel --url http://127.0.0.1:8000`
+5. Copiar URL `https://….trycloudflare.com` (cambia al reiniciar cloudflared).
+6. En `.env`:
+   - `APP_URL=<URL sin barra final, sin path>` (ej. sin `/nosotros`)
+   - `TUNNEL_SHARE=true`
+   - **No** usar `ASSET_URL`
+7. `php artisan config:clear` → **reiniciar** `php artisan serve` (Ctrl+C y relanzar).
+8. Probar en incógnito o **Ctrl+Shift+R**; primera carga puede tardar 30–60 s.
+
+### Dev Tunnels (fallback VS Code)
+
+- VS Code → **Ports** → reenviar **8000** (no 5173), visibilidad Public.
+- `php artisan serve` puede correr en Cursor; el túnel solo abre el puerto.
+- Mismas reglas: sin `npm run dev`, sin `ASSET_URL`, `TUNNEL_SHARE=true`, `APP_URL` = URL del túnel.
+
+---
+
+## Reglas críticas (problemas ya vividos)
+
+| Problema | Causa | Solución |
+|----------|-------|----------|
+| Pantalla blanca | `public/hot` → `localhost:5173` | Parar Vite dev; `npm run share:tunnel` |
+| `ERR_CERT_AUTHORITY_INVALID` | `ASSET_URL` con HTTPS del túnel | Quitar `ASSET_URL`; `TUNNEL_SHARE=true` |
+| `ERR_HTTP2_PROTOCOL_ERROR` | JS ~1.7 MB por Dev Tunnels | Chunks en `vite.config.js`; preferir Cloudflare |
+| `createContext undefined` | React separado de `framer-motion` | Todo React en `vendor-react`; rebuild + hard refresh |
+| Rutas Ziggy rotas | `APP_URL` distinto al host actual | `bootstrap.js` runtime + `config:clear`; al volver a local regenerar ziggy |
+| Sesión rara tras túnel | cookies secure | `SESSION_SECURE_COOKIE=false` al volver a local |
+
+- **Nunca** `npm run dev` + túnel a la vez.
+- **Nunca** `ASSET_URL` con túnel.
+- Si reinicia cloudflared → URL nueva → actualizar `APP_URL`, `config:clear`, reiniciar serve, opcional `share:tunnel`.
+- Si chunks viejos en caché → incógnito o DevTools → Application → Clear storage.
+
+## Comprobar que funciona
+
+- HTML referencia `/build/assets/*.js` (no `localhost:5173`, no `127.0.0.1:5173`).
+- F12 → Network: todos los `/build/assets/` en verde.
+- Local: HMR activo con `npm run dev`.
+
+## Al ejecutar el cambio de modo
+
+Verificar estado actual (`public/hot`, puertos 5173/8000, `.env`) y aplicar todos los pasos del modo destino. Informar al usuario la URL final y qué procesos quedaron corriendo.

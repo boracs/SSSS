@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Actions\Academy\AdminGuestEnrollmentAction;
+use App\Actions\Academy\SyncLessonStaffAction;
+use App\DTOs\Academy\AdminGuestEnrollmentDto;
 use App\Http\Controllers\Controller;
 use App\Mail\ReservationConfirmedMail;
 use App\Models\Booking;
@@ -26,7 +29,9 @@ class AcademyController extends Controller
 {
     public function __construct(
         protected AutoReleaseService $autoReleaseService,
-        protected AvailabilityService $availabilityService
+        protected AvailabilityService $availabilityService,
+        protected AdminGuestEnrollmentAction $guestEnrollmentAction,
+        protected SyncLessonStaffAction $syncLessonStaffAction,
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -213,6 +218,7 @@ class AcademyController extends Controller
             'time' => 'required|date_format:H:i',
             'duration_minutes' => 'nullable|integer|in:60,90',
             'projected_party_size' => 'nullable|integer|min:1|max:12',
+            'exclude_lesson_id' => 'nullable|integer|exists:lessons,id',
         ]);
 
         $startsAt = BusinessDateTime::parseInAppTimezone($validated['date'].' '.$validated['time']);
@@ -233,22 +239,32 @@ class AcademyController extends Controller
             ], 422);
         }
 
-        $projectedPartySize = (int) ($validated['projected_party_size'] ?? 1);
-        $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize, 0);
+        $configuredMax = (int) ($validated['projected_party_size'] ?? 1);
+        $projectedPartySize = $this->availabilityService->effectivePartySizeForLesson(0, $configuredMax);
+        $excludeLessonId = (int) ($validated['exclude_lesson_id'] ?? 0);
+        $evaluation = $this->availabilityService->preview($startsAt, $endsAt, $projectedPartySize, $excludeLessonId);
+        $staffStatus = $this->availabilityService->describeCapacity($evaluation);
+        $hasConflict = ! $evaluation['allowed'] || (int) $evaluation['max_capacity'] === 0;
+        $conflictDetail = $hasConflict ? $this->availabilityService->buildConflictPayload($evaluation) : null;
 
         $payload = [
             'max_capacity' => (int) $evaluation['max_capacity'],
             'peak_monitors_used' => (int) ($evaluation['peak_monitors_used'] ?? 0),
+            'monitors_free' => (int) $staffStatus['monitors_free'],
+            'staff_capacity_status' => (string) $staffStatus['status'],
             'occupied_lesson_ids' => $evaluation['occupied_lesson_ids'] ?? [],
+            'conflicts' => $evaluation['conflicts'] ?? [],
             'range_start' => $evaluation['request_window_start'],
             'range_end' => $evaluation['request_window_end'],
             'is_staff_exhausted' => (int) $evaluation['max_capacity'] === 0,
-            'message' => (int) $evaluation['max_capacity'] === 0
-                ? 'No quedan monitores disponibles en este horario (se requiere disponibilidad 15 min antes y 15 min después).'
-                : null,
+            'allowed' => (bool) $evaluation['allowed'],
+            'conflict_detail' => $conflictDetail,
+            'message' => $hasConflict
+                ? (string) ($conflictDetail['summary'] ?? 'Conflicto de monitores.')
+                : ($staffStatus['show_warning'] ? (string) $staffStatus['message'] : null),
         ];
 
-        return response()->json($payload, (int) $evaluation['max_capacity'] === 0 ? 422 : 200);
+        return response()->json($payload, $hasConflict ? 422 : 200);
     }
 
     /**
@@ -847,7 +863,7 @@ class AcademyController extends Controller
     {
         $request->validate([
             'lesson_id' => 'required|exists:lessons,id',
-            'role' => 'required|in:monitor,fotografo',
+            'role' => 'required|in:monitor,monitor_2,fotografo',
             'user_id' => 'nullable|exists:users,id',
         ]);
 
@@ -897,6 +913,15 @@ class AcademyController extends Controller
             'location' => 'nullable|string|max:150',
             'weekly_start' => 'nullable|date',
             'weekly_end' => 'nullable|date|after_or_equal:weekly_start',
+            'booker_first_name' => 'nullable|string|max:80',
+            'booker_last_name' => 'nullable|string|max:80',
+            'booker_phone' => 'nullable|string|max:40',
+            'participants' => 'nullable|array',
+            'participants.*.first_name' => 'required_with:participants|string|max:80',
+            'participants.*.last_name' => 'required_with:participants|string|max:80',
+            'participants.*.phone' => 'nullable|string|max:40',
+            'participants.*.email' => 'nullable|email|max:120',
+            'participants.*.payment_status' => 'nullable|in:pending,confirmed,rejected',
         ]);
 
         $location = $validated['location'] ?? 'Zurriola';
@@ -940,7 +965,7 @@ class AcademyController extends Controller
                 $startsAt = $d->copy()->setTime($s->hour, $s->minute);
                 $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
                 $projectedPartySize = ((int) ($validated['max_slots'] ?? 6)) >= 7 ? 7 : 1;
-                $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize);
+                $availability = $this->availabilityService->preview($startsAt, $endsAt, $projectedPartySize);
                 if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
                     return back()->withErrors([
                         'starts_at' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
@@ -965,6 +990,14 @@ class AcademyController extends Controller
                 $created++;
             }
 
+            $firstLesson = Lesson::query()
+                ->where('batch_id', $batchId)
+                ->orderBy('starts_at')
+                ->first();
+            if ($firstLesson) {
+                $this->applyWalkInFromRequest($firstLesson, $validated);
+            }
+
             return back()->with('success', "Curso semanal creado ({$created} sesiones).");
         }
 
@@ -976,14 +1009,14 @@ class AcademyController extends Controller
             ])->withInput();
         }
         $projectedPartySize = ((int) ($validated['max_slots'] ?? 6)) >= 7 ? 7 : 1;
-        $availability = $this->availabilityService->evaluate($startsAt, $endsAt, $projectedPartySize);
+        $availability = $this->availabilityService->preview($startsAt, $endsAt, $projectedPartySize);
         if (! $availability['allowed']) {
             return back()->withErrors([
                 'starts_at' => $this->availabilityService->buildConflictMessage($availability),
             ])->withInput();
         }
 
-        Lesson::create([
+        $lesson = Lesson::create([
             'starts_at' => $startsAt,
             'ends_at' => $endsAt,
             'level' => $validated['level'],
@@ -994,14 +1027,20 @@ class AcademyController extends Controller
             'is_private' => $modality === Lesson::MODALITY_PARTICULAR,
         ]);
 
+        $this->applyWalkInFromRequest($lesson, $validated);
+
         return back()->with('success', 'Clase creada.');
     }
 
     /**
-     * Actualizar clase (description, location, etc.).
+     * Actualizar clase: metadatos ligeros o reprogramación (grupal/semanal/particular).
      */
     public function update(Request $request, Lesson $lesson)
     {
+        if ($request->filled('starts_at')) {
+            return $this->updateLessonSchedule($request, $lesson);
+        }
+
         $validated = $request->validate([
             'description' => 'nullable|string|max:500',
             'location' => 'nullable|string|max:150',
@@ -1009,6 +1048,70 @@ class AcademyController extends Controller
         ]);
 
         $lesson->update(array_filter($validated, fn ($v) => $v !== null));
+
+        return back()->with('success', 'Clase actualizada.');
+    }
+
+    private function updateLessonSchedule(Request $request, Lesson $lesson)
+    {
+        abort_if((string) $lesson->modality === 'vip', 403, 'Las clases VIP se editan desde el gestor VIP.');
+
+        if ($lesson->status === Lesson::STATUS_CANCELLED) {
+            return back()->with('error', 'No se puede editar una clase cancelada.');
+        }
+
+        if ($lesson->starts_at && $lesson->starts_at->isPast()) {
+            return back()->with('error', 'No se puede editar una clase pasada.');
+        }
+
+        $validated = $request->validate([
+            'starts_at' => 'required|date',
+            'duration_minutes' => 'nullable|integer|in:60,90',
+            'level' => 'required|in:iniciacion,intermedio,avanzado',
+            'max_slots' => 'integer|min:1|max:12',
+            'location' => 'nullable|string|max:150',
+            'monitor_id' => 'nullable|integer|exists:users,id',
+            'monitor_2_id' => 'nullable|integer|exists:users,id',
+            'has_photographer' => 'nullable|boolean',
+            'photographer_id' => 'nullable|integer|exists:users,id',
+        ]);
+
+        $modality = (string) ($lesson->modality ?: Lesson::MODALITY_GRUPAL);
+        $durationMinutes = (int) ($validated['duration_minutes'] ?? 90);
+        $startsAt = BusinessDateTime::parseInAppTimezone($validated['starts_at']);
+        $endsAt = $startsAt->copy()->addMinutes($durationMinutes);
+
+        if (! $this->isQuarterMinute($startsAt) || ! $this->isQuarterMinute($endsAt)) {
+            return back()->withErrors([
+                'starts_at' => 'Las horas deben estar en intervalos de 15 minutos (:00, :15, :30, :45).',
+            ])->withInput();
+        }
+
+        $maxSlots = (int) ($validated['max_slots'] ?? $lesson->max_slots ?? 6);
+        $projectedPartySize = $maxSlots >= 7 ? 7 : 1;
+        $availability = $this->availabilityService->preview($startsAt, $endsAt, $projectedPartySize, (int) $lesson->id);
+
+        if (! $availability['allowed']) {
+            return back()->withErrors([
+                'starts_at' => $this->availabilityService->buildConflictMessage($availability),
+            ])->withInput();
+        }
+
+        $lesson->update([
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+            'level' => $validated['level'],
+            'max_slots' => $maxSlots,
+            'max_capacity' => $maxSlots,
+            'location' => $validated['location'] ?? $lesson->location ?? 'Zurriola',
+            'is_private' => $modality === Lesson::MODALITY_PARTICULAR,
+        ]);
+
+        try {
+            $this->syncLessonStaffAction->execute($lesson, $validated);
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['staff' => $e->getMessage()])->withInput();
+        }
 
         return back()->with('success', 'Clase actualizada.');
     }
@@ -1051,7 +1154,7 @@ class AcademyController extends Controller
             $incoming = (int) ($enrollment->quantity ?? $enrollment->party_size ?? 1);
             $projectedPartySize = $alreadyBooked + max(1, $incoming);
 
-            $availability = $this->availabilityService->evaluate(
+            $availability = $this->availabilityService->preview(
                 $lesson->starts_at,
                 $lesson->ends_at,
                 $projectedPartySize,
@@ -1176,28 +1279,8 @@ class AcademyController extends Controller
 
     private function rebalanceVipCapacitiesForDate(Carbon $date): void
     {
-        $start = $date->copy()->startOfDay();
-        $end = $date->copy()->endOfDay();
-        Lesson::query()
-            ->where('modality', 'vip')
-            ->where('status', Lesson::STATUS_SCHEDULED)
-            ->whereBetween('starts_at', [$start, $end])
-            ->get(['id', 'starts_at', 'ends_at', 'max_slots', 'max_capacity'])
-            ->each(function (Lesson $lesson): void {
-                $evaluation = $this->availabilityService->evaluate(
-                    $lesson->starts_at,
-                    $lesson->ends_at,
-                    1,
-                    (int) $lesson->id
-                );
-                $capacity = (int) ($evaluation['max_capacity'] ?? 0);
-                if ((int) ($lesson->max_slots ?? 0) !== $capacity || (int) ($lesson->max_capacity ?? 0) !== $capacity) {
-                    $lesson->update([
-                        'max_slots' => $capacity,
-                        'max_capacity' => $capacity,
-                    ]);
-                }
-            });
+        // Mantener cupo configurado por administración.
+        // La disponibilidad por monitores se calcula en runtime (ClassManagerController::mapLesson).
     }
 
     /**
@@ -1368,5 +1451,37 @@ class AcademyController extends Controller
         }
 
         return $wall->locale('es')->translatedFormat('d/m/Y H:i');
+    }
+
+    /** @param  array<string, mixed>  $validated */
+    private function applyWalkInFromRequest(Lesson $lesson, array $validated): void
+    {
+        $bookerFirst = trim((string) ($validated['booker_first_name'] ?? '')) ?: null;
+        $bookerLast = trim((string) ($validated['booker_last_name'] ?? '')) ?: null;
+        $bookerPhone = trim((string) ($validated['booker_phone'] ?? '')) ?: null;
+
+        /** @var list<AdminGuestEnrollmentDto> $participants */
+        $participants = collect($validated['participants'] ?? [])
+            ->filter(fn ($row) => is_array($row))
+            ->map(fn (array $row) => AdminGuestEnrollmentDto::fromArray($row))
+            ->values()
+            ->all();
+
+        if ($bookerFirst === null && $bookerLast === null && $bookerPhone === null && $participants === []) {
+            return;
+        }
+
+        try {
+            $this->guestEnrollmentAction->syncBookerAndParticipants(
+                $lesson,
+                $bookerFirst,
+                $bookerLast,
+                $bookerPhone,
+                $participants
+            );
+        } catch (\InvalidArgumentException $e) {
+            // La clase ya está creada; el admin puede añadir alumnos desde el gestor.
+            Log::warning('applyWalkInFromRequest', ['lesson_id' => $lesson->id, 'error' => $e->getMessage()]);
+        }
     }
 }

@@ -15,7 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
+        // Dev Tunnels / port forwarding (HTTPS → artisan serve): confiar en el proxy inverso.
+        if (env('APP_ENV', 'production') === 'local') {
+            $middleware->trustProxies(at: '*');
+        }
+
         // Middlewares para el grupo 'web' (Inertia/Breeze)
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AutoCoachController;
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\PaymentValidationController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Admin\EmergencyKeyController as AdminEmergencyKeyContro
 use App\Http\Controllers\Admin\SecondHandBoardController as AdminSecondHandBoardController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\ClassManagerController;
 use App\Http\Controllers\Admin\VipClassManagerController;
 use App\Http\Controllers\Admin\VipController;
 use App\Http\Controllers\CarritoController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\Rentals\SurfboardController as RentalsSurfboardControll
 use App\Http\Controllers\SecondHandBoardController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\TiendaController;
+use App\Http\Controllers\User\MyProfileController;
 use App\Http\Controllers\User\MyReservationsController;
 use App\Http\Middleware\VerificarAdmin;
 use App\Http\Middleware\VerificarTaquilla;
@@ -64,8 +67,81 @@ Route::get('/producto-info', function () {
 })->name('producto.info'); // ESTACREO K SOBRA
 // SERVICIOS
 Route::get('/servicios', function () {
-    return Inertia::render('Servicios');
+    $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+    $edy = config('services.repair.edy', []);
+    $edyPhoneDigits = preg_replace('/\D+/', '', (string) ($edy['phone'] ?? ''));
+    $edyPhoneDisplay = trim((string) ($edy['phone_display'] ?? ''));
+
+    if ($edyPhoneDisplay === '' && $edyPhoneDigits !== '') {
+        if (str_starts_with($edyPhoneDigits, '34') && strlen($edyPhoneDigits) >= 11) {
+            $local = substr($edyPhoneDigits, 2, 9);
+            $edyPhoneDisplay = sprintf(
+                '+34 %s %s %s',
+                substr($local, 0, 3),
+                substr($local, 3, 3),
+                substr($local, 6, 3),
+            );
+        } else {
+            $edyPhoneDisplay = '+'.$edyPhoneDigits;
+        }
+    }
+
+    $edyEmail = trim((string) ($edy['email'] ?? ''));
+    $edyWhatsappUrl = $edyPhoneDigits !== ''
+        ? 'https://wa.me/'.$edyPhoneDigits.'?text='.rawurlencode(
+            'Hola Edy, tengo una duda sobre reparar mi tabla antes de solicitar el servicio.',
+        )
+        : null;
+
+    return Inertia::render('Servicios', [
+        'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+        'edyContact' => [
+            'name' => (string) ($edy['name'] ?? 'Edy Mulder'),
+            'phone' => $edyPhoneDisplay !== '' ? $edyPhoneDisplay : null,
+            'phoneTel' => $edyPhoneDigits !== '' ? '+'.$edyPhoneDigits : null,
+            'email' => $edyEmail !== '' ? $edyEmail : null,
+            'whatsappUrl' => $edyWhatsappUrl,
+        ],
+    ]);
 })->name('servicios');
+Route::get('/servicios/reparacion-neoprenos', function () {
+    $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
+    $willy = config('services.repair.willy', []);
+    $willyPhoneDigits = preg_replace('/\D+/', '', (string) ($willy['phone'] ?? ''));
+    $willyPhoneDisplay = trim((string) ($willy['phone_display'] ?? ''));
+
+    if ($willyPhoneDisplay === '' && $willyPhoneDigits !== '') {
+        if (str_starts_with($willyPhoneDigits, '34') && strlen($willyPhoneDigits) >= 11) {
+            $local = substr($willyPhoneDigits, 2, 9);
+            $willyPhoneDisplay = sprintf(
+                '+34 %s %s %s',
+                substr($local, 0, 3),
+                substr($local, 3, 3),
+                substr($local, 6, 3),
+            );
+        } else {
+            $willyPhoneDisplay = '+'.$willyPhoneDigits;
+        }
+    }
+
+    $willyEmail = trim((string) ($willy['email'] ?? ''));
+    $willyWhatsappUrl = $willyPhoneDigits !== ''
+        ? 'https://wa.me/'.$willyPhoneDigits.'?text='.rawurlencode(
+            'Hola Willy, tengo una duda sobre reparar mi neopreno antes de dejarlo en la percha.',
+        )
+        : null;
+
+    return Inertia::render('Servicios_ReparacionNeoprenos', [
+        'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+        'willyContact' => [
+            'name' => (string) ($willy['name'] ?? 'Willy'),
+            'phone' => $willyPhoneDisplay !== '' ? $willyPhoneDisplay : null,
+            'phoneTel' => $willyPhoneDigits !== '' ? '+'.$willyPhoneDigits : null,
+            'email' => $willyEmail !== '' ? $willyEmail : null,
+            'whatsappUrl' => $willyWhatsappUrl,
+        ],
+    ]);
+})->name('servicios.reparacionNeoprenos');
 Route::get('/servicios/surf', function () {
     return Inertia::render('Servicios_ClasesDeSurf');
 })->name('servicios.surf');
@@ -81,6 +157,39 @@ Route::get('/servicios/fotos', function () {
 Route::get('/servicios/videograbaciones', function () {
     return Inertia::render('Servicios_Videograbaciones');
 })->name('servicios.videograbaciones');
+Route::get('/servicios/webcams', function () {
+    return Inertia::render('Servicios_Webcams');
+})->name('servicios.webcams');
+Route::redirect('/webcams', '/servicios/webcams');
+// Enlaces legacy del carrusel home (OpcionesIntro)
+Route::redirect('/clases-de-surf', '/servicios/surf');
+Route::redirect('/surftrips', '/servicios/surf-trips');
+Route::redirect('/surfskate', '/servicios/surf-skate');
+Route::redirect('/taquillas', '/taquillas/planes-y-cuotas');
+
+// AutoCoach — comparador de maniobras (público)
+Route::prefix('comparador-surf')->name('autocoach.')->group(function () {
+    Route::get('/', [AutoCoachController::class, 'index'])->name('index');
+    Route::middleware('throttle:120,1')->group(function () {
+        Route::get('/api/sports', [AutoCoachController::class, 'sports'])->name('api.sports');
+        Route::get('/api/postures', [AutoCoachController::class, 'postures'])->name('api.postures');
+        Route::get('/api/tricks', [AutoCoachController::class, 'tricks'])->name('api.tricks');
+        Route::get('/api/video', [AutoCoachController::class, 'video'])->name('api.video');
+    });
+    Route::post('/api/upload', [AutoCoachController::class, 'upload'])
+        ->middleware('throttle:15,1')
+        ->name('api.upload');
+    Route::delete('/api/uploads', [AutoCoachController::class, 'destroyUploads'])
+        ->middleware('throttle:20,1')
+        ->name('api.uploads.destroy');
+    Route::get('/uploads/{session}/{filename}', [AutoCoachController::class, 'showUpload'])
+        ->middleware('throttle:180,1')
+        ->where([
+            'session' => '[a-zA-Z0-9_-]{16,64}',
+            'filename' => '[a-zA-Z0-9._-]+',
+        ])
+        ->name('uploads.show');
+});
 
 // Taquillas — catálogo público de planes y tarifas (sin login)
 Route::get('/taquillas/planes-y-cuotas', [PlanesTaquillasController::class, 'publicPlans'])
@@ -132,10 +241,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/pedidos', [PedidoController::class, 'mostrarPedidos'])->name('pedidos');
     Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
     Route::get('/mis-reservas', [MyReservationsController::class, 'index'])->name('my-reservations.index');
+    Route::get('/mi-perfil', [MyProfileController::class, 'index'])->name('my-profile.index');
     Route::post('/mis-reservas/clases/{enrollment}/upload-proof', [MyReservationsController::class, 'uploadClassProof'])->name('my-reservations.class.upload-proof');
     Route::post('/mis-reservas/alquileres/{booking}/upload-proof', [MyReservationsController::class, 'uploadRentalProof'])->name('my-reservations.rental.upload-proof');
     Route::post('/mis-reservas/clases/{enrollment}/cancel', [MyReservationsController::class, 'cancelClass'])->name('my-reservations.class.cancel');
     Route::post('/mis-reservas/alquileres/{booking}/cancel', [MyReservationsController::class, 'cancelRental'])->name('my-reservations.rental.cancel');
+
+    // Panel de planes/cuotas: accesible sin taquilla (solo consulta); el pago exige taquilla asignada.
+    Route::get('/taquilla/planes', [PlanesTaquillasController::class, 'ClientIndex'])->name('taquillas.index.client');
 });
 
 // RUTAS PARA LSO USUARISO REGISTRADOS CON TAQUILLA ASIGNADDA
@@ -161,8 +274,6 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     // La ruta de confirmación de pedido se gestionaría dentro del POST de 'crear-pedido'
 
     // CLIENT PANEL DE TAQUILLAS (REQUIERE TAQUILLA)
-    // 2. Ruta para la vista del cliente/usuario regular donde ve su plan activo y su historial de pagos
-    Route::get('/taquilla/planes', [PlanesTaquillasController::class, 'ClientIndex'])->name('taquillas.index.client');
     Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.client');
@@ -274,7 +385,15 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('vips/attendance-notes', [VipController::class, 'storeNote'])->name('vips.attendance-notes.store');
         Route::get('vips/{user}/analisis', [VipController::class, 'analysis'])->name('vips.analysis');
         Route::get('vips/{user}/whatsapp', [VipController::class, 'whatsapp'])->name('vips.whatsapp');
-        Route::get('vip-manager', [VipClassManagerController::class, 'index'])->name('vip-manager.index');
+        Route::get('class-manager', [ClassManagerController::class, 'index'])->name('class-manager.index');
+        Route::post('class-manager/lessons/{lesson}/guest-enrollments', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'store'])->name('class-manager.guest-enrollments.store');
+        Route::patch('class-manager/guest-enrollments/{enrollment}', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'update'])->name('class-manager.guest-enrollments.update');
+        Route::delete('class-manager/guest-enrollments/{enrollment}', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'destroy'])->name('class-manager.guest-enrollments.destroy');
+        Route::patch('class-manager/guest-enrollments/{enrollment}/payment', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'updatePayment'])->name('class-manager.guest-enrollments.payment');
+        Route::post('class-manager/guest-enrollments/{enrollment}/approve-quota', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'approveQuota'])->name('class-manager.guest-enrollments.approve-quota');
+        Route::post('class-manager/guest-enrollments/{enrollment}/deny-quota', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'denyQuota'])->name('class-manager.guest-enrollments.deny-quota');
+        Route::patch('class-manager/lessons/{lesson}/booker', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'updateBooker'])->name('class-manager.lessons.booker');
+        Route::get('vip-manager', fn () => redirect()->route('admin.class-manager.index'))->name('vip-manager.index');
         Route::get('vip-manager/check-availability', [VipClassManagerController::class, 'checkAvailability'])->name('vip-manager.check-availability');
         Route::post('vip-manager/lessons', [VipClassManagerController::class, 'store'])->name('vip-manager.lessons.store');
         Route::patch('vip-manager/lessons/{lesson}', [VipClassManagerController::class, 'update'])->name('vip-manager.lessons.update');
@@ -313,6 +432,8 @@ Route::middleware(['auth', 'verified', 'role:admin'])
         Route::post('emergency-keys/lock-code', [AdminEmergencyKeyController::class, 'updateCode'])->name('emergency-keys.update-code');
         Route::patch('emergency-keys/requests/{emergencyKeyRequest}/deactivate', [AdminEmergencyKeyController::class, 'markKeyDeactivated'])
             ->name('emergency-keys.mark-deactivated');
+        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/resolve', [AdminEmergencyKeyController::class, 'resolveKeyRequest'])
+            ->name('emergency-keys.resolve');
     });
 
 // Rutas de pedidos

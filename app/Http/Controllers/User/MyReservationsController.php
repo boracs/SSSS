@@ -28,43 +28,16 @@ class MyReservationsController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $isVip = (bool) ($user->is_vip ?? false);
-        $bonoMonth = (string) $request->query('bono_month', now()->format('Y-m'));
-        $loadHistory = $request->boolean('load_history', false);
+
         $rows = VipStudentPerformanceService::buildReservationRows($user);
-        $classRows = $rows['classRows'];
-        $rentalRows = $rows['rentalRows'];
-        $bonoRows = $rows['bonoRows'];
-
-        $performanceData = [
-            'subject_user_id' => (int) $user->id,
-            'activeBono' => null,
-            'history' => null,
-            'history_loaded' => false,
-            'history_count' => 0,
-            'attendanceMap' => [],
-            'prediction' => null,
-            'stats' => [
-                'total_surfed_hours' => 0,
-                'solo_ratio_percent' => 0,
-                'level_progress' => 'Iniciación',
-            ],
-            'month' => $bonoMonth,
-        ];
-
-        if ($isVip) {
-            $performanceData = VipStudentPerformanceService::buildPerformanceDataForSubject($user, $bonoMonth, $loadHistory, false);
-        } else {
-            $performanceData = VipStudentPerformanceService::buildPerformanceData($user, $bonoMonth, $loadHistory, false);
-        }
 
         $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
 
         return Inertia::render('User/Dashboard/MyReservations', [
-            'classRows' => $classRows,
-            'rentalRows' => $rentalRows,
-            'bonoRows' => $bonoRows,
-            'performanceData' => $performanceData,
+            'classRows' => $rows['classRows'],
+            'rentalRows' => $rows['rentalRows'],
+            'bonoRows' => [],
+            'performanceData' => null,
             'isAdminView' => false,
             'targetUser' => null,
             'analysisNav' => null,

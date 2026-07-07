@@ -1,96 +1,84 @@
-// ProductoGestor.jsx (REQUIERE: 'react-icons/fa' y 'react-icons/io')
 import React from "react";
-import { FaBoxes, FaTag } from "react-icons/fa"; // Iconos de stock y descuento
-import { IoCloseCircle } from "react-icons/io5"; // Icono de inactivo/eliminado
+import { FaTag } from "react-icons/fa";
+import { IoCloseCircle } from "react-icons/io5";
 
 const ProductoGestor = ({ producto, productoSeleccionadoId, onClick }) => {
-    // Lógica Condicional
     const isSelected = productoSeleccionadoId === producto.id;
     const isLowStock = producto.unidades < 5;
-    const isDeleted = producto.eliminado === 1;
-
-    // Handler local
-    const handleClick = () => {
-        onClick(producto);
-    };
+    const isDeleted = producto.eliminado === 1 || producto.eliminado === true;
+    const descuento = Number(producto.descuento || 0);
 
     return (
-        <div
-            key={producto.id}
-            onClick={handleClick}
-            className={`group flex h-full flex-col p-2.5 sm:p-3 border transition-all duration-300 ease-in-out cursor-pointer 
-                rounded-lg shadow-md hover:shadow-lg hover:bg-gray-50 
-                ${
-                    isSelected
-                        ? "border-blue-500 ring-2 ring-blue-200"
-                        : "border-gray-100/90"
-                }
-                ${isLowStock && !isDeleted ? "bg-red-50" : "bg-white"}
-                w-full relative overflow-hidden transform group-hover:scale-[1.02]`} // <--- Animación principal
+        <button
+            type="button"
+            onClick={() => onClick(producto)}
+            aria-expanded={isSelected}
+            className={`group relative flex h-full w-full flex-col overflow-hidden rounded-lg border text-left shadow-sm transition-all duration-200 lg:rounded-xl lg:p-2.5 lg:shadow-md ${
+                isSelected
+                    ? "border-cyan-500 ring-2 ring-cyan-400/40"
+                    : "border-slate-200/90 hover:border-slate-300"
+            } ${isLowStock && !isDeleted ? "bg-red-50/90" : "bg-white"} p-1.5 sm:p-2`}
         >
-            {/* Indicador de Producto Eliminado (Badge y Overlay) */}
-            {isDeleted && (
+            {isDeleted ? (
                 <>
-                    {/* Overlay suave y claro */}
-                    <div className="absolute inset-0 bg-gray-600 bg-opacity-30 rounded-xl z-10"></div>
-                    {/* Badge destacado */}
-                    <span className="absolute top-0 left-0 w-full bg-red-700 text-white text-[10px] font-bold py-1 text-center z-20 flex items-center justify-center gap-1">
-                        <IoCloseCircle size={14} /> PRODUCTO INACTIVO
+                    <div className="absolute inset-0 z-10 rounded-lg bg-slate-600/25" />
+                    <span className="absolute left-0 top-0 z-20 flex w-full items-center justify-center gap-0.5 bg-red-700 py-0.5 text-[8px] font-bold text-white lg:text-[10px]">
+                        <IoCloseCircle size={10} />
+                        INACTIVO
                     </span>
                 </>
-            )}
+            ) : null}
 
-            {/* Indicador de Stock Bajo (Badge) */}
-            {isLowStock && !isDeleted && (
-                <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow z-10 transition-opacity">
-                    STOCK BAJO
+            {isLowStock && !isDeleted ? (
+                <span className="absolute right-1 top-1 z-10 rounded bg-red-500 px-1 py-px text-[7px] font-bold text-white lg:text-[9px]">
+                    BAJO
                 </span>
-            )}
+            ) : null}
 
-            {/* Imagen del Producto */}
-            <div className="w-full h-20 sm:h-24 mb-2 relative rounded-md overflow-hidden">
+            <div className="relative mb-1 aspect-[4/3] w-full overflow-hidden rounded-md bg-slate-100 sm:mb-1.5 lg:mb-2 lg:aspect-auto lg:h-20 xl:h-24">
                 <img
                     src={producto.imagen_principal || "/img/placeholder.svg"}
                     alt={producto.nombre}
-                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:rotate-1 group-hover:scale-110 ${
-                        // <-- Efecto en la imagen
-                        isDeleted ? "opacity-30" : "opacity-95"
-                    }`}
+                    className={`h-full w-full object-cover ${isDeleted ? "opacity-40" : "opacity-95"}`}
+                    loading="lazy"
                 />
             </div>
 
-            {/* Nombre y Precio */}
-            <div className="w-full text-center mb-1.5">
-                <p className="text-sm sm:text-base font-bold text-gray-900 leading-snug truncate">
+            <div className="flex min-h-0 flex-1 flex-col gap-0.5">
+                <p className="line-clamp-2 text-[10px] font-bold leading-tight text-slate-900 sm:text-xs lg:text-sm">
                     {producto.nombre}
                 </p>
-                <p className="text-xl sm:text-2xl font-semibold text-green-600 mt-0.5 leading-none">
-                    ${producto.precio}
-                </p>
-            </div>
 
-            {/* Metadatos (Cantidad y Descuento) */}
-            <div className="w-full space-y-0.5 text-xs text-gray-600 border-t pt-1.5 mt-auto">
-                <p className="flex items-center justify-between">
-                    <span className="flex items-center gap-1 font-medium text-gray-700">
-                        <FaBoxes size={10} /> Stock:
-                    </span>
-                    <span className="font-semibold">{producto.unidades}</span>
+                <p className="text-xs font-bold tabular-nums text-emerald-600 sm:text-sm lg:text-lg">
+                    {Number(producto.precio).toFixed(2)} €
                 </p>
 
-                {/* Descuento (Si aplica) */}
-                {producto.descuento > 0 && (
-                    <p className="flex items-center justify-between">
-                        <span className="flex items-center gap-1 font-medium text-gray-700">
-                            <FaTag size={10} /> Descuento:
-                        </span>
-                        <span className="font-bold text-red-500">
-                            {producto.descuento}%
-                        </span>
+                {(producto.tag_labels || []).length > 0 ? (
+                    <p className="mb-1 flex flex-wrap justify-center gap-0.5">
+                        {producto.tag_labels.slice(0, 2).map((label) => (
+                            <span
+                                key={label}
+                                className="rounded bg-slate-100 px-1 py-px text-[8px] font-semibold text-slate-600 sm:text-[9px]"
+                            >
+                                {label}
+                            </span>
+                        ))}
                     </p>
-                )}
+                ) : null}
+
+                <div className="mt-auto flex items-center justify-between gap-1 border-t border-slate-100 pt-1 text-[9px] text-slate-600 sm:text-[10px]">
+                    <span className="font-medium text-slate-500">
+                        Stock <span className="font-bold text-slate-800">{producto.unidades}</span>
+                    </span>
+                    {descuento > 0 ? (
+                        <span className="inline-flex items-center gap-0.5 font-bold text-rose-500">
+                            <FaTag size={8} aria-hidden />
+                            -{descuento}%
+                        </span>
+                    ) : null}
+                </div>
             </div>
-        </div>
+        </button>
     );
 };
 

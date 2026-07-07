@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import BrandLogo from "./BrandLogo";
+import SponsorsStrip from "./SponsorsStrip";
 
 const year = new Date().getFullYear();
 
@@ -51,10 +53,8 @@ export default function Footer() {
             <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-10">
                 {/* Marca — destacada en móvil */}
                 <div className="border-b border-white/10 pb-6 lg:hidden">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-teal-400">
-                        S4 · San Sebastian Surf School
-                    </p>
-                    <p className="mt-2 font-heading text-lg font-bold tracking-tight text-white">
+                    <BrandLogo variant="whiteMark" className="mx-auto h-20 w-20" />
+                    <p className="mt-3 text-center font-heading text-lg font-bold tracking-tight text-white">
                         Zurriola · Cantábrico
                     </p>
                     <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-400">
@@ -103,7 +103,8 @@ export default function Footer() {
                     </FooterSection>
 
                     <FooterSection title="Escuela" className="hidden lg:block">
-                        <p className="font-heading text-lg font-bold tracking-tight text-white">
+                        <BrandLogo variant="whiteMark" className="h-20 w-20" />
+                        <p className="mt-3 font-heading text-lg font-bold tracking-tight text-white">
                             San Sebastian Surf School
                         </p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-400">
@@ -122,6 +123,10 @@ export default function Footer() {
                             <span className="text-xs text-slate-500">@s4surfschool</span>
                         </div>
                     </FooterSection>
+                </div>
+
+                <div className="mt-10 border-t border-white/10 pt-8">
+                    <SponsorsStrip variant="dark" />
                 </div>
             </div>
 

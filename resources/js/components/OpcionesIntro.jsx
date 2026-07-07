@@ -1,56 +1,79 @@
-import React from 'react';
-import { Link } from '@inertiajs/react';
+import React from "react";
+import { Link } from "@inertiajs/react";
 
-const OpcionesIntro = () => {
-  const opciones = [
-    { texto: 'Clases de Surf', imagen: '/img/sunset_surf.webp', url: '/clases-de-surf', externa: false },
-    { texto: 'Surftrips', imagen: '/img/trip.jpg', url: '/surftrips', externa: false },
-    { texto: 'Surfskate', imagen: '/img/surf_skate.webp', url: '/surfskate', externa: false },
-    { texto: 'Tienda', imagen: '/img/tienda_1.webp', url: '/tienda', externa: false },
-    { texto: 'Taquillas', imagen: '/img/instalaciones.jpg', url: '/taquillas', externa: false },
-    { texto: 'Webcam', imagen: '/img/zurriola_webcam.webp', url: 'https://www.zurriolacam.com.es', externa: true },
-    { texto: 'Ofertas', imagen: '/img/ofertas.webp', url: 'https://www.google.com', externa: true },
-  ];
+const OPCIONES = [
+    {
+        texto: "Clases de Surf",
+        imagen: "/img/sunset_surf.webp",
+        href: () => route("servicios.surf"),
+    },
+    {
+        texto: "Surftrips",
+        imagen: "/img/trip.jpg",
+        href: () => route("servicios.surfTrips"),
+    },
+    {
+        texto: "Surfskate",
+        imagen: "/img/surf_skate.webp",
+        href: () => route("servicios.surfSkate"),
+    },
+    {
+        texto: "Alquiler tablas",
+        imagen: "/img/tabla-demo.png",
+        href: () => route("rentals.surfboards.index"),
+    },
+    {
+        texto: "Tienda",
+        imagen: "/img/tienda_1.webp",
+        href: () => route("tienda"),
+    },
+    {
+        texto: "Taquillas",
+        imagen: "/img/instalaciones.jpg",
+        href: () => route("taquillas.planes"),
+    },
+    {
+        texto: "Webcam",
+        imagen: "/img/zurriola_webcam.webp",
+        href: () => route("servicios.webcams"),
+    },
+    {
+        texto: "Tablas 2ª mano",
+        imagen: "/img/ofertas.webp",
+        href: () => route("second-hand.index"),
+    },
+];
 
-  return (
-    <div className="w-full h-[300px] flex bg-gray-800">
-      {opciones.map((opcion, index) => (
-        opcion.externa ? (
-          // Si es una URL externa
-          <a
-            key={index}
-            href={opcion.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="relative flex-1 h-full bg-cover bg-center group"
-            style={{ backgroundImage: `url(${opcion.imagen})` }}
-          >
-            <div className="absolute inset-0 bg-black bg-opacity-50 group-hover:bg-opacity-20 transition-opacity duration-300"></div>
-            <span className="absolute inset-0 flex items-center justify-center text-white font-bold transform">
-              <span className="text-sm sm:text-base md:text-lg rotate-2">
-                {opcion.texto}
-              </span>
+function OpcionTile({ opcion }) {
+    return (
+        <Link
+            href={opcion.href()}
+            className="group relative min-h-[5.25rem] overflow-hidden bg-gray-900 sm:min-h-[6rem] md:h-full md:min-h-0 md:flex-1"
+        >
+            <div
+                className="absolute inset-0 scale-100 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                style={{ backgroundImage: `url(${opcion.imagen})` }}
+                aria-hidden
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/45 to-black/30 transition-opacity duration-300 group-hover:from-black/65 group-hover:via-black/35" />
+            <span className="absolute inset-0 flex items-end justify-center p-2 pb-2.5 text-center md:items-center md:p-3">
+                <span className="text-[10px] font-bold leading-tight tracking-wide text-white drop-shadow-sm sm:text-[11px] md:text-base lg:text-lg">
+                    {opcion.texto}
+                </span>
             </span>
-          </a>
-        ) : (
-          // Si es una URL interna
-          <Link
-            key={index}
-            href={opcion.url}
-            className="relative flex-1 h-full bg-cover bg-center group"
-            style={{ backgroundImage: `url(${opcion.imagen})` }}
-          >
-            <div className="absolute inset-0 bg-black bg-opacity-50 group-hover:bg-opacity-20 transition-opacity duration-300"></div>
-            <span className="absolute inset-0 flex items-center justify-center text-white font-bold transform">
-              <span className="text-sm sm:text-base md:text-lg rotate-2">
-                {opcion.texto}
-              </span>
-            </span>
-          </Link>
-        )
-      ))}
-    </div>
-  );
-};
+        </Link>
+    );
+}
+
+const OpcionesIntro = () => (
+    <nav
+        className="grid grid-cols-4 grid-rows-2 gap-px bg-gray-950 md:flex md:h-[300px] md:grid-cols-none md:grid-rows-none md:gap-0 md:bg-gray-800"
+        aria-label="Accesos rápidos S4"
+    >
+        {OPCIONES.map((opcion) => (
+            <OpcionTile key={opcion.texto} opcion={opcion} />
+        ))}
+    </nav>
+);
 
 export default OpcionesIntro;

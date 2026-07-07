@@ -6,6 +6,7 @@ namespace App\Policies;
 
 use App\Models\LessonUser;
 use App\Models\User;
+use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 
 class LessonUserPolicy
@@ -61,6 +62,10 @@ class LessonUserPolicy
 
         $lesson = $enrollment->lesson;
         if ($lesson && $lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
+            return false;
+        }
+
+        if (! AcademyEnrollmentPolicy::canCancelByTime($lesson)) {
             return false;
         }
 

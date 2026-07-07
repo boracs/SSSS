@@ -3,6 +3,8 @@ import { router, usePage } from "@inertiajs/react";
 import Layout1 from "../../../layouts/Layout1";
 import {
     PlusCircle,
+    Plus,
+    Minus,
     Pencil,
     Trash2,
     TrendingUp,
@@ -21,6 +23,13 @@ import {
 
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 const fmt = (cents) => (cents != null ? EUR.format(cents / 100) : "-");
+
+function fmtDate(iso) {
+    if (!iso) return "—";
+    const parts = String(iso).slice(0, 10).split("-");
+    if (parts.length !== 3) return iso;
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
 
 const STATUS_CONFIG = {
     available: {
@@ -134,13 +143,102 @@ function ConfirmStatusModal({ pending, onCancel, onConfirm, processing }) {
     );
 }
 
+// ── Panel detalle (acordeón) ───────────────────────────────────────────────────
+
+function BoardDetailPanel({ board }) {
+    const profit = board.profit_cents;
+    const cfg = STATUS_CONFIG[board.status] ?? STATUS_CONFIG.sold;
+
+    return (
+        <div className="grid gap-4 border-t border-white/5 bg-slate-950/60 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fechas</p>
+                <dl className="mt-2 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-2">
+                        <dt className="text-slate-500">Compra / alta</dt>
+                        <dd className="font-medium text-white">{fmtDate(board.purchased_at || board.created_at)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                        <dt className="text-slate-500">Venta</dt>
+                        <dd className="font-medium text-white">{fmtDate(board.sold_at)}</dd>
+                    </div>
+                </dl>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Precios</p>
+                <dl className="mt-2 space-y-1.5 text-sm">
+                    <div className="flex justify-between gap-2">
+                        <dt className="text-slate-500">Compra</dt>
+                        <dd className="font-medium text-slate-300">{fmt(board.purchase_price)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                        <dt className="text-slate-500">Venta PVP</dt>
+                        <dd className="font-semibold text-white">{fmt(board.sale_price)}</dd>
+                    </div>
+                    {board.discount_pct > 0 ? (
+                        <div className="flex justify-between gap-2">
+                            <dt className="text-slate-500">Con descuento</dt>
+                            <dd className="font-semibold text-orange-400">
+                                -{board.discount_pct}% · {fmt(board.effective_price)}
+                            </dd>
+                        </div>
+                    ) : (
+                        <div className="flex justify-between gap-2">
+                            <dt className="text-slate-500">Precio final</dt>
+                            <dd className="font-semibold text-white">{fmt(board.effective_price)}</dd>
+                        </div>
+                    )}
+                </dl>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estado</p>
+                <p className="mt-2">
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg.select}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                        {cfg.label}
+                    </span>
+                </p>
+                {profit != null ? (
+                    <p className={`mt-3 text-sm font-bold ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                        Margen: {fmt(profit)}
+                    </p>
+                ) : (
+                    <p className="mt-3 text-xs text-slate-500">Margen al cerrar venta</p>
+                )}
+            </div>
+            {board.description ? (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2 lg:col-span-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Notas</p>
+                    <p className="mt-2 text-sm leading-relaxed text-slate-400">{board.description}</p>
+                </div>
+            ) : null}
+        </div>
+    );
+}
+
 // ── Fila de tabla ──────────────────────────────────────────────────────────────
 
-function BoardRow({ board, onDelete, onRequestStatusChange }) {
+function BoardRow({ board, expanded, onToggleExpand, onDelete, onRequestStatusChange }) {
     const profit = board.profit_cents;
 
     return (
-        <tr className="border-t border-white/5 hover:bg-white/5">
+        <>
+        <tr className={`border-t border-white/5 ${expanded ? "bg-white/[0.07]" : "hover:bg-white/5"}`}>
+            <td className="w-12 px-2 py-3">
+                <button
+                    type="button"
+                    onClick={() => onToggleExpand(board.id)}
+                    aria-expanded={expanded}
+                    aria-label={expanded ? "Ocultar detalle" : "Ver detalle"}
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
+                        expanded
+                            ? "border-orange-500/40 bg-orange-500/15 text-orange-300"
+                            : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+                    }`}
+                >
+                    {expanded ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                </button>
+            </td>
             <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                     {board.first_image ? (
@@ -180,13 +278,10 @@ function BoardRow({ board, onDelete, onRequestStatusChange }) {
             </td>
 
             <td className="px-4 py-3">
-                <p className="text-xs text-slate-500">Compra: {fmt(board.purchase_price)}</p>
-                <p className="text-sm font-bold text-white">Venta: {fmt(board.sale_price)}</p>
-                {board.discount_pct > 0 && (
-                    <p className="text-[11px] text-orange-400">
-                        -{board.discount_pct}% → {fmt(board.effective_price)}
-                    </p>
-                )}
+                <p className="text-sm font-bold text-white">{fmt(board.effective_price ?? board.sale_price)}</p>
+                {board.discount_pct > 0 ? (
+                    <p className="text-[11px] text-orange-400">-{board.discount_pct}%</p>
+                ) : null}
             </td>
             <td className="px-4 py-3">
                 {profit != null ? (
@@ -219,6 +314,14 @@ function BoardRow({ board, onDelete, onRequestStatusChange }) {
                 </div>
             </td>
         </tr>
+        {expanded ? (
+            <tr>
+                <td colSpan={7} className="p-0">
+                    <BoardDetailPanel board={board} />
+                </td>
+            </tr>
+        ) : null}
+        </>
     );
 }
 
@@ -288,6 +391,11 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
     // Modal cambio de estado
     const [pendingStatus, setPendingStatus] = useState(null); // { board, newStatus }
     const [statusProcessing, setStatusProcessing] = useState(false);
+    const [expandedId, setExpandedId] = useState(null);
+
+    const toggleExpanded = (id) => {
+        setExpandedId((prev) => (prev === id ? null : id));
+    };
 
     /* ── Borrado ── */
     const handleDelete    = (board) => setConfirmDelete(board);
@@ -506,6 +614,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b border-white/10">
+                                <th className="w-12 px-2 py-3" aria-label="Detalle" />
                                 {["Tabla", "Medidas", "Estado", "Precios", "Margen", "Acciones"].map((h) => (
                                     <th key={h} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                                         {h}
@@ -516,7 +625,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                         <tbody>
                             {boards.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center text-sm text-slate-500">
+                                    <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
                                         {hasActiveFilters
                                             ? "No hay tablas que coincidan con los filtros aplicados."
                                             : "No hay tablas registradas aún."}
@@ -527,6 +636,8 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                     <BoardRow
                                         key={board.id}
                                         board={board}
+                                        expanded={expandedId === board.id}
+                                        onToggleExpand={toggleExpanded}
                                         onDelete={handleDelete}
                                         onRequestStatusChange={handleRequestStatusChange}
                                     />

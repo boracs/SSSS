@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ResolveEmergencyKeyRequest;
 use App\Http\Requests\Admin\UpdateEmergencyLockCodeRequest;
 use App\Models\EmergencyKeyRequest;
 use App\Models\EmergencyLockSetting;
@@ -60,5 +61,24 @@ class EmergencyKeyController extends Controller
         return redirect()
             ->route('admin.emergency-keys.index')
             ->with('success', 'Solicitud marcada: llave anterior desactivada por extravio definitivo.');
+    }
+
+    public function resolveKeyRequest(
+        ResolveEmergencyKeyRequest $request,
+        EmergencyKeyRequest $emergencyKeyRequest,
+    ): RedirectResponse {
+        /** @var User $admin */
+        $admin = $request->user();
+        $outcome = $request->validated('outcome');
+
+        $this->emergencyKeyService->resolveKeyRequest($emergencyKeyRequest, $admin, $outcome);
+
+        $message = $outcome === 'lost_definitive'
+            ? 'Solicitud marcada: llave anterior desactivada por extravío definitivo.'
+            : 'Solicitud cerrada: la llave se recuperó y no se ha anulado.';
+
+        return redirect()
+            ->route('admin.emergency-keys.index')
+            ->with('success', $message);
     }
 }

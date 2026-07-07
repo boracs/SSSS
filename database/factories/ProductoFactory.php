@@ -16,6 +16,10 @@ class ProductoFactory extends Factory
             'precio' => $this->faker->randomFloat(2, 5, 100),
             'unidades' => $this->faker->numberBetween(1, 50),
             'descuento' => $this->faker->numberBetween(0, 80), 
+            'tags' => $this->faker->randomElements(
+                \App\Enums\ProductTag::values(),
+                $this->faker->numberBetween(1, 3)
+            ),
             'eliminado' => $this->faker->boolean(30),
         ];
     }

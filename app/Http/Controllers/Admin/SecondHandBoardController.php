@@ -47,6 +47,9 @@ class SecondHandBoardController extends Controller
             ->map(fn (SecondHandBoard $b) => [
                 ...$b->toPublicArray(),
                 'purchase_price' => $b->purchase_price,
+                'purchased_at'   => $b->purchased_at?->toDateString()
+                    ?? $b->created_at?->toDateString(),
+                'created_at'     => $b->created_at?->toDateString(),
                 'profit_cents'   => $b->status === SecondHandStatus::SOLD
                     ? $b->effectiveSalePrice() - $b->purchase_price
                     : null,

@@ -7,13 +7,14 @@ test('contact form validates required fields', function () {
         'name' => '',
         'email' => 'correo-invalido',
         'message' => 'corto',
+        'website' => '',
     ]);
 
     $response->assertRedirect('/contacto');
     $response->assertSessionHasErrors(['name', 'email', 'message']);
 });
 
-test('contact form blocks honeypot spam', function () {
+test('contact form blocks honeypot spam with silent success', function () {
     $response = $this->from('/contacto')->post(route('contacto.store'), [
         'name' => 'Usuario Legitimo',
         'email' => 'usuario@gmail.com',
@@ -22,7 +23,8 @@ test('contact form blocks honeypot spam', function () {
     ]);
 
     $response->assertRedirect('/contacto');
-    $response->assertSessionHasErrors(['website']);
+    $response->assertSessionHas('success');
+    $response->assertSessionMissing('errors');
 });
 
 test('contact form sends successfully with valid payload', function () {

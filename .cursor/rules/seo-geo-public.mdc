@@ -1,0 +1,114 @@
+---
+description: SEO técnico y GEO en páginas públicas indexables (Laravel + Inertia + React)
+globs: resources/js/Pages/**/*.jsx, app/Http/Controllers/**/*.php, app/DTOs/**/*.php, app/Services/**/*Seo*.php
+alwaysApply: false
+---
+
+# SEO técnico + GEO (páginas públicas)
+
+Aplica al tocar rutas/componentes **públicos e indexables**. Mapa de dominios y rutas: `docs/PROJECT_TREE_FOR_GEMINI.md` (no duplicar aquí).
+
+## Cuándo activar esta regla
+
+- Páginas marketing, CMS, catálogo tienda/alquiler/segunda mano, landings de servicios.
+- Cuando el usuario pida **análisis SEO/GEO**, metadatos, Schema.org, sitemap o indexación.
+
+**No aplica** a refactors internos de admin, auth o flujos de pago sin impacto público.
+
+---
+
+## Indexable vs noindex
+
+| Indexable (SEO + GEO) | Noindex / no rastrear |
+|-----------------------|------------------------|
+| `/`, `/nosotros`, `/contacto`, `/servicios*` | `/admin/*`, `/login`, `/register`, Auth/* |
+| `/tienda`, `/producto-ver/*` | Carrito, checkout, pedidos, perfil, dashboard |
+| `/segunda-mano`, `/segunda-mano/{id}` | Taquillas, llaves emergencia, AutoCoach (uploads) |
+| `/tablas-alquiler/*` (catálogo/show público) | Áreas con `current_code`, DTOs sensibles |
+
+En páginas noindex: `<Head><meta name="robots" content="noindex, nofollow" /></Head>`.
+
+---
+
+## Guardrails (obligatorio)
+
+- **Cero datos financieros internos:** nunca `purchase_price`, márgenes ni auditoría en metadatos, JSON-LD ni HTML público. Segunda mano: solo `SecondHandBoard::toPublicArray()`.
+- **Cero datos sensibles:** códigos de taquilla, `EmergencyKeyRevealDto`, tokens, IDs internos de admin.
+- **Sin lógica SEO en JSX:** el backend prepara un DTO readonly; React solo renderiza.
+- **Sin keyword stuffing** ni texto oculto. GEO = hechos verificables, listas, tablas, datos locales (Zurriola, Donostia, servicios reales).
+- **Dinero en JSON-LD:** precios en euros formateados desde céntimos (int), nunca float.
+
+---
+
+## Patrón de implementación
+
+```
+Controller → SeoMetaDto (readonly) + JsonLd via *SeoService
+          → Inertia::render(..., ['seo' => $dto])
+          → Page.jsx: <SeoHead seo={seo} />  (usa <Head> de @inertiajs/react)
+```
+
+**SeoMetaDto mínimo:** `title`, `description`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `ogType`, `robots`, `jsonLd` (array Schema.org ya sanitizado).
+
+**Frontend:** componente compartido `resources/js/components/seo/SeoHead.jsx` (crear si no existe). `@inertiaHead` en `app.blade.php` debe recibir tags de la primera carga.
+
+**Schemas por tipo de página:**
+
+| Página | Schema.org |
+|--------|------------|
+| Home, Nosotros, Contacto | `LocalBusiness`, `Organization` |
+| Producto / Tienda | `Product`, `Offer` |
+| Clases / Servicios | `Course`, `Service` |
+| Segunda mano | `Product` (solo datos de `toPublicArray()`) |
+| Alquiler tabla | `Product` + `Offer` (precio público) |
+
+---
+
+## GEO (Optimización para motores generativos)
+
+- Priorizar **respuestas citables:** definiciones claras, horarios, ubicación, precios públicos, FAQs en viñetas.
+- Un **H1 único** por página; jerarquía H2/H3 semántica (`aria-labelledby` donde aplique).
+- Tablas HTML para comparativas (medidas tabla, planes, precios).
+- Contenido en **español** (`lang="es"` ya en blade); `og:locale` = `es_ES`.
+
+---
+
+## Roadmap técnico (escalabilidad)
+
+1. `SeoHead` + `noindex` en privadas + canonical por ruta.
+2. DTOs + JSON-LD por dominio (`ProductSeoService`, etc.).
+3. `robots.txt` + `sitemap.xml` dinámico (rutas Laravel, no hardcode masivo).
+4. Core Web Vitals: LCP, lazy images, payload Inertia < 5MB.
+
+---
+
+## Plantilla de respuesta (solo si piden análisis SEO/GEO)
+
+Usar estos bloques XML; en cambios de código normales **no** obligatorio:
+
+```xml
+<analisis_contextual>
+[Ruta Inertia, indexable/noindex, impacto rastreadores/LLMs]
+</analisis_contextual>
+
+<estrategia_seo_tecnico>
+[Controller/DTO, SeoHead, canonical, OpenGraph, JSON-LD]
+</estrategia_seo_tecnico>
+
+<estrategia_geo_inteligente>
+[Estructura citables, tablas/listas, guardrails privacidad]
+</estrategia_geo_inteligente>
+
+<metricas_control>
+[View-source canonical, Rich Results Test, Lighthouse SEO, Search Console]
+</metricas_control>
+```
+
+---
+
+## Validación rápida
+
+- HTML carga `/build/assets/*` (no Vite dev en producción).
+- Canonical = URL absoluta coherente con `APP_URL`.
+- JSON-LD válido en [Rich Results Test](https://search.google.com/test/rich-results).
+- Privadas devuelven `noindex`.

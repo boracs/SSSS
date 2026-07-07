@@ -15,9 +15,11 @@ use App\Http\Requests\Academy\UploadLessonProofRequest;
 use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
+use App\Models\UserBono;
 use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
 use App\Services\CreditEngineService;
+use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -227,7 +229,13 @@ class LessonController extends Controller
             $enrollments = \App\Models\LessonUser::query()
                 ->where('user_id', auth()->id())
                 ->where(function ($q) {
-                    $q->whereIn('status', ['pending', 'confirmed', 'enrolled', 'attended'])
+                    $q->whereIn('status', [
+                        'pending',
+                        LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+                        'confirmed',
+                        'enrolled',
+                        'attended',
+                    ])
                         ->orWhere(function ($q2) {
                             $q2->where('status', LessonUser::STATUS_CANCELLED)
                                 ->where('cancelled_at', '>=', BusinessDateTime::now()->subDays(14));
@@ -262,6 +270,14 @@ class LessonController extends Controller
             }
         }
 
+        $creditsBalance = 0;
+        if ($viewer && (bool) ($viewer->is_vip ?? false)) {
+            $creditsBalance = (int) UserBono::query()
+                ->where('user_id', $viewer->id)
+                ->where('status', UserBono::STATUS_CONFIRMED)
+                ->sum('clases_restantes');
+        }
+
         return Inertia::render('Academy/Index', [
             'selectedDate' => $date->format('Y-m-d'),
             'calendarMonth' => $month->format('Y-m-d'),
@@ -271,7 +287,12 @@ class LessonController extends Controller
             'lessonsFeed' => $feedLessons,
             'canSeeVip' => $canSeeVip,
             'optimalDates' => $optimalDates,
-            'creditsBalance' => 0,
+            'creditsBalance' => $creditsBalance,
+            'enrollmentPolicy' => [
+                'enroll_cutoff_minutes' => AcademyEnrollmentPolicy::enrollCutoffMinutes(),
+                'cancel_cutoff_hours' => AcademyEnrollmentPolicy::cancelCutoffHours(),
+                'standard_monitor_capacity' => AcademyEnrollmentPolicy::standardMonitorCapacity(),
+            ],
             'myEnrollmentLessonIds' => $myEnrollmentLessonIds,
             'myEnrollmentStatusByLesson' => $myEnrollmentStatusByLesson,
             'myEnrollmentExpiresAtByLesson' => $myEnrollmentExpiresAtByLesson,
@@ -335,7 +356,7 @@ class LessonController extends Controller
                 continue;
             }
 
-            $availability = $this->availabilityService->evaluate($slotStart, $slotEnd, 1);
+            $availability = $this->availabilityService->preview($slotStart, $slotEnd, 1);
             if ($availability['allowed']) {
                 $slots[] = [
                     'start' => $slotStart->format('H:i'),

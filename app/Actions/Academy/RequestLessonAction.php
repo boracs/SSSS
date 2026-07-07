@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Academy;
 
+use App\Enums\PaymentStatus;
 use App\Events\LessonRequestedEvent;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
 use App\Services\AvailabilityService;
+use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -33,6 +35,10 @@ final class RequestLessonAction
     ): array {
         if ($lesson->status !== Lesson::STATUS_SCHEDULED) {
             return ['ok' => false, 'message' => 'Esta clase no admite nuevas solicitudes.'];
+        }
+
+        if (! AcademyEnrollmentPolicy::canEnrollByTime($lesson)) {
+            return ['ok' => false, 'message' => AcademyEnrollmentPolicy::enrollBlockedMessage()];
         }
 
         if (LessonUser::query()
@@ -76,8 +82,36 @@ final class RequestLessonAction
                     ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
 
                 $maxSlots = (int) ($locked->max_slots ?? 0);
-                if ($maxSlots > 0 && $seatsTaken + $partySize > $maxSlots) {
+                if ($partySize > 0 && $seatsTaken + $partySize > $maxSlots && $maxSlots > 0) {
                     return ['ok' => false, 'message' => 'No hay plazas libres en esta clase.'];
+                }
+
+                if (AcademyEnrollmentPolicy::requiresAdminQuotaApproval($seatsTaken, $partySize)) {
+                    $enrollment = LessonUser::query()->create([
+                        'lesson_id' => $locked->id,
+                        'user_id' => $user->id,
+                        'party_size' => $partySize,
+                        'quantity' => $partySize,
+                        'age_bracket' => $ageBracket,
+                        'credits_locked' => 0,
+                        'status' => LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+                        'payment_status' => PaymentStatus::Pending->value,
+                        'payment_method' => $paymentMethod,
+                    ]);
+
+                    $path = $proof->store('lesson-proofs/'.$enrollment->id, 'local');
+                    $enrollment->update([
+                        'payment_proof_path' => $path,
+                        'proof_uploaded_at' => BusinessDateTime::now(),
+                    ]);
+
+                    LessonRequestedEvent::dispatch($enrollment->fresh());
+
+                    return [
+                        'ok' => true,
+                        'pending_admin' => true,
+                        'message' => AcademyEnrollmentPolicy::quotaPendingMessage(),
+                    ];
                 }
 
                 $participantTotalAfter = $blockingParty + $partySize;
@@ -112,7 +146,7 @@ final class RequestLessonAction
                     'age_bracket' => $ageBracket,
                     'credits_locked' => 0,
                     'status' => $status,
-                    'payment_status' => LessonUser::PAYMENT_PENDING,
+                    'payment_status' => PaymentStatus::Pending->value,
                     'payment_method' => $paymentMethod,
                 ]);
 

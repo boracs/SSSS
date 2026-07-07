@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\Vip\VipMembershipService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly VipMembershipService $vipMembershipService,
+    ) {}
+
     public function index(Request $request)
     {
         $search = trim((string) $request->query('search', ''));
@@ -40,10 +45,13 @@ class UserController extends Controller
 
     public function toggleVip(User $user)
     {
-        $user->is_vip = ! (bool) $user->is_vip;
-        $user->save();
+        $updated = $this->vipMembershipService->toggle($user);
 
-        return back()->with('success', "Estado VIP actualizado para {$user->email}.");
+        if ((bool) $updated->is_vip) {
+            return back()->with('success', "Usuario VIP activado para {$updated->email}. Asigna taquilla compartida (#500/#600) desde el mapa si necesita descuento en tienda.");
+        }
+
+        return back()->with('success', "VIP desactivado para {$updated->email}.");
     }
 }
 

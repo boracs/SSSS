@@ -86,7 +86,7 @@ class TaquillaMembershipService
 
                         return (int) ($start->diffInDays($end) + 1);
                     });
-            } elseif ($u->numeroTaquilla) {
+            } elseif ($u->hasPhysicalLocker()) {
                 $estado = 'vencido';
             }
 
@@ -171,7 +171,8 @@ class TaquillaMembershipService
             'userData' => [
                 'id' => $user->id,
                 'nombre_completo' => "{$user->nombre} {$user->apellido}",
-                'numero_taquilla' => $user->numeroTaquilla,
+                'numero_taquilla' => $user->hasPhysicalLocker() ? $user->numeroTaquilla : null,
+                'is_vip_only' => $user->hasSharedLocker(),
                 'vencimiento_cuota' => $user->fecha_vencimiento_cuota,
                 'dias_restantes' => $diasRestantes,
                 'plan_vigente' => $user->planVigente ? [
@@ -188,6 +189,12 @@ class TaquillaMembershipService
 
     public function registerPayment(User $user, RegistrarPagoTaquillaRequest $request): void
     {
+        if (! $user->hasPhysicalLocker()) {
+            throw ValidationException::withMessages([
+                'plan_id' => ['Necesitas una taquilla física asignada para contratar o renovar un plan. Contacta con el club.'],
+            ]);
+        }
+
         $validated = $request->validated();
         $payload = [
             'plan_id' => (int) $validated['plan_id'],

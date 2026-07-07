@@ -44,14 +44,9 @@ class Pag_principalController extends Controller
         $productosPayload = $productos->map(static function (Producto $p): array {
             $ruta = $p->imagenPrincipal?->ruta ?? $p->imagenPrincipal?->nombre;
 
-            return [
-                'id' => $p->id,
-                'nombre' => (string) $p->nombre,
-                'precio' => $p->precio,
-                'unidades' => (int) $p->unidades,
-                'descuento' => $p->descuento,
-                'imagen' => $ruta !== null && $ruta !== '' ? (string) $ruta : null,
-            ];
+            return $p->toStorePayload(
+                $ruta !== null && $ruta !== '' ? (string) $ruta : null
+            );
         })->values()->all();
 
         // Pasar los productos, el usuario autenticado y la cantidad de productos en el carrito a la vista

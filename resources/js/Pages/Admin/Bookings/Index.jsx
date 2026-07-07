@@ -1,7 +1,33 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Clock, ExternalLink } from "lucide-react";
 import { toast } from "react-toastify";
 import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
+
+const STATUS_SORT_ORDER = {
+    pending: 0,
+    confirmed: 1,
+    completed: 2,
+    cancelled: 3,
+};
+
+function SortHeader({ label, active, direction, onClick }) {
+    const Icon = !active ? ArrowUpDown : direction === "asc" ? ArrowUp : ArrowDown;
+
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={`Ordenar por ${label}`}
+            className={`inline-flex items-center gap-1 transition hover:text-slate-900 ${
+                active ? "text-surf-primary" : ""
+            }`}
+        >
+            {label}
+            <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+        </button>
+    );
+}
 
 function isExpiredPending(booking) {
     if (!booking) return false;
@@ -41,6 +67,17 @@ export default function Index({ surfboards, bookings, filters }) {
 
     const selectedSurfboard = filters?.surfboard_id ?? "";
     const statusFilter = filters?.status ?? "all";
+    const [sortBy, setSortBy] = useState(null);
+    const [sortDir, setSortDir] = useState("asc");
+
+    const toggleSort = (key) => {
+        if (sortBy === key) {
+            setSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
+        } else {
+            setSortBy(key);
+            setSortDir("asc");
+        }
+    };
 
     const filtered = useMemo(() => {
         // ya viene filtrado por backend, mantenemos por si quieres client-side adicional
@@ -48,6 +85,32 @@ export default function Index({ surfboards, bookings, filters }) {
         if (statusFilter === "all") return list;
         return list.filter((b) => b.status === statusFilter);
     }, [bookings, statusFilter]);
+
+    const sorted = useMemo(() => {
+        const list = [...filtered];
+
+        if (!sortBy) return list;
+
+        if (sortBy === "range") {
+            return list.sort((a, b) => {
+                const da = new Date(a.start_date).getTime();
+                const db = new Date(b.start_date).getTime();
+                if (Number.isNaN(da) || Number.isNaN(db)) return 0;
+                return sortDir === "asc" ? da - db : db - da;
+            });
+        }
+
+        if (sortBy === "status") {
+            return list.sort((a, b) => {
+                const oa = STATUS_SORT_ORDER[a.status] ?? 99;
+                const ob = STATUS_SORT_ORDER[b.status] ?? 99;
+                const cmp = oa - ob;
+                return sortDir === "asc" ? cmp : -cmp;
+            });
+        }
+
+        return list;
+    }, [filtered, sortBy, sortDir]);
 
     const statusBadge = (status) => {
         if (status === "pending") return <Badge tone="amber">Pendiente</Badge>;
@@ -60,33 +123,47 @@ export default function Index({ surfboards, bookings, filters }) {
     return (
         <>
             <Head title="Gestor de reservas" />
-            <div className="mx-auto max-w-6xl px-4 py-8">
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900">
-                            Reservas (admin)
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-600">
-                            Filtra por estado y confirma pagos. Las pendientes expiran a los 7 días.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Link
-                            href={route("admin.surfboards.index")}
-                            className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-                        >
-                            Ir a tablas
-                        </Link>
-                        <Link
-                            href={route("admin.bookings.mark-expired")}
-                            method="post"
-                            as="button"
-                            preserveScroll
-                            onSuccess={() => toast.success("Pendientes expiradas procesadas.")}
-                            className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
-                        >
-                            Marcar expiradas
-                        </Link>
+            <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4 shadow-lg backdrop-blur-sm sm:p-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="min-w-0">
+                            <h1 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                                Reservas (admin)
+                            </h1>
+                            <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
+                                Filtra por tabla y estado, confirma pagos y libera fechas bloqueadas.
+                            </p>
+                            <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100/95">
+                                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
+                                <span>
+                                    <strong className="font-semibold text-amber-50">Marcar expiradas</strong>{" "}
+                                    cancela las reservas <em>pendientes de pago</em> cuyo plazo de 7 días ya
+                                    venció. Así la tabla vuelve a estar disponible. No afecta a confirmadas ni
+                                    completadas.
+                                </span>
+                            </p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap gap-2 lg:justify-end">
+                            <Link
+                                href={route("admin.surfboards.index")}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200 transition hover:border-white/25 hover:bg-white/10"
+                            >
+                                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                                Ir a tablas
+                            </Link>
+                            <Link
+                                href={route("admin.bookings.mark-expired")}
+                                method="post"
+                                as="button"
+                                preserveScroll
+                                title="Cancelar pendientes expiradas y liberar tablas"
+                                onSuccess={() => toast.success("Reservas expiradas procesadas.")}
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-400/40 bg-amber-500 px-3 py-2 text-sm font-semibold text-slate-950 shadow-sm transition hover:bg-amber-400"
+                            >
+                                <Clock className="h-3.5 w-3.5" aria-hidden />
+                                Marcar expiradas
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
@@ -160,15 +237,29 @@ export default function Index({ surfboards, bookings, filters }) {
 
                 <div className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                     <div className="grid grid-cols-12 gap-0 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
-                        <div className="col-span-3">Rango</div>
-                        <div className="col-span-2">Estado</div>
+                        <div className="col-span-3">
+                            <SortHeader
+                                label="Rango"
+                                active={sortBy === "range"}
+                                direction={sortDir}
+                                onClick={() => toggleSort("range")}
+                            />
+                        </div>
+                        <div className="col-span-2">
+                            <SortHeader
+                                label="Estado"
+                                active={sortBy === "status"}
+                                direction={sortDir}
+                                onClick={() => toggleSort("status")}
+                            />
+                        </div>
                         <div className="col-span-2">Expirada</div>
                         <div className="col-span-3">Precio</div>
                         <div className="col-span-2 text-right">Acciones</div>
                     </div>
 
                     <div className="divide-y divide-slate-100">
-                        {filtered.map((b) => {
+                        {sorted.map((b) => {
                             const expired = isExpiredPending(b);
                             return (
                                 <div
@@ -229,7 +320,7 @@ export default function Index({ surfboards, bookings, filters }) {
                             );
                         })}
 
-                        {filtered.length === 0 ? (
+                        {sorted.length === 0 ? (
                             <div className="px-4 py-10 text-center text-sm text-slate-600">
                                 Sin reservas en el filtro actual.
                             </div>

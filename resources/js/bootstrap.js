@@ -1,69 +1,60 @@
-import axios from 'axios';
-import { route as ziggyRoute } from 'ziggy-js';
-import { Ziggy } from './ziggy';
+import axios from "axios";
+import { route } from "./lib/route.js";
+import { getCsrfFetchHeaders } from "./lib/csrf.js";
+import { Ziggy } from "./ziggy";
+
+// Túneles / distintos hosts: rutas siempre respecto al origen actual (evita URLs rotas en ziggy.js).
+if (typeof window !== "undefined" && window.location?.origin) {
+    Ziggy.url = window.location.origin;
+    Ziggy.port = window.location.port ? Number(window.location.port) : null;
+}
 
 window.axios = axios;
+window.route = route;
+globalThis.route = route;
 
-window.route = (name, params, absolute, config = Ziggy) =>
-    ziggyRoute(name, params, absolute, config);
-
-window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
+window.axios.defaults.headers.common["X-Requested-With"] = "XMLHttpRequest";
 // CSRF estable para SPA: usar cookie XSRF-TOKEN (siempre sincronizada) -> header X-XSRF-TOKEN
-window.axios.defaults.xsrfCookieName = 'XSRF-TOKEN';
-window.axios.defaults.xsrfHeaderName = 'X-XSRF-TOKEN';
+window.axios.defaults.xsrfCookieName = "XSRF-TOKEN";
+window.axios.defaults.xsrfHeaderName = "X-XSRF-TOKEN";
 window.axios.defaults.withCredentials = true;
 
 // Si hay 419, normalmente es token/sesión desincronizada: recargar para rehacer sesión + token.
 window.axios.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error?.response?.status === 419 && typeof window !== 'undefined') {
+        if (error?.response?.status === 419 && typeof window !== "undefined") {
             window.location.reload();
         }
         return Promise.reject(error);
-    }
+    },
 );
-
-function getXsrfCookie() {
-    const raw = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('XSRF-TOKEN='))
-        ?.split('=')[1];
-    return raw ? decodeURIComponent(raw) : '';
-}
 
 const originalFetch = window.fetch.bind(window);
 
 window.fetch = function patchedFetch(input, init) {
-    const inputIsRequest = typeof Request !== 'undefined' && input instanceof Request;
-    const url = typeof input === 'string' ? input : inputIsRequest ? input.url : input?.url;
+    const inputIsRequest = typeof Request !== "undefined" && input instanceof Request;
+    const url = typeof input === "string" ? input : inputIsRequest ? input.url : input?.url;
 
     const initObj = init ? { ...init } : {};
-    const method = String(initObj.method || (inputIsRequest ? input.method : 'GET')).toUpperCase();
+    const method = String(initObj.method || (inputIsRequest ? input.method : "GET")).toUpperCase();
 
     const isSameOrigin =
-        url && (url.startsWith('/') || url.startsWith(window.location.origin));
-    const isMutating = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
+        url && (url.startsWith("/") || url.startsWith(window.location.origin));
+    const isMutating = method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
 
     if (isSameOrigin && isMutating) {
-        const xsrf = getXsrfCookie();
-        if (xsrf) {
-            const headers = initObj.headers || (inputIsRequest ? input.headers : undefined) || {};
-            const flat =
-                headers instanceof Headers
-                    ? Object.fromEntries(headers.entries())
-                    : Array.isArray(headers)
-                    ? Object.fromEntries(headers)
-                    : { ...headers };
+        const flatHeaders =
+            initObj.headers instanceof Headers
+                ? Object.fromEntries(initObj.headers.entries())
+                : Array.isArray(initObj.headers)
+                  ? Object.fromEntries(initObj.headers)
+                  : { ...(initObj.headers ?? (inputIsRequest ? Object.fromEntries(input.headers.entries()) : {})) };
 
-            if (!flat['X-XSRF-TOKEN']) flat['X-XSRF-TOKEN'] = xsrf;
-            if (!flat['X-Requested-With']) flat['X-Requested-With'] = 'XMLHttpRequest';
-            initObj.headers = flat;
+        initObj.headers = getCsrfFetchHeaders(flatHeaders);
 
-            if (inputIsRequest) {
-                const newRequest = new Request(input, initObj);
-                return originalFetch(newRequest);
-            }
+        if (inputIsRequest) {
+            return originalFetch(new Request(input, initObj));
         }
     }
 

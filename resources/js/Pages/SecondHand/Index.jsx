@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
-import { Ruler, Droplets, Tag, Search } from "lucide-react";
+import { Ruler, Droplets, Tag, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 const EUR = new Intl.NumberFormat("es-ES", {
     style: "currency",
@@ -34,6 +34,18 @@ const VOLUME_FILTERS = [
     { value: "mid", label: "34 – 38 L", match: (v) => v >= 34 && v < 38 },
     { value: "high", label: "Más de 38 L", match: (v) => v >= 38 },
 ];
+
+const PRICE_FILTERS = [
+    { value: "all", label: "Todos los precios" },
+    { value: "under300", label: "Hasta 300 €", match: (cents) => cents <= 30000 },
+    { value: "300-450", label: "300 – 450 €", match: (cents) => cents > 30000 && cents <= 45000 },
+    { value: "450-600", label: "450 – 600 €", match: (cents) => cents > 45000 && cents <= 60000 },
+    { value: "over600", label: "Más de 600 €", match: (cents) => cents > 60000 },
+];
+
+function effectivePriceCents(board) {
+    return Number(board.effective_price ?? board.sale_price ?? 0);
+}
 
 function BoardCard({ board }) {
     const hasDiscount = board.discount_pct > 0;
@@ -118,17 +130,27 @@ function SpecPill({ icon: Icon, label, suffix }) {
 const selectClass =
     "w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-8 text-sm text-slate-200 outline-none focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 sm:w-auto sm:min-w-[180px]";
 
+const sortButtonClass =
+    "inline-flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-3 text-sm text-slate-200 outline-none transition hover:border-orange-400/40 hover:bg-white/10 focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 sm:w-auto sm:min-w-[180px]";
+
 export default function SecondHandIndex({ boards }) {
     const [search, setSearch] = useState("");
     const [heightFilter, setHeightFilter] = useState("all");
     const [volumeFilter, setVolumeFilter] = useState("all");
+    const [priceFilter, setPriceFilter] = useState("all");
+    const [priceSort, setPriceSort] = useState(null);
+
+    const togglePriceSort = () => {
+        setPriceSort((prev) => (prev === null || prev === "desc" ? "asc" : "desc"));
+    };
 
     const filtered = useMemo(() => {
         const heightRule = HEIGHT_FILTERS.find((f) => f.value === heightFilter);
         const volumeRule = VOLUME_FILTERS.find((f) => f.value === volumeFilter);
+        const priceRule = PRICE_FILTERS.find((f) => f.value === priceFilter);
         const q = search.toLowerCase().trim();
 
-        return boards.filter((b) => {
+        let result = boards.filter((b) => {
             const matchSearch =
                 !q ||
                 b.name.toLowerCase().includes(q) ||
@@ -137,20 +159,37 @@ export default function SecondHandIndex({ boards }) {
 
             const h = Number(b.height);
             const v = Number(b.volume);
+            const priceCents = effectivePriceCents(b);
             const matchHeight = heightFilter === "all" || (heightRule?.match?.(h) ?? true);
             const matchVolume = volumeFilter === "all" || (volumeRule?.match?.(v) ?? true);
+            const matchPrice = priceFilter === "all" || (priceRule?.match?.(priceCents) ?? true);
 
-            return matchSearch && matchHeight && matchVolume;
+            return matchSearch && matchHeight && matchVolume && matchPrice;
         });
-    }, [boards, search, heightFilter, volumeFilter]);
+
+        if (priceSort) {
+            result = [...result].sort((a, b) => {
+                const diff = effectivePriceCents(a) - effectivePriceCents(b);
+                return priceSort === "asc" ? diff : -diff;
+            });
+        }
+
+        return result;
+    }, [boards, search, heightFilter, volumeFilter, priceFilter, priceSort]);
 
     const hasActiveFilters =
-        search.trim() !== "" || heightFilter !== "all" || volumeFilter !== "all";
+        search.trim() !== "" ||
+        heightFilter !== "all" ||
+        volumeFilter !== "all" ||
+        priceFilter !== "all" ||
+        priceSort !== null;
 
     const clearFilters = () => {
         setSearch("");
         setHeightFilter("all");
         setVolumeFilter("all");
+        setPriceFilter("all");
+        setPriceSort(null);
     };
 
     return (
@@ -226,6 +265,58 @@ export default function SecondHandIndex({ boards }) {
                                 ))}
                             </select>
                         </label>
+
+                        <label className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Franja de precio
+                            </span>
+                            <select
+                                value={priceFilter}
+                                onChange={(e) => setPriceFilter(e.target.value)}
+                                className={selectClass}
+                            >
+                                {PRICE_FILTERS.map((f) => (
+                                    <option key={f.value} value={f.value} className="bg-slate-900 text-slate-100">
+                                        {f.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                Precio
+                            </span>
+                            <button
+                                type="button"
+                                onClick={togglePriceSort}
+                                aria-label={
+                                    priceSort === "asc"
+                                        ? "Ordenado de menor a mayor. Clic para ordenar de mayor a menor"
+                                        : priceSort === "desc"
+                                          ? "Ordenado de mayor a menor. Clic para ordenar de menor a mayor"
+                                          : "Ordenar por precio"
+                                }
+                                className={`${sortButtonClass} ${
+                                    priceSort ? "border-orange-400/40 text-orange-100" : ""
+                                }`}
+                            >
+                                <span>
+                                    {priceSort === "asc"
+                                        ? "Menor a mayor"
+                                        : priceSort === "desc"
+                                          ? "Mayor a menor"
+                                          : "Ordenar por precio"}
+                                </span>
+                                {priceSort === "asc" ? (
+                                    <ArrowUp className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
+                                ) : priceSort === "desc" ? (
+                                    <ArrowDown className="h-4 w-4 shrink-0 text-orange-400" aria-hidden />
+                                ) : (
+                                    <ArrowUpDown className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+                                )}
+                            </button>
+                        </div>
 
                         {hasActiveFilters ? (
                             <button

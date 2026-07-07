@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Exceptions\TransactionRequiredException;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\StaffAssignment;
@@ -19,7 +22,7 @@ class AvailabilityService
     private const BIG_GROUP_MARGIN_MINUTES = 75;
 
     /**
-     * Estados que SÍ bloquean monitor.
+     * @return list<string>
      */
     public function occupancyStatuses(): array
     {
@@ -39,6 +42,21 @@ class AvailabilityService
         return $partySize >= 7 ? 2 : 1;
     }
 
+    /**
+     * Tamaño de grupo efectivo para cupo de monitores: clases configuradas con 7+ plazas
+     * reservan 2 monitores aunque aún no estén todas ocupadas.
+     */
+    public function effectivePartySizeForLesson(int $enrolledCount, int $configuredMax): int
+    {
+        $partySize = max(1, $enrolledCount);
+
+        if ($configuredMax >= 7) {
+            $partySize = max($partySize, 7);
+        }
+
+        return $partySize;
+    }
+
     public function marginsForPartySize(int $partySize): int
     {
         return $partySize >= 7
@@ -48,7 +66,6 @@ class AvailabilityService
 
     /**
      * Bloquea la fila de `lessons` y ejecuta el callback con el modelo fresco.
-     * Debe llamarse dentro de `DB::transaction()` para que `lockForUpdate()` sea efectivo en InnoDB.
      *
      * @template T
      *
@@ -57,13 +74,34 @@ class AvailabilityService
      */
     public function withLockedLesson(int $lessonId, callable $callback): mixed
     {
-        if (DB::transactionLevel() < 1) {
-            throw new \RuntimeException('AvailabilityService::withLockedLesson requiere una transacción activa (DB::transaction).');
-        }
+        $this->assertActiveTransaction(__FUNCTION__);
 
         $lesson = Lesson::query()->whereKey($lessonId)->lockForUpdate()->firstOrFail();
 
         return $callback($lesson);
+    }
+
+    /**
+     * Evaluación de cupo para UI admin/cliente (transacción de solo lectura).
+     *
+     * @return array{
+     *   allowed: bool,
+     *   request_monitors: int,
+     *   peak_monitors_used: int,
+     *   max_capacity: int,
+     *   request_window_start: string,
+     *   request_window_end: string,
+     *   occupied_lesson_ids: list<int>,
+     *   conflicts: list<array<string, mixed>>
+     * }
+     */
+    public function preview(
+        Carbon $startsAt,
+        Carbon $endsAt,
+        int $projectedPartySize = 1,
+        int $excludeLessonId = 0
+    ): array {
+        return DB::transaction(fn () => $this->evaluate($startsAt, $endsAt, $projectedPartySize, $excludeLessonId));
     }
 
     /**
@@ -80,7 +118,7 @@ class AvailabilityService
     }
 
     /**
-     * Evalúa si se puede guardar/confirmar una clase en la franja solicitada.
+     * Evalúa cupo de monitores. Requiere transacción activa (usar dentro de withLockedLesson o DB::transaction).
      *
      * @return array{
      *   allowed: bool,
@@ -89,7 +127,8 @@ class AvailabilityService
      *   max_capacity: int,
      *   request_window_start: string,
      *   request_window_end: string,
-     *   conflicts: array<int, array<string, mixed>>
+     *   occupied_lesson_ids: list<int>,
+     *   conflicts: list<array<string, mixed>>
      * }
      */
     public function evaluate(
@@ -98,6 +137,8 @@ class AvailabilityService
         int $projectedPartySize = 1,
         int $excludeLessonId = 0
     ): array {
+        $this->assertActiveTransaction(__FUNCTION__);
+
         $startsAt = $startsAt->copy()->timezone(BusinessDateTime::businessTimezone());
         $endsAt = $endsAt->copy()->timezone(BusinessDateTime::businessTimezone());
         $requestMonitors = $this->monitorsRequiredForPartySize($projectedPartySize);
@@ -129,22 +170,13 @@ class AvailabilityService
 
         $occupiedLessonIds = collect($conflicts)->pluck('lesson_id')->unique()->values()->all();
 
-        Log::info('Monitores ocupados detectados: '.$peakMonitorsUsed, [
+        Log::info('AvailabilityService::evaluate', [
             'request_monitors' => $requestMonitors,
             'projected_party_size' => $projectedPartySize,
-            'request_window_start' => $requestWindow['start']->toDateTimeString(),
-            'request_window_end' => $requestWindow['end']->toDateTimeString(),
+            'peak_monitors_used' => $peakMonitorsUsed,
+            'allowed' => $allowed,
             'exclude_lesson_id' => $excludeLessonId,
             'conflicts_count' => count($conflicts),
-        ]);
-        Log::debug('AvailabilityService debug', [
-            'tz' => BusinessDateTime::businessTimezone(),
-            'starts_at' => $startsAt->toDateTimeString(),
-            'ends_at' => $endsAt->toDateTimeString(),
-            'window_start' => $requestWindow['start']->toDateTimeString(),
-            'window_end' => $requestWindow['end']->toDateTimeString(),
-            'occupied_lesson_ids' => $occupiedLessonIds,
-            'exclude_lesson_id' => $excludeLessonId,
         ]);
 
         return [
@@ -159,26 +191,121 @@ class AvailabilityService
         ];
     }
 
+    /**
+     * Datos estructurados para mostrar conflictos de monitores en la UI admin.
+     *
+     * @param  array<string, mixed>  $evaluation
+     * @return array{
+     *   title: string,
+     *   summary: string,
+     *   requested_window: array{start: string, end: string},
+     *   conflicts: list<array{lesson_id: int, title: string, party_size: int, monitors_required: int, window_start: string, window_end: string}>
+     * }
+     */
+    public function buildConflictPayload(array $evaluation): array
+    {
+        $conflicts = collect($evaluation['conflicts'] ?? [])
+            ->map(fn (array $row) => [
+                'lesson_id' => (int) ($row['lesson_id'] ?? 0),
+                'title' => (string) ($row['title'] ?: 'Clase'),
+                'party_size' => (int) ($row['party_size'] ?? 0),
+                'monitors_required' => (int) ($row['monitors_required'] ?? 1),
+                'window_start' => (string) ($row['window_start'] ?? ''),
+                'window_end' => (string) ($row['window_end'] ?? ''),
+            ])
+            ->values()
+            ->all();
+
+        $summary = $conflicts === []
+            ? 'No hay monitores disponibles en la franja seleccionada (se requiere margen operativo antes y después de la clase).'
+            : 'La franja elegida se solapa con otra clase que ya consume monitores en ese horario.';
+
+        return [
+            'title' => 'Conflicto de monitores',
+            'summary' => $summary,
+            'requested_window' => [
+                'start' => (string) ($evaluation['request_window_start'] ?? ''),
+                'end' => (string) ($evaluation['request_window_end'] ?? ''),
+            ],
+            'conflicts' => $conflicts,
+        ];
+    }
+
     public function buildConflictMessage(array $evaluation): string
     {
-        $base = 'Conflicto de staff: se supera la capacidad de 2 monitores en la franja seleccionada.';
-        $window = " Ventana solicitada: {$evaluation['request_window_start']} - {$evaluation['request_window_end']}.";
+        $payload = $this->buildConflictPayload($evaluation);
+        $lines = [$payload['title'].'. '.$payload['summary']];
 
-        $first = collect($evaluation['conflicts'] ?? [])->first();
-        if (! $first) {
-            return $base.$window;
+        if ($payload['requested_window']['start'] !== '' && $payload['requested_window']['end'] !== '') {
+            $lines[] = 'Franja solicitada: '.$payload['requested_window']['start'].' – '.$payload['requested_window']['end'];
         }
 
-        return $base.$window.' Clase en conflicto: '
-            .($first['title'] ?: 'Clase')
-            .' ('.$first['window_start'].' - '.$first['window_end'].').';
+        $first = $payload['conflicts'][0] ?? null;
+        if ($first !== null) {
+            $lines[] = 'Clase en conflicto: '.$first['title'].' ('.$first['window_start'].' – '.$first['window_end'].')';
+        }
+
+        return implode(' ', $lines);
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * Estado legible del pool de monitores (Borja + Willy) para UI admin.
+     *
+     * @param  array<string, mixed>  $evaluation
+     * @return array{
+     *   status: 'full'|'limited'|'exhausted',
+     *   monitors_free: int,
+     *   monitors_peak_used: int,
+     *   label: string,
+     *   message: string,
+     *   show_warning: bool
+     * }
+     */
+    public function describeCapacity(array $evaluation): array
+    {
+        $maxCapacity = (int) ($evaluation['max_capacity'] ?? 0);
+        $peakUsed = (int) ($evaluation['peak_monitors_used'] ?? 0);
+        $free = max(0, self::MAX_MONITORS - $peakUsed);
+
+        if ($maxCapacity === 0) {
+            return [
+                'status' => 'exhausted',
+                'monitors_free' => 0,
+                'monitors_peak_used' => $peakUsed,
+                'label' => 'Sin monitores',
+                'message' => 'Borja y Willy están ocupados en esta franja (15 min antes y después de la clase). No se pueden reservar más sesiones.',
+                'show_warning' => true,
+            ];
+        }
+
+        if ($maxCapacity === 6) {
+            return [
+                'status' => 'limited',
+                'monitors_free' => 1,
+                'monitors_peak_used' => $peakUsed,
+                'label' => '1 monitor libre',
+                'message' => 'Solo queda 1 monitor disponible (Borja o Willy). Capacidad máxima en esta franja: 6 alumnos.',
+                'show_warning' => true,
+            ];
+        }
+
+        return [
+            'status' => 'full',
+            'monitors_free' => min(2, $free),
+            'monitors_peak_used' => $peakUsed,
+            'label' => '2 monitores libres',
+            'message' => 'Ambos monitores disponibles. Capacidad máxima en esta franja: 12 alumnos.',
+            'show_warning' => false,
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
      */
     private function buildIntervals(Carbon $requestWindowStart, Carbon $requestWindowEnd, int $excludeLessonId): array
     {
+        $this->assertActiveTransaction('buildIntervals');
+
         $requestWindowStart = $requestWindowStart->copy()->timezone(BusinessDateTime::businessTimezone());
         $requestWindowEnd = $requestWindowEnd->copy()->timezone(BusinessDateTime::businessTimezone());
         $statuses = $this->occupancyStatuses();
@@ -196,19 +323,21 @@ class AvailabilityService
                     $q->select('lesson_id', 'role')->where('role', StaffAssignment::ROLE_MONITOR);
                 },
                 'enrollments' => function ($q) use ($statuses) {
-                $q->select('lesson_id', 'status', 'quantity', 'party_size')
-                    ->whereIn('status', $statuses);
-            }])
-            ->get(['id', 'title', 'starts_at', 'ends_at']);
+                    $q->select('lesson_id', 'status', 'quantity', 'party_size')
+                        ->whereIn('status', $statuses);
+                },
+            ])
+            ->get(['id', 'title', 'starts_at', 'ends_at', 'max_slots', 'max_capacity']);
 
         return $lessons
             ->map(function (Lesson $lesson) {
                 $enrolledPartySize = (int) $lesson->enrollments->sum(
                     fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1)
                 );
+                $configuredMax = (int) ($lesson->max_slots ?? $lesson->max_capacity ?? 6);
                 $hasAssignedMonitor = $lesson->staffAssignments->isNotEmpty();
-                // Toda clase en calendario reserva al menos 1 monitor operativo.
-                $partySize = max(1, $enrolledPartySize, $hasAssignedMonitor ? 1 : 0);
+                $partySize = $this->effectivePartySizeForLesson($enrolledPartySize, $configuredMax);
+                $partySize = max($partySize, $hasAssignedMonitor ? 1 : 0);
 
                 if ($partySize <= 0) {
                     return null;
@@ -231,7 +360,7 @@ class AvailabilityService
     }
 
     /**
-     * @param  array<int, array<string,mixed>>  $intervals
+     * @param  list<array<string, mixed>>  $intervals
      */
     private function peakUsage(array $intervals, Carbon $scopeStart, Carbon $scopeEnd): int
     {
@@ -270,5 +399,12 @@ class AvailabilityService
     private function overlaps(Carbon $startA, Carbon $endA, Carbon $startB, Carbon $endB): bool
     {
         return $startA->lt($endB) && $endA->gt($startB);
+    }
+
+    private function assertActiveTransaction(string $method): void
+    {
+        if (DB::transactionLevel() < 1) {
+            throw TransactionRequiredException::forMethod(self::class, $method);
+        }
     }
 }

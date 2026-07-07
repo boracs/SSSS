@@ -17,7 +17,7 @@ class EmergencyKeyService
 {
     public function canRequest(User $user): bool
     {
-        return $user->numeroTaquilla !== null
+        return $user->hasPhysicalLocker()
             && $user->isLockerPaymentUpToDate();
     }
 
@@ -82,13 +82,36 @@ class EmergencyKeyService
 
     public function markKeyDeactivated(EmergencyKeyRequest $request, User $admin): void
     {
-        if ($request->admin_key_deactivated_at !== null) {
+        if ($request->isResolved()) {
             return;
         }
 
         $request->update([
-            'admin_key_deactivated_at'   => Carbon::now(),
+            'admin_key_deactivated_at' => Carbon::now(),
             'admin_key_deactivated_by' => $admin->id,
         ]);
+    }
+
+    public function markKeyRecovered(EmergencyKeyRequest $request, User $admin): void
+    {
+        if ($request->isResolved()) {
+            return;
+        }
+
+        $request->update([
+            'admin_key_recovered_at' => Carbon::now(),
+            'admin_key_recovered_by' => $admin->id,
+        ]);
+    }
+
+    public function resolveKeyRequest(EmergencyKeyRequest $request, User $admin, string $outcome): void
+    {
+        if ($outcome === 'lost_definitive') {
+            $this->markKeyDeactivated($request, $admin);
+
+            return;
+        }
+
+        $this->markKeyRecovered($request, $admin);
     }
 }

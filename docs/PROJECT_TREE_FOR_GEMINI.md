@@ -23,7 +23,7 @@
 
 ## Excluye (no indexar para contexto)
 
-`node_modules/`, `vendor/`, `storage/framework/`, `storage/logs/`, `public/build/`, `bootstrap/cache/`, uploads masivos en `storage/app/public/`, `tmp_v0_template/` (plantilla Next de referencia, **no producción**).
+`node_modules/`, `vendor/`, `storage/framework/`, `storage/logs/`, `public/build/`, `bootstrap/cache/`, uploads masivos en `storage/app/public/`.
 
 ---
 
@@ -42,13 +42,17 @@
 │ Taquillas       │ Taquilla, PlanesTaquillas, EmergencyKey │ PlanesTaquillas*, MeQuedeSinLlave, Admin/EmergencyKeys │
 │ VIP / Bonos     │ BonoService, Client/Bono     │ Client/Bonos/, Admin/Bonos/      │
 │ Pagos admin     │ PaymentValidation            │ Admin/Payments/*                 │
+│ AutoCoach       │ AutoCoachController + Services │ AutoCoach/Index.jsx            │
+│ Webcams         │ ServicioController (ruta)    │ Servicios_Webcams.jsx            │
 │ Auth / Perfil   │ Auth/*, ProfileController    │ Auth/, Partials/                 │
 └─────────────────┴──────────────────────────────┴────────────────────────────────────┘
 ```
 
 **Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `Chatbot` (no-admin). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
 
-**Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`Header.jsx`) y políticas.
+**Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`GlobalNav.jsx` vía `Header.jsx`) y políticas.
+
+**Menú admin (`GlobalNav`):** Inicio · **Gestión** (flyout: Taquillas, Pedidos, Alquileres, Clases, Usuarios, Pagos) · **Extras** (Comparador, Webcams) · Contacto.
 
 ---
 
@@ -57,6 +61,9 @@
 ```
 maider_0/
 ├── .cursor/
+│   ├── rules/
+│   │   ├── tunnel-share-modes.mdc          ──► Modos local vs Cloudflare túnel (Vite/build)
+│   │   └── seo-geo-public.mdc              ──► Reglas SEO/GEO páginas públicas
 │   └── skills/
 │       └── sovereign-architect-protocol/
 │           └── SKILL.md
@@ -65,8 +72,10 @@ maider_0/
 │   ├── [DOMINIO: ACADEMIA] Actions/Academy/
 │   │   ├── CancelEnrollmentAction.php      ──► DB::transaction; revierte enrollment + bono
 │   │   ├── EnrollStudentAction.php         ──► Pessimistic lock UserBono::lockForUpdate; AvailabilityService::withLockedLesson
+│   │   ├── AdminGuestEnrollmentAction.php  ──► Inscripciones walk-in admin (sin user_id; grupal/semanal/particular)
 │   │   ├── RequestLessonAction.php         ──► Dispara LessonRequestedEvent → mail listener
 │   │   ├── RequestPrivateLessonAction.php  ──► PrivateLessonRequestedEvent
+│   │   ├── SyncLessonStaffAction.php       ──► Sincroniza monitor, monitor_2 y fotógrafo en staff_assignments
 │   │   └── UploadLessonProofAction.php     ──► LessonProofStorageService; LessonProofUploadedEvent
 │   │
 │   ├── Casts/
@@ -75,11 +84,15 @@ maider_0/
 │   ├── Console/
 │   │   ├── AuditLessonCreditsCommand.php
 │   │   └── Commands/
-│   │       ├── CleanupExpiredReservations.php ──► Invoca AutoReleaseService (cron)
+│   │       ├── CleanupAutoCoachUploads.php      ──► Purga uploads AutoCoach expirados
+│   │       ├── CleanupExpiredReservations.php   ──► Invoca AutoReleaseService (cron)
 │   │       ├── MakeUserVip.php
-│   │       └── OperationalSanityCheckCommand.php
+│   │       ├── OperationalSanityCheckCommand.php
+│   │       └── SyncAutoCoachReferenceVideos.php ──► Sincroniza catálogo vídeos referencia
 │   │
 │   ├── DTOs/
+│   │   ├── Academy/
+│   │   │   └── AdminGuestEnrollmentDto.php     ──► DTO readonly inscripción walk-in (nombre, pago)
 │   │   ├── EmergencyKey/
 │   │   │   ├── EmergencyKeyRevealDto.php       ──► Código revelado post-solicitud (flash único)
 │   │   │   └── EmergencyLockStatusDto.php      ──► is_active + can_request (sin exponer código)
@@ -87,14 +100,16 @@ maider_0/
 │   │       └── PlanTaquillaPublicDto.php       ──► Catálogo planes: periodo, beneficios, VIP, descuento
 │   │
 │   ├── Exceptions/
-│   │   └── EmergencyKeyNotEligibleException.php
+│   │   ├── EmergencyKeyNotEligibleException.php
+│   │   └── TransactionRequiredException.php  ──► Lanza si AvailabilityService/BookingService sin DB::transaction activa
 │   ├── Events/                             ──► Desacoplamiento mail/notificaciones
 │   │   ├── LessonProofUploadedEvent.php
 │   │   ├── LessonRequestedEvent.php
 │   │   ├── PrivateLessonRequestedEvent.php
 │   │   ├── SoloStudentLocked.php
 │   │   └── Taquilla/
-│   │       └── PagoTaquillaConfirmado.php      ──► Emitido tras commit confirmacion pago (pago+usuario+locker)
+│   │       ├── PagoTaquillaConfirmado.php      ──► Emitido tras commit confirmacion pago (pago+usuario+locker)
+│   │       └── PagoTaquillaRechazado.php      ──► Emitido tras rechazo pago taquilla
 │   │
 │   ├── Http/
 │   │   ├── Controllers/
@@ -113,6 +128,8 @@ maider_0/
 │   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; filtros search/status/board_type/date_type/fechas; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php
 │   │   │   │       ├── UserController.php
+│   │   │   │       ├── ClassManagerController.php   ──► Gestor unificado calendario (VIP+grupal+semanal+particular)
+│   │   │   │       ├── ClassManagerEnrollmentController.php ──► CRUD apuntados walk-in + estado pago
 │   │   │   │       ├── VipClassManagerController.php
 │   │   │   │       └── VipController.php
 │   │   │   │
@@ -139,10 +156,12 @@ maider_0/
 │   │   │   │
 │   │   │   ├── [DOMINIO: USUARIO]
 │   │   │   │   └── User/
-│   │   │   │       └── MyReservationsController.php ──► VipStudentPerformanceService
+│   │   │   │       ├── MyProfileController.php      ──► Perfil VIP: wallet, asistencia, extracto créditos
+│   │   │   │       └── MyReservationsController.php ──► Clases + alquileres (reservas)
 │   │   │   │
 │   │   │   └── [TRANSVERSAL / LEGACY ROOT]
 │   │   │       ├── AuthController.php
+│   │   │       ├── AutoCoachController.php        ──► Comparador maniobras; uploads + catálogo referencia
 │   │   │       ├── CarritoController.php
 │   │   │       ├── ChatbotController.php          ──► GoogleAIService + FirestoreService
 │   │   │       ├── ContactMessageController.php
@@ -162,6 +181,7 @@ maider_0/
 │   │   │
 │   │   ├── Middleware/
 │   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, cart, adminStats
+│   │   │   ├── EnsureUserHasRole.php                ──► Gate por role (admin/user)
 │   │   │   ├── VerificarAdmin.php
 │   │   │   └── VerificarTaquilla.php
 │   │   │
@@ -177,6 +197,9 @@ maider_0/
 │   │   │   │   ├── StoreSurfboardRequest.php
 │   │   │   │   ├── UpdateEmergencyLockCodeRequest.php ──► digits:4; authorize admin
 │   │   │   │   └── UpdateSurfboardRequest.php
+│   │   │   ├── AutoCoach/
+│   │   │   │   ├── CatalogQueryRequest.php
+│   │   │   │   └── UploadVideosRequest.php
 │   │   │   ├── StoreSecondHandBoardRequest.php    ──► Valida + sanitiza; autorización role=admin
 │   │   │   └── UpdateSecondHandBoardRequest.php   ──► Same; reglas 'sometimes'
 │   │   │   ├── Auth/
@@ -202,6 +225,8 @@ maider_0/
 │   │       └── PagoCuotaQueueResource.php
 │   │
 │   ├── Enums/
+│   │   ├── PaymentStatus.php                 ──► Pending | Confirmed | Rejected (pasarela + comprobantes)
+│   │   ├── ProductTag.php                    ──► Tags tienda (invierno, neopreno, material_surf, …)
 │   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() descriptivo
 │   │   └── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
 │   │
@@ -214,16 +239,19 @@ maider_0/
 │   │   ├── SendPrivateLessonRequestedMailListener.php
 │   │   ├── SendSoloStudentNotification.php
 │   │   └── Taquilla/
-│   │       └── EnviarCorreoConfirmacionTaquilla.php  ──► ShouldQueue; try/catch + Log::error; resiliente
+│   │       ├── EnviarCorreoConfirmacionTaquilla.php  ──► ShouldQueue; try/catch + Log::error; resiliente
+│   │       └── EnviarCorreoRechazoTaquilla.php       ──► Mail rechazo pago taquilla
 │   │
 │   ├── Mail/
 │   │   ├── RequestReceivedMail.php
 │   │   ├── ReservationConfirmedMail.php
 │   │   └── Taquilla/
-│   │       └── PagoTaquillaConfirmadoMail.php   ──► view emails.taquilla.pago-confirmado
+│   │       ├── PagoTaquillaConfirmadoMail.php   ──► view emails.taquilla.pago-confirmado
+│   │       └── PagoTaquillaRechazadoMail.php
 │   │
-│   ├── Models/                               ──► 21 modelos Eloquent (ver tabla abajo)
+│   ├── Models/                               ──► 24 modelos Eloquent (ver tabla abajo)
 │   │   ├── AttendanceNote.php
+│   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
 │   │   ├── Booking.php
 │   │   ├── Carrito.php
@@ -235,6 +263,7 @@ maider_0/
 │   │   ├── LessonUser.php                    ──► Pivot crítico: estados pago/enrollment
 │   │   ├── PackBono.php
 │   │   ├── PagoCuota.php
+│   │   ├── PaymentWebhookIdempotency.php   ──► Idempotencia webhooks pasarela (transaction_id único)
 │   │   ├── Pedido.php
 │   │   ├── PedidoProducto.php
 │   │   ├── PlanTaquilla.php
@@ -250,7 +279,7 @@ maider_0/
 │   │   └── SoloStudentLessonNotification.php
 │   │
 │   ├── Observers/
-│   │   └── LessonObserver.php                ──► updated(Lesson): Mal Mar → CreditEngineService::refundCredits
+│   │   └── LessonObserver.php                ──► Mal Mar → refund bono_vip o credits_locked vía CreditEngineService
 │   │
 │   ├── Policies/
 │   │   ├── LessonPolicy.php
@@ -264,17 +293,26 @@ maider_0/
 │   │   ├── AcademyLessonRequestMailService.php ──► Plantillas mail solicitud clase
 │   │   ├── AttendanceNoteRelinker.php          ──► Reconciliación notas asistencia
 │   │   ├── AutoReleaseService.php              ──► Pessimistic lock; libera pending sin comprobante (30m/2h)
-│   │   ├── AvailabilityService.php             ──► withLockedLesson exige DB::transaction; cupo monitores
+│   │   ├── AutoCoach/
+│   │   │   ├── AutoCoachCatalogService.php     ──► Catálogo vídeos referencia
+│   │   │   ├── AutoCoachCleanupService.php     ──► Purga uploads expirados
+│   │   │   ├── AutoCoachSessionService.php     ──► Sesión cookie + path traversal safe
+│   │   │   └── AutoCoachUploadService.php      ──► Cuotas atómicas, MIME, disco public/autocoach
+│   │   ├── AvailabilityService.php             ──► assertActiveTransaction; evaluate() exige tx; preview() lectura UI
 │   │   ├── BonoService.php                     ──► lockForUpdate en confirmBono; flujo prepago VIP
-│   │   ├── BookingService.php                  ──► SSOT precios/disponibilidad alquiler; anti-overbooking
+│   │   ├── BookingService.php                  ──► SSOT precios/solapes; createPendingBooking(PaymentStatus::Pending); checkAvailability()
 │   │   ├── ContactMessageService.php
-│   │   ├── CreditEngineService.php             ──► DEGRADADO Fase 1: canAfford=true; runOneHourBeforeAudit OFF; [LEGACY_SIN_SALDO]
+│   │   ├── CreditEngineService.php             ──► Saldo atómico UserBono; refund vía BonoConsumption; sin LEGACY_SIN_SALDO
 │   │   ├── CuotaService.php                    ──► Ciclo vida cuotas taquilla
 │   │   ├── EmergencyKeyService.php             ──► lockForUpdate; requestCode atómico; updateLockCode ON
+│   │   ├── Payments/
+│   │   │   └── PaymentGatewayService.php       ──► registerPaymentIntent + confirmPaymentFromWebhook (idempotencia)
 │   │   ├── Taquilla/
 │   │   │   ├── TaquillaMembershipService.php   ──► Pagos/planes/cola; DB::transaction; MoneyCents; event PagoTaquillaConfirmado
 │   │   │   ├── TaquillaConfirmationMailService.php ──► Envio correo confirmacion cuota
 │   │   │   └── LockerPaymentIndexBuilder.php   ──► Indice agregado anti-N+1 cola admin
+│   │   ├── Vip/
+│   │   │   └── VipMembershipService.php        ──► Activar/desactivar VIP; taquilla virtual #500 si sin casillero
 │   │   ├── FirestoreService.php                ──► Inyección obligatoria FirestoreClient REST (AppServiceProvider)
 │   │   ├── GoogleAIService.php                 ──► Gemini HTTP; GEMINI_API_KEY requerida o 500
 │   │   ├── LessonProofStorageService.php       ──► Disco: storage/app/private/lesson-proofs
@@ -284,23 +322,26 @@ maider_0/
 │   └── Support/
 │       ├── AcademyContact.php
 │       ├── BusinessDateTime.php                ──► Now() negocio Europe/Madrid
+│       └── StaffVisualIdentity.php             ──► Iniciales + color estable por monitor
+│       ├── IniSize.php                         ──► Parseo upload/post limits de php.ini
 │       ├── LessonBonoCreditUnits.php           ──► Unidades crédito bono por modalidad edad
-│       └── MoneyCents.php                      ──► Conversion EUR <-> centimos (taquillas)
+│       ├── MoneyCents.php                      ──► Conversion EUR <-> centimos (taquillas)
+│       └── VipVirtualLocker.php                ──► Número reservado taquilla virtual VIP (config vip.php)
 │
 ├── bootstrap/
 │   ├── app.php
 │   └── providers.php
 │
 ├── config/
-│   ├── app.php, auth.php, cache.php, cors.php, database.php
+│   ├── app.php, auth.php, autocoach.php, cache.php, cors.php, database.php
 │   ├── filesystems.php, google.php, logging.php, mail.php
-│   ├── queue.php, sanctum.php, services.php, session.php
+│   ├── queue.php, sanctum.php, services.php, session.php, vip.php
 │
 ├── database/
 │   ├── factories/          (7)
-│   ├── migrations/         (52) — … emergency_lock_settings, emergency_key_requests; planes_taquilla marketing fields
-│   └── seeders/            (15) — OperationalSuperSeeder, TaquillaSeeder, BorjaVipConsumptionSeeder, BorjaAcademyDemoLessonsSeeder, TaquillaUsersBonoConsumptionSeeder, …
-│       └── Concerns/       (1) — SeedsBonoConsumptions (trait reutilizable de consumos de bono/clases VIP)
+│   ├── migrations/         (58) — … payment_webhook_idempotency; autocoach_reference_videos; emergency_lock_settings
+│   └── seeders/            (26) — CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, …
+│       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
 │   ├── ai/
@@ -311,8 +352,16 @@ maider_0/
 │   └── PROJECT_TREE_FOR_GEMINI.md              ← este documento
 │
 ├── public/
-│   ├── img/                — assets marketing estáticos
+│   ├── img/
+│   │   ├── brand/          — logos S4 WebP/PNG (nav, hero, mark, og-share)
+│   │   │   └── source/     — masters PNG IA (logo-s4-navy/white-master.png)
+│   │   └── sponsors/
+│   │       └── bunker/     — logo The Bunker Surf Shop (nav, mark, hero WebP/PNG)
+│   │           └── source/ — masters PNG IA (bunker-navy/white-master.png)
+│   │   └── placeholder.svg
+│   ├── favicon.ico, favicon.svg, favicon-*.png, apple-touch-icon.png, site.webmanifest
 │   ├── index.php
+│   ├── .user.ini           — límites PHP upload/post para AutoCoach (Apache/XAMPP)
 │   ├── favicon.ico, robots.txt
 │   └── storage/            — symlink → storage/app/public
 │
@@ -324,7 +373,7 @@ maider_0/
 │
 ├── storage/app/
 │   ├── private/            — lesson-proofs, payment-proofs
-│   └── public/             — productos, surfboards, comprobantes_bonos, taquilla-proofs
+│   └── public/             — productos, surfboards, comprobantes_bonos, taquilla-proofs, autocoach/uploads
 │
 ├── tests/
 │   ├── Feature/            — Auth, Carrito, Contact, Profile
@@ -334,6 +383,7 @@ maider_0/
 │
 ├── artisan
 ├── composer.json, package.json, vite.config.js, tailwind.config.js
+│                              ──► vite: plugin injectRouteImport + alias @route → lib/route.js
 ├── docker-compose.yml, Dockerfile
 └── README.md, AUDITORIA_NUCLEO_LARAVEL_REACT.md, INFORME_AUDITORIA_REACT.md
 ```
@@ -344,17 +394,20 @@ maider_0/
 
 | Componente                                         | Patrón                    | Estado / notas críticas                                                                                                                                                                                                   |
 | -------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CreditEngineService`                              | Transacciones + audit log | **DEGRADADO Fase 1:** sin `credits_balance` en `users`; `canAffordEnrollment()` siempre `true`; `runOneHourBeforeAudit()` no-op; transacciones marcadas `[LEGACY_SIN_SALDO]`. Migración hacia bonos prepago (`UserBono`). |
-| `LessonObserver`                                   | Observer Eloquent         | Activo en `Lesson::observe`. Solo reacciona a `STATUS_CANCELLED` + `CANCELLATION_MAL_MAR` → refund vía `CreditEngineService`.                                                                                             |
-| `AvailabilityService`                              | Pessimistic locking       | `withLockedLesson()` **lanza** si no hay `DB::transaction()`. Margen operativo 15m (estándar) / 75m (grupos ≥7). Máx. 2 monitores.                                                                                        |
-| `EnrollStudentAction`                              | Action + lock             | VIP-only; `UserBono::lockForUpdate()`; delega cupo a `AvailabilityService`.                                                                                                                                               |
-| `BonoService`                                      | Transaction + lock        | `confirmBono()` usa `lockForUpdate`; fuente de verdad clases restantes.                                                                                                                                                   |
-| `BookingService`                                   | Domain service (SSOT)     | Único punto para precios dinámicos y solapes de reserva surfboard.                                                                                                                                                        |
+| `CreditEngineService`                              | Transacciones + audit log | Saldo atómico vía `UserBono`; `canAffordEnrollment()` consulta bonos; `refundCredits()` restaura `BonoConsumption`; sin bypass legacy. |
+| `LessonObserver`                                   | Observer Eloquent         | Mal Mar → refund si `payment_method=bono_vip` o `credits_locked > 0`. |
+| `AvailabilityService`                              | Pessimistic locking       | `evaluate()`/`withLockedLesson()` exigen tx activa; `preview()` para UI. Margen 15m/75m; máx. 2 monitores. |
+| `EnrollStudentAction`                              | Action + lock             | VIP; doble `UserBono::lockForUpdate()`; `BonoConsumption`; `PaymentStatus::Confirmed` al consumir bono. |
+| `BonoService`                                      | Transaction + lock        | `confirmBono()` usa `lockForUpdate`; fuente de verdad clases restantes. |
+| `BookingService`                                   | Domain service (SSOT)     | `resolvePricing`, `createPendingBooking` (`PaymentStatus::Pending`), `checkAvailability()`. |
+| `PaymentGatewayService`                            | Pasarela async            | `registerPaymentIntent` + `confirmPaymentFromWebhook` con idempotencia DB. |
 | `AutoReleaseService`                               | Batch + lock              | `lockForUpdate` sobre pending sin `payment_proof_path`; grace 30min (<4h clase) o 120min.                                                                                                                                 |
 | `FirestoreService`                                 | Singleton REST            | Cliente **obligatorio** inyectado; `transport => 'rest'` en `AppServiceProvider` (evita gRPC/caché roto). Chatbot LTP: `/artifacts/{appId}/users/{userId}/artifacts`.                                                     |
 | `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`.                                                                                                                                         |
 | `VipStudentPerformanceService`                     | Read-heavy agregador      | Consultas amplias por mes bono; usar con `loadHistory` consciente en admin.                                                                                                                                               |
 | `LessonProofStorageService`                        | Filesystem                | Privado; no exponer URL directa sin policy.                                                                                                                                                                               |
+| `AutoCoachUploadService`                           | Upload + cuotas IP/disco | Throttle + MIME; `config/autocoach.php`; uploads en `storage/app/public/autocoach/uploads` |
+| `AutoCoachSessionService`                          | Sesión por cookie        | Path traversal safe; TTL configurable |
 | `PlanesTaquillasController` / `TaquillaController` | lockForUpdate inline      | Asignación taquillas y verificación pagos — contención alta en picos admin.                                                                                                                                               |
 
 **Eventos → Listeners (registrados en `AppServiceProvider::boot`):**
@@ -364,6 +417,8 @@ SoloStudentLocked          → SendSoloStudentNotification
 LessonRequestedEvent       → SendLessonRequestedMailListener
 LessonProofUploadedEvent   → NotifyAdminLessonProofUploadedListener
 PrivateLessonRequestedEvent → SendPrivateLessonRequestedMailListener
+PagoTaquillaConfirmado     → EnviarCorreoConfirmacionTaquilla
+PagoTaquillaRechazado      → EnviarCorreoRechazoTaquilla
 ```
 
 ---
@@ -387,14 +442,22 @@ resources/
 │
 └── js/
     ├── app.jsx                 ──► createInertiaApp; layout default AuthenticatedLayout
-    ├── bootstrap.js            ──► Axios + CSRF + Ziggy
+    ├── bootstrap.js            ──► Axios + CSRF; window.route vía lib/route.js
     ├── ziggy.js
     │
     ├── Contexts/
     │   └── cartContext.jsx
     │
     ├── lib/
+    │   ├── route.js            ──► Helper Ziggy exportado (import ESM; evita ReferenceError en build)
     │   ├── madridTime.js       ──► Helpers TZ cliente (alineado BusinessDateTime)
+    │   ├── classManagerModality.js ──► Colores/filtros modalidad (VIP, grupal, semanal, particular)
+    │   ├── monitorAvailability.js ──► Estado pool monitores (Borja+Willy): avisos UI gestor clases
+    │   ├── quarterTime.js         ──► roundQuarter, parseTime24 — intervalos 15 min
+    │   ├── guestEnrollment.js     ──► Labels/badges pago walk-in; formulario vacío
+    │   ├── staffAssignValidation.js ──► Conflictos monitor/fotógrafo (no duplicar roles)
+    │   ├── staffConflictFormat.js   ──► Formato legible ventanas horarias en conflictos staff
+    │   ├── surfboardMeasures.js ──► Altura/volumen surf (3'5"→11'0", filtros alquiler)
     │   └── utils.ts            ──► cn() shadcn
     │
     ├── utils/
@@ -410,20 +473,33 @@ resources/
     │
     ├── components/
     │   ├── Header.jsx                ──► Shell: logo + hero home; monta GlobalNav.jsx
-    │   ├── GlobalNav.jsx             ──► Menú flyout S4 por rol (hover+debounce 150ms); panel a todo el ancho; móvil acordeón
-    │   ├── NavigationMenu.tsx        ──► (legacy) Menú V3 Radix; no montado
-    │   ├── Menu_Principal.jsx        ──► @deprecated — usar Header.jsx + PublicLayout
+    │   ├── GlobalNav.jsx             ──► Menú flyout por rol; admin: Gestión (6 cols) + Extras; móvil acordeón
+    │   ├── BrandLogo.jsx             ──► `<picture>` WebP/PNG logos S4 (nav, hero, mark)
+    │   ├── BunkerLogo.jsx            ──► Logo patrocinador The Bunker Surf Shop
+    │   ├── SponsorsStrip.jsx         ──► Bloque patrocinadores (footer, home)
     │   ├── Footer.jsx
     │   ├── Chatbot.jsx
     │   ├── OpcionesIntro.jsx         ──► Carrusel home (solo isHome en Header)
+    │   ├── webcam/
+    │   │   └── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa)
     │   ├── BookingCalendar.jsx
     │   ├── SurfboardBookingSection.jsx   ──► calendario + Collapsible + pago alquiler
     │   ├── PaymentModal.jsx
     │   ├── ManualPaymentInstructionsModal.jsx
     │   ├── Taquilla.jsx
-    │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx
+    │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx, ProductImageGallery.jsx, ProductTagSelector.jsx, ProductoEditorPanel.jsx, ProductoEditModal.jsx, ProductoCreateModal.jsx, PedidoDetailModal.jsx
     │   ├── FormularioContacto.jsx
     │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx
+    │   ├── Academy/
+    │   │   ├── ClassLessonInfoPanel.jsx    ──► Detalle clase + apuntados walk-in y estado pago
+    │   │   ├── ClassGuestEnrollmentModal.jsx ──► Alta/edición persona sin registro web
+    │   │   ├── ConfirmPaymentModal.jsx     ──► Confirmación cambio estado pago
+    │   │   ├── ClassCalendarPill.jsx       ──► Fila compacta: hora · monitores · cámara fotógrafo · nivel · plazas
+    │   │   ├── LessonStaffAssignFields.jsx ──► Formulario 1º/2º monitor + fotógrafo (sí/no + selector)
+    │   │   ├── StaffConflictAlert.jsx      ──► Aviso estructurado conflicto monitores (debajo hora)
+    │   │   ├── TimePicker24h.jsx           ──► Selector hora 24h (intervalos 15 min) — gestor/clases admin
+    │   │   ├── ClassManagerCalendarDay.jsx ──► Celda día (grid desktop / lista móvil)
+    │   │   └── StaffAvatar.jsx             ──► Círculo iniciales + PhotographerBadge (icono cámara)
     │   └── ui/                       ──► ~50 primitivos shadcn/Radix (.tsx)
     │
     └── Pages/                        ──► Resolución: ./Pages/{name}.jsx (eager glob)
@@ -432,12 +508,18 @@ resources/
         │   ├── Pag_principal.jsx
         │   ├── Nosotros.jsx            ──► Landing page premium club: Bento Grid instalaciones, tabla de ahorro socio, timeline Edy Mulder (dark/glassmorphic)
         │   ├── Contacto.jsx
-        │   ├── Servicios.jsx
+        │   ├── Servicios.jsx                    ──► Reparación tablas (Edy Mulder)
+        │   ├── Servicios_ReparacionNeoprenos.jsx ──► Reparación neoprenos (Willy)
         │   ├── Servicios_ClasesDeSurf.jsx
         │   ├── Servicios_SurfSkate.jsx
         │   ├── Servicios_SurfTrips.jsx
         │   ├── Servicios_Fotos.jsx
-        │   └── Servicios_Videograbaciones.jsx   ──► Landing videograbación + análisis técnico
+        │   ├── Servicios_Videograbaciones.jsx   ──► Landing videograbación + análisis técnico
+        │   └── Servicios_Webcams.jsx            ──► Webcam Zurriola (HLS Gipuzkoa)
+        │
+        ├── [DOMINIO: AUTOCOACH]
+        │   └── AutoCoach/
+        │       └── Index.jsx               ──► Comparador de maniobras (vídeos usuario vs referencia)
         │
         ├── [DOMINIO: TIENDA]
         │   ├── Tienda.jsx
@@ -447,15 +529,14 @@ resources/
         │   ├── Edit.jsx
         │   ├── ProductoCreado.jsx
         │   ├── ProductoModificado.jsx
-        │   │
-        │   └── SecondHand/
-        │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda; cards glassmorphic; specs Lucide icons
-        │       └── Show.jsx    ──► Detalle tabla; galería multi-imagen + modal zoom; CTA WhatsApp; specs técnicas
         │   ├── Carrito.jsx
         │   ├── Pedido.jsx
         │   ├── Pedidos.jsx
         │   ├── PedidoConfirmacion.jsx
-        │   └── GestorPedidos.jsx
+        │   ├── GestorPedidos.jsx
+        │   └── SecondHand/
+        │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda
+        │       └── Show.jsx    ──► Detalle tabla; galería + CTA WhatsApp
         │
         ├── [DOMINIO: ACADEMIA — cliente]
         │   └── Academy/
@@ -470,12 +551,18 @@ resources/
         ├── [DOMINIO: VIP — cliente]
         │   └── Client/
         │       └── Bonos/
-        │           └── Index.jsx
+        │           ├── Index.jsx               ──► Compra bonos + historial (solo is_vip)
+        │           └── VipRequired.jsx         ──► Info activación VIP + contacto (no VIP autenticado)
         │
         ├── [DOMINIO: USUARIO]
         │   └── User/
         │       └── Dashboard/
-        │           └── MyReservations.jsx
+        │           ├── MyProfile.jsx             ──► Perfil alumno: evolución VIP, calendario, stats
+        │           └── MyReservations.jsx        ──► Reservas clases + alquileres (admin: + análisis VIP)
+        │
+        ├── components/
+        │   └── VipProfile/
+        │       └── VipProfileDashboard.jsx     ──► Wallet + heatmap + extracto (compartido perfil/admin)
         │
         ├── [DOMINIO: PERFIL]
         │   └── Profile/
@@ -485,7 +572,8 @@ resources/
         │   ├── PlanesTaquillasPublic.jsx   ──► Catálogo público planes/cuotas (sin login)
         │   ├── PlanesTaquillasClient.jsx   ──► Panel socio: renovación + historial pagos
         │   ├── PlanesTaquillasAdmin.jsx
-        │   └── AsignarTaquilla.jsx
+        │   ├── AsignarTaquilla.jsx
+        │   └── ListaUsuarios.jsx             ──► Admin: listado socios/usuarios (taquilla, contacto)
         │
         ├── [DOMINIO: AUTH]
         │   └── Auth/
@@ -527,9 +615,11 @@ resources/
                 │   └── Queue.jsx           ──► Cola verificación pagos taquilla
                 ├── Users/
                 │   └── Index.jsx
+                ├── ClassManager/
+                │   └── Index.jsx             ──► Gestor unificado: calendario + filtros + creación todas modalidades
                 ├── Vips/
                 │   └── Index.jsx
-                └── VipManager.jsx
+                └── VipManager.jsx            ──► Legacy (redirige a ClassManager)
 ```
 
 **Páginas con `document.documentElement` modo claro forzado** (`app.jsx`):  
@@ -552,12 +642,14 @@ HandleInertiaRequests
 
 ## Notas operativas (IA)
 
-1. **Fuente de verdad UI:** `resources/js/` — ignorar `tmp_v0_template/` salvo referencia de diseño shadcn.
-2. **Menú:** usar `Header.jsx`; `Menu_Principal.jsx` es código paralelo no integrado en el layout principal.
-3. **Créditos legacy vs bonos:** operaciones nuevas de consumo deben pasar por `UserBono` / `BonoService`; no reintroducir `users.credits_balance` sin migración explícita.
-4. **Concurrencia:** cualquier cambio en cupo de clase debe usar `AvailabilityService::withLockedLesson` dentro de transacción.
-5. **Firestore:** nunca instanciar `FirestoreClient` fuera del binding REST de `AppServiceProvider`.
-6. **Convención nombres página Inertia:** archivo `resources/js/Pages/Admin/Academy/Commander.jsx` → render `'Admin/Academy/Commander'`.
+1. **Fuente de verdad UI:** `resources/js/` — menú en `Header.jsx` → `GlobalNav.jsx`.
+2. **Menú admin:** flyout **Gestión** + **Extras** en `GlobalNav.jsx`.
+3. **AutoCoach vídeos referencia:** `storage/app/public/autocoach/videos/` (seed vía `php artisan autocoach:sync-reference-videos`; fuente opcional `AUTOCOACH_REFERENCE_VIDEOS_SOURCE`).
+4. **Rutas JS:** importar `route` vía `lib/route.js` (build inyecta `@route` en vite.config.js).
+5. **Créditos legacy vs bonos:** operaciones nuevas de consumo deben pasar por `UserBono` / `BonoService`; no reintroducir `users.credits_balance` sin migración explícita.
+6. **Concurrencia:** cualquier cambio en cupo de clase debe usar `AvailabilityService::withLockedLesson` dentro de transacción.
+7. **Firestore:** nunca instanciar `FirestoreClient` fuera del binding REST de `AppServiceProvider`.
+8. **Convención nombres página Inertia:** archivo `resources/js/Pages/Admin/Academy/Commander.jsx` → render `'Admin/Academy/Commander'`.
 
 ---
 

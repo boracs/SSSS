@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import TimePicker24h from "../../../components/Academy/TimePicker24h";
 import { addMinutesToHhmm, formatDateTimeMadrid, formatTimeMadrid } from "../../../lib/madridTime";
 
 const STALE_HOURS = 48;
@@ -159,18 +160,6 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
         });
     };
 
-    const roundQuarter = (hhmm) => {
-        if (!hhmm || !hhmm.includes(":")) return hhmm;
-        const [hRaw, mRaw] = hhmm.split(":").map((n) => Number(n));
-        if (Number.isNaN(hRaw) || Number.isNaN(mRaw)) return hhmm;
-        let total = (hRaw * 60) + mRaw;
-        const rounded = Math.round(total / 15) * 15;
-        total = Math.max(0, Math.min((23 * 60) + 45, rounded));
-        const h = Math.floor(total / 60);
-        const m = total % 60;
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    };
-
     const checkAvailability = async (draft = null) => {
         const src = draft || newLesson;
         if (!date || !src?.startTime) return;
@@ -245,6 +234,23 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
             onSuccess: () => invalidateLessonDetailsCache(lessonId),
         });
     };
+    const approveQuotaEnrollment = (enrollmentId) => {
+        const lessonId = lessons.find((l) => (l.enrollments || []).some((e) => e.id === enrollmentId))?.id;
+        router.post(route("admin.class-manager.guest-enrollments.approve-quota", enrollmentId), {}, {
+            preserveScroll: true,
+            onSuccess: () => invalidateLessonDetailsCache(lessonId),
+        });
+    };
+    const denyQuotaEnrollment = (enrollmentId) => {
+        const lessonId = lessons.find((l) => (l.enrollments || []).some((e) => e.id === enrollmentId))?.id;
+        router.post(route("admin.class-manager.guest-enrollments.deny-quota", enrollmentId), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setQuotaDenying(null);
+                invalidateLessonDetailsCache(lessonId);
+            },
+        });
+    };
     const rejectEnrollment = (enrollmentId, adminNotes) => {
         const lessonId = lessons.find((l) => (l.enrollments || []).some((e) => e.id === enrollmentId))?.id;
         router.post(route("admin.academy.enrollments.reject", enrollmentId), { admin_notes: adminNotes || null }, {
@@ -254,6 +260,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
     };
 
     const [rejecting, setRejecting] = useState(null); // { id, name, notes }
+    const [quotaDenying, setQuotaDenying] = useState(null); // { id, name }
     const [proofViewer, setProofViewer] = useState(null); // { url, name }
 
     const bulkDeleteStale = () => {
@@ -369,8 +376,8 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                 <Breadcrumbs
                     items={[
                         { label: "Admin", href: route("Pag_principal") },
-                        { label: "Academia", href: route("admin.academy.index") },
-                        { label: "Consola" },
+                        { label: "Gestor de clases", href: route("admin.class-manager.index") },
+                        { label: "Consola del día" },
                     ]}
                     variant="dark"
                     className="mb-4"
@@ -463,32 +470,19 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-300">Hora inicio</label>
-                                <input
-                                    type="time"
-                                    value={newLesson.startTime}
-                                    onChange={(e) => {
-                                        const raw = e.target.value;
-                                        const nextStart = raw;
-                                        const endTime = addMinutesToHhmm(nextStart, Number(newLesson.duration_minutes || 90));
-                                        const nextState = { ...newLesson, startTime: nextStart, endTime };
-                                        setNewLesson((s) => ({ ...s, startTime: nextStart, endTime }));
-                                        checkAvailability(nextState);
-                                    }}
-                                    onBlur={(e) => {
-                                        const raw = e.target.value;
-                                        if (!raw) return;
-                                        const rounded = roundQuarter(raw);
-                                        if (raw !== rounded) {
-                                            setTimeNotice(`Hora ajustada a intervalo de 15 minutos: ${raw} → ${rounded}`);
-                                            setNewLesson((s) => ({ ...s, startTime: rounded }));
-                                            checkAvailability({ ...newLesson, startTime: rounded });
-                                            return;
-                                        }
-                                        setTimeNotice("");
-                                    }}
-                                    className="input-focus-ring mt-1 w-full rounded-xl px-4 py-2"
-                                    required
-                                />
+                                <div className="mt-1">
+                                    <TimePicker24h
+                                        value={newLesson.startTime}
+                                        onChange={(raw) => {
+                                            const endTime = addMinutesToHhmm(raw, Number(newLesson.duration_minutes || 90));
+                                            const nextState = { ...newLesson, startTime: raw, endTime };
+                                            setNewLesson((s) => ({ ...s, startTime: raw, endTime }));
+                                            setTimeNotice("");
+                                            checkAvailability(nextState);
+                                        }}
+                                        required
+                                    />
+                                </div>
                             </div>
                             {timeNotice ? (
                                 <div className="rounded-xl border border-amber-700 bg-amber-900/30 px-3 py-2 text-xs text-amber-200">
@@ -750,6 +744,25 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                                                     )}
                                                                 </div>
                                                             )}
+                                                            {e.status === "pending_extra_monitor" && (
+                                                                <div className="flex flex-wrap items-center gap-2">
+                                                                    <span className="text-[10px] font-semibold text-amber-200">Cupo extra (7.º+)</span>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => approveQuotaEnrollment(e.id)}
+                                                                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                                    >
+                                                                        Aceptar
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setQuotaDenying({ id: e.id, name: e.user?.nombre ?? "Alumno" })}
+                                                                        className="rounded-xl bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
+                                                                    >
+                                                                        Denegar
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                             {e.status === "expired" && (
                                                                 <button
                                                                     type="button"
@@ -990,6 +1003,31 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                 className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
                             >
                                 Confirmar rechazo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {quotaDenying && (
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-gray-950/70 backdrop-blur-md" onClick={() => setQuotaDenying(null)} aria-hidden />
+                    <div className="relative w-full max-w-lg rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-xl">
+                        <h3 className="font-heading text-lg font-bold text-gray-100">Denegar solicitud de cupo</h3>
+                        <p className="mt-2 text-sm text-gray-300">
+                            ¿Denegar la solicitud de <span className="font-semibold text-white">{quotaDenying.name}</span>?
+                            Se eliminará de la lista de pendientes.
+                        </p>
+                        <div className="mt-4 flex flex-wrap justify-end gap-2">
+                            <button type="button" onClick={() => setQuotaDenying(null)} className="btn-secondary">
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => denyQuotaEnrollment(quotaDenying.id)}
+                                className="rounded-xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-rose-700"
+                            >
+                                Confirmar denegación
                             </button>
                         </div>
                     </div>

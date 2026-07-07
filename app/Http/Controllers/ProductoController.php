@@ -4,11 +4,31 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Producto;
 use App\Models\Imagen;
+use App\Enums\ProductTag;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ProductoController extends Controller
 {
+    /**
+     * @return array<string, mixed>
+     */
+    private function tagValidationRules(): array
+    {
+        return [
+            'tags' => 'nullable|array',
+            'tags.*' => ['string', Rule::in(ProductTag::values())],
+        ];
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function productTagOptions(): array
+    {
+        return ProductTag::optionsForFrontend();
+    }
     /**
      * Actualizar un producto existente
      */
@@ -18,28 +38,25 @@ public function update(Request $request, $id_producto)
         $producto = Producto::findOrFail($id_producto); 
 
         // 1. Validación
-        $request->validate([
+        $request->validate(array_merge([
             'nombre' => 'required|string|max:255',
             'precio' => 'required|numeric',
             'unidades' => 'required|integer',
             'descuento' => 'nullable|numeric',
-            // 'eliminado' no está en tu implementación de update(), pero lo mantendremos como 'nullable|boolean' si lo necesitas
             'eliminado' => 'nullable|boolean', 
-            'imagenes' => 'nullable|array', //aqui consigo que no de error si no subo imagenes
-            // 'imagenes' puede ser nulo (ya es la validación actual)
-            //aqui la difrencia con el de arrriba es que imagenes tieine un * precisament epara validar cada imagen individualmente
-            //el asterisco es un comodin que indica que se aplicara la regla a cada elemento del array
-            'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',  // y esto valida cada imagen individualmente
-        ]);
+            'imagenes' => 'nullable|array',
+            'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+        ], $this->tagValidationRules()));
 
-        // 2. Actualizar datos del producto (campos no relacionados con imágenes)
         $producto->update([
             'nombre' => $request->input('nombre'),
             'precio' => $request->input('precio'),
             'unidades' => $request->input('unidades'),
             'descuento' => $request->input('descuento', 0),
-            'eliminado' => $request->input('eliminado', $producto->eliminado), // Mantenemos el estado 'eliminado' si no se proporciona
+            'eliminado' => $request->input('eliminado', $producto->eliminado),
         ]);
+        $producto->syncTags($request->input('tags'));
+        $producto->save();
 
         // 3. Procesar imágenes:
         // El bloque se ejecuta SOLO si hay archivos nuevos. 
@@ -104,11 +121,12 @@ public function update(Request $request, $id_producto)
      */
 
 
-public function mostrarProductos()
+public function mostrarProductos(Request $request)
 {
     // 🔑 CLAVE: Ahora el prop 'productos' está envuelto en un closure (función anónima)
     // Se ejecutará SÓLO si es la primera carga de la página O si se pide una recarga parcial con 'only: ["productos"]'.
     return Inertia::render('Productos', [
+        'openCreateModal' => $request->boolean('create'),
         'productos' => fn () => Producto::with('imagenes')->get()->map(function ($producto) {
             $imagenPrincipal = $producto->imagenes->firstWhere('es_principal', 1);
 
@@ -119,9 +137,12 @@ public function mostrarProductos()
                 'unidades' => $producto->unidades,
                 'descuento' => $producto->descuento,
                 'eliminado' => $producto->eliminado,
+                'tags' => $producto->normalizedTags(),
+                'tag_labels' => ProductTag::labelsFor($producto->normalizedTags()),
                 'imagen_principal' => $imagenPrincipal ? asset('storage/' . $imagenPrincipal->ruta) : null,
             ];
         }),
+        'productTagOptions' => $this->productTagOptions(),
     ]);
 }
 
@@ -183,16 +204,15 @@ public function mostrarProductos()
 public function store(Request $request)
 {
     // Validar los campos del producto
-    $request->validate([
+    $request->validate(array_merge([
         'nombre' => 'required|string|max:255',
         'precio' => 'required|numeric',
         'unidades' => 'required|integer',
         'descuento' => 'nullable|numeric',
         'eliminado' => 'nullable|boolean',
-        'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048', // varias imágenes
-    ]);
+        'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+    ], $this->tagValidationRules()));
 
-    // Crear el producto
     $producto = new Producto();
     $producto->fill([
         'nombre' => $request->input('nombre'),
@@ -201,6 +221,7 @@ public function store(Request $request)
         'descuento' => $request->input('descuento', 0),
         'eliminado' => $request->input('eliminado', false),
     ]);
+    $producto->syncTags($request->input('tags'));
     $producto->save();
 
     // Procesar múltiples imágenes (si existen)
@@ -237,27 +258,77 @@ public function ver($id)
     $producto = Producto::with('imagenes')->findOrFail($id);
     $usuario = auth()->user();
 
-    // Preparar imágenes con ruta completa
-    $imagenes = $producto->imagenes->map(fn($img) => [
+    $imagenes = $producto->imagenes->map(fn ($img) => [
         'id' => $img->id,
-        'ruta' => asset('storage/' . $img->ruta),
-        'es_principal' => (bool)$img->es_principal,
-    ])->sortByDesc('es_principal')->values(); // Principal primero
+        'ruta' => asset('storage/'.$img->ruta),
+        'es_principal' => (bool) $img->es_principal,
+    ])->sortByDesc('es_principal')->values();
 
-    // Preparar producto para frontend
     $productoParaFrontend = [
         'id' => $producto->id,
         'nombre' => $producto->nombre,
         'precio' => $producto->precio,
         'unidades' => $producto->unidades,
         'descuento' => $producto->descuento,
+        'tags' => $producto->normalizedTags(),
+        'tag_labels' => ProductTag::labelsFor($producto->normalizedTags()),
         'imagenes' => $imagenes,
         'imagen_principal' => $imagenes->first()['ruta'] ?? asset('img/placeholder.jpg'),
     ];
 
+    $currentTags = $producto->normalizedTags();
+
+    $productosRelacionados = Producto::query()
+        ->where('eliminado', 0)
+        ->where('id', '!=', $producto->id)
+        ->with(['imagenPrincipal:id,producto_id,ruta,nombre,es_principal'])
+        ->get()
+        ->map(static function (Producto $p): array {
+            $ruta = $p->imagenPrincipal?->ruta ?? $p->imagenPrincipal?->nombre;
+
+            return [
+                'id' => $p->id,
+                'nombre' => (string) $p->nombre,
+                'precio' => $p->precio,
+                'unidades' => (int) $p->unidades,
+                'descuento' => $p->descuento,
+                'tags' => $p->normalizedTags(),
+                'imagen' => $ruta !== null && $ruta !== '' ? (string) $ruta : null,
+                '_tag_score' => 0,
+            ];
+        })
+        ->map(static function (array $row) use ($currentTags): array {
+            if ($currentTags === []) {
+                $row['_tag_score'] = 0;
+
+                return $row;
+            }
+
+            $row['_tag_score'] = count(array_intersect($row['tags'], $currentTags));
+
+            return $row;
+        })
+        ->sort(static function (array $a, array $b): int {
+            if ($a['_tag_score'] !== $b['_tag_score']) {
+                return $b['_tag_score'] <=> $a['_tag_score'];
+            }
+
+            return ((float) ($b['descuento'] ?? 0)) <=> ((float) ($a['descuento'] ?? 0));
+        })
+        ->take(12)
+        ->map(static function (array $row): array {
+            unset($row['_tag_score'], $row['tags']);
+
+            return $row;
+        })
+        ->values()
+        ->all();
+
     return Inertia::render('ProductoVer', [
         'producto' => $productoParaFrontend,
         'usuario' => $usuario,
+        'productosRelacionados' => $productosRelacionados,
+        'productTagOptions' => $this->productTagOptions(),
     ]);
 }
 
@@ -269,7 +340,7 @@ public function ver($id)
 
 public function crear()
 {
-    return Inertia::render('CrearProducto');
+    return redirect()->route('mostrar.productos', ['create' => 1]);
 }
 
 

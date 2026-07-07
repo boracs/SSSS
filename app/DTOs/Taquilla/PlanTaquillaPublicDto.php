@@ -10,7 +10,7 @@ use App\Support\MoneyCents;
 readonly class PlanTaquillaPublicDto
 {
     /**
-     * @param  list<string>  $beneficios
+     * @param  list<string>  $beneficios  Ventajas exclusivas de este plan (lo común va en la sección global de la UI).
      */
     public function __construct(
         public int $id,
@@ -46,7 +46,7 @@ readonly class PlanTaquillaPublicDto
             descripcion: $plan->descripcion,
             porcentajeDescuento: $descuento,
             esVip: $esVip,
-            beneficios: self::beneficiosForPlan($esVip, $descuento),
+            beneficios: [],
         );
     }
 
@@ -85,23 +85,5 @@ readonly class PlanTaquillaPublicDto
         }
 
         return ["{$duracionDias} dias", 'Periodo personalizado'];
-    }
-
-    /** @return list<string> */
-    private static function beneficiosForPlan(bool $esVip, int $descuento): array
-    {
-        $beneficios = [
-            '1 taquilla privada a pie de playa',
-            '2 tablas en rack + 2 trajes en secadero',
-            'Banos, duchas y zona de calentamiento',
-            sprintf('Hasta %d%% de descuento en tienda', $descuento),
-            'Acceso a reparacion de tablas y micro-servicios del club',
-        ];
-
-        if ($esVip) {
-            $beneficios[] = 'Pase de invitados mensual y ventajas VIP';
-        }
-
-        return $beneficios;
     }
 }

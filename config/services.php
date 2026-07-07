@@ -56,9 +56,40 @@ return [
         'class_reservation_deposit_eur' => (float) env('ACADEMY_CLASS_RESERVATION_DEPOSIT_EUR', 30),
         /** Hora de recogida/devolución por defecto en alquileres (reloj de pared Madrid) cuando solo llega Y-m-d. */
         'rental_handoff_hour' => (int) env('ACADEMY_RENTAL_HANDOFF_HOUR', 10),
+        /** Cierre de inscripciones (minutos antes del inicio). */
+        'enroll_cutoff_minutes' => (int) env('ACADEMY_ENROLL_CUTOFF_MINUTES', 30),
+        /** Antelación mínima para cancelar (horas). */
+        'cancel_cutoff_hours' => (int) env('ACADEMY_CANCEL_CUTOFF_HOURS', 4),
+        /** Alumnos por monitor antes de requerir aprobación admin (7.º en adelante). */
+        'standard_monitor_capacity' => (int) env('ACADEMY_STANDARD_MONITOR_CAPACITY', 6),
     ],
 
     'contact_form' => [
         'to' => env('CONTACT_FORM_TO', env('MAIL_FROM_ADDRESS', 'hello@example.com')),
+    ],
+
+    /** Reparación de tablas — contacto directo del shaper (Edy Mulder). */
+    'repair' => [
+        'edy' => [
+            'name' => env('REPAIR_EDY_NAME', 'Edy Mulder'),
+            'phone' => env('REPAIR_EDY_PHONE', '34600000000'),
+            'phone_display' => env('REPAIR_EDY_PHONE_DISPLAY'),
+            'email' => env('REPAIR_EDY_EMAIL', 'edy.mulder@s4surf.com'),
+        ],
+        'willy' => [
+            'name' => env('REPAIR_WILLY_NAME', 'Willy'),
+            'phone' => env('REPAIR_WILLY_PHONE', '34600000001'),
+            'phone_display' => env('REPAIR_WILLY_PHONE_DISPLAY'),
+            'email' => env('REPAIR_WILLY_EMAIL', 'willy@s4surf.com'),
+        ],
+    ],
+
+    'sponsors' => [
+        'bunker' => [
+            'name' => 'The Bunker Surf Shop',
+            'url' => env('SPONSOR_BUNKER_URL'),
+            'tagline' => 'Equipamiento y surf shop',
+            'active' => env('SPONSOR_BUNKER_ACTIVE', true),
+        ],
     ],
 ];

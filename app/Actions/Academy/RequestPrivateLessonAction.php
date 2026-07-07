@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Academy;
 
+use App\Enums\PaymentStatus;
 use App\Events\PrivateLessonRequestedEvent;
 use App\Http\Requests\Academy\RequestPrivateLessonRequest;
 use App\Models\Lesson;
@@ -29,14 +30,14 @@ final class RequestPrivateLessonAction
         $paymentMethod = $request->paymentMethod();
         $proof = $request->proofFile();
 
-        $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, 1, 0);
-        if (! $evaluation['allowed']) {
-            return ['ok' => false, 'message' => $this->availabilityService->buildConflictMessage($evaluation)];
-        }
-
         $label = trim(($user->nombre ?? '').' '.($user->apellido ?? '')) ?: ('#'.$user->id);
 
-        $result = DB::transaction(function () use ($user, $startsAt, $endsAt, $proof, $paymentMethod, $label) {
+        return DB::transaction(function () use ($user, $startsAt, $endsAt, $proof, $paymentMethod, $label) {
+            $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, 1, 0);
+            if (! $evaluation['allowed']) {
+                return ['ok' => false, 'message' => $this->availabilityService->buildConflictMessage($evaluation)];
+            }
+
             $lesson = Lesson::query()->create([
                 'title' => 'Particular · '.$label.' · '.$startsAt->format('d/m/Y H:i'),
                 'starts_at' => $startsAt,
@@ -56,7 +57,7 @@ final class RequestPrivateLessonAction
                 'quantity' => 1,
                 'credits_locked' => 0,
                 'status' => LessonUser::STATUS_PENDING,
-                'payment_status' => LessonUser::PAYMENT_PENDING,
+                'payment_status' => PaymentStatus::Pending->value,
                 'payment_method' => $paymentMethod,
             ]);
 
@@ -70,7 +71,5 @@ final class RequestPrivateLessonAction
 
             return ['ok' => true, 'message' => 'Solicitud de clase particular enviada.'];
         });
-
-        return $result;
     }
 }

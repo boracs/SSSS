@@ -7,6 +7,7 @@ use App\Models\LessonUser;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use App\Support\LessonBonoCreditUnits;
 
@@ -48,16 +49,19 @@ class VipStudentPerformanceService
                 return sprintf('%s-%010d', (string) ($bono->created_at?->format('YmdHisu') ?? '00000000000000000000'), (int) $bono->id);
             })
             ->values();
-        $activeBono = $confirmedBonosSorted
-            ->sortByDesc(function (UserBono $bono): string {
-                return sprintf('%s-%010d', (string) ($bono->created_at?->format('YmdHisu') ?? '00000000000000000000'), (int) $bono->id);
-            })
-            ->first();
 
-        $historyMapped = self::buildConfirmedLessonUserHistoryRows($user, $activeBono, null);
+        /** @var BonoService $bonoService */
+        $bonoService = app(BonoService::class);
+        $wallet = $bonoService->buildWalletSnapshot($confirmedBonos);
+        $consumingBonoId = (int) ($wallet['active_bono_id'] ?? 0);
+        $consumingBonoModel = $consumingBonoId > 0
+            ? $confirmedBonosSorted->firstWhere('id', $consumingBonoId)
+            : null;
+
+        $historyMapped = self::buildConfirmedLessonUserHistoryRows($user, $consumingBonoModel, null);
 
         if ($forAdminAnalysis) {
-            $historyMapped = self::mergeLessonUsersIntoConsumptionStyleRows($user, $historyMapped, $activeBono);
+            $historyMapped = self::mergeLessonUsersIntoConsumptionStyleRows($user, $historyMapped, $consumingBonoModel);
         }
 
         $lastMonth = BusinessDateTime::now()->subDays(30);
@@ -66,31 +70,9 @@ class VipStudentPerformanceService
             return $raw ? strtotime((string) $raw) >= $lastMonth->timestamp : false;
         })->count();
         $weeklyRate = $lastMonthSessions > 0 ? ($lastMonthSessions / 4.2857) : 0;
-        $confirmedCapacityUc = (int) $confirmedBonos->sum(fn (UserBono $b) => (int) ($b->pack?->num_clases ?? 0));
-        $consumingStatuses = [
-            LessonUser::STATUS_CONFIRMED,
-            LessonUser::STATUS_ATTENDED,
-            LessonUser::STATUS_CANCELLED_LATE_LOST,
-        ];
-        $consumedUcGlobal = self::calculateConsumedUcFromLessonUsers($user, $consumingStatuses, null);
-        $globalRemainingUc = $confirmedCapacityUc - $consumedUcGlobal;
-        $lastPackTotalUc = (int) ($activeBono?->pack?->num_clases ?? 0);
-        $lastPackRemainingUc = $lastPackTotalUc;
-        $lastPackConsumedUc = 0;
-        $remainingConsumptionToAllocate = max(0, $consumedUcGlobal);
-        foreach ($confirmedBonosSorted as $bonoSorted) {
-            $packUc = (int) ($bonoSorted->pack?->num_clases ?? 0);
-            if ($packUc <= 0) {
-                continue;
-            }
-            $allocatedToThisPack = min($remainingConsumptionToAllocate, $packUc);
-            $remainingConsumptionToAllocate -= $allocatedToThisPack;
-            if ((int) $bonoSorted->id === (int) ($activeBono?->id ?? 0)) {
-                $lastPackConsumedUc = (int) $allocatedToThisPack;
-                $lastPackRemainingUc = (int) ($packUc - $allocatedToThisPack);
-            }
-        }
-        $lastPackExtraConsumedUc = max(0, $remainingConsumptionToAllocate);
+        $confirmedCapacityUc = (int) $wallet['total_purchased_uc'];
+        $globalRemainingUc = (int) $wallet['total_available_uc'];
+        $consumingPack = $wallet['consuming_bono'];
         $estimatedWeeks = ($weeklyRate > 0) ? ((int) ceil(max($globalRemainingUc, 0) / $weeklyRate)) : null;
         $estimatedEndDate = $estimatedWeeks ? BusinessDateTime::now()->addWeeks($estimatedWeeks)->format('d/m/Y') : null;
 
@@ -254,7 +236,7 @@ class VipStudentPerformanceService
         $historyMappedAll = self::applyVisualBonoGrouping(
             $historyMappedAll,
             $confirmedBonosSorted,
-            (int) ($activeBono?->id ?? 0)
+            $consumingBonoId
         );
 
         $totalHours = $historyMappedAll->sum(function ($r) {
@@ -281,23 +263,40 @@ class VipStudentPerformanceService
         }
 
         $dynamicRemainingClasses = $globalRemainingUc;
+        $latestPurchase = $wallet['latest_purchase'];
+        $lifetimeSessions = (int) LessonUser::query()
+            ->where('user_id', $user->id)
+            ->whereIn('status', [
+                LessonUser::STATUS_CONFIRMED,
+                LessonUser::STATUS_ATTENDED,
+                LessonUser::STATUS_CANCELLED_LATE_LOST,
+            ])
+            ->whereHas('lesson', fn ($q) => $q->whereNotNull('starts_at'))
+            ->count();
 
         return [
             /** Siempre el alumno cuyos datos se están calculando (blindaje front / caché). */
             'subject_user_id' => (int) $user->id,
             'profile_mode' => self::PROFILE_MODE_STUDENT,
+            'wallet' => $wallet,
+            'consumingBono' => $consumingPack,
+            'latestPurchase' => $latestPurchase,
             'activeBono' => [
-                'id' => $activeBono?->id,
+                'id' => $consumingPack['id'] ?? null,
                 'name' => 'Saldo de Créditos VIP',
-                'sku' => $activeBono?->sku,
+                'sku' => $consumingPack['sku'] ?? null,
                 'num_classes' => $confirmedCapacityUc,
                 'remaining' => $dynamicRemainingClasses,
                 'remaining_uc' => $dynamicRemainingClasses,
-                'last_pack_total_uc' => $lastPackTotalUc,
-                'last_pack_remaining_uc' => $lastPackRemainingUc,
-                'last_pack_consumed_uc' => $lastPackConsumedUc,
-                'last_pack_extra_consumed_uc' => $lastPackExtraConsumedUc,
-                'price' => (float) ($activeBono?->pack?->precio ?? 0),
+                'total_consumed_uc' => (int) $wallet['total_consumed_uc'],
+                'queue_available_uc' => (int) $wallet['queue_available_uc'],
+                'queued_bonos_count' => (int) $wallet['queued_bonos_count'],
+                'last_pack_name' => $consumingPack['name'] ?? null,
+                'last_pack_total_uc' => (int) ($consumingPack['pack_total_uc'] ?? 0),
+                'last_pack_remaining_uc' => (int) ($consumingPack['remaining_uc'] ?? 0),
+                'last_pack_consumed_uc' => (int) ($consumingPack['consumed_uc'] ?? 0),
+                'last_pack_extra_consumed_uc' => 0,
+                'price' => (float) ($consumingBonoModel?->pack?->precio ?? 0),
             ],
             'history' => $loadHistory ? $historyMappedAll->all() : null,
             'history_loaded' => $loadHistory,
@@ -310,6 +309,7 @@ class VipStudentPerformanceService
                 'total_surfed_hours' => round((float) $totalHours, 1),
                 'solo_ratio_percent' => $soloRatio,
                 'level_progress' => ucfirst($maxLevel),
+                'lifetime_classes' => $lifetimeSessions,
             ],
             'month' => $bonoMonth,
         ];
@@ -340,12 +340,17 @@ class VipStudentPerformanceService
             ->get()
             ->map(function (LessonUser $row) use ($classDepositCap) {
                 $startAt = $row->lesson?->starts_at;
-                $isWithinCancellationWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) <= 24 : false;
+                $cancelHours = AcademyEnrollmentPolicy::cancelCutoffHours();
+                $isWithinCancellationWindow = $startAt
+                    ? BusinessDateTime::now()->diffInHours($startAt, false) < $cancelHours
+                    : false;
                 $paymentPending = ($row->payment_status ?? '') === LessonUser::PAYMENT_PENDING;
                 $sessionExpired = $paymentPending
                     && $row->created_at
                     && $row->created_at->copy()->addMinutes(30)->isPast();
-                $canCancelWindow = $startAt ? BusinessDateTime::now()->diffInHours($startAt, false) > 24 : false;
+                $canCancelWindow = $startAt
+                    ? BusinessDateTime::now()->diffInHours($startAt, false) >= $cancelHours
+                    : false;
                 $canCancel = ! $sessionExpired && $canCancelWindow;
 
                 $unitPrice = (float) ($row->lesson?->price ?? 0);
@@ -369,7 +374,7 @@ class VipStudentPerformanceService
                     'is_within_cancellation_window' => $isWithinCancellationWindow,
                     'cancel_block_reason' => $sessionExpired
                         ? 'Sesión expirada por falta de pago.'
-                        : ($canCancel ? null : 'Fuera de plazo de cancelación (requiere 24h de antelación)'),
+                        : ($canCancel ? null : 'Fuera de plazo de cancelación (requiere '.$cancelHours.'h de antelación)'),
                     'unit_price' => $unitPrice,
                     'party_quantity' => $qty,
                     'total_price' => $totalPrice,

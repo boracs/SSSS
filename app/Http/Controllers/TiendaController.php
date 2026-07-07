@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProductTag;
 use App\Models\Producto;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -15,26 +16,18 @@ class TiendaController extends Controller
             ->orderBy('nombre', 'asc')
             ->orderBy('id', 'asc')
             ->get()
-            ->map(function ($producto) {
+            ->map(function (Producto $producto) {
                 $imagen = $producto->imagenes->firstWhere('es_principal', 1);
-                $producto->imagenPrincipal = $imagen ? $imagen->ruta : 'img/placeholder.jpg';
+                $ruta = $imagen ? $imagen->ruta : 'img/placeholder.jpg';
 
-                return $producto;
-            });
-
-        $productosParaFrontend = $productos->map(function ($p) {
-            return [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-                'precio' => $p->precio,
-                'unidades' => $p->unidades,
-                'descuento' => $p->descuento,
-                'imagenPrincipal' => $p->imagenPrincipal,
-            ];
-        });
+                return $producto->toStorePayload($ruta);
+            })
+            ->values()
+            ->all();
 
         return Inertia::render('Tienda', [
-            'productos' => $productosParaFrontend,
+            'productos' => $productos,
+            'productTagOptions' => ProductTag::optionsForFrontend(),
         ]);
     }
 }

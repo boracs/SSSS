@@ -181,6 +181,7 @@ class PedidoController extends Controller
         $totalDescuentos = round($subtotalSinDescuento - (float) $pedido->precio_total, 2);
 
         return Inertia::render('Pedido', [
+            'isAdminView' => Auth::user()->role === 'admin',
             'pedido' => [
                 'id' => $pedido->id,
                 'precio_total' => (float) $pedido->precio_total,
@@ -258,211 +259,123 @@ class PedidoController extends Controller
 
     public function index(Request $request): InertiaResponse
     {
-    // Recoger los filtros de la solicitud
-    $pagado = $request->input('pagado', ''); // Valor por defecto si no se pasa el filtro
-    $entregado = $request->input('entregado', ''); // Valor por defecto si no se pasa el filtro
-    
-    // Obtener la página actual desde la solicitud
-    $page = $request->get('page', 1); // Si no se pasa, por defecto será la página 1
-    
-    // Iniciar la consulta base para los pedidos
-    $query = Pedido::with(['productos' => function ($query) {
-        $query->select('productos.id', 'nombre', 'precio')
-              ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado');
-    }, 'usuario']); // Relación usuario, si la necesitas
-    
-    // Aplicar los filtros solo si los valores no están vacíos
-    if (!is_null($pagado) && $pagado !== '') {
-        $query->when($pagado !== '', function ($query) use ($pagado) {
-            if ($pagado === '1') {
-                $query->where('pagado', true); // Filtrar por 'sí'
-            } elseif ($pagado === '0') {
-                $query->where('pagado', false); // Filtrar por 'no'
-            }
-        });
+        return $this->renderGestorPedidos($request);
     }
-
-    if (!is_null($entregado) && $entregado !== '') {
-        $query->when($entregado !== '', function ($query) use ($entregado) {
-            if ($entregado === '1') {
-                $query->where('entregado', true); // Filtrar por 'sí'
-            } elseif ($entregado === '0') {
-                $query->where('entregado', false); // Filtrar por 'no'
-            }
-        });
-    }
-    
-    // Obtener los pedidos con la paginación (5 pedidos por página)
-    $pedidos = $query->paginate(5);
-    
-    if ($pedidos->isEmpty()) {
-        Log::info('No se encontraron pedidos.');
-    }
-    
-    // Contar el número total de pedidos
-    $totalPedidos = $pedidos->total();
-    
-    // Devolver los pedidos con los filtros aplicados y la paginación
-    return Inertia::render('GestorPedidos', [
-        'pedidos' => [
-            'data' => $pedidos->map(function ($pedido) {
-                return [
-                    'id' => $pedido->id,
-                    'precio_total' => $pedido->precio_total,
-                    'pagado' => $pedido->pagado,
-                    'entregado' => $pedido->entregado,
-                    'created_at' => $pedido->created_at->toIso8601String(),
-                    'usuario' => [
-                        'nombre' => $pedido->usuario->nombre,
-                        'apellido' => $pedido->usuario->apellido,
-                        'telefono' => $pedido->usuario->telefono,
-                    ],
-                    'productos' => $pedido->productos->map(function ($producto) {
-                        return [
-                            'id' => $producto->id,
-                            'nombre' => $producto->nombre,
-                            'precio' => $producto->precio,
-                            'cantidad' => $producto->pivot->cantidad,
-                            'descuento_aplicado' => $producto->pivot->descuento_aplicado,
-                            'precio_pagado' => $producto->pivot->precio_pagado,
-                        ];
-                    }),
-                ];
-            })
-        ],
-        'totalPedidos' => $totalPedidos, // El total de pedidos para paginación
-        'currentPage' => $pedidos->currentPage(),
-        'lastPage' => $pedidos->lastPage(),
-        'filters' => [
-            'pagado' => $pagado,
-            'entregado' => $entregado,
-        ],
-    ]);
-}
-
-
-
-
-
 
     public function applyFilter(Request $request): InertiaResponse
     {
-        // Recoger los filtros enviados desde el frontend
-        $pagado = $request->input('pagado'); // Puede ser '1', '0', o ''
-        $entregado = $request->input('entregado'); // Puede ser '1', '0', o ''
-        $usuarioNombre = $request->input('usuarioNombre'); // Filtro adicional de nombre de usuario (si se aplica)
-    
-        // Filtrar los pedidos según los valores
-        $pedidos = Pedido::with(['usuario']) // Cargar la relación 'usuario'
-            ->when($pagado !== '', function ($query) use ($pagado) {
-                if ($pagado === '1') {
-                    $query->where('pagado', true); // Filtrar por 'sí'
-                } elseif ($pagado === '0') {
-                    $query->where('pagado', false); // Filtrar por 'no'
-                }
-            })
-            ->when($entregado !== '', function ($query) use ($entregado) {
-                if ($entregado === '1') {
-                    $query->where('entregado', true); // Filtrar por 'sí'
-                } elseif ($entregado === '0') {
-                    $query->where('entregado', false); // Filtrar por 'no'
-                }
-            })
-            // Filtro adicional para el nombre del usuario si es necesario
-            ->when(!empty($usuarioNombre), function ($query) use ($usuarioNombre) {
-                $query->whereHas('usuario', function ($q) use ($usuarioNombre) {
-                    $q->where('nombre', 'like', "%{$usuarioNombre}%"); // Filtro para el nombre del usuario
-                });
-            })
-            ->paginate(12); // Paginación de los resultados (máximo 12 pedidos por página)
-    
-        // Contar el total de pedidos después de aplicar los filtros
-        $totalPedidos = Pedido::with(['usuario'])
-            ->when($pagado !== '', function ($query) use ($pagado) {
-                if ($pagado === '1') {
-                    $query->where('pagado', true); // Filtrar por 'sí'
-                } elseif ($pagado === '0') {
-                    $query->where('pagado', false); // Filtrar por 'no'
-                }
-            })
-            ->when($entregado !== '', function ($query) use ($entregado) {
-                if ($entregado === '1') {
-                    $query->where('entregado', true); // Filtrar por 'sí'
-                } elseif ($entregado === '0') {
-                    $query->where('entregado', false); // Filtrar por 'no'
-                }
-            })
-            // Filtro adicional para el nombre del usuario si es necesario
-            ->when(!empty($usuarioNombre), function ($query) use ($usuarioNombre) {
-                $query->whereHas('usuario', function ($q) use ($usuarioNombre) {
-                    $q->where('nombre', 'like', "%{$usuarioNombre}%"); // Filtro para el nombre del usuario
-                });
-            })
-            ->count(); // Contamos el total de pedidos después de aplicar los filtros
-    
-        // Retornar los pedidos filtrados junto con los datos del usuario y productos
+        return $this->renderGestorPedidos($request);
+    }
+
+    private function renderGestorPedidos(Request $request): InertiaResponse
+    {
+        $pagado = (string) $request->input('pagado', '');
+        $entregado = (string) $request->input('entregado', '');
+
+        $query = Pedido::query()
+            ->with([
+                'usuario:id,nombre,apellido,telefono,email',
+                'productos' => fn ($q) => $q
+                    ->select('productos.id', 'nombre', 'precio')
+                    ->with('imagenes:id,producto_id,ruta,es_principal')
+                    ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado'),
+            ])
+            ->latest('id');
+
+        if ($pagado === '1') {
+            $query->where('pagado', true);
+        } elseif ($pagado === '0') {
+            $query->where('pagado', false);
+        }
+
+        if ($entregado === '1') {
+            $query->where('entregado', true);
+        } elseif ($entregado === '0') {
+            $query->where('entregado', false);
+        }
+
+        $paginator = $query->paginate(9)->withQueryString();
+
         return Inertia::render('GestorPedidos', [
-            'pedidos' => $pedidos->map(function ($pedido) {
-                return [
-                    'id' => $pedido->id,
-                    'precio_total' => $pedido->precio_total,
-                    'pagado' => $pedido->pagado,
-                    'entregado' => $pedido->entregado,
-                    'created_at' => $pedido->created_at->toIso8601String(),
-                    'usuario' => [
-                        'nombre' => $pedido->usuario->nombre,
-                        'apellido' => $pedido->usuario->apellido,
-                        'telefono' => $pedido->usuario->telefono,
-                    ],
-                    'productos' => $pedido->productos->map(function ($producto) {
-                        return [
-                            'id' => $producto->id,
-                            'nombre' => $producto->nombre,
-                            'precio' => $producto->precio,
-                            'cantidad' => $producto->pivot->cantidad,
-                            'descuento_aplicado' => $producto->pivot->descuento_aplicado,
-                            'precio_pagado' => $producto->pivot->precio_pagado,
-                        ];
-                    }),
-                ];
-            }),
-            'totalPedidos' => $totalPedidos, // Retornamos el total de pedidos
-            'currentPage' => $pedidos->currentPage(),
-            'lastPage' => $pedidos->lastPage(),
-            // Retornamos los filtros aplicados
+            'pedidos' => collect($paginator->items())
+                ->map(fn (Pedido $p) => $this->mapPedidoForGestor($p))
+                ->values()
+                ->all(),
+            'totalPedidos' => $paginator->total(),
+            'currentPage' => $paginator->currentPage(),
+            'lastPage' => max(1, $paginator->lastPage()),
             'filters' => [
                 'pagado' => $pagado,
                 'entregado' => $entregado,
-                'usuarioNombre' => $usuarioNombre,
+            ],
+            'stats' => [
+                'total' => Pedido::query()->count(),
+                'completos' => Pedido::query()->where('pagado', true)->where('entregado', true)->count(),
+                'pagados' => Pedido::query()->where('pagado', true)->count(),
+                'pendientes_pago' => Pedido::query()->where('pagado', false)->count(),
+                'pendientes_entrega' => Pedido::query()->where('pagado', true)->where('entregado', false)->count(),
+                'entregados_sin_pagar' => Pedido::query()->where('entregado', true)->where('pagado', false)->count(),
             ],
         ]);
     }
-    
 
+    /** @return array<string, mixed> */
+    private function mapPedidoForGestor(Pedido $pedido): array
+    {
+        $productos = $pedido->productos;
 
+        $resolveImagen = static function (Producto $producto): ?string {
+            $imagen = $producto->imagenes->firstWhere('es_principal', true)
+                ?? $producto->imagenes->first();
 
-   // Método para alternar el estado de "pagado"
-/* public function togglePagado($id)
-{
-    $pedido = Pedido::findOrFail($id);
-    $pedido->pagado = !$pedido->pagado;
-    $pedido->save();
+            if (! $imagen || ! $imagen->ruta) {
+                return null;
+            }
 
-    // Redirigir a la misma página sin renderizar toda la vista
-    return Inertia::location(route('gestor.pedidos'));
-}
+            $ruta = $imagen->ruta;
 
-public function toggleEntregado($id)
-{
-    $pedido = Pedido::findOrFail($id);
-    $pedido->entregado = !$pedido->entregado;
-    $pedido->save();
+            if (str_starts_with($ruta, 'http') || str_starts_with($ruta, '/')) {
+                return $ruta;
+            }
 
-    // Redirigir a la misma página sin renderizar toda la vista
-    return Inertia::location(route('gestor.pedidos'));
-}
+            return '/storage/'.ltrim($ruta, '/');
+        };
 
- */
+        $items = $productos->map(function (Producto $producto) use ($resolveImagen) {
+            $cantidad = (int) $producto->pivot->cantidad;
+            $precioPagado = (float) $producto->pivot->precio_pagado;
+
+            return [
+                'id' => $producto->id,
+                'nombre' => $producto->nombre,
+                'imagen' => $resolveImagen($producto),
+                'cantidad' => $cantidad,
+                'precio_pagado' => $precioPagado,
+                'descuento_aplicado' => (float) $producto->pivot->descuento_aplicado,
+                'subtotal' => round($precioPagado * $cantidad, 2),
+            ];
+        })->values()->all();
+
+        return [
+            'id' => $pedido->id,
+            'precio_total' => (float) $pedido->precio_total,
+            'pagado' => (bool) $pedido->pagado,
+            'entregado' => (bool) $pedido->entregado,
+            'payment_method' => $pedido->payment_method,
+            'proof_uploaded_at' => $pedido->proof_uploaded_at?->toIso8601String(),
+            'created_at' => $pedido->created_at?->toIso8601String(),
+            'total_articulos' => (int) $productos->sum(fn ($p) => (int) $p->pivot->cantidad),
+            'productos_preview' => $productos->take(3)->pluck('nombre')->values()->all(),
+            'productos' => $items,
+            'usuario' => [
+                'nombre' => $pedido->usuario?->nombre,
+                'apellido' => $pedido->usuario?->apellido,
+                'telefono' => $pedido->usuario?->telefono,
+                'email' => $pedido->usuario?->email,
+            ],
+        ];
+    }
+
     public function togglePagado(int $id): \Illuminate\Http\RedirectResponse
     {
         $pedido = Pedido::findOrFail($id);

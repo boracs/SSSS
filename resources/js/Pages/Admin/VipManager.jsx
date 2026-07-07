@@ -9,6 +9,8 @@ import {
     todayYmdInMadrid,
     toYmdInMadrid,
 } from "../../lib/madridTime";
+import { resolveStaffCapacity, staffCapacityBadgeClass } from "../../lib/monitorAvailability";
+import TimePicker24h from "../../components/Academy/TimePicker24h";
 
 export default function VipManager({ month, lessons = [], staff = [] }) {
     const [monthCursor, setMonthCursor] = useState(month || todayYmdInMadrid().slice(0, 7));
@@ -244,18 +246,6 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
         return "bg-emerald-500";
     };
 
-    const roundQuarter = (hhmm) => {
-        if (!hhmm || !hhmm.includes(":")) return hhmm;
-        const [hRaw, mRaw] = hhmm.split(":").map((n) => Number(n));
-        if (Number.isNaN(hRaw) || Number.isNaN(mRaw)) return hhmm;
-        let total = (hRaw * 60) + mRaw;
-        const rounded = Math.round(total / 15) * 15;
-        total = Math.max(0, Math.min((23 * 60) + 45, rounded));
-        const h = Math.floor(total / 60);
-        const m = total % 60;
-        return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-    };
-
     const getDurationValidationMessage = () => {
         if (!form.data.time) return "";
         const duration = Number(form.data.duration_minutes || 90);
@@ -483,11 +473,18 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
                                                                 <span className="mt-1 block text-gray-400">Sin inscritos</span>
                                                             )}
                                                         </div>
-                                                        {Number(entry.max_capacity) === 6 ? (
-                                                            <span className="mt-2 block rounded-md border border-amber-700/40 bg-amber-900/20 px-2 py-1 text-amber-200">
-                                                                <span className="font-bold">Aviso:</span> Monitor ocupado en otra sesión.
-                                                            </span>
-                                                        ) : null}
+                                                        {(() => {
+                                                            const staffCap = resolveStaffCapacity(entry);
+                                                            if (!staffCap.showWarning) return null;
+                                                            return (
+                                                                <span className={`mt-2 block rounded-md border px-2 py-1.5 ${staffCapacityBadgeClass(staffCap.status)}`}>
+                                                                    <span className="block text-[10px] font-bold uppercase tracking-wide">
+                                                                        {staffCap.status === "exhausted" ? "Sin monitores" : staffCap.label}
+                                                                    </span>
+                                                                    <span className="mt-0.5 block text-[10px] leading-snug">{staffCap.message}</span>
+                                                                </span>
+                                                            );
+                                                        })()}
                                                         <span className="absolute bottom-[-4px] left-1/2 h-0 w-0 -translate-x-1/2 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-gray-900" />
                                                     </span>
                                                 </span>
@@ -560,31 +557,17 @@ export default function VipManager({ month, lessons = [], staff = [] }) {
                         <form className="grid grid-cols-1 gap-4" onSubmit={submit}>
                             <div>
                                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400">Hora</label>
-                                <input
-                                    type="time"
+                                <TimePicker24h
                                     value={form.data.time}
-                                    onChange={(e) => {
-                                        const raw = e.target.value;
+                                    onChange={(raw) => {
                                         form.setData("time", raw);
+                                        setTimeNotice("");
                                         if (!raw) {
                                             setAvailability(null);
                                             return;
                                         }
                                         checkAvailability(form.data.date, raw, editingLessonId || 0);
                                     }}
-                                    onBlur={(e) => {
-                                        const raw = e.target.value;
-                                        if (!raw) return;
-                                        const rounded = roundQuarter(raw);
-                                        if (raw !== rounded) {
-                                            setTimeNotice(`Hora ajustada a intervalo de 15 minutos: ${raw} → ${rounded}`);
-                                            form.setData("time", rounded);
-                                            checkAvailability(form.data.date, rounded, editingLessonId || 0);
-                                            return;
-                                        }
-                                        setTimeNotice("");
-                                    }}
-                                    className="w-full rounded-xl border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-gray-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                                     required
                                 />
                             </div>
