@@ -3,7 +3,6 @@ import { router, useForm, usePage } from "@inertiajs/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import BookingCalendar from "./BookingCalendar";
-import ManualPaymentInstructionsModal from "./ManualPaymentInstructionsModal";
 import {
     Collapsible,
     CollapsibleContent,
@@ -58,7 +57,7 @@ export default function SurfboardBookingSection({
     const [blockedRanges, setBlockedRanges] = useState([]);
     const [isChecking, setIsChecking] = useState(false);
     const [formOpen, setFormOpen] = useState(false);
-    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [paying, setPaying] = useState(false);
     const [selected, setSelected] = useState({
         startDate: null,
         endDate: null,
@@ -72,13 +71,12 @@ export default function SurfboardBookingSection({
         client_phone: "",
         start_date: "",
         end_date: "",
-        payment_method: "bizum",
-        proof: null,
+        payment_method: "card",
     });
 
     useEffect(() => {
         setFormOpen(false);
-        setPaymentModalOpen(false);
+        setPaying(false);
         reset();
     }, [surfboard.id, reset]);
 
@@ -128,45 +126,33 @@ export default function SurfboardBookingSection({
         setSelected(range);
     }, []);
 
-    const submitRentalPayment = async ({ proofFile, paymentMethod }) => {
-        if (!canContinueToPay) {
+    const iniciarPagoAlquiler = () => {
+        if (!canContinueToPay || paying) {
             toast.error("Completa nombre y fechas antes de pagar.");
-            throw new Error("incomplete");
+            return;
         }
-        const fd = new FormData();
-        fd.append("surfboard_id", String(data.surfboard_id));
-        fd.append("client_name", data.client_name);
-        fd.append("client_email", data.client_email || "");
-        fd.append("client_phone", data.client_phone || "");
-        fd.append("start_date", data.start_date);
-        fd.append("end_date", data.end_date);
-        fd.append("payment_method", paymentMethod);
-        fd.append("proof", proofFile);
-        await new Promise((resolve, reject) => {
-            router.post(route("rentals.bookings.store"), fd, {
-                forceFormData: true,
+        setPaying(true);
+        router.post(
+            route("rentals.bookings.store"),
+            {
+                surfboard_id: data.surfboard_id,
+                client_name: data.client_name,
+                client_email: data.client_email || "",
+                client_phone: data.client_phone || "",
+                start_date: data.start_date,
+                end_date: data.end_date,
+                payment_method: "card",
+            },
+            {
                 preserveScroll: true,
-                onSuccess: () => {
-                    toast.success(
-                        "Reserva creada correctamente. Te avisaremos tras validación.",
-                    );
-                    setFormOpen(false);
-                    setPaymentModalOpen(false);
-                    resolve();
-                },
                 onError: (errs) => {
+                    setPaying(false);
                     const messages = Object.values(errs || {}).flat();
-                    if (messages.length > 0) {
-                        messages.forEach((msg) => toast.error(msg));
-                    } else {
-                        toast.error(
-                            "No se pudo crear la reserva. Inténtalo de nuevo.",
-                        );
-                    }
-                    reject(new Error("rental"));
+                    if (messages.length > 0) messages.forEach((msg) => toast.error(msg));
+                    else toast.error("No se pudo crear la reserva. Inténtalo de nuevo.");
                 },
-            });
-        });
+            },
+        );
     };
 
     const wrapperClass = embedded
@@ -298,26 +284,21 @@ export default function SurfboardBookingSection({
 
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <p className="text-xs text-slate-500">
-                                        Estado al crear:{" "}
-                                        <span className="font-semibold">pendiente</span>.
-                                        Un admin confirmará el pago (o caduca a los 7 días).
+                                        Serás redirigido a la pasarela de pago segura (Stripe).
                                     </p>
                                     <button
                                         type="button"
-                                        disabled={!canContinueToPay}
-                                        onClick={() => setPaymentModalOpen(true)}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-action px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-brand-action/90 disabled:cursor-not-allowed disabled:opacity-60"
+                                        disabled={!canContinueToPay || paying}
+                                        onClick={iniciarPagoAlquiler}
+                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
                                     >
-                                        {processing ? (
+                                        {paying || processing ? (
                                             <>
-                                                <Loader2
-                                                    className="h-4 w-4 animate-spin"
-                                                    aria-hidden="true"
-                                                />
-                                                Procesando…
+                                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                                Preparando pago…
                                             </>
                                         ) : (
-                                            "Continuar al pago"
+                                            "Pagar con tarjeta"
                                         )}
                                     </button>
                                 </div>
@@ -327,19 +308,6 @@ export default function SurfboardBookingSection({
                 </Collapsible>
             </div>
 
-            <ManualPaymentInstructionsModal
-                open={paymentModalOpen}
-                onClose={() => setPaymentModalOpen(false)}
-                bizumNumber={paymentBizumNumber}
-                iban={paymentIban}
-                whatsappHelpUrl={whatsappHelpUrl}
-                useReservationStepsHeading
-                showDepositNotice
-                totalPrimaryLine={`Total a pagar: ${(selected.totalPrice ?? 0).toFixed(2).replace(".", ",")} €`}
-                onSubmit={submitRentalPayment}
-                onAfterSuccessSubmit={() => router.reload({ only: [] })}
-                successSubtitle="Te avisaremos cuando validemos el pago."
-            />
         </>
     );
 }

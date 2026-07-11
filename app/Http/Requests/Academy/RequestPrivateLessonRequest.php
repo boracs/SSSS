@@ -7,7 +7,6 @@ namespace App\Http\Requests\Academy;
 use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Validator;
 
 class RequestPrivateLessonRequest extends FormRequest
@@ -23,11 +22,9 @@ class RequestPrivateLessonRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'date' => ['required', 'date'],
-            'start' => ['required', 'date_format:H:i'],
+            'date'             => ['required', 'date'],
+            'start'            => ['required', 'date_format:H:i'],
             'duration_minutes' => ['nullable', 'integer', 'min:30', 'max:300'],
-            'proof' => ['required', 'file', 'mimes:jpeg,jpg,png,gif,webp,pdf', 'max:10240'],
-            'payment_method' => ['nullable', 'in:bizum,transferencia'],
         ];
     }
 
@@ -79,20 +76,5 @@ class RequestPrivateLessonRequest extends FormRequest
         $durationMinutes = (int) ($this->validated('duration_minutes') ?? 90);
 
         return $this->slotStartsAt()->copy()->addMinutes($durationMinutes);
-    }
-
-    public function paymentMethod(): ?string
-    {
-        $value = $this->validated('payment_method');
-
-        return is_string($value) ? $value : null;
-    }
-
-    public function proofFile(): UploadedFile
-    {
-        /** @var UploadedFile $file */
-        $file = $this->file('proof');
-
-        return $file;
     }
 }

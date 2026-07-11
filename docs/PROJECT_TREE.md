@@ -267,7 +267,7 @@ resources/
     │   ├── GlobalNav.jsx                  ── menú flyout por rol (hover+debounce); móvil acordeón
     │   ├── Footer.jsx, Chatbot.jsx, OpcionesIntro.jsx
     │   ├── BookingCalendar.jsx, SurfboardBookingSection.jsx
-    │   ├── PaymentModal.jsx, ManualPaymentInstructionsModal.jsx
+    │   ├── PaymentModal.jsx
     │   ├── Taquilla.jsx, UsuarioTaquillaCard.jsx
     │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx
     │   ├── FormularioContacto.jsx, ListaUsuarios.jsx

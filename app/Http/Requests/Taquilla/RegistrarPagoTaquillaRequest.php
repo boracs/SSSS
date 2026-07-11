@@ -19,11 +19,8 @@ class RegistrarPagoTaquillaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'plan_id' => ['required', 'integer', 'exists:planes_taquilla,id'],
-            'monto_pagado' => ['nullable', 'numeric', 'min:0'],
+            'plan_id'                 => ['required', 'integer', 'exists:planes_taquilla,id'],
             'referencia_pago_externa' => ['nullable', 'string', 'max:255'],
-            'proof' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf', 'max:10240'],
-            'payment_method' => ['nullable', 'in:bizum,transferencia'],
         ];
     }
 }

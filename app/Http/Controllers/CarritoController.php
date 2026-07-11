@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Carrito;
+use App\Support\AcademyContact;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use App\Models\Producto;
@@ -29,7 +30,7 @@ class CarritoController extends Controller
         $paymentProps = [
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $this->academyWhatsappUrl(),
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ];
 
         if ($carrito->isEmpty()) {
@@ -69,14 +70,6 @@ class CarritoController extends Controller
             'total' => round($total, 2),
             'canCheckout' => (bool) $user->hasActiveLocker(),
         ], $paymentProps));
-    }
-
-    private function academyWhatsappUrl(): ?string
-    {
-        $raw = (string) config('services.academy.whatsapp_number', '');
-        $digits = preg_replace('/\D+/', '', $raw);
-
-        return $digits !== '' ? 'https://wa.me/'.$digits : null;
     }
 
     public function agregarAlCarrito(int $productoId): \Illuminate\Http\RedirectResponse

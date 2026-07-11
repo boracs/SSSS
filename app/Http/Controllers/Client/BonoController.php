@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Actions\Payments\InitiatePaymentAction;
+use App\DTOs\Payments\InitiatePaymentDto;
+use App\DTOs\Payments\PaymentLineItemDto;
 use App\Http\Controllers\Controller;
 use App\Models\AttendanceNote;
 use App\Models\BonoConsumption;
@@ -10,18 +13,22 @@ use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
 use App\Services\BonoService;
+use App\Support\AcademyContact;
 use App\Support\LessonBonoCreditUnits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class BonoController extends Controller
 {
-    public function __construct(protected BonoService $bonoService)
-    {
-    }
+    public function __construct(
+        protected BonoService $bonoService,
+        protected InitiatePaymentAction $initiatePayment,
+    ) {}
+
 
     public function index()
     {
@@ -31,11 +38,9 @@ class BonoController extends Controller
         }
 
         if (! (bool) ($user->is_vip ?? false)) {
-            $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
             return Inertia::render('Client/Bonos/VipRequired', [
                 'packs' => $this->activePacks(),
-                'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+                'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
                 'contactUrl' => route('contacto'),
             ]);
         }
@@ -118,15 +123,13 @@ class BonoController extends Controller
             })
             ->values();
 
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
         return Inertia::render('Client/Bonos/Index', [
             'packs' => $packs,
             'myBonos' => $myBonos,
             'consumptionHistory' => $consumptionHistory,
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 
@@ -142,13 +145,46 @@ class BonoController extends Controller
 
         $validated = $request->validate([
             'pack_id' => 'required|integer|exists:pack_bonos,id',
-            'proof' => 'required|file|mimes:jpeg,jpg,png,webp,pdf|max:10240',
         ]);
 
-        $pack = PackBono::query()->where('activo', true)->findOrFail((int) $validated['pack_id']);
-        $this->bonoService->requestBono($user, $pack, $request->file('proof'));
+        $pack  = PackBono::query()->where('activo', true)->findOrFail((int) $validated['pack_id']);
+        $bono  = $this->bonoService->requestBono($user, $pack);
 
-        return back()->with('success', 'Solicitud de compra enviada. La validaremos en breve.');
+        $priceCents = (int) round((float) $pack->precio * 100);
+        $packName   = (string) ($pack->nombre ?? 'Bono VIP');
+
+        $dto = new InitiatePaymentDto(
+            payableType:   UserBono::class,
+            payableId:     $bono->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            $packName,
+                    description:     "{$pack->num_clases} clases",
+                    unitAmountCents: $priceCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/bonos',
+            customerEmail: $user->email,
+            metadata:      ['user_bono_id' => (string) $bono->id],
+        );
+
+        try {
+            $checkoutUrl = $this->initiatePayment->execute($dto);
+
+            return $this->redirectToStripeCheckout($checkoutUrl);
+        } catch (\RuntimeException $e) {
+            Log::error('BonoController::requestPurchase Stripe error', [
+                'bono_id' => $bono->id,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return back()->with(
+                'success',
+                'Solicitud registrada. Hubo un problema al abrir el pago automático — contacta con nosotros.'
+            );
+        }
     }
 
     /**

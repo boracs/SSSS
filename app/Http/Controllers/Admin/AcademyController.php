@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\UserBono;
 use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
+use App\Support\AcademyContact;
 use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -94,7 +95,6 @@ class AcademyController extends Controller
                     ->sum(fn ($en) => (int) ($en->quantity ?? $en->party_size ?? 1)) ?? 0);
                 $maxSlots = (int) ($e->lesson?->max_slots ?? 6);
                 $requiresSecondMonitor = $totalStudents > 6 || $e->status === LessonUser::STATUS_PENDING_EXTRA_MONITOR;
-                $academyWa = preg_replace('/\D/', '', (string) config('services.academy.whatsapp_number', '34600000000'));
                 $waText = '¡Hola! Tenemos una solicitud de ampliación para la clase de '.($e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? 'fecha pendiente').'. Grupo de '.(int) ($e->quantity ?? $e->party_size ?? 1).' personas ('.($levelNameMap[$level] ?? ucfirst((string) $level)).'). ¿Confirmamos segundo monitor?';
 
                 return [
@@ -116,7 +116,7 @@ class AcademyController extends Controller
                     'max_slots' => $maxSlots,
                     'requires_second_monitor' => $requiresSecondMonitor,
                     'occupancy_label' => "{$totalStudents}/{$maxSlots}".($requiresSecondMonitor ? ' (Requiere 2º Monitor)' : ''),
-                    'extra_monitor_whatsapp_url' => $requiresSecondMonitor ? ('https://wa.me/'.$academyWa.'?text='.rawurlencode($waText)) : null,
+                    'extra_monitor_whatsapp_url' => $requiresSecondMonitor ? AcademyContact::whatsappUrl($waText) : null,
                     'email_status' => $emailStatus,
                     'email_error' => $emailError,
                     'google_maps_url' => $googleMapsUrl,
@@ -319,6 +319,8 @@ class AcademyController extends Controller
                     'created_at' => $createdAt,
                     'created_at_human' => $this->dashboardCreatedAtHuman($e->created_at),
                     'proof_url' => ! empty($e->payment_proof_path) ? route('admin.academy.enrollments.proof', $e->id) : null,
+                    'payment_method' => $e->payment_method,
+                    'is_stripe_automated' => ($e->payment_method ?? '') === 'card',
                     'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
                     'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
                     'modality' => $e->lesson?->modality ?: 'grupal',
@@ -355,6 +357,8 @@ class AcademyController extends Controller
                     'created_at' => $createdAt,
                     'created_at_human' => $this->dashboardCreatedAtHuman($b->created_at),
                     'proof_url' => ! empty($b->payment_proof_path) ? route('admin.bookings.proof', $b->id) : null,
+                    'payment_method' => $b->payment_method,
+                    'is_stripe_automated' => ($b->payment_method ?? '') === 'card',
                     'amount' => (float) ($b->total_price ?? 0),
                     'deposit_amount' => (float) ($b->deposit_amount ?? 0),
                     'booking_status' => $b->status,
@@ -402,6 +406,7 @@ class AcademyController extends Controller
                     'amount' => (float) ($row->pack?->precio ?? 0),
                     'has_proof' => ! empty($row->payment_proof_path),
                     'proof_url' => $row->payment_proof_path ? Storage::url($row->payment_proof_path) : null,
+                    'is_stripe_automated' => $row->status === UserBono::STATUS_PENDING && empty($row->payment_proof_path),
                     'created_at' => $row->created_at?->toIso8601String(),
                     'created_at_human' => $this->dashboardCreatedAtHuman($row->created_at),
                     'date_human' => $this->dashboardCreatedAtHuman($row->created_at),

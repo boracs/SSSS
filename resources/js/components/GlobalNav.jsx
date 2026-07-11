@@ -37,6 +37,7 @@ function AccountMenuIdentity({ user }) {
 function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     const publicTopLinks = [
         { type: "link", id: "autocoach", label: "Comparador de maniobras", href: safeRoute("autocoach.index") },
+        { type: "link", id: "taller", label: "Taller de Surf", href: safeRoute("taller.index") },
         { type: "link", id: "nosotros", label: "Sobre nosotros", href: safeRoute("nosotros") },
     ];
     const contactoLink = { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") };
@@ -223,6 +224,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
         publicTopLinks[0],
         publicTopLinks[1],
+        publicTopLinks[2],
         servicios,
         contactoLink,
     ];

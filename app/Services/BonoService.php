@@ -5,23 +5,20 @@ namespace App\Services;
 use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class BonoService
 {
-    public function requestBono(User $user, PackBono $pack, UploadedFile $proofFile): UserBono
+    public function requestBono(User $user, PackBono $pack): UserBono
     {
-        $path = $proofFile->store('comprobantes_bonos', 'public');
-
-        return DB::transaction(function () use ($user, $pack, $path) {
+        return DB::transaction(function () use ($user, $pack) {
             return UserBono::create([
-                'user_id' => $user->id,
-                'pack_id' => $pack->id,
+                'user_id'          => $user->id,
+                'pack_id'          => $pack->id,
                 'clases_restantes' => (int) $pack->num_clases,
-                'status' => UserBono::STATUS_PENDING,
-                'payment_proof_path' => $path,
+                'status'           => UserBono::STATUS_PENDING,
+                'payment_method'   => 'card',
             ]);
         });
     }

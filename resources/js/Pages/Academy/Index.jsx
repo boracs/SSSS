@@ -25,30 +25,41 @@ function SkeletonCard() {
     );
 }
 
+function emptyParticipant() {
+    return { first_name: "", last_name: "" };
+}
+
 function BookingModal({
     open,
     lesson,
     onClose,
     onConfirm,
     processing = false,
+    bookerFirstName = "",
+    bookerLastName = "",
 }) {
-    const [quantity, setQuantity] = useState(1);
+    const [participants, setParticipants] = useState([emptyParticipant()]);
     const [ageBracket, setAgeBracket] = useState("adult");
 
     useEffect(() => {
         if (!open) return;
-        setQuantity(1);
+        setParticipants([
+            {
+                first_name: String(bookerFirstName || "").trim(),
+                last_name: String(bookerLastName || "").trim(),
+            },
+        ]);
         setAgeBracket("adult");
-    }, [open, lesson?.id]);
+    }, [open, lesson?.id, bookerFirstName, bookerLastName]);
 
     if (!open || !lesson) return null;
 
+    const quantity = participants.length;
     const total = Number(lesson.total_students || 0);
     const maxSlots = Number(lesson.max_slots || 6);
     const standardCap = 6;
     const wouldExceedStandard = total + quantity > standardCap;
     const requestExtra = wouldExceedStandard;
-    const available = Math.max(0, maxSlots - total);
 
     const hasAdults = !!lesson?.age_mix?.has_adults;
     const hasChildren = !!lesson?.age_mix?.has_children;
@@ -56,6 +67,30 @@ function BookingModal({
         ageBracket !== "family" &&
         ((ageBracket === "children" && hasAdults) ||
             (ageBracket === "adult" && hasChildren));
+
+    const participantsValid = participants.every(
+        (p) =>
+            String(p.first_name || "").trim() !== "" &&
+            String(p.last_name || "").trim() !== "",
+    );
+
+    const addParticipant = () => {
+        if (participants.length >= 6) return;
+        setParticipants((prev) => [...prev, emptyParticipant()]);
+    };
+
+    const removeParticipant = (index) => {
+        if (participants.length <= 1) return;
+        setParticipants((prev) => prev.filter((_, i) => i !== index));
+    };
+
+    const updateParticipant = (index, field, value) => {
+        setParticipants((prev) =>
+            prev.map((row, i) =>
+                i === index ? { ...row, [field]: value } : row,
+            ),
+        );
+    };
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -71,8 +106,8 @@ function BookingModal({
                             Reserva grupal
                         </h3>
                         <p className="mt-1 text-sm text-white/80">
-                            Configura tu grupo antes de continuar al pago
-                            Bizum/IBAN.
+                            Añade a cada persona del grupo. Un solo pago cubre
+                            todas las plazas (Stripe).
                         </p>
                     </div>
                     <button
@@ -106,29 +141,75 @@ function BookingModal({
                             </div>
                             <div className="mt-3 space-y-4">
                                 <div>
-                                    <label className="block text-xs font-semibold uppercase tracking-wide text-white/80">
-                                        Cantidad (1-6)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        max={6}
-                                        value={quantity}
-                                        onChange={(e) =>
-                                            setQuantity(
-                                                Math.max(
-                                                    1,
-                                                    Math.min(
-                                                        6,
-                                                        Number(
-                                                            e.target.value || 1,
-                                                        ),
-                                                    ),
-                                                ),
-                                            )
-                                        }
-                                        className="input-focus-ring mt-2 w-full rounded-xl border border-white/20 bg-[#0f1b34] px-4 py-2.5 text-sm text-white"
-                                    />
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-white/80">
+                                            Personas del grupo ({quantity}/6)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={addParticipant}
+                                            disabled={participants.length >= 6}
+                                            className="text-xs font-semibold text-sky-200 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                                        >
+                                            + Añadir
+                                        </button>
+                                    </div>
+                                    <p className="mt-1 text-[11px] text-white/60">
+                                        Tú realizas un único pago por todo el
+                                        grupo.
+                                    </p>
+                                    <div className="mt-3 space-y-2">
+                                        {participants.map((row, idx) => (
+                                            <div
+                                                key={`participant-${idx}`}
+                                                className="rounded-xl border border-white/10 bg-[#0f1b34]/80 p-3"
+                                            >
+                                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Nombre"
+                                                        value={row.first_name}
+                                                        onChange={(e) =>
+                                                            updateParticipant(
+                                                                idx,
+                                                                "first_name",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="input-focus-ring w-full rounded-lg border border-white/20 bg-[#0a1428] px-3 py-2 text-sm text-white placeholder:text-white/40"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Apellidos"
+                                                        value={row.last_name}
+                                                        onChange={(e) =>
+                                                            updateParticipant(
+                                                                idx,
+                                                                "last_name",
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className="input-focus-ring w-full rounded-lg border border-white/20 bg-[#0a1428] px-3 py-2 text-sm text-white placeholder:text-white/40"
+                                                    />
+                                                </div>
+                                                {participants.length > 1 ? (
+                                                    <div className="mt-2 flex justify-end">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                removeParticipant(
+                                                                    idx,
+                                                                )
+                                                            }
+                                                            className="text-xs font-semibold text-rose-200 hover:text-rose-100"
+                                                        >
+                                                            Quitar
+                                                        </button>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div>
@@ -198,9 +279,17 @@ function BookingModal({
                     </button>
                     <button
                         type="button"
-                        disabled={processing || ageConflict}
+                        disabled={processing || ageConflict || !participantsValid}
                         onClick={() =>
-                            onConfirm({ quantity, ageBracket, requestExtra })
+                            onConfirm({
+                                quantity,
+                                ageBracket,
+                                requestExtra,
+                                participants: participants.map((p) => ({
+                                    first_name: String(p.first_name || "").trim(),
+                                    last_name: String(p.last_name || "").trim(),
+                                })),
+                            })
                         }
                         className="inline-flex min-w-[190px] items-center justify-center rounded-xl bg-white/20 px-4 py-2 text-sm font-semibold text-white hover:bg-white/30 disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -1263,9 +1352,10 @@ export default function AcademyIndex({
             return;
         }
         setGroupLessonRequestPayload({
-            quantity: payload?.quantity ?? 1,
+            quantity: payload?.quantity ?? payload?.participants?.length ?? 1,
             age_bracket: payload?.ageBracket ?? "adult",
             request_extra_monitor: !!payload?.requestExtra,
+            participants: payload?.participants ?? [],
         });
         setPaymentModalLesson(lesson);
         setBookingModalLesson(null);
@@ -1922,6 +2012,8 @@ export default function AcademyIndex({
             <BookingModal
                 open={!!bookingModalLesson}
                 lesson={bookingModalLesson}
+                bookerFirstName={auth?.user?.nombre ?? ""}
+                bookerLastName={auth?.user?.apellido ?? ""}
                 onClose={() => setBookingModalLesson(null)}
                 processing={
                     bookingModalLesson

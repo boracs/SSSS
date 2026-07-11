@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import Header from "../components/Header";
 import Chatbot from "../components/Chatbot.jsx";
 import Footer from "../components/Footer";
+import WhatsAppFloatingButton from "../components/WhatsAppFloatingButton";
 
 export default function PublicLayout({ children }) {
     const { auth } = usePage().props;
@@ -15,6 +16,7 @@ export default function PublicLayout({ children }) {
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />
+            <WhatsAppFloatingButton />
             {shouldRenderChatbot && <Chatbot logoIn={user} />}
         </div>
     );

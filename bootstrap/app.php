@@ -26,6 +26,11 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
 
+        // El webhook de Stripe usa firma HMAC propia; no necesita (ni puede tener) token CSRF.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/stripe',
+        ]);
+
         // Registramos el alias 'admin' para nuestro middleware de seguridad
         $middleware->alias([
             'admin' => VerificarAdmin::class, // Usa el import de arriba

@@ -5,24 +5,27 @@ declare(strict_types=1);
 namespace App\Http\Controllers\User;
 
 use App\Actions\Academy\CancelEnrollmentAction;
-use App\Actions\Academy\UploadLessonProofAction;
+use App\Actions\Payments\InitiatePaymentAction;
+use App\DTOs\Payments\InitiatePaymentDto;
+use App\DTOs\Payments\PaymentLineItemDto;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Academy\UploadLessonProofRequest;
 use App\Http\Requests\User\CancelLessonEnrollmentRequest;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Services\VipStudentPerformanceService;
+use App\Support\AcademyContact;
 use App\Support\BusinessDateTime;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class MyReservationsController extends Controller
 {
     public function __construct(
-        private readonly UploadLessonProofAction $uploadLessonProofAction,
         private readonly CancelEnrollmentAction $cancelEnrollmentAction,
+        private readonly InitiatePaymentAction $initiatePayment,
     ) {}
 
     public function index(Request $request)
@@ -31,67 +34,126 @@ class MyReservationsController extends Controller
 
         $rows = VipStudentPerformanceService::buildReservationRows($user);
 
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
         return Inertia::render('User/Dashboard/MyReservations', [
-            'classRows' => $rows['classRows'],
-            'rentalRows' => $rows['rentalRows'],
-            'bonoRows' => [],
-            'performanceData' => null,
-            'isAdminView' => false,
-            'targetUser' => null,
-            'analysisNav' => null,
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'classRows'           => $rows['classRows'],
+            'rentalRows'          => $rows['rentalRows'],
+            'bonoRows'            => [],
+            'performanceData'     => null,
+            'isAdminView'         => false,
+            'targetUser'          => null,
+            'analysisNav'         => null,
+            'paymentIban'         => config('services.academy.iban', '[IBAN]'),
+            'paymentBizumNumber'  => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
+            'whatsappHelpUrl'     => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 
-    public function uploadClassProof(UploadLessonProofRequest $request, LessonUser $enrollment)
+    public function payClassEnrollment(Request $request, LessonUser $enrollment)
     {
-        try {
-            $this->authorize('uploadProof', $enrollment);
-        } catch (AuthorizationException) {
-            return back()->with('error', 'No tienes permiso para subir un justificante en esta reserva.');
+        $user = $request->user();
+        if ((int) $enrollment->user_id !== (int) $user->id) {
+            abort(403);
         }
 
-        $result = $this->uploadLessonProofAction->execute(
-            $enrollment,
-            $request->proofFile(),
-            $request->paymentMethod(),
+        if (($enrollment->payment_status ?? '') === PaymentStatus::Confirmed->value) {
+            return back()->with('info', 'Esta clase ya está pagada.');
+        }
+
+        $lesson = $enrollment->lesson;
+        if ($lesson === null) {
+            return back()->with('error', 'No se encontró la clase asociada.');
+        }
+
+        $partySize   = max(1, (int) ($enrollment->party_size ?? $enrollment->quantity ?? 1));
+        $priceEur    = $lesson->price !== null
+            ? (float) $lesson->price
+            : (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $priceCents  = (int) round($priceEur * 100 * $partySize);
+        $partyLabel  = $partySize > 1 ? " × {$partySize} personas" : '';
+        $lessonTitle = $lesson->title ?: 'Clase de surf';
+        $dateLabel   = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+
+        $dto = new InitiatePaymentDto(
+            payableType:   LessonUser::class,
+            payableId:     $enrollment->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            "{$lessonTitle}{$partyLabel}",
+                    description:     $dateLabel,
+                    unitAmountCents: $priceCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/mis-reservas',
+            customerEmail: $user->email,
+            metadata:      ['enrollment_id' => (string) $enrollment->id],
         );
 
-        return $result['ok']
-            ? back()->with('success', $result['message'])
-            : back()->with('error', $result['message']);
+        try {
+            return $this->redirectToStripeCheckout($this->initiatePayment->execute($dto));
+        } catch (\RuntimeException $e) {
+            Log::error('MyReservationsController::payClassEnrollment Stripe error', [
+                'enrollment_id' => $enrollment->id,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo abrir la pasarela de pago.');
+        }
+    }
+
+    public function payRentalBooking(Request $request, Booking $booking)
+    {
+        $user = $request->user();
+        if ((int) $booking->user_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        if (($booking->payment_status ?? '') === PaymentStatus::Confirmed->value) {
+            return back()->with('info', 'Este alquiler ya está pagado.');
+        }
+
+        $depositCents = (int) round((float) $booking->deposit_amount * 100);
+        $surfboard    = $booking->surfboard;
+        $boardName    = $surfboard?->name ?? 'Alquiler de tabla';
+
+        $dto = new InitiatePaymentDto(
+            payableType:   Booking::class,
+            payableId:     $booking->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            "Reserva: {$boardName}",
+                    description:     'Depósito de alquiler',
+                    unitAmountCents: $depositCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/mis-reservas',
+            customerEmail: $user->email,
+            metadata:      ['booking_id' => (string) $booking->id],
+        );
+
+        try {
+            return $this->redirectToStripeCheckout($this->initiatePayment->execute($dto));
+        } catch (\RuntimeException $e) {
+            Log::error('MyReservationsController::payRentalBooking Stripe error', [
+                'booking_id' => $booking->id,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo abrir la pasarela de pago.');
+        }
+    }
+
+    public function uploadClassProof(Request $request, LessonUser $enrollment)
+    {
+        return back()->with('info', 'El pago se realiza ahora con tarjeta. Usa el botón «Pagar con tarjeta».');
     }
 
     public function uploadRentalProof(Request $request, Booking $booking)
     {
-        if ((int) $booking->user_id !== (int) $request->user()->id) {
-            abort(403);
-        }
-
-        $request->validate([
-            'proof' => 'required|file|mimes:jpeg,jpg,png,gif,webp,pdf|max:10240',
-            'payment_method' => 'nullable|in:bizum,transferencia',
-        ]);
-
-        $oldPath = $booking->payment_proof_path;
-        if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-            Storage::disk('local')->delete($oldPath);
-        }
-
-        $path = $request->file('proof')->store('rental-proofs/'.$booking->id, 'local');
-        $booking->update([
-            'payment_proof_path' => $path,
-            'proof_uploaded_at' => now(),
-            'payment_method' => $request->input('payment_method'),
-            'payment_status' => Booking::PAYMENT_PENDING,
-            'status' => Booking::STATUS_PENDING,
-        ]);
-
-        return back()->with('success', 'Justificante de alquiler subido correctamente.');
+        return back()->with('info', 'El pago se realiza ahora con tarjeta. Usa el botón «Pagar con tarjeta».');
     }
 
     public function cancelClass(CancelLessonEnrollmentRequest $request, LessonUser $enrollment)
@@ -139,4 +201,3 @@ class MyReservationsController extends Controller
         return back()->with('success', $msg);
     }
 }
-

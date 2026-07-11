@@ -20,8 +20,7 @@ class StoreBookingRequest extends FormRequest
             'client_phone' => ['nullable', 'string', 'max:50'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-            'payment_method' => ['nullable', 'in:bizum,transferencia'],
-            'proof' => ['required', 'file', 'mimes:jpeg,jpg,png,pdf,webp', 'max:10240'],
+            'payment_method' => ['nullable', 'in:card,bizum,transferencia'],
         ];
     }
 }

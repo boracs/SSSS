@@ -1,0 +1,37 @@
+1. Atomicidad (DB::beginTransaction)
+Tu definición es exacta: Todo o nada.
+
+En la práctica: Si un proceso requiere actualizar el saldo en CreditEngineService, crear un registro en BookingService y generar un log de auditoría, estas tres operaciones se envuelven en una transacción. Si la base de datos se cae en el tercer paso, el DB::rollBack() deshace los dos primeros. El estado del sistema jamás queda corrupto o a medias.
+
+2. Idempotencia (Más allá de evitar duplicados)
+Tu definición es brillante: La idempotencia garantiza que realizar la misma operación múltiples veces produzca el mismo resultado que la primera vez, sin efectos secundarios dañinos y sin escupir un error 500 genérico que asuste al usuario.
+
+En la práctica: Al recibir una petición con un Idempotency-Key (un UUID generado por el frontend), si el sistema detecta que esa clave ya fue procesada con éxito, no vuelve a ejecutar la lógica (no cobra dos veces, no consume dos bonos). En su lugar, recupera del caché la copia de la respuesta exitosa original y se la devuelve al usuario. El cliente ve que su operación se realizó perfectamente y el backend se mantiene íntegro.
+
+3. Concurrencia Estricta: lockForUpdate (Pessimistic Locking)
+Tu análisis sobre los riesgos es 100% correcto: Bloquear una fila de la base de datos detiene cualquier otra petición que intente acceder a ella. Meter una petición API externa (que puede tardar 2, 5 o 10 segundos debido a la latencia de red) dentro de un lockForUpdate es una receta para el desastre; colapsaría las conexiones disponibles de la base de datos (Database Lock Contention).
+
+La regla de oro V3-ULTRA: El bloqueo debe ser quirúrgico, ultra rápido y liberado de inmediato.
+
+Abres transacción.
+
+Ejecutas lockForUpdate() para verificar la capacidad/disponibilidad en AvailabilityService.
+
+Si hay disponibilidad, realizas la mutación local en MySQL.
+
+Cierras transacción (haciendo el commit se libera el bloqueo automáticamente).
+
+Fuera del bloqueo/transacción: Despachas los Jobs asíncronos para sincronizar con APIs externas (como Firestore o pasarelas de pago no críticas en ese instante).
+
+4. Zero Logic Controllers, DTOs y Capas de Abstracción
+El Controlador como Orquestador: El controlador no sabe de reglas de negocio, no sabe de cálculos, no sabe de base de datos. Solo recibe la petición a través de un FormRequest (que valida la estructura limpia de los datos de entrada).
+
+El DTO (Data Transfer Object) como Contenedor Seguro: Mencionas algo clave: evitar hackeos y errores. El DTO es una clase PHP con tipos estrictos (declare(strict_types=1);). Transforma un array genérico e inseguro de la petición en un objeto estructurado. Si el Service espera un int, el DTO garantiza que llegue un int.
+
+¿Services o Actions?:
+
+Services (Service Layer): Agrupan lógica de negocio relacionada con un dominio completo (ej. CreditEngineService maneja todo lo relativo a sumar, restar y auditar créditos). Se inyectan en el constructor.
+
+Actions: Se usan para operaciones de una única responsabilidad (Single Responsibility Principle) que se ejecutan de forma aislada.
+
+Helpers: Se reservan únicamente para utilidades globales y puras (formatear una fecha, manipular un string), nunca para lógica de negocio.

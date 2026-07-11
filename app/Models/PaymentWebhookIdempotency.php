@@ -12,6 +12,7 @@ class PaymentWebhookIdempotency extends Model
 
     protected $fillable = [
         'transaction_id',
+        'idempotency_token',
         'payable_type',
         'payable_id',
         'amount',

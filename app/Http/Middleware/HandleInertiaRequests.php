@@ -80,6 +80,8 @@ class HandleInertiaRequests extends Middleware
 
             /** Texto genérico del WhatsApp de la escuela (plantillas, enlaces, etc.). */
             'academyWhatsappDisplay' => AcademyContact::whatsappDisplay(),
+            /** URL base wa.me de la escuela (sin mensaje). */
+            'academyWhatsappUrl' => AcademyContact::whatsappBaseUrl(),
 
             // 🔥 Flash messages (nunca enviar pegados de código / cadenas enormes al cliente)
             'flash' => [

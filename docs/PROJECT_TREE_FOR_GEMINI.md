@@ -1,7 +1,7 @@
 ﻿# maider_0 — Plano de ingeniería (contexto IA)
 
 **Proyecto:** San Sebastian Surf School (S4)  
-**Dominio:** escuela de surf — tienda, academia, alquiler de tablas, taquillas, VIP/bonos, pagos manuales.
+**Dominio:** escuela de surf — tienda, academia, alquiler de tablas, taquillas, VIP/bonos, pagos automatizados (Stripe Checkout).
 
 ---
 
@@ -48,7 +48,7 @@
 └─────────────────┴──────────────────────────────┴────────────────────────────────────┘
 ```
 
-**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `Chatbot` (no-admin). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
+**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `WhatsAppFloatingButton` + `Chatbot` (no-admin). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
 
 **Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`GlobalNav.jsx` vía `Header.jsx`) y políticas.
 
@@ -78,6 +78,9 @@ maider_0/
 │   │   ├── SyncLessonStaffAction.php       ──► Sincroniza monitor, monitor_2 y fotógrafo en staff_assignments
 │   │   └── UploadLessonProofAction.php     ──► LessonProofStorageService; LessonProofUploadedEvent
 │   │
+│   ├── Actions/Chatbot/
+│   │   └── ProcessChatbotQueryAction.php   ──► ChatbotQueryDto → ChatbotService (FAQ local)
+│   │
 │   ├── Casts/
 │   │   └── BusinessWallClockDatetime.php   ──► TZ negocio (Madrid) en Eloquent
 │   │
@@ -93,11 +96,18 @@ maider_0/
 │   ├── DTOs/
 │   │   ├── Academy/
 │   │   │   └── AdminGuestEnrollmentDto.php     ──► DTO readonly inscripción walk-in (nombre, pago)
+│   │   ├── Chatbot/
+│   │   │   └── ChatbotReplyDto.php             ──► FAQ local: response + context (readonly)
+│   │   │   └── ChatbotQueryDto.php             ──► userId + query sanitizado (readonly)
 │   │   ├── EmergencyKey/
 │   │   │   ├── EmergencyKeyRevealDto.php       ──► Código revelado post-solicitud (flash único)
 │   │   │   └── EmergencyLockStatusDto.php      ──► is_active + can_request (sin exponer código)
 │   │   └── Taquilla/
 │   │       └── PlanTaquillaPublicDto.php       ──► Catálogo planes: periodo, beneficios, VIP, descuento
+│   │   └── Payments/
+│   │       ├── InitiatePaymentDto.php          ──► Intención de cobro: payable_type/id, lineItems[], success/cancel paths
+│   │       ├── PaymentLineItemDto.php          ──► Línea Stripe (céntimos int)
+│   │       └── CheckoutSessionResultDto.php    ──► URL checkout + session_id + idempotency_token
 │   │
 │   ├── Exceptions/
 │   │   ├── EmergencyKeyNotEligibleException.php
@@ -163,7 +173,7 @@ maider_0/
 │   │   │       ├── AuthController.php
 │   │   │       ├── AutoCoachController.php        ──► Comparador maniobras; uploads + catálogo referencia
 │   │   │       ├── CarritoController.php
-│   │   │       ├── ChatbotController.php          ──► GoogleAIService + FirestoreService
+│   │   │       ├── ChatbotController.php          ──► ChatbotService FAQ local (sin Gemini/Firestore)
 │   │   │       ├── ContactMessageController.php
 │   │   │       ├── Controller.php
 │   │   │       ├── Pag_principalController.php
@@ -175,12 +185,13 @@ maider_0/
 │   │   │       ├── ProfileController.php
 │   │   │       ├── ServicioController.php
 │   │   │       ├── TaquillaController.php         ──► lockForUpdate asignación
+│   │   │       ├── ArticleController.php          ──► Taller de Surf (blog SEO); index + show por slug
 │   │   │       ├── SecondHandBoardController.php  ──► Catálogo público segunda mano; NO expone purchase_price
 │   │   │       ├── TiendaController.php
 │   │   │       └── UserTaquillaController.php
 │   │   │
 │   │   ├── Middleware/
-│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, cart, adminStats
+│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, cart, adminStats, academyWhatsappUrl
 │   │   │   ├── EnsureUserHasRole.php                ──► Gate por role (admin/user)
 │   │   │   ├── VerificarAdmin.php
 │   │   │   └── VerificarTaquilla.php
@@ -200,6 +211,9 @@ maider_0/
 │   │   │   ├── AutoCoach/
 │   │   │   │   ├── CatalogQueryRequest.php
 │   │   │   │   └── UploadVideosRequest.php
+│   │   │   ├── Chatbot/
+│   │   │   │   ├── ChatbotMessageRequest.php      ──► FAQ: history + anti-spoofing userId
+│   │   │   │   └── ChatbotArtifactRequest.php     ──► Stub compat. memoria LTP
 │   │   │   ├── StoreSecondHandBoardRequest.php    ──► Valida + sanitiza; autorización role=admin
 │   │   │   └── UpdateSecondHandBoardRequest.php   ──► Same; reglas 'sometimes'
 │   │   │   ├── Auth/
@@ -249,7 +263,8 @@ maider_0/
 │   │       ├── PagoTaquillaConfirmadoMail.php   ──► view emails.taquilla.pago-confirmado
 │   │       └── PagoTaquillaRechazadoMail.php
 │   │
-│   ├── Models/                               ──► 24 modelos Eloquent (ver tabla abajo)
+│   ├── Models/                               ──► 25 modelos Eloquent (ver tabla abajo)
+│   │   ├── Article.php                       ──► Blog Taller de Surf; route key slug; accessors seo_title/seo_description
 │   │   ├── AttendanceNote.php
 │   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
@@ -263,7 +278,7 @@ maider_0/
 │   │   ├── LessonUser.php                    ──► Pivot crítico: estados pago/enrollment
 │   │   ├── PackBono.php
 │   │   ├── PagoCuota.php
-│   │   ├── PaymentWebhookIdempotency.php   ──► Idempotencia webhooks pasarela (transaction_id único)
+│   │   ├── PaymentWebhookIdempotency.php   ──► Idempotencia webhooks (transaction_id, idempotency_token, payable polimórfico)
 │   │   ├── Pedido.php
 │   │   ├── PedidoProducto.php
 │   │   ├── PlanTaquilla.php
@@ -306,13 +321,15 @@ maider_0/
 │   │   ├── CuotaService.php                    ──► Ciclo vida cuotas taquilla
 │   │   ├── EmergencyKeyService.php             ──► lockForUpdate; requestCode atómico; updateLockCode ON
 │   │   ├── Payments/
-│   │   │   └── PaymentGatewayService.php       ──► registerPaymentIntent + confirmPaymentFromWebhook (idempotencia)
+│   │   │   └── PaymentGatewayService.php       ──► lazy StripeClient; createCheckoutSession→CheckoutSessionResultDto; idempotency_token; confirmPaymentFromWebhook (lockForUpdate)
 │   │   ├── Taquilla/
 │   │   │   ├── TaquillaMembershipService.php   ──► Pagos/planes/cola; DB::transaction; MoneyCents; event PagoTaquillaConfirmado
 │   │   │   ├── TaquillaConfirmationMailService.php ──► Envio correo confirmacion cuota
 │   │   │   └── LockerPaymentIndexBuilder.php   ──► Indice agregado anti-N+1 cola admin
 │   │   ├── Vip/
 │   │   │   └── VipMembershipService.php        ──► Activar/desactivar VIP; taquilla virtual #500 si sin casillero
+│   │   ├── Chatbot/
+│   │   │   └── ChatbotService.php              ──► FAQ cliente: resolveQuery() regex (sin BD)
 │   │   ├── FirestoreService.php                ──► Inyección obligatoria FirestoreClient REST (AppServiceProvider)
 │   │   ├── GoogleAIService.php                 ──► Gemini HTTP; GEMINI_API_KEY requerida o 500
 │   │   ├── LessonProofStorageService.php       ──► Disco: storage/app/private/lesson-proofs
@@ -320,7 +337,7 @@ maider_0/
 │   │   └── VipStudentPerformanceService.php    ──► Agregación pesada BD; ~800 LOC; perfil VIP/admin
 │   │
 │   └── Support/
-│       ├── AcademyContact.php
+│       ├── AcademyContact.php                ──► WhatsApp escuela: dígitos, wa.me base/url, urlForPhone()
 │       ├── BusinessDateTime.php                ──► Now() negocio Europe/Madrid
 │       └── StaffVisualIdentity.php             ──► Iniciales + color estable por monitor
 │       ├── IniSize.php                         ──► Parseo upload/post limits de php.ini
@@ -400,7 +417,11 @@ maider_0/
 | `EnrollStudentAction`                              | Action + lock             | VIP; doble `UserBono::lockForUpdate()`; `BonoConsumption`; `PaymentStatus::Confirmed` al consumir bono. |
 | `BonoService`                                      | Transaction + lock        | `confirmBono()` usa `lockForUpdate`; fuente de verdad clases restantes. |
 | `BookingService`                                   | Domain service (SSOT)     | `resolvePricing`, `createPendingBooking` (`PaymentStatus::Pending`), `checkAvailability()`. |
-| `PaymentGatewayService`                            | Pasarela async            | `registerPaymentIntent` + `confirmPaymentFromWebhook` con idempotencia DB. |
+| `PaymentGatewayService`                            | Pasarela Stripe           | `createCheckoutSession(InitiatePaymentDto): CheckoutSessionResultDto`; metadata con `idempotency_token`; `registerPaymentIntent` + `confirmPaymentFromWebhook` con `lockForUpdate`. |
+| `InitiatePaymentAction`                            | Action pagos              | DTO → PaymentGatewayService → PaymentInitiated (graceful) → URL checkout. |
+| `PaymentWebhookController`                         | Webhook Stripe            | Firma HMAC → confirmPaymentFromWebhook → PaymentConfirmed (graceful). POST /webhooks/stripe. |
+| `RedirectsToStripeCheckout` (trait Controller)     | Redirección Inertia 2     | `Inertia::location()` si X-Inertia; `redirect()->away()` si no. |
+| `PaymentSuccessController`                         | Retorno Stripe            | Página de aterrizaje tras pago: lee session_id → redirige contextualmente. |
 | `AutoReleaseService`                               | Batch + lock              | `lockForUpdate` sobre pending sin `payment_proof_path`; grace 30min (<4h clase) o 120min.                                                                                                                                 |
 | `FirestoreService`                                 | Singleton REST            | Cliente **obligatorio** inyectado; `transport => 'rest'` en `AppServiceProvider` (evita gRPC/caché roto). Chatbot LTP: `/artifacts/{appId}/users/{userId}/artifacts`.                                                     |
 | `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`.                                                                                                                                         |
@@ -458,16 +479,18 @@ resources/
     │   ├── staffAssignValidation.js ──► Conflictos monitor/fotógrafo (no duplicar roles)
     │   ├── staffConflictFormat.js   ──► Formato legible ventanas horarias en conflictos staff
     │   ├── surfboardMeasures.js ──► Altura/volumen surf (3'5"→11'0", filtros alquiler)
+    │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla…)
+    │   ├── chatbotApi.js       ──► POST /api/chatbot/message (FAQ local)
     │   └── utils.ts            ──► cn() shadcn
     │
     ├── utils/
     │   └── money.js            ──► formatEur(), formatEurFromCents() (Intl es-ES)
     │
     ├── layouts/
-    │   ├── PublicLayout.jsx          ──► Header + main + Footer + Chatbot (shell único)
+    │   ├── PublicLayout.jsx          ──► Header + main + Footer + WhatsAppFloatingButton + Chatbot
     │   ├── AuthenticatedLayout.jsx   ──► Alias de PublicLayout
     │   ├── GuestLayout.jsx           ──► Auth Breeze (sin Header global)
-    │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; evitar duplicar con PublicLayout)
+    │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; suele ir dentro de PublicLayout)
     │   ├── Layout2_login_inicio.jsx
     │   └── Contenedor_productos.jsx
     │
@@ -478,6 +501,7 @@ resources/
     │   ├── BunkerLogo.jsx            ──► Logo patrocinador The Bunker Surf Shop
     │   ├── SponsorsStrip.jsx         ──► Bloque patrocinadores (footer, home)
     │   ├── Footer.jsx
+    │   ├── WhatsAppFloatingButton.jsx  ──► FAB wa.me escuela (inferior izq.; mensaje contextual por ruta)
     │   ├── Chatbot.jsx
     │   ├── OpcionesIntro.jsx         ──► Carrusel home (solo isHome en Header)
     │   ├── webcam/
@@ -485,7 +509,6 @@ resources/
     │   ├── BookingCalendar.jsx
     │   ├── SurfboardBookingSection.jsx   ──► calendario + Collapsible + pago alquiler
     │   ├── PaymentModal.jsx
-    │   ├── ManualPaymentInstructionsModal.jsx
     │   ├── Taquilla.jsx
     │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx, ProductImageGallery.jsx, ProductTagSelector.jsx, ProductoEditorPanel.jsx, ProductoEditModal.jsx, ProductoCreateModal.jsx, PedidoDetailModal.jsx
     │   ├── FormularioContacto.jsx
@@ -538,6 +561,11 @@ resources/
         │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda
         │       └── Show.jsx    ──► Detalle tabla; galería + CTA WhatsApp
         │
+        ├── [DOMINIO: TALLER DE SURF — blog SEO]
+        │   └── Taller/
+        │       ├── Index.jsx   ──► Grid tarjetas artículos; route taller.index
+        │       └── Show.jsx    ──► Artículo individual; Head SEO + dangerouslySetInnerHTML
+        │
         ├── [DOMINIO: ACADEMIA — cliente]
         │   └── Academy/
         │       └── Index.jsx           ──► lightMode; reserva/inscripción clases
@@ -561,6 +589,9 @@ resources/
         │           └── MyReservations.jsx        ──► Reservas clases + alquileres (admin: + análisis VIP)
         │
         ├── components/
+        │   ├── Taller/
+        │   │   ├── TallerShell.jsx       ──► Shell gradiente, hero, barra lectura, fadeUp
+        │   │   └── TallerArticleCard.jsx ──► Tarjetas animadas + artículos relacionados
         │   └── VipProfile/
         │       └── VipProfileDashboard.jsx     ──► Wallet + heatmap + extracto (compartido perfil/admin)
         │

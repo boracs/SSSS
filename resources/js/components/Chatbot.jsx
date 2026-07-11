@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
-import axios from "axios";
+import React, { useState, useRef, useEffect, useCallback, useActionState } from "react";
 import { usePage } from "@inertiajs/react";
+import { postChatbotMessage } from "../lib/chatbotApi";
 import {
     MessageCircle,
     Send,
@@ -101,15 +101,29 @@ const useChatbot = () => {
     const [messages, setMessages] = useState([]);
     const [artifacts, setArtifacts] = useState([]);
     const [inputMessage, setInputMessage] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
     const [apiError, setApiError] = useState(null);
     const [isRateLimited, setIsRateLimited] = useState(false);
     const [retryAfterSeconds, setRetryAfterSeconds] = useState(0);
-    const [userId, setUserId] = useState(null); // ID del usuario, puede ser Firebase UID o ID anónimo local
-    const [isLoggedIn, setIsLoggedIn] = useState(false); // True si es un usuario de Canvas o Firebase
+    const [userId, setUserId] = useState(null);
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAuthReady, setIsAuthReady] = useState(false);
 
     const messagesEndRef = useRef(null);
+    const userIdRef = useRef(null);
+    const messagesRef = useRef([]);
+    const setInputRef = useRef(setInputMessage);
+    const setMessagesRef = useRef(setMessages);
+    const setApiErrorRef = useRef(setApiError);
+    const setRateLimitRef = useRef(setIsRateLimited);
+    const setRetryRef = useRef(setRetryAfterSeconds);
+
+    userIdRef.current = userId;
+    messagesRef.current = messages;
+    setInputRef.current = setInputMessage;
+    setMessagesRef.current = setMessages;
+    setApiErrorRef.current = setApiError;
+    setRateLimitRef.current = setIsRateLimited;
+    setRetryRef.current = setRetryAfterSeconds;
 
     /**
      * Gestión del ID Anónimo Persistente.
@@ -156,9 +170,10 @@ const useChatbot = () => {
         if (!IS_FIREBASE_CONFIGURED || !auth) {
             // Si el usuario está autenticado en Laravel, usar su ID para evitar 403 en el backend.
             if (laravelUserId != null) {
-                setUserId(String(laravelUserId));
+                const uid = String(laravelUserId);
+                setUserId(uid);
                 setIsLoggedIn(true);
-                setMessages([]);
+                setMessages(loadLocalChat(`user-${uid}`));
                 setIsAuthReady(true);
                 return;
             }
@@ -310,148 +325,95 @@ const useChatbot = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    useEffect(scrollToBottom, [messages, isLoading, isOpen, apiError]);
+    const [, submitMessage, isPending] = useActionState(async (_prev, formData) => {
+        const userText = String(formData.get("message") ?? "").trim();
+        const uid = userIdRef.current;
 
-    // Función para llamar al backend para guardar artefactos
-    const saveArtifact = async (latestUserMessage, currentUserId) => {
-        if (!latestUserMessage || !currentUserId) return;
-        try {
-            await axios.post("/api/chatbot/extract-and-save-artifact", {
-                userId: currentUserId,
-                latestUserMessage: latestUserMessage,
-            });
-        } catch (error) {
-            console.error(
-                "Error al intentar guardar artefactos en el backend:",
-                error,
-            );
-        }
-    };
-
-    // Función para manejar el envío y la persistencia
-    const handleSend = async (e) => {
-        e.preventDefault();
-        if (!inputMessage.trim() || isLoading || isRateLimited || !userId) {
-            return;
+        if (!userText || !uid) {
+            return { ok: false };
         }
 
-        setApiError(null);
-        setIsLoading(true);
-        const userText = inputMessage.trim();
-        setInputMessage("");
+        setApiErrorRef.current(null);
+        setInputRef.current("");
 
-        const isLocalUser = userId.startsWith("anon-");
-
-        // Mensaje de usuario a guardar local o en Firebase
         const userMessage = {
             role: "user",
             text: userText,
             createdAt: new Date(),
         };
 
-        let messageHistorySnapshot = [...messages];
+        const snapshot = [...messagesRef.current, userMessage];
+        setMessagesRef.current(snapshot);
+
+        const persistKey = uid.startsWith("anon-") ? uid : `user-${uid}`;
+        if (persistKey.startsWith("anon-") || persistKey.startsWith("user-")) {
+            try {
+                localStorage.setItem(
+                    LOCAL_CHAT_KEY + persistKey,
+                    JSON.stringify(snapshot),
+                );
+            } catch {
+                /* ignore quota errors */
+            }
+        }
+
+        const historyForApi = snapshot
+            .filter((m) => m.text && m.text.trim())
+            .map((m) => ({ role: m.role, text: m.text }));
 
         try {
-            // 1. Persistencia del mensaje de usuario
-            if (isLocalUser) {
-                // Guardado local y actualización inmediata del estado
-                messageHistorySnapshot.push(userMessage);
-                setMessages(messageHistorySnapshot);
-                saveLocalChat(userId, messageHistorySnapshot);
-            } else {
-                // Persistencia en Firebase (el onSnapshot actualizará el estado)
-                const chatRef = collection(
-                    db,
-                    "artifacts",
-                    MASTER_APP_ID,
-                    "users",
-                    userId,
-                    "chat_messages",
-                );
-                await addDoc(chatRef, {
-                    ...userMessage,
-                    createdAt: serverTimestamp(),
-                });
-                // NOTA: No necesitamos actualizar 'messages' aquí, el 'onSnapshot' lo hará.
-                // Usamos el 'messages' actual para el historial de la API.
-            }
-
-            // 2. Preparar el historial para la API
-            const historyForApi = messages
-                .filter((m) => m.text && m.text.trim())
-                .map((m) => ({ role: m.role, text: m.text }));
-
-            // Si es un usuario de Firebase, el mensaje de usuario ya se añadió a 'messages' por 'onSnapshot'.
-            // Si es un usuario local, ya se añadió en el snapshot local.
-            historyForApi.push({ role: "user", text: userText });
-
-            const response = await axios.post("/api/chatbot/message", {
-                userId: userId, // Usar el userId para la API
-                history: historyForApi,
-            });
-
-            const botMessageText = response.data.message;
+            const { message } = await postChatbotMessage(uid, historyForApi);
             const botMessage = {
                 role: "model",
-                text: botMessageText,
+                text: message,
                 createdAt: new Date(),
             };
+            const finalMessages = [...snapshot, botMessage];
+            setMessagesRef.current(finalMessages);
 
-            // 3. Persistencia de la respuesta del bot
-            if (isLocalUser) {
-                // Guardado local y actualización inmediata del estado
-                messageHistorySnapshot.push(botMessage);
-                setMessages([...messageHistorySnapshot]); // Forzar re-renderizado
-                saveLocalChat(userId, messageHistorySnapshot);
-            } else {
-                // Persistencia en Firebase
-                const chatRef = collection(
-                    db,
-                    "artifacts",
-                    MASTER_APP_ID,
-                    "users",
-                    userId,
-                    "chat_messages",
-                );
-                await addDoc(chatRef, {
-                    ...botMessage,
-                    createdAt: serverTimestamp(),
-                });
+            if (persistKey.startsWith("anon-") || persistKey.startsWith("user-")) {
+                try {
+                    localStorage.setItem(
+                        LOCAL_CHAT_KEY + persistKey,
+                        JSON.stringify(finalMessages),
+                    );
+                } catch {
+                    /* ignore */
+                }
             }
 
-            // 4. Llamar a la extracción de artefactos (independiente de la respuesta del bot)
-            if (IS_FIREBASE_CONFIGURED && db) {
-                await saveArtifact(userText, userId);
-            }
+            return { ok: true };
         } catch (error) {
-            // En la función handleSend, dentro del bloque catch (alrededor de la línea 402)
-
             console.error("Error durante el proceso de chat:", error);
             if (error.response?.status === 429) {
-                // ... (Lógica existente para 429 Rate Limit)
                 const retryAfter = error.response.headers["Retry-After"] || 60;
                 const waitTime = parseInt(retryAfter, 10);
-                setRetryAfterSeconds(waitTime);
-                setIsRateLimited(true);
-                setApiError(
+                setRetryRef.current(waitTime);
+                setRateLimitRef.current(true);
+                setApiErrorRef.current(
                     `Has excedido el límite de mensajes. Por favor, espera ${waitTime} segundos.`,
                 );
-                // 🚨 AÑADE ESTE BLOQUE 🚨
             } else if (error.response?.status === 403) {
-                setApiError(
-                    "Error de seguridad: Tu ID de sesión no coincide con tu usuario autenticado. Recarga la página.",
+                setApiErrorRef.current(
+                    "Error de seguridad: recarga la página e inicia sesión de nuevo.",
                 );
-                // 🚨 FIN DEL BLOQUE AÑADIDO 🚨
             } else {
-                setApiError(
-                    `Error de comunicación (${
-                        error.response?.status || "network"
-                    }). Maider no pudo responder.`,
+                setApiErrorRef.current(
+                    `Error de comunicación (${error.response?.status || "network"}). Maider no pudo responder.`,
                 );
             }
-        } finally {
-            setIsLoading(false);
+            return { ok: false };
         }
+    }, { ok: true });
+
+    useEffect(scrollToBottom, [messages, isPending, isOpen, apiError]);
+
+    const handleSend = (e) => {
+        e.preventDefault();
+        if (isPending || isRateLimited || !userId) return;
+        const fd = new FormData(e.currentTarget);
+        fd.set("message", inputMessage.trim());
+        submitMessage(fd);
     };
 
     return {
@@ -463,7 +425,8 @@ const useChatbot = () => {
         artifacts,
         inputMessage,
         setInputMessage,
-        isLoading,
+        isLoading: isPending,
+        isPending,
         apiError,
         isRateLimited,
         retryAfterSeconds,
@@ -473,7 +436,7 @@ const useChatbot = () => {
         isLoggedIn,
         isAuthReady,
         IS_FIREBASE_CONFIGURED,
-        isLocalUser: userId?.startsWith("anon-") || !IS_FIREBASE_CONFIGURED,
+        isLocalUser: true,
     };
 };
 
@@ -498,7 +461,7 @@ const Message = ({ message }) => {
 const TypingIndicator = () => (
     <div className="max-w-[85%] self-start bg-white text-gray-800 rounded-xl shadow-sm p-3 my-1 flex items-center border border-gray-100">
         <Loader2 className="h-5 w-5 animate-spin mr-2 text-indigo-500" />
-        <span>Maider está pensando...</span>
+        <span>Consultando FAQ…</span>
     </div>
 );
 
@@ -655,19 +618,12 @@ const Chatbot = () => {
                             ¡Hola! Soy Maider.
                         </p>
                         <p className="text-sm mt-2">
-                            {isLocalUser
-                                ? "Tu conversación se guarda en tu navegador y se perderá al borrar el caché."
-                                : "Tu conversación se guarda permanentemente en la nube de Firebase."}
+                            Pregúntame sobre clases, bonos VIP, alquiler de tablas o pagos.
+                            Las respuestas son instantáneas según las reglas del sistema.
                         </p>
-                        <p
-                            className={`text-xs mt-3 font-semibold flex items-center justify-center ${
-                                isLocalUser ? "text-red-500" : "text-green-600"
-                            }`}
-                        >
+                        <p className="text-xs mt-3 font-semibold flex items-center justify-center text-indigo-600">
                             <Database className="h-3 w-3 mr-1" />
-                            {isLocalUser
-                                ? "Persistencia: Local/Temporal"
-                                : "Persistencia: Firebase Cloud"}
+                            FAQ local · sin IA externa
                         </p>
                         {userId && (
                             <p className="text-xs mt-3 text-gray-400 truncate">

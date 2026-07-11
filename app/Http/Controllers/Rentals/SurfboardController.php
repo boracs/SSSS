@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Rentals;
 
 use App\Http\Controllers\Controller;
 use App\Models\Surfboard;
+use App\Support\AcademyContact;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,14 +24,12 @@ class SurfboardController extends Controller
 
         $surfboards = $query->get();
 
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
         return Inertia::render('Rentals/Surfboards/Index', [
             'category' => $category,
             'surfboards' => $surfboards,
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 
@@ -38,14 +37,11 @@ class SurfboardController extends Controller
     {
         $surfboard->load('priceSchema');
 
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
         return Inertia::render('Rentals/Surfboards/Show', [
             'surfboard' => $surfboard,
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 }
-

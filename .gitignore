@@ -46,3 +46,9 @@ yarn-error.log
 /.fleet
 /.DS_Store
 Thumbs.db
+
+# Nombres reservados Windows (evita accidentes con redirecciones `> nul`)
+/nul
+/con
+/prn
+/aux

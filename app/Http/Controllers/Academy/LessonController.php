@@ -7,6 +7,10 @@ use App\Actions\Academy\RequestLessonAction;
 use App\Actions\Academy\RequestPrivateLessonAction;
 use App\Actions\Academy\UploadLessonProofAction;
 use App\Actions\Academy\CancelEnrollmentAction;
+use App\Actions\Payments\InitiatePaymentAction;
+use App\DTOs\Payments\InitiatePaymentDto;
+use App\DTOs\Payments\PaymentLineItemDto;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Academy\EnrollStudentRequest;
 use App\Http\Requests\Academy\RequestLessonRequest;
@@ -19,6 +23,7 @@ use App\Models\UserBono;
 use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
 use App\Services\CreditEngineService;
+use App\Support\AcademyContact;
 use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use Illuminate\Http\Request;
@@ -38,6 +43,7 @@ class LessonController extends Controller
         protected RequestPrivateLessonAction $requestPrivateLessonAction,
         protected UploadLessonProofAction $uploadLessonProofAction,
         protected CancelEnrollmentAction $cancelEnrollmentAction,
+        protected InitiatePaymentAction $initiatePaymentAction,
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -302,7 +308,7 @@ class LessonController extends Controller
             'pendingSurfTripLesson' => $pendingSurfTripLesson,
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'whatsappHelpUrl' => 'https://wa.me/'.preg_replace('/\D/', '', config('services.academy.whatsapp_number', '34600000000')),
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 
@@ -391,12 +397,55 @@ class LessonController extends Controller
             return back()->with('error', $result['message']);
         }
 
-        return back()->with('success', $result['message']);
+        /** @var \App\Models\LessonUser $enrollment */
+        $enrollment = $result['enrollment'];
+        /** @var \App\Models\Lesson $lesson */
+        $lesson = $result['lesson'];
+
+        $depositEur   = (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $priceCents   = (int) round($depositEur * 100);
+        $dateLabel    = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+
+        $dto = new InitiatePaymentDto(
+            payableType:   LessonUser::class,
+            payableId:     $enrollment->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            'Clase particular',
+                    description:     $dateLabel,
+                    unitAmountCents: $priceCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/academia',
+            customerEmail: $user->email,
+            metadata:      [
+                'lesson_id'     => (string) $lesson->id,
+                'enrollment_id' => (string) $enrollment->id,
+                'modality'      => 'particular',
+            ],
+        );
+
+        try {
+            $checkoutUrl = $this->initiatePaymentAction->execute($dto);
+
+            return $this->redirectToStripeCheckout($checkoutUrl);
+        } catch (\RuntimeException $e) {
+            Log::error('LessonController::requestPrivateLesson Stripe error', [
+                'enrollment_id' => $enrollment->id,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return back()->with(
+                'success',
+                'Solicitud registrada. Hubo un problema al abrir el pago automático — contacta con nosotros.'
+            );
+        }
     }
 
     /**
-     * Solicitar una clase (workflow: pending -> confirmed -> enrolled).
-     * Valida capacidad humana (MAX_STAFF=2, ratio 1:6) y evita race conditions.
+     * Solicitar una clase → crea inscripción pending → redirige a Stripe Checkout.
      */
     public function requestLesson(RequestLessonRequest $request, Lesson $lesson)
     {
@@ -411,24 +460,134 @@ class LessonController extends Controller
             $request->partySize(),
             $request->requestExtraMonitor(),
             $request->ageBracket(),
-            $request->proofFile(),
-            $request->paymentMethod(),
+            $request->participants(),
         );
 
         if (! $result['ok']) {
             $response = back()->with('error', $result['message']);
             if (isset($result['extra_monitor_offer'])) {
-                $response->with('extra_monitor_offer', $result['extra_monitor_offer']);
+                $response = $response->with('extra_monitor_offer', $result['extra_monitor_offer']);
             }
 
             return $response;
         }
 
-        return back()->with('success', $result['message']);
+        /** @var \App\Models\LessonUser $enrollment */
+        $enrollment = $result['enrollment'];
+
+        // Calcular importe: precio de la clase o señal de reserva por defecto
+        $priceEur     = $lesson->price !== null
+            ? (float) $lesson->price
+            : (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $priceCents   = (int) round($priceEur * 100 * $request->partySize());
+        $partyLabel   = $request->partySize() > 1 ? " × {$request->partySize()} personas" : '';
+        $lessonTitle  = $lesson->title ?: 'Clase de surf';
+        $dateLabel    = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+
+        $dto = new InitiatePaymentDto(
+            payableType:   \App\Models\LessonUser::class,
+            payableId:     $enrollment->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            "{$lessonTitle}{$partyLabel}",
+                    description:     $dateLabel,
+                    unitAmountCents: $priceCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/academia',
+            customerEmail: $user->email,
+            metadata:      [
+                'lesson_id'     => (string) $lesson->id,
+                'enrollment_id' => (string) $enrollment->id,
+            ],
+        );
+
+        try {
+            $checkoutUrl = $this->initiatePaymentAction->execute($dto);
+
+            return $this->redirectToStripeCheckout($checkoutUrl);
+        } catch (\RuntimeException $e) {
+            Log::error('LessonController::requestLesson Stripe error', [
+                'enrollment_id' => $enrollment->id,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return back()->with(
+                'success',
+                'Solicitud registrada. Hubo un problema al abrir el pago automático — contacta con nosotros.'
+            );
+        }
     }
 
     /**
-     * Subir comprobante de pago para una solicitud PENDING. Se guarda en storage privado.
+     * Pagar inscripción pendiente existente → Stripe Checkout.
+     */
+    public function payPendingEnrollment(Request $request, Lesson $lesson)
+    {
+        $user = $request->user();
+        if (! $user) {
+            return back()->with('error', 'Debes iniciar sesión.');
+        }
+
+        $enrollment = LessonUser::query()
+            ->where('lesson_id', $lesson->id)
+            ->where('user_id', $user->id)
+            ->whereIn('status', [
+                LessonUser::STATUS_PENDING,
+                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+            ])
+            ->where('payment_status', PaymentStatus::Pending->value)
+            ->first();
+
+        if (! $enrollment) {
+            return back()->with('error', 'No hay una inscripción pendiente de pago para esta clase.');
+        }
+
+        $partySize  = max(1, (int) ($enrollment->party_size ?? $enrollment->quantity ?? 1));
+        $priceEur   = $lesson->price !== null
+            ? (float) $lesson->price
+            : (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $priceCents = (int) round($priceEur * 100 * $partySize);
+        $partyLabel = $partySize > 1 ? " × {$partySize} personas" : '';
+        $lessonTitle = $lesson->title ?: 'Clase de surf';
+        $dateLabel   = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+
+        $dto = new InitiatePaymentDto(
+            payableType:   LessonUser::class,
+            payableId:     $enrollment->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            "{$lessonTitle}{$partyLabel}",
+                    description:     $dateLabel,
+                    unitAmountCents: $priceCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/academia',
+            customerEmail: $user->email,
+            metadata:      [
+                'lesson_id'     => (string) $lesson->id,
+                'enrollment_id' => (string) $enrollment->id,
+            ],
+        );
+
+        try {
+            return $this->redirectToStripeCheckout($this->initiatePaymentAction->execute($dto));
+        } catch (\RuntimeException $e) {
+            Log::error('LessonController::payPendingEnrollment Stripe error', [
+                'enrollment_id' => $enrollment->id,
+                'error'         => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo abrir la pasarela de pago.');
+        }
+    }
+
+    /**
+     * @deprecated Flujo manual sustituido por Stripe. Mantener temporalmente por compatibilidad.
      */
     public function uploadProof(UploadLessonProofRequest $request, Lesson $lesson)
     {

@@ -1,6 +1,10 @@
 <?php
 
+use App\Support\AcademyContact;
+use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AutoCoachController;
+use App\Http\Controllers\Payments\PaymentWebhookController;
+use App\Http\Controllers\Payments\PaymentSuccessController;
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
 use App\Http\Controllers\Admin\PaymentValidationController;
@@ -52,6 +56,10 @@ Route::redirect('/tienda-oficial', '/tienda')->name('tienda.oficial');
 Route::get('/segunda-mano', [SecondHandBoardController::class, 'index'])->name('second-hand.index');
 Route::get('/segunda-mano/{secondHandBoard}', [SecondHandBoardController::class, 'show'])->name('second-hand.show');
 
+// TALLER DE SURF — Blog / guías SEO
+Route::get('/taller', [ArticleController::class, 'index'])->name('taller.index');
+Route::get('/taller/{article:slug}', [ArticleController::class, 'show'])->name('taller.show');
+
 // CONTACTO
 Route::get('/contacto', function () {
     return Inertia::render('Contacto');
@@ -59,6 +67,19 @@ Route::get('/contacto', function () {
 Route::post('/contacto', [ContactMessageController::class, 'store'])
     ->middleware('throttle:3,1')
     ->name('contacto.store');
+
+// ── Stripe Webhooks (sin CSRF, sin auth — la seguridad la da la firma HMAC) ──
+Route::post('/webhooks/stripe', [PaymentWebhookController::class, 'handle'])
+    ->name('webhooks.stripe');
+
+// ── Retorno desde Stripe Checkout ──
+Route::middleware(['auth'])->group(function () {
+    Route::get('/pago/exito', [PaymentSuccessController::class, 'show'])
+        ->name('payment.success');
+    Route::get('/pago/cancelado', function () {
+        return redirect()->back()->with('info', 'Has cancelado el proceso de pago. Puedes intentarlo de nuevo cuando quieras.');
+    })->name('payment.cancelled');
+});
 // PRODUCTO INDIV
 Route::get('/producto-ver/{productoId}', [ProductoController::class, 'ver'])->name('producto.ver');
 //
@@ -67,7 +88,6 @@ Route::get('/producto-info', function () {
 })->name('producto.info'); // ESTACREO K SOBRA
 // SERVICIOS
 Route::get('/servicios', function () {
-    $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
     $edy = config('services.repair.edy', []);
     $edyPhoneDigits = preg_replace('/\D+/', '', (string) ($edy['phone'] ?? ''));
     $edyPhoneDisplay = trim((string) ($edy['phone_display'] ?? ''));
@@ -87,14 +107,13 @@ Route::get('/servicios', function () {
     }
 
     $edyEmail = trim((string) ($edy['email'] ?? ''));
-    $edyWhatsappUrl = $edyPhoneDigits !== ''
-        ? 'https://wa.me/'.$edyPhoneDigits.'?text='.rawurlencode(
-            'Hola Edy, tengo una duda sobre reparar mi tabla antes de solicitar el servicio.',
-        )
-        : null;
+    $edyWhatsappUrl = AcademyContact::urlForPhone(
+        (string) ($edy['phone'] ?? ''),
+        'Hola Edy, tengo una duda sobre reparar mi tabla antes de solicitar el servicio.',
+    );
 
     return Inertia::render('Servicios', [
-        'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+        'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         'edyContact' => [
             'name' => (string) ($edy['name'] ?? 'Edy Mulder'),
             'phone' => $edyPhoneDisplay !== '' ? $edyPhoneDisplay : null,
@@ -105,7 +124,6 @@ Route::get('/servicios', function () {
     ]);
 })->name('servicios');
 Route::get('/servicios/reparacion-neoprenos', function () {
-    $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
     $willy = config('services.repair.willy', []);
     $willyPhoneDigits = preg_replace('/\D+/', '', (string) ($willy['phone'] ?? ''));
     $willyPhoneDisplay = trim((string) ($willy['phone_display'] ?? ''));
@@ -125,14 +143,13 @@ Route::get('/servicios/reparacion-neoprenos', function () {
     }
 
     $willyEmail = trim((string) ($willy['email'] ?? ''));
-    $willyWhatsappUrl = $willyPhoneDigits !== ''
-        ? 'https://wa.me/'.$willyPhoneDigits.'?text='.rawurlencode(
-            'Hola Willy, tengo una duda sobre reparar mi neopreno antes de dejarlo en la percha.',
-        )
-        : null;
+    $willyWhatsappUrl = AcademyContact::urlForPhone(
+        (string) ($willy['phone'] ?? ''),
+        'Hola Willy, tengo una duda sobre reparar mi neopreno antes de dejarlo en la percha.',
+    );
 
     return Inertia::render('Servicios_ReparacionNeoprenos', [
-        'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+        'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         'willyContact' => [
             'name' => (string) ($willy['name'] ?? 'Willy'),
             'phone' => $willyPhoneDisplay !== '' ? $willyPhoneDisplay : null,
@@ -201,6 +218,7 @@ Route::get('/taquillas/planes-y-cuotas', [PlanesTaquillasController::class, 'pub
 Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Academy\LessonController::class, 'index'])->name('lessons.index');
     Route::post('/lessons/{lesson}/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestLesson'])->name('lessons.request');
+    Route::post('/lessons/{lesson}/pay', [\App\Http\Controllers\Academy\LessonController::class, 'payPendingEnrollment'])->name('lessons.pay');
     Route::get('/particular/availability', [\App\Http\Controllers\Academy\LessonController::class, 'privateAvailability'])->name('private.availability');
     Route::post('/particular/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestPrivateLesson'])->name('private.request');
     Route::post('/lessons/{lesson}/upload-proof', [\App\Http\Controllers\Academy\LessonController::class, 'uploadProof'])->name('lessons.upload-proof');
@@ -242,6 +260,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
     Route::get('/mis-reservas', [MyReservationsController::class, 'index'])->name('my-reservations.index');
     Route::get('/mi-perfil', [MyProfileController::class, 'index'])->name('my-profile.index');
+    Route::post('/mis-reservas/clases/{enrollment}/pagar', [MyReservationsController::class, 'payClassEnrollment'])->name('my-reservations.class.pay');
+    Route::post('/mis-reservas/alquileres/{booking}/pagar', [MyReservationsController::class, 'payRentalBooking'])->name('my-reservations.rental.pay');
     Route::post('/mis-reservas/clases/{enrollment}/upload-proof', [MyReservationsController::class, 'uploadClassProof'])->name('my-reservations.class.upload-proof');
     Route::post('/mis-reservas/alquileres/{booking}/upload-proof', [MyReservationsController::class, 'uploadRentalProof'])->name('my-reservations.rental.upload-proof');
     Route::post('/mis-reservas/clases/{enrollment}/cancel', [MyReservationsController::class, 'cancelClass'])->name('my-reservations.class.cancel');
@@ -277,6 +297,9 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.client');
+    Route::post('/taquilla/pagos/{pago}/pagar', [PlanesTaquillasController::class, 'payPendingPago'])
+        ->middleware('throttle:10,1')
+        ->name('taquillas.pago.pay');
     Route::post('/taquilla/pagos/{pago}/subir-justificante', [PlanesTaquillasController::class, 'subirJustificante'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.upload-proof');

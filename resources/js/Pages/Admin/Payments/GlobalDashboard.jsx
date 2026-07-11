@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import { ChatBubbleLeftRightIcon, DocumentMinusIcon, DocumentTextIcon, EnvelopeIcon } from "@heroicons/react/24/outline";
+import { CreditCard, FileText, FileX, Mail, MessageSquare } from "lucide-react";
 
 const TAB_CLASSES = "classes";
 const TAB_RENTALS = "rentals";
@@ -12,6 +12,34 @@ const STATUS_OPTIONS = [
     { id: "confirmed", label: "Confirmados" },
     { id: "rejected", label: "Rechazados" },
 ];
+
+const LEGACY_MANUAL_METHODS = new Set(["bizum", "transferencia", "tienda"]);
+
+function isStripeAutomatedFlow(row) {
+    if (row?.is_stripe_automated === true || row?.payment_method === "card") {
+        return true;
+    }
+    if (row?.status !== "pending") {
+        return false;
+    }
+    if (row?.entity === "bono") {
+        return !row?.has_proof && !row?.proof_url;
+    }
+    if (row?.proof_url || LEGACY_MANUAL_METHODS.has(row?.payment_method)) {
+        return false;
+    }
+    return true;
+}
+
+function showManualValidationActions(row) {
+    if (row?.status !== "pending" || isStripeAutomatedFlow(row)) {
+        return false;
+    }
+    if (row?.entity === "bono") {
+        return Boolean(row?.has_proof || row?.proof_url);
+    }
+    return Boolean(row?.proof_url) || LEGACY_MANUAL_METHODS.has(row?.payment_method);
+}
 
 function statusLabel(status) {
     if (status === "confirmed") return "Confirmado";
@@ -679,7 +707,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         title={hasCancellationJustification(row) ? "Ver justificación" : "Ver motivo del rechazo"}
                                                         aria-label={hasCancellationJustification(row) ? "Ver justificación de la cancelación" : "Ver motivo del rechazo"}
                                                     >
-                                                        <ChatBubbleLeftRightIcon className="h-4 w-4" />
+                                                        <MessageSquare className="h-4 w-4" />
                                                     </button>
                                                 ) : null}
                                             </div>
@@ -719,7 +747,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                 title={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
                                                 aria-label={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
                                             >
-                                                {row.proof_url ? <DocumentTextIcon className="h-4 w-4" /> : <DocumentMinusIcon className="h-4 w-4" />}
+                                                {row.proof_url ? <FileText className="h-4 w-4" /> : <FileX className="h-4 w-4" />}
                                             </button>
                                         </td>
                                         <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -740,11 +768,20 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                             className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white shadow transition-all hover:scale-105 hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-300/70"
                                                             title="Enviar Email"
                                                         >
-                                                            <EnvelopeIcon className="h-3.5 w-3.5" />
+                                                            <Mail className="h-3.5 w-3.5" />
                                                         </button>
                                                     </>
                                                 ) : null}
-                                                {tab === TAB_CLASSES ? (
+                                                {isStripeAutomatedFlow(row) && row.status === "pending" ? (
+                                                    <span
+                                                        className="inline-flex items-center gap-1 rounded-lg bg-violet-900/40 px-2.5 py-1 text-xs font-semibold text-violet-100 ring-1 ring-violet-500/30"
+                                                        title="Confirmación automática vía webhook Stripe"
+                                                    >
+                                                        <CreditCard className="h-3.5 w-3.5" />
+                                                        Stripe
+                                                    </span>
+                                                ) : null}
+                                                {showManualValidationActions(row) && tab === TAB_CLASSES ? (
                                                     <>
                                                         <button
                                                             type="button"
@@ -766,7 +803,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         </button>
                                                     </>
                                                 ) : null}
-                                                {tab === TAB_RENTALS ? (
+                                                {showManualValidationActions(row) && tab === TAB_RENTALS ? (
                                                     <>
                                                         <button
                                                             type="button"
@@ -788,7 +825,7 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                                         </button>
                                                     </>
                                                 ) : null}
-                                                {tab === TAB_BONOS ? (
+                                                {showManualValidationActions(row) && tab === TAB_BONOS ? (
                                                     <>
                                                         <button
                                                             type="button"

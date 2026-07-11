@@ -9,7 +9,6 @@ import {
     TrophyIcon,
 } from "@heroicons/react/24/outline";
 import { CheckCircleIcon } from "@heroicons/react/24/solid";
-import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 import VipProfileDashboard from "@/components/VipProfile/VipProfileDashboard";
 
 const TAB_CLASSES = "classes";
@@ -17,7 +16,7 @@ const TAB_RENTALS = "rentals";
 const TAB_BONOS = "bonos";
 
 const TAB_DESCRIPTIONS = {
-    [TAB_CLASSES]: "Reservas de clases: próximas sesiones, justificantes de pago y cancelaciones.",
+    [TAB_CLASSES]: "Reservas de clases: próximas sesiones, pagos pendientes y cancelaciones.",
     [TAB_RENTALS]: "Alquiler de tablas: recogidas, devoluciones y estado de pago.",
     [TAB_BONOS]: "Saldo VIP, calendario de asistencia e historial de consumo de créditos.",
 };
@@ -110,6 +109,38 @@ export default function MyReservations() {
 function formatEurEs(n) {
     if (n == null || Number.isNaN(Number(n))) return null;
     return Number(n).toFixed(2).replace(".", ",");
+}
+
+function formatDateTimeMadrid(value) {
+    if (!value) return "Sin fecha";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Sin fecha";
+    return new Intl.DateTimeFormat("es-ES", {
+        timeZone: "Europe/Madrid",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(date);
+}
+
+function formatCountdown(createdAt) {
+    if (!createdAt) return null;
+    const created = new Date(createdAt);
+    if (Number.isNaN(created.getTime())) return null;
+
+    // SLA actual de reserva pendiente: 24 horas desde creación.
+    const expiresAt = created.getTime() + 24 * 60 * 60 * 1000;
+    const msLeft = expiresAt - Date.now();
+    if (msLeft <= 0) return "Reserva Expirada";
+
+    const totalSeconds = Math.floor(msLeft / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return `Expira en ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
 /** Señal/depósito y precio total (clases y alquileres), desde buildReservationRows. */
@@ -219,7 +250,7 @@ function MyReservationsView() {
         window.history.replaceState({}, "", url);
     };
     const [tick, setTick] = useState(Date.now());
-    const [proofModal, setProofModal] = useState(null); // { type, id }
+    const [payingId, setPayingId] = useState(null); // { type, id }
     const [cancelModal, setCancelModal] = useState(null); // { type, id, isWithinCancellationWindow }
     const [flashDismissed, setFlashDismissed] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -256,40 +287,6 @@ function MyReservationsView() {
         return bonoRows;
     }, [tab, classRows, rentalRows, bonoRows, tick]);
 
-    const proofTargetRow = useMemo(() => {
-        if (!proofModal?.id) return null;
-        const list = proofModal.type === "class" ? classRows : rentalRows;
-        return (list || []).find((r) => Number(r.id) === Number(proofModal.id)) ?? null;
-    }, [proofModal, classRows, rentalRows]);
-
-    const proofPriceBreakdown = useMemo(() => {
-        if (!proofTargetRow) return null;
-        const total =
-            proofTargetRow.total_price != null && Number(proofTargetRow.total_price) > 0
-                ? Number(proofTargetRow.total_price)
-                : null;
-        const deposit =
-            proofTargetRow.deposit_amount != null && Number(proofTargetRow.deposit_amount) > 0
-                ? Number(proofTargetRow.deposit_amount)
-                : proofTargetRow.amount != null && Number(proofTargetRow.amount) > 0
-                  ? Number(proofTargetRow.amount)
-                  : null;
-        const rows = [];
-        if (deposit != null && deposit > 0) {
-            rows.push({
-                label: "Compromiso / señal a pagar",
-                value: `${deposit.toFixed(2).replace(".", ",")} €`,
-            });
-        }
-        if (total != null && total > 0) {
-            rows.push({
-                label: "Precio total del servicio",
-                value: `${total.toFixed(2).replace(".", ",")} €`,
-            });
-        }
-        return rows.length ? rows : null;
-    }, [proofTargetRow]);
-
     const { upcomingRows, historyRows } = useMemo(() => {
         const now = Date.now();
         const rows = activeRows || [];
@@ -308,29 +305,17 @@ function MyReservationsView() {
         return { upcomingRows: upcoming, historyRows: history };
     }, [activeRows]);
 
-    const submitReservationProof = async ({ proofFile, paymentMethod }) => {
-        if (!proofModal?.id || processing) throw new Error("blocked");
-        setProcessing(true);
-        try {
-            const routeName =
-                proofModal.type === "class"
-                    ? "my-reservations.class.upload-proof"
-                    : "my-reservations.rental.upload-proof";
-            await new Promise((resolve, reject) => {
-                router.post(
-                    route(routeName, proofModal.id),
-                    { proof: proofFile, payment_method: paymentMethod },
-                    {
-                        forceFormData: true,
-                        preserveScroll: true,
-                        onSuccess: () => resolve(),
-                        onError: () => reject(new Error("proof")),
-                    },
-                );
-            });
-        } finally {
-            setProcessing(false);
-        }
+    const iniciarPagoReserva = (type, id) => {
+        if (processing || payingId) return;
+        setPayingId({ type, id });
+        const routeName =
+            type === "class"
+                ? "my-reservations.class.pay"
+                : "my-reservations.rental.pay";
+        router.post(route(routeName, id), {}, {
+            preserveScroll: true,
+            onFinish: () => setPayingId(null),
+        });
     };
 
     const cancelReservation = () => {
@@ -818,19 +803,21 @@ function MyReservationsView() {
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    setProofModal(
-                                                                        {
-                                                                            type: isClass
-                                                                                ? "class"
-                                                                                : "rental",
-                                                                            id: row.id,
-                                                                        },
+                                                                    iniciarPagoReserva(
+                                                                        isClass ? "class" : "rental",
+                                                                        row.id,
                                                                     )
                                                                 }
-                                                                className="w-full rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 sm:w-auto"
+                                                                disabled={
+                                                                    payingId?.type === (isClass ? "class" : "rental") &&
+                                                                    Number(payingId?.id) === Number(row.id)
+                                                                }
+                                                                className="w-full rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60 sm:w-auto"
                                                             >
-                                                                Subir
-                                                                Justificante
+                                                                {payingId?.type === (isClass ? "class" : "rental") &&
+                                                                Number(payingId?.id) === Number(row.id)
+                                                                    ? "Preparando pago…"
+                                                                    : "Pagar con tarjeta"}
                                                             </button>
                                                         ) : null}
                                                         {(isClass ||
@@ -996,45 +983,6 @@ function MyReservationsView() {
                     </div>
                 )}
             </div>
-
-            <ManualPaymentInstructionsModal
-                open={!!proofModal}
-                onClose={() => setProofModal(null)}
-                bizumNumber={paymentBizumNumber}
-                iban={paymentIban}
-                whatsappHelpUrl={whatsappHelpUrl}
-                useReservationStepsHeading
-                showDepositNotice={
-                    proofModal?.type === "class" || proofModal?.type === "rental"
-                }
-                totalPrimaryLine={
-                    proofPriceBreakdown
-                        ? "Resumen de importes"
-                        : !proofTargetRow
-                          ? null
-                          : (() => {
-                                const n =
-                                    proofModal?.type === "rental"
-                                        ? proofTargetRow.amount
-                                        : proofTargetRow.price ?? proofTargetRow.amount;
-                                if (n == null || Number(n) <= 0) return null;
-                                return `Importe pendiente: ${Number(n).toFixed(2).replace(".", ",")} €`;
-                            })()
-                }
-                priceBreakdownRows={proofPriceBreakdown}
-                secondaryNote="Tu reserva se actualizará cuando el equipo confirme el pago manualmente."
-                uploadIntro="Sube aquí el justificante de pago para validación manual."
-                onSubmit={submitReservationProof}
-                onAfterSuccessSubmit={() =>
-                    router.reload({ only: RESERVATIONS_PARTIAL_KEYS })
-                }
-                successSubtitle="Hemos recibido el comprobante. Validaremos el pago en breve."
-                whatsappMessageBuilder={() =>
-                    proofModal?.type === "class"
-                        ? "Hola, tengo una duda con el pago de mi clase reservada."
-                        : "Hola, tengo una duda con el pago de mi alquiler."
-                }
-            />
 
             {cancelModal ? (
                 <div

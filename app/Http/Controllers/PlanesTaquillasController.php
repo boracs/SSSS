@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Actions\Payments\InitiatePaymentAction;
+use App\DTOs\Payments\InitiatePaymentDto;
+use App\DTOs\Payments\PaymentLineItemDto;
 use App\Http\Requests\Taquilla\ConfirmarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\ReassignLockerRequest;
 use App\Http\Requests\Taquilla\RechazarPagoTaquillaRequest;
@@ -16,6 +19,7 @@ use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
 use App\Models\User;
+use App\Support\AcademyContact;
 use App\Services\Taquilla\TaquillaMembershipService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -26,6 +30,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpFoundationResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
@@ -33,6 +38,7 @@ class PlanesTaquillasController extends Controller
 {
     public function __construct(
         private readonly TaquillaMembershipService $taquillaService,
+        private readonly InitiatePaymentAction $initiatePayment,
     ) {}
 
     public function AdminIndex(): Response|RedirectResponse
@@ -99,34 +105,97 @@ class PlanesTaquillasController extends Controller
 
         $user = Auth::user();
         $payload = $this->taquillaService->buildClientIndex($user);
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
 
         return Inertia::render('PlanesTaquillasClient', [
             'userData' => $payload['userData'],
             'planes' => $payload['planes'],
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 
-    public function registrarPago(RegistrarPagoTaquillaRequest $request): RedirectResponse
+    public function registrarPago(RegistrarPagoTaquillaRequest $request): RedirectResponse|HttpFoundationResponse
     {
         $user = Auth::user();
+        $validated = $request->validated();
 
         try {
-            $this->taquillaService->registerPayment(user: $user, request: $request);
+            $pago = $this->taquillaService->createPendingPaymentForCheckout(
+                user: $user,
+                planId: (int) $validated['plan_id'],
+                referenciaExterna: $validated['referencia_pago_externa'] ?? null,
+            );
+
+            $checkoutUrl = $this->initiatePayment->execute(
+                $this->buildStripeDtoForPago($pago, $user),
+            );
         } catch (ValidationException $e) {
             throw $e;
         } catch (Throwable $e) {
+            Log::error('PlanesTaquillasController::registrarPago Stripe error', [
+                'user_id' => $user?->id,
+                'error'   => $e->getMessage(),
+            ]);
+
             return redirect()->back()->with(
                 'error',
-                'Error al procesar el pago. Intentalo de nuevo o contacta con el club.',
+                'Error al iniciar el pago. Inténtalo de nuevo o contacta con el club.',
             );
         }
 
-        return redirect()->route('taquillas.index.client')
-            ->with('success', 'Renovacion solicitada con justificante. Queda pendiente de validacion.');
+        return $this->redirectToStripeCheckout($checkoutUrl);
+    }
+
+    public function payPendingPago(PagoCuota $pago): RedirectResponse|HttpFoundationResponse
+    {
+        $user = Auth::user();
+        if ((int) $pago->user_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        if (($pago->status ?? '') !== PagoCuota::STATUS_PENDING) {
+            return back()->with('error', 'Este pago ya no está pendiente.');
+        }
+
+        try {
+            $checkoutUrl = $this->initiatePayment->execute(
+                $this->buildStripeDtoForPago($pago->load('plan'), $user),
+            );
+        } catch (Throwable $e) {
+            Log::error('PlanesTaquillasController::payPendingPago Stripe error', [
+                'pago_id' => $pago->id,
+                'user_id' => $user->id,
+                'error'   => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo abrir la pasarela de pago.');
+        }
+
+        return $this->redirectToStripeCheckout($checkoutUrl);
+    }
+
+    private function buildStripeDtoForPago(PagoCuota $pago, User $user): InitiatePaymentDto
+    {
+        $planName = (string) ($pago->plan?->nombre ?? 'Plan taquilla');
+        $amountCents = (int) $pago->monto_pagado_cents;
+
+        return new InitiatePaymentDto(
+            payableType:   PagoCuota::class,
+            payableId:     (int) $pago->id,
+            lineItems:     [
+                new PaymentLineItemDto(
+                    name:            $planName,
+                    description:     'Renovación taquilla',
+                    unitAmountCents: $amountCents,
+                    quantity:        1,
+                ),
+            ],
+            successPath:   '/pago/exito',
+            cancelPath:    '/taquilla/planes',
+            customerEmail: $user->email,
+            metadata:      ['pago_cuota_id' => (string) $pago->id],
+        );
     }
 
     public function obtenerDatosUsuario(): JsonResponse

@@ -13,7 +13,6 @@ import {
     Waves,
     Wrench,
 } from "lucide-react";
-import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 import { formatEur } from "@/utils/money";
 
 const MICRO_SERVICIOS_URL = "/nosotros#micro-servicios-club";
@@ -429,45 +428,39 @@ export default function PlanesTaquillasClient({
         return pendingRows.find((r) => r.id === payModal.pagoId) || null;
     }, [payModal, pendingRows]);
 
-    const submitTaquillaPayment = async ({ proofFile, paymentMethod }) => {
-        if (!payModal || paymentSubmitting) throw new Error("busy");
+    const iniciarPagoTaquilla = () => {
+        if (!payModal || paymentSubmitting) return;
         setPaymentSubmitting(true);
-        try {
-            if (payModal.kind === "renew") {
-                if (!planId) throw new Error("plan");
-                const fd = new FormData();
-                fd.append("plan_id", planId);
-                if (renewalRef.trim()) fd.append("referencia_pago_externa", renewalRef.trim());
-                fd.append("proof", proofFile);
-                fd.append("payment_method", paymentMethod);
-                await new Promise((resolve, reject) => {
-                    router.post(route("taquillas.pago.client"), fd, {
-                        forceFormData: true,
-                        preserveScroll: true,
-                        onSuccess: () => resolve(),
-                        onError: () => reject(new Error("renew")),
-                        onFinish: () => setPaymentSubmitting(false),
-                    });
-                });
+
+        if (payModal.kind === "renew") {
+            if (!planId) {
+                setPaymentSubmitting(false);
                 return;
             }
-            await new Promise((resolve, reject) => {
-                router.post(
-                    route("taquillas.pago.upload-proof", payModal.pagoId),
-                    { proof: proofFile, payment_method: paymentMethod },
-                    {
-                        forceFormData: true,
-                        preserveScroll: true,
-                        onSuccess: () => resolve(),
-                        onError: () => reject(new Error("proof")),
-                        onFinish: () => setPaymentSubmitting(false),
-                    },
-                );
-            });
-        } catch (err) {
-            setPaymentSubmitting(false);
-            throw err;
+            router.post(
+                route("taquillas.pago.client"),
+                {
+                    plan_id: planId,
+                    referencia_pago_externa: renewalRef.trim() || undefined,
+                },
+                {
+                    preserveScroll: true,
+                    onError: () => setPaymentSubmitting(false),
+                    onFinish: () => setPaymentSubmitting(false),
+                },
+            );
+            return;
         }
+
+        router.post(
+            route("taquillas.pago.pay", payModal.pagoId),
+            {},
+            {
+                preserveScroll: true,
+                onError: () => setPaymentSubmitting(false),
+                onFinish: () => setPaymentSubmitting(false),
+            },
+        );
     };
 
     const totalPrimaryLine = useMemo(() => {
@@ -486,8 +479,8 @@ export default function PlanesTaquillasClient({
 
     const secondaryNote =
         payModal?.kind === "pending"
-            ? "Este pago sigue pendiente de verificación. Sube el comprobante para que el equipo lo valide."
-            : "Tu renovación quedará pendiente hasta que el administrador confirme el pago.";
+            ? "Completa el pago pendiente con tarjeta. Se activará automáticamente al confirmarse."
+            : "Serás redirigido a Stripe. Tu plan se activará al confirmar el pago.";
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
@@ -759,54 +752,60 @@ export default function PlanesTaquillasClient({
                             className="w-full rounded-xl bg-gradient-to-r from-pink-500 to-amber-400 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[280px]"
                         >
                             {paymentSubmitting
-                                ? "Enviando..."
+                                ? "Preparando pago…"
                                 : planId
-                                  ? "Instrucciones de pago y justificante"
+                                  ? "Pagar renovación con tarjeta"
                                   : "Selecciona un plan para renovar"}
                         </button>
                     ) : null}
                 </section>
             </div>
 
-            <ManualPaymentInstructionsModal
-                open={payModal != null}
-                onClose={() => !paymentSubmitting && setPayModal(null)}
-                bizumNumber={paymentBizumNumber}
-                iban={paymentIban}
-                whatsappHelpUrl={whatsappHelpUrl}
-                showDepositNotice={false}
-                useReservationStepsHeading={false}
-                totalPrimaryLine={totalPrimaryLine}
-                secondaryNote={secondaryNote}
-                uploadIntro="Sube tu comprobante en imagen (incluida captura/foto de móvil) o en PDF. Tamaño máximo permitido: 10 MB."
-                extraFormSlot={
-                    payModal?.kind === "renew" ? (
-                        <div>
-                            <label className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                                Referencia (opcional)
-                            </label>
-                            <input
-                                value={renewalRef}
-                                onChange={(e) => setRenewalRef(e.target.value)}
-                                placeholder="Concepto o referencia del ingreso"
-                                className="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40"
-                            />
+            {payModal != null ? (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        onClick={() => !paymentSubmitting && setPayModal(null)}
+                    />
+                    <div className="relative w-full max-w-sm rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900 to-slate-800 p-7 shadow-2xl text-white">
+                        <h2 className="text-xl font-bold">Confirmar pago</h2>
+                        {totalPrimaryLine ? (
+                            <p className="mt-3 text-lg font-bold text-emerald-400">{totalPrimaryLine}</p>
+                        ) : null}
+                        <p className="mt-2 text-sm text-white/70">{secondaryNote}</p>
+                        {payModal.kind === "renew" ? (
+                            <div className="mt-4">
+                                <label className="text-xs font-semibold uppercase tracking-wide text-white/70">
+                                    Referencia (opcional)
+                                </label>
+                                <input
+                                    value={renewalRef}
+                                    onChange={(e) => setRenewalRef(e.target.value)}
+                                    placeholder="Concepto o referencia"
+                                    className="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40"
+                                />
+                            </div>
+                        ) : null}
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={iniciarPagoTaquilla}
+                                disabled={paymentSubmitting}
+                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-60"
+                            >
+                                {paymentSubmitting ? "Preparando…" : "Pagar con tarjeta"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => !paymentSubmitting && setPayModal(null)}
+                                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/20"
+                            >
+                                Cancelar
+                            </button>
                         </div>
-                    ) : null
-                }
-                onSubmit={submitTaquillaPayment}
-                onAfterSuccessSubmit={() => {
-                    setPlanId("");
-                    setRenewalRef("");
-                    router.reload({ only: ["userData", "planes", "flash"] });
-                }}
-                successSubtitle="Gracias. Validaremos el comprobante lo antes posible."
-                whatsappMessageBuilder={() =>
-                    payModal?.kind === "pending"
-                        ? "Hola, necesito ayuda para subir el justificante de un pago de taquilla pendiente."
-                        : "Hola, tengo una duda con el pago de renovación de mi taquilla."
-                }
-            />
+                    </div>
+                </div>
+            ) : null}
 
             {toast ? (
                 <div className="fixed right-4 top-24 z-50 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-xl">

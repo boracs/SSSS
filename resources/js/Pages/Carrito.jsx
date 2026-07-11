@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Head, Link, usePage, router } from "@inertiajs/react";
 import { ArrowLeft, ShoppingBag, ShoppingCart, Sparkles } from "lucide-react";
 import Layout1 from "../layouts/Layout1";
-import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 
 function EmptyCartView() {
     return (
@@ -124,40 +123,39 @@ const Carrito = () => {
         });
     };
 
-    const enviarPedidoConJustificante = async ({ proofFile, paymentMethod }) => {
+    const [procesandoPago, setProcesandoPago] = useState(false);
+
+    const iniciarPagoStripe = () => {
         const totalNumerico = parseFloat(String(total).replace(",", "."));
         if (isNaN(totalNumerico) || totalNumerico <= 0) {
             setMensajeToast("El total del pedido no es válido.");
             setTipoToast("error");
             setTimeout(() => setMensajeToast(""), 4000);
-            throw new Error("total");
+            return;
         }
+        setProcesandoPago(true);
         const lineas = productos.map((p) => ({ id: p.id, cantidad: p.cantidad }));
-        const fd = new FormData();
-        fd.append("productos_json", JSON.stringify(lineas));
-        fd.append("total", String(totalNumerico));
-        fd.append("proof", proofFile);
-        fd.append("payment_method", paymentMethod);
-        await new Promise((resolve, reject) => {
-            router.post(route("crear.pedido"), fd, {
-                forceFormData: true,
+        router.post(
+            route("crear.pedido"),
+            {
+                productos_json: JSON.stringify(lineas),
+                total: String(totalNumerico),
+            },
+            {
                 preserveScroll: true,
-                onSuccess: () => resolve(),
                 onError: (errors) => {
+                    setProcesandoPago(false);
                     const errorMessage =
                         errors.stock ||
                         errors.general ||
                         errors.productos_json ||
-                        errors.proof ||
                         "Error al procesar el pedido. Inténtalo de nuevo.";
-                    console.error("Errores recibidos de Laravel:", errors);
                     setMensajeToast(errorMessage);
                     setTipoToast("error");
                     setTimeout(() => setMensajeToast(""), 4000);
-                    reject(new Error("pedido"));
                 },
-            });
-        });
+            }
+        );
     };
 
     // Determinar las clases de Toast
@@ -261,15 +259,31 @@ const Carrito = () => {
                                 {productos.length > 0 && (
                                     <>
                                         <button
-                                            onClick={abrirModalPagoPedido}
-                                            disabled={!canCheckout}
-                                            className={`px-6 py-3 rounded-lg font-bold transition duration-150 shadow-md ${
-                                                canCheckout
-                                                    ? "bg-green-500 text-white hover:bg-green-600"
+                                            onClick={iniciarPagoStripe}
+                                            disabled={!canCheckout || procesandoPago}
+                                            className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition duration-150 shadow-md ${
+                                                canCheckout && !procesandoPago
+                                                    ? "bg-violet-600 text-white hover:bg-violet-700"
                                                     : "bg-slate-300 text-slate-600 cursor-not-allowed"
                                             }`}
                                         >
-                                            Realizar Pedido
+                                            {procesandoPago ? (
+                                                <>
+                                                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    Preparando pago…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                                                        <line x1="1" y1="10" x2="23" y2="10" />
+                                                    </svg>
+                                                    Pagar con tarjeta
+                                                </>
+                                            )}
                                         </button>
                                         {!canCheckout ? (
                                             <p className="mt-3 text-sm font-medium text-amber-700">
@@ -324,24 +338,6 @@ const Carrito = () => {
                 </div>
             )}
 
-            <ManualPaymentInstructionsModal
-                open={paymentModalOpen}
-                onClose={cerrarModalPagoPedido}
-                bizumNumber={paymentBizumNumber}
-                iban={paymentIban}
-                whatsappHelpUrl={whatsappHelpUrl}
-                showDepositNotice={false}
-                useReservationStepsHeading={false}
-                totalPrimaryLine={`Total a pagar: ${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(total))} €`}
-                secondaryNote="Tu pedido quedará registrado cuando validemos el comprobante. El carrito se vaciará al confirmar el envío."
-                uploadIntro="Sube aquí el justificante del pago (Bizum o transferencia) para validación manual."
-                onSubmit={enviarPedidoConJustificante}
-                onAfterSuccessSubmit={() => router.reload({ only: ["productos", "total"] })}
-                successSubtitle="Hemos recibido tu pedido y el justificante. Te avisaremos cuando lo validemos."
-                whatsappMessageBuilder={() =>
-                    `Hola, tengo una duda con el pago de mi pedido en la tienda (total ${new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(total))} €).`
-                }
-            />
         </Layout1>
     );
 };

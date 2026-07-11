@@ -1,6 +1,5 @@
 import { Head, router, usePage } from "@inertiajs/react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import ManualPaymentInstructionsModal from "@/components/ManualPaymentInstructionsModal";
 import { formatEur } from "@/utils/money";
 
 function ConsumptionDetailsPanel({ details }) {
@@ -184,19 +183,19 @@ export default function ClientBonosIndex({
         setExpandedConsumptionId((current) => (current === rowId ? null : rowId));
     };
 
-    const submitBono = async ({ proofFile }) => {
-        if (!selectedPack) throw new Error("no pack");
-        const fd = new FormData();
-        fd.append("pack_id", String(selectedPack.id));
-        fd.append("proof", proofFile);
-        await new Promise((resolve, reject) => {
-            router.post(route("bonos.request-purchase"), fd, {
-                forceFormData: true,
+    const [procesandoBono, setProcesandoBono] = useState(false);
+
+    const iniciarPagoBono = () => {
+        if (!selectedPack || procesandoBono) return;
+        setProcesandoBono(true);
+        router.post(
+            route("bonos.request-purchase"),
+            { pack_id: String(selectedPack.id) },
+            {
                 preserveScroll: true,
-                onSuccess: () => resolve(),
-                onError: () => reject(new Error("bono")),
-            });
-        });
+                onError: () => setProcesandoBono(false),
+            }
+        );
     };
 
     const togglePurchaseDetails = (bonoId) => {
@@ -708,20 +707,57 @@ export default function ClientBonosIndex({
                 ) : null}
             </div>
 
-            <ManualPaymentInstructionsModal
-                open={!!selectedPack}
-                onClose={() => setSelectedPack(null)}
-                bizumNumber={paymentBizumNumber || "[BIZUM_NUMBER]"}
-                iban={paymentIban || "[IBAN]"}
-                whatsappHelpUrl={whatsappHelpUrl}
-                showDepositNotice={false}
-                totalPrimaryLine={selectedPack ? `Total a pagar: ${Number(selectedPack.precio).toFixed(2).replace(".", ",")} €` : null}
-                secondaryNote="Tu bono se activará en cuanto el administrador confirme el pago."
-                uploadIntro="Sube aquí el justificante de pago para validación manual."
-                onSubmit={submitBono}
-                onAfterSuccessSubmit={() => setSelectedPack(null)}
-                successSubtitle="Hemos recibido tu solicitud. Validaremos el pago y activaremos tu bono."
-            />
+            {/* Modal de confirmación de compra bono → redirige a Stripe */}
+            {!!selectedPack && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedPack(null)} />
+                    <div className="relative w-full max-w-sm rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900 to-slate-800 p-7 shadow-2xl text-white">
+                        <h2 className="text-xl font-bold">Confirmar compra</h2>
+                        <p className="mt-2 text-sm text-white/70">Vas a comprar el siguiente bono VIP:</p>
+                        <div className="mt-4 rounded-xl bg-white/10 p-4 text-sm">
+                            <div className="font-semibold">{selectedPack.nombre}</div>
+                            <div className="mt-1 text-white/60">{selectedPack.num_clases} clases</div>
+                            <div className="mt-2 text-lg font-bold text-emerald-400">
+                                {Number(selectedPack.precio).toFixed(2).replace(".", ",")} €
+                            </div>
+                        </div>
+                        <p className="mt-3 text-xs text-white/50">
+                            Serás redirigido a la pasarela de pago seguro (Stripe). Tu bono se activará automáticamente al confirmar el pago.
+                        </p>
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                onClick={iniciarPagoBono}
+                                disabled={procesandoBono}
+                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-violet-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                                {procesandoBono ? (
+                                    <>
+                                        <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                                        </svg>
+                                        Preparando…
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <rect x="1" y="4" width="22" height="16" rx="2"/>
+                                            <line x1="1" y1="10" x2="23" y2="10"/>
+                                        </svg>
+                                        Pagar con tarjeta
+                                    </>
+                                )}
+                            </button>
+                            <button
+                                onClick={() => setSelectedPack(null)}
+                                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/20"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </>
     );
 }

@@ -48,7 +48,7 @@ class BookingService
     {
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
-        $totalHours = (int) ceil($end->diffInSeconds($start) / 3600);
+        $totalHours = (int) ceil($start->diffInSeconds($end) / 3600);
 
         if ($totalHours <= 0) {
             return 0.0;

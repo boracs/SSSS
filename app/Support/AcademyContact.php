@@ -9,6 +9,50 @@ namespace App\Support;
  */
 final class AcademyContact
 {
+    public static function whatsappDigits(): string
+    {
+        return preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', '')) ?: '';
+    }
+
+    /** URL base wa.me sin mensaje predefinido. */
+    public static function whatsappBaseUrl(): ?string
+    {
+        $digits = self::whatsappDigits();
+
+        return $digits !== '' ? 'https://wa.me/'.$digits : null;
+    }
+
+    /** Enlace wa.me opcional con mensaje codificado. */
+    public static function whatsappUrl(?string $message = null): ?string
+    {
+        $base = self::whatsappBaseUrl();
+        if ($base === null) {
+            return null;
+        }
+
+        if ($message === null || trim($message) === '') {
+            return $base;
+        }
+
+        return $base.'?text='.rawurlencode(trim($message));
+    }
+
+    /** wa.me para cualquier teléfono (reparadores, alumnos, etc.). */
+    public static function urlForPhone(string $phone, ?string $message = null): ?string
+    {
+        $digits = preg_replace('/\D+/', '', $phone);
+        if ($digits === '') {
+            return null;
+        }
+
+        $base = 'https://wa.me/'.$digits;
+        if ($message === null || trim($message) === '') {
+            return $base;
+        }
+
+        return $base.'?text='.rawurlencode(trim($message));
+    }
+
     public static function whatsappDisplay(): string
     {
         $display = trim((string) (config('services.academy.whatsapp_display') ?? ''));
@@ -16,7 +60,7 @@ final class AcademyContact
             return $display;
         }
 
-        $digits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', '')) ?: '';
+        $digits = self::whatsappDigits();
 
         if ($digits === '') {
             return '';

@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\UserBono;
 use App\Services\VipLoyaltyService;
 use App\Services\VipStudentPerformanceService;
+use App\Support\AcademyContact;
 use App\Support\BusinessDateTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -176,8 +177,6 @@ class VipController extends Controller
         $from = (string) $request->query('from', 'vips');
         $from = in_array($from, ['vips', 'users'], true) ? $from : 'vips';
 
-        $waDigits = preg_replace('/\D+/', '', (string) config('services.academy.whatsapp_number', ''));
-
         return Inertia::render('User/Dashboard/MyReservations', [
             'classRows' => $rows['classRows'],
             'rentalRows' => $rows['rentalRows'],
@@ -194,7 +193,7 @@ class VipController extends Controller
             ],
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'whatsappHelpUrl' => $waDigits !== '' ? 'https://wa.me/'.$waDigits : null,
+            'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
 

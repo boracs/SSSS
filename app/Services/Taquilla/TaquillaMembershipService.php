@@ -187,6 +187,130 @@ class TaquillaMembershipService
         ];
     }
 
+    /**
+     * Crea un PagoCuota pendiente listo para Stripe Checkout (sin justificante manual).
+     */
+    public function createPendingPaymentForCheckout(User $user, int $planId, ?string $referenciaExterna = null): PagoCuota
+    {
+        if (! $user->hasPhysicalLocker()) {
+            throw ValidationException::withMessages([
+                'plan_id' => ['Necesitas una taquilla física asignada para contratar o renovar un plan. Contacta con el club.'],
+            ]);
+        }
+
+        $plan = PlanTaquilla::query()->findOrFail($planId);
+        if (! (bool) $plan->activo) {
+            throw ValidationException::withMessages([
+                'plan_id' => ['Este plan está desactivado. Selecciona uno vigente.'],
+            ]);
+        }
+
+        $planCents = (int) $plan->precio_total_cents;
+
+        $ultimoPago = PagoCuota::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('periodo_fin')
+            ->first();
+
+        $now = now()->startOfDay();
+        $fechaInicio = $ultimoPago
+            ? Carbon::parse($ultimoPago->periodo_fin)->addDay()->startOfDay()
+            : $now;
+        $fechaFin = (clone $fechaInicio)->addDays((int) $plan->duracion_dias)->subDay()->endOfDay();
+
+        return DB::transaction(function () use ($user, $plan, $planCents, $fechaInicio, $fechaFin, $referenciaExterna, $planId): PagoCuota {
+            try {
+                $lockedDuplicate = PagoCuota::query()
+                    ->where('user_id', $user->id)
+                    ->where('id_plan_pagado', $plan->id)
+                    ->where('status', PagoCuota::STATUS_PENDING)
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($lockedDuplicate) {
+                    throw ValidationException::withMessages([
+                        'plan_id' => ['Ya existe un pago pendiente para este plan.'],
+                    ]);
+                }
+
+                $pago = PagoCuota::query()->create([
+                    'user_id'                 => $user->id,
+                    'id_plan_pagado'          => $plan->id,
+                    'monto_pagado_cents'      => $planCents,
+                    'status'                  => PagoCuota::STATUS_PENDING,
+                    'referencia_pago_externa' => $referenciaExterna,
+                    'periodo_inicio'          => $fechaInicio,
+                    'periodo_fin'             => $fechaFin,
+                    'fecha_pago'              => now(),
+                    'payment_method'          => 'card',
+                ]);
+
+                $this->syncUserLockerCacheFromConfirmedPayments($user);
+
+                return $pago;
+            } catch (ValidationException $e) {
+                throw $e;
+            } catch (Throwable $e) {
+                Log::error('taquilla.membership.create_pending_payment_failed', [
+                    'action'  => 'create_pending_payment_checkout',
+                    'user_id' => $user->id,
+                    'plan_id' => $planId,
+                    'error'   => $e->getMessage(),
+                ]);
+
+                throw $e;
+            }
+        });
+    }
+
+    /**
+     * Confirma un PagoCuota tras webhook Stripe (sin intervención admin).
+     */
+    public function confirmPaymentFromGateway(int $pagoId): bool
+    {
+        $pago = PagoCuota::query()->with('plan')->find($pagoId);
+        if ($pago === null) {
+            return false;
+        }
+
+        if (($pago->status ?? '') === PagoCuota::STATUS_CONFIRMED) {
+            return true;
+        }
+
+        $this->runTransactional(
+            action: 'confirm_payment_gateway',
+            actorUserId: (int) $pago->user_id,
+            payload: ['pago_id' => $pagoId],
+            callback: function () use ($pago): void {
+                $lockedPago = PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail();
+                $targetUser = User::query()->whereKey($lockedPago->user_id)->lockForUpdate()->firstOrFail();
+
+                if (($lockedPago->status ?? '') === PagoCuota::STATUS_CONFIRMED) {
+                    return;
+                }
+
+                $lockedPago->update([
+                    'status'         => PagoCuota::STATUS_CONFIRMED,
+                    'payment_method' => 'card',
+                    'reviewed_at'    => now(),
+                ]);
+
+                $this->syncUserLockerCacheFromConfirmedPayments($targetUser);
+            },
+        );
+
+        $pagoConfirmado = PagoCuota::query()->with('plan')->findOrFail($pagoId);
+        $usuario = User::query()->findOrFail($pagoConfirmado->user_id);
+
+        event(new PagoTaquillaConfirmado(
+            pago: $pagoConfirmado,
+            usuario: $usuario,
+            lockerNumber: $usuario->numeroTaquilla !== null ? (int) $usuario->numeroTaquilla : null,
+        ));
+
+        return true;
+    }
+
     public function registerPayment(User $user, RegistrarPagoTaquillaRequest $request): void
     {
         if (! $user->hasPhysicalLocker()) {

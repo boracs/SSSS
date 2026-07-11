@@ -1,0 +1,78 @@
+
+
+
+
+_______________CHAT BOT CON WhatsApp ___________mejor opcion de momento por seguridad. 
+
+
+[Cliente en WhatsApp]
+       │
+       ▼ (Webhook HTTP POST)
+[Laravel: WhatsAppWebhookController] ──► (Guarda log rápido en DB)
+       │
+       ▼ (Despacha Job a la Cola)
+[Job: ProcessWhatsAppMessage]
+       │
+       ├──► Opción A: IA procesa (FirestoreService / LangChain / Assistant API)
+       │              │
+       │              ▼ (Job encolado de salida)
+       │        [SendWhatsAppReply] ──► [Cliente en WhatsApp]
+       │
+       └──► Opción B: Caso Complejo (Crea Alerta en DB)
+                      │
+                      ▼
+                [Panel de Soporte Humano (React 19)] ──► [Admin Responde]
+
+
+
+
+
+
+
+
+
+_______________FIRESTORE ____________no lo uso de momento
+
+
+[ Cambios en DB Local ] 
+       │
+       ▼
+[ Laravel Observer ] ──( Despacha Job )──> [ Cola de Trabajo (Queue) ]
+                                                   │
+                                                   ▼
+                                         [ FirestoreService ]
+                                                   │
+                                     ┌─────────────┴─────────────┐
+                                     ▼                           ▼
+                              (Conexión Exitosa)         (Fallo de API/Red)
+                                     │                           │
+                            Sincroniza Firestore         Registra Error en Log
+                                                      Marca "Sincronización Pendiente"
+                                                      Termina Job sin Caída del Sistema
+
+
+
+
+_______________RESERVAS - STRIPE  ____________
+
+
+
+[ Cambios en DB Local ] 
+       │
+       ▼
+[ Laravel Observer ] ──( Despacha Job )──> [ Cola de Trabajo (Queue) ]
+                                                   │
+                                                   ▼
+                                         [ FirestoreService ]
+                                                   │
+                                     ┌─────────────┴─────────────┐
+                                     ▼                           ▼
+                              (Conexión Exitosa)         (Fallo de API/Red)
+                                     │                           │
+                            Sincroniza Firestore         Registra Error en Log
+                                                      Marca "Sincronización Pendiente"
+                                                      Termina Job sin Caída del Sistema
+
+
+
+ SIN TERMINAR 
