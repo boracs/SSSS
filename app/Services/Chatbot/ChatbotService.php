@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services\Chatbot;
 
 use App\DTOs\Chatbot\ChatbotReplyDto;
+use App\Support\AcademyContact;
+use App\Support\ChatbotQueryNormalizer;
 
 /**
  * FAQ para alumnos y clientes de la escuela (surf, clases, bonos, alquileres).
@@ -13,6 +15,28 @@ use App\DTOs\Chatbot\ChatbotReplyDto;
 final class ChatbotService
 {
     private const CONTEXT_FALLBACK = 'fallback';
+
+    /** Patrones con dato en vivo (email/precios) — resueltos antes del array estático de PATTERNS. */
+    private const EMAIL_PATTERN = '/\b(email|correo|e-?mail)\b/u';
+
+    private const BONO_PRICE_PATTERN = '/\b(precio|precios|cuant\w*|coste|valor|valen|vale|tarifa|tarifas)\b.*\b(bono|bonos|pack|packs)\b|\b(bono|bonos|pack|packs)\b.*\b(precio|precios|cuant\w*|coste|valor|valen|vale|tarifa|tarifas)\b|\b(bono|bonos)\b.*\b(5|cinco|10|diez)\b.*\bclases?\b/u';
+
+    private const LOCKER_PRICE_PATTERN = '/\b(precio|precios|cuanto|cuestan?|coste|valor|valen|vale|tarifa|tarifas)\b.*\b(taquilla|taquillas)\b|\b(taquilla|taquillas)\b.*\b(precio|precios|cuanto|cuestan?|coste|valor|valen|vale|tarifa|tarifas)\b/u';
+
+    private const GREETING_PATTERN = '/^(hola|buenas|hey|saludos|que\s+tal|help|ayuda|buenos\s+dias|buenas\s+tardes)\b/u';
+
+    private const CLASS_PRICE_PATTERN = '/\b(precio|precios|cuant\w*|coste|valor|valen|vale|tarifa|tarifas|euros?)\b.*\b(clase|clases|surf|particular)\b|\b(clase|clases|particular)\b.*\b(precio|precios|cuant\w*|cuestan?|suelt|suelta|euros?)\b/u';
+
+    private const OWN_BOARD_PATTERN = '/\b(traer|llevar|usar)\b.*\b(mi|propia|personal)\b.*\b(tabla|surfboard)\b|\b(mi|propia)\s+tabla\b|\b(tabla)\b.*\b(propia|personal)\b.*\b(clase|iniciacion|principiante)\b/u';
+
+    private const LOGISTICS_PATTERN = '/\b(horario|hora\s+de\s+apertura|como\s+llegar|direccion|ubicacion|donde\s+estais|donde\s+esta|punto\s+de\s+encuentro|aparcar|parking|instagram)\b/u';
+
+    public function __construct(
+        private readonly S4BusinessContextService $businessContext,
+        private readonly ChatbotPageCatalogService $pageCatalog,
+        private readonly ChatbotArticleCatalogService $articleCatalog,
+        private readonly ChatbotFaqCatalogService $faqCatalog,
+    ) {}
 
     /**
      * @var list<array{pattern: string, context: string, response: string}>
@@ -70,9 +94,10 @@ final class ChatbotService
         [
             'pattern' => '/\b(particular|clase\s+particular|privad|1\s+a\s+1|solo\s+para\s+mi)\b/u',
             'context' => 'classes.private',
-            'response' => 'La **clase particular** es para ti (o tu grupo cerrado) con monitor dedicado. '
-                .'Resérvala desde **Academia** o pídela por **WhatsApp** con fecha y hora preferidas. '
-                .'Si pagas con **bono**, una particular cuenta como **2 clases** del pack.',
+            'response' => 'La **clase particular** es para ti (o tu grupo cerrado) con monitor dedicado — **1,5 h**, tabla y neopreno incluidos.'."\n\n"
+                .'**Precio según personas:** 1 → **80€** · 2 → **55€**/pers · 3 → **40€**/pers · 4–6 → **30€**/pers.'."\n\n"
+                .'Resérvala desde **Academia** o [**Clases de surf**](/servicios/surf). '
+                .'Si pagas con **bono grupal**, una particular cuenta como **2 clases** del pack.',
         ],
         [
             'pattern' => '/\b(grupo|grupos?)\s*(de\s*)?(7|siete|8|ocho|9|nueve|10|diez|11|once|12|doce)\b|\b(7|siete)\s*(personas|amigos|gente)\b/u',
@@ -167,6 +192,13 @@ final class ChatbotService
 
         // ── Alquiler tablas ─────────────────────────────────────────────────
         [
+            'pattern' => '/\b(alquil|tabla|tablas)\b.*\b(precio|precios|cuesta|cuanto|€|euros|tarifa)\b|\b(cuanto\s+cuesta)\b.*\b(alquil|tabla)\b|\b(donde)\b.*\b(alquil\w*|tabla|tablas)\b/u',
+            'context' => 'rental.pricing',
+            'response' => 'El precio del alquiler depende de **cuánto tiempo** (horas, día, varios días…) y del **tipo de tabla**. '
+                .'En [**Alquiler de tablas**](/tablas-alquiler), al elegir fechas ves el **precio total** y la **señal (30%)** antes de pagar — **sin sorpresas**.'."\n\n"
+                .'**Dónde alquilar:** menú **Alquiler de tablas** en la web → eliges modelo y fechas → **recoges y devuelves en el club** (Zurriola, Donostia).',
+        ],
+        [
             'pattern' => '/\b(alquil|rent)\w*\b.*\b(tabla|tablas|surfboard)\b|\b(tabla|tablas)\b.*\b(alquil|como\s+alquilo)\w*\b|\b(quiero\s+una\s+tabla)\b/u',
             'context' => 'rental.howto',
             'response' => '**Para alquilar una tabla:**'."\n\n"
@@ -175,13 +207,6 @@ final class ChatbotService
                 .'3. Marca **recogida y devolución** en el calendario.'."\n"
                 .'4. Paga la **señal** online y listo.'."\n\n"
                 .'Recoges en el **club** en el horario acordado. Si la fecha que quieres está ocupada, prueba **otro día** o **otra tabla**.',
-        ],
-        [
-            'pattern' => '/\b(alquil|tabla|tablas)\b.*\b(precio|precios|cuesta|cuanto|€|euros|tarifa)\b|\b(cuanto\s+cuesta)\b.*\b(alquil|tabla)\b/u',
-            'context' => 'rental.pricing',
-            'response' => 'El precio depende de **cuánto tiempo** alquilas (horas, día, varios días…) y del **tipo de tabla**. '
-                .'En la web, al elegir fechas, te sale el **precio total** y la **señal** antes de pagar — **sin sorpresas**. '
-                .'Cada tabla tiene su tarifa en la ficha del **Alquiler de tablas**.',
         ],
         [
             'pattern' => '/\b(alquil|tabla)\b.*\b(disponib|libre|ocupad|hay)\w*\b|\b(hay\s+tabla|esta\s+libre)\b/u',
@@ -253,15 +278,16 @@ final class ChatbotService
         .'- **¿Cómo reservo una clase?**'."\n"
         .'- **¿Qué pasa si cancelo?**'."\n"
         .'- **¿Cuántas clases gasta mi bono?**'."\n"
-        .'- **¿Cómo alquilo una tabla?**'."\n\n"
+        .'- **¿Cómo alquilo una tabla?**'."\n"
+        .'- **¿Hasta cuándo tengo taquilla?** (logueado)'."\n\n"
         .'Para tu caso personal (tu reserva, tu hora), entra en **Mis reservas** o escríbenos por **WhatsApp** — te atiende el equipo en persona.';
 
-    public function reply(string $query): ChatbotReplyDto
+    public function reply(string $query, ?string $authenticatedDisplayName = null, ?int $authenticatedUserId = null): ChatbotReplyDto
     {
-        return $this->resolveQuery($query);
+        return $this->resolveQuery($query, $authenticatedDisplayName, $authenticatedUserId);
     }
 
-    public function resolveQuery(string $query): ChatbotReplyDto
+    public function resolveQuery(string $query, ?string $authenticatedDisplayName = null, ?int $authenticatedUserId = null): ChatbotReplyDto
     {
         $normalized = $this->normalize($query);
 
@@ -273,26 +299,136 @@ final class ChatbotService
             );
         }
 
+        if ($this->isPureGreeting($normalized)) {
+            return new ChatbotReplyDto($this->greetingText($authenticatedDisplayName), 'general.greeting');
+        }
+
+        if (preg_match(self::EMAIL_PATTERN, $normalized) === 1) {
+            return $this->emailReply();
+        }
+
+        if (preg_match(self::BONO_PRICE_PATTERN, $normalized) === 1) {
+            return new ChatbotReplyDto($this->businessContext->surfPricingFaqText(), 'classes.pricing');
+        }
+
+        if (preg_match(self::LOCKER_PRICE_PATTERN, $normalized) === 1) {
+            return new ChatbotReplyDto($this->businessContext->lockerPlanPricesFaqText(), 'locker.pricing');
+        }
+
+        if (preg_match(self::CLASS_PRICE_PATTERN, $normalized) === 1
+            && ! $this->isBonoOrLockerPriceQuery($normalized)) {
+            return new ChatbotReplyDto($this->businessContext->surfPricingFaqText(), 'classes.pricing');
+        }
+
+        if (preg_match(self::LOGISTICS_PATTERN, $normalized) === 1) {
+            return new ChatbotReplyDto($this->businessContext->logisticsFaqText(), 'logistics.general');
+        }
+
+        if (preg_match(self::OWN_BOARD_PATTERN, $normalized) === 1) {
+            return new ChatbotReplyDto($this->ownBoardFaqText(), 'classes.own_board');
+        }
+
+        $faqReply = $this->faqCatalog->replyForQuery($query, $authenticatedUserId);
+        if ($faqReply !== null) {
+            return $faqReply;
+        }
+
+        $articleReply = $this->articleCatalog->faqReplyForQuery($normalized);
+        if ($articleReply !== null) {
+            return new ChatbotReplyDto($articleReply, 'taller.articles');
+        }
+
         foreach (self::PATTERNS as $entry) {
             if (preg_match($entry['pattern'], $normalized) === 1) {
                 return new ChatbotReplyDto($entry['response'], $entry['context']);
             }
         }
 
+        $pageReply = $this->pageCatalog->faqReplyForQuery($normalized);
+        if ($pageReply !== null) {
+            return new ChatbotReplyDto($pageReply, 'site.pages');
+        }
+
         return new ChatbotReplyDto(self::DEFAULT_RESPONSE, self::CONTEXT_FALLBACK);
+    }
+
+    private function isPureGreeting(string $normalized): bool
+    {
+        if (! preg_match(self::GREETING_PATTERN, $normalized)) {
+            return false;
+        }
+
+        $remainder = trim((string) preg_replace(
+            '/^(hola|buenas|hey|saludos|que\s+tal|help|ayuda|buenos\s+dias|buenas\s+tardes)\b[\s,!?.]*/u',
+            '',
+            $normalized,
+        ));
+
+        if ($remainder === '') {
+            return true;
+        }
+
+        return preg_match('/^(que\s+tal|como\s+estas)[\s!?.]*$/u', $remainder) === 1;
+    }
+
+    private function isBonoOrLockerPriceQuery(string $normalized): bool
+    {
+        $asksPrice = preg_match('/\b(precio|precios|cuant\w*|coste|valor|tarifa|euros?|€)\b/u', $normalized) === 1;
+
+        if (! $asksPrice) {
+            return false;
+        }
+
+        if (preg_match('/\b(sin\s+bono|no\s+quiero\s+bono|particular\s+sin)\b/u', $normalized) === 1) {
+            return false;
+        }
+
+        return preg_match('/\b(bono|bonos|pack|packs|taquilla|taquillas)\b/u', $normalized) === 1;
+    }
+
+    private function ownBoardFaqText(): string
+    {
+        return 'En **iniciación** lo habitual es usar las **tablas de la escuela** (grandes, estables, tipo soft/foam) — están pensadas para aprender con **seguridad**.'."\n\n"
+            .'Una **6\'2"** suele ser **demasiado pequeña y técnica** para una primera clase: cuesta remar, se hunde la punta y te frena el progreso.'."\n\n"
+            .'**¿Puedes traer la tuya?** Coméntalo al **reservar** o por **WhatsApp** antes de la sesión. En **clase particular** o si ya tienes nivel, el monitor puede valorarlo caso a caso.'."\n\n"
+            .'Más sobre elegir tabla: [**¿Cuál es la tabla ideal para aprender?**](/taller/cual-es-la-tabla-de-surf-ideal-para-aprender).';
+    }
+
+    private function greetingText(?string $displayName): string
+    {
+        if ($displayName !== null && $displayName !== '') {
+            return sprintf(
+                '¡Hola, **%s**! 👋 Soy **Maider**, de **San Sebastian Surf School**. '
+                .'Me alegra verte por aquí. Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del día a día. '
+                .'¿Qué necesitas?',
+                $displayName,
+            );
+        }
+
+        return '¡Hola! 👋 Soy **Maider**, de **San Sebastian Surf School**. '
+            .'Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del día a día. '
+            .'¿Qué necesitas?';
+    }
+
+    private function emailReply(): ChatbotReplyDto
+    {
+        $email = AcademyContact::contactEmail();
+
+        if ($email === '') {
+            return new ChatbotReplyDto(
+                'Lo más rápido es escribirnos por **WhatsApp** (botón verde) — ahí te atiende el equipo directamente.',
+                'contact.email',
+            );
+        }
+
+        return new ChatbotReplyDto(
+            sprintf('Puedes escribirnos a **%s**. También respondemos rápido por **WhatsApp** si lo prefieres.', $email),
+            'contact.email',
+        );
     }
 
     private function normalize(string $query): string
     {
-        $text = mb_strtolower(trim($query));
-        if ($text === '') {
-            return '';
-        }
-
-        $replacements = [
-            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ü' => 'u', 'ñ' => 'n',
-        ];
-
-        return strtr($text, $replacements);
+        return ChatbotQueryNormalizer::forMatching($query);
     }
 }

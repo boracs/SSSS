@@ -143,6 +143,28 @@ function formatCountdown(createdAt) {
     return `Expira en ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function ReservationReceiptLink({ row, darkUi = false }) {
+    const isPaid = row?.payment_status === "confirmed" || row?.status === "confirmed";
+    if (!row?.receipt_url || !isPaid) {
+        return null;
+    }
+
+    return (
+        <a
+            href={row.receipt_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`w-full rounded-lg px-4 py-2 text-center text-sm font-semibold sm:w-auto ${
+                darkUi
+                    ? "bg-emerald-900/40 text-emerald-200 ring-1 ring-emerald-500/30 hover:bg-emerald-900/60"
+                    : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
+            }`}
+        >
+            Ver recibo de pago
+        </a>
+    );
+}
+
 /** Señal/depósito y precio total (clases y alquileres), desde buildReservationRows. */
 function ReservationPriceLines({ row, dark = false }) {
     const total = row.total_price != null && Number(row.total_price) > 0 ? Number(row.total_price) : null;
@@ -891,6 +913,7 @@ function MyReservationsView() {
                                                                 pagando 30EUR.
                                                             </span>
                                                         ) : null}
+                                                        <ReservationReceiptLink row={row} darkUi={darkUi} />
                                                     </div>
                                                 ) : null}
                                             </article>
@@ -967,6 +990,9 @@ function MyReservationsView() {
                                                                 gestionar por el club.
                                                             </p>
                                                         ) : null}
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        <ReservationReceiptLink row={row} darkUi={darkUi} />
                                                     </div>
                                                     <span
                                                         className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${badge.cls}`}

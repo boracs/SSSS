@@ -1,0 +1,37 @@
+---
+description: Chatbot S4 — FAQ local → Gemini acotado → escalación humana
+globs: app/Services/Chatbot/**,app/Actions/Chatbot/**,app/Jobs/Chatbot/**,app/Http/Controllers/ChatbotController.php,app/Http/Controllers/Admin/ChatbotInteractionController.php,app/Http/Requests/Chatbot/**,app/DTOs/Chatbot/**,app/Models/ChatbotInteraction.php,app/Enums/ChatbotInteractionStatus.php,resources/js/components/Chatbot.jsx,resources/js/Pages/Admin/Chatbot/**,resources/js/lib/chatbotApi.js,docs/chatbot/**
+alwaysApply: false
+---
+
+# Chatbot S4
+
+Leer antes de cambiar: `docs/faq-architecture.md`, `docs/chatbot/informe-logica-negocio-s4.md`.
+
+## Embudo (no reemplazar por un solo LLM)
+
+`ChatbotPromptGuard` → `ChatbotService` (regex, gratis) → si `fallback`: `GoogleAIService` + `S4BusinessContextService` → `[TRIGGER_FALLBACK]` o 2º fallo → `requires_human` + `S4-XXXXXX`.
+
+Extender `ChatbotService` / `S4BusinessContextService`; no reescribir `ChatbotAgentService` ni hardcodear precios.
+
+## Fuentes de verdad
+
+| Dato | Fuente |
+|------|--------|
+| Bonos VIP | `pack_bonos` activos (live en `S4BusinessContextService`) — valores actuales = **demo hasta confirmación cliente** |
+| Taquillas | `planes_taquilla` activos (live) — idem **demo** |
+| Artículos Taller | `articles` + `ChatbotArticleCatalogService` |
+| Páginas web (Nosotros, reparaciones…) | `config/chatbot_pages.php` + `ChatbotPageCatalogService` |
+| Reparaciones Edy/Willy | `config/services.php` → `repair.*` |
+| Señal/cierre/cancelación clase | `config/services.php` → `academy.*` |
+| Alquiler 30 % señal, 7 días caducidad | `S4BusinessContextService` (alineado con `BookingService`) |
+| WhatsApp | `AcademyContact` / `.env` |
+
+## Reglas clave
+
+- FAQ: patrones en `ChatbotService::PATTERNS`; sin BD salvo servicio compartido futuro.
+- Gemini: `GEMINI_API_KEY`; sin grounding web; ventana 8 turnos a API, 24 en MySQL.
+- Escalación: `DB::transaction()` + `lockForUpdate()` en `ChatbotInteraction`.
+- Entrada: `ChatbotController` → `SanitizedChatbotRequest` → `ProcessChatbotQueryAction` → JSON. Cero lógica en controller/JSX.
+- Tras editar bonos/planes admin: `S4BusinessContextService::forget()`.
+- Chatbot **no** usa Firestore; memoria = `localStorage` (anónimos) + `chatbot_interactions` (logueados).

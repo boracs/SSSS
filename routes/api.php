@@ -18,9 +18,13 @@ use App\Http\Controllers\PlanesTaquillasController;
 
 
 */
-//CHAAAT TBOOOTTTT
-Route::middleware('throttle:40,1')->group(function () {
+// Chatbot FAQ — agente local con guard anti-inyección y derivación a humano.
+Route::middleware('throttle:chatbot')->group(function () {
     Route::post('/chatbot/message', [ChatbotController::class, 'handleMessage']);
+    Route::get('/chatbot/history', [ChatbotController::class, 'history']);
+    Route::post('/chatbot/contact-phone', [ChatbotController::class, 'registerContactPhone']);
+});
+Route::middleware('throttle:40,1')->group(function () {
     Route::post('/chatbot/extract-artifact', [ChatbotController::class, 'extractAndSaveArtifact']);
     Route::post('/chatbot/extract-and-save-artifact', [ChatbotController::class, 'extractAndSaveArtifact']);
 });

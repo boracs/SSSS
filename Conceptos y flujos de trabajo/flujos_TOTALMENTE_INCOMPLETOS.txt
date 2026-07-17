@@ -1,6 +1,152 @@
 
 
 
+-------------------ticket bai-----------------
+
+PROCESO PAUTAS: 
+
+
+Cobro confirmado    ------------->    Evento / Job tras webhook (no en el HTTP del webhook)
+Generar factura   --------------->    Servicio TicketBaiInvoiceService + tabla invoices
+Enviar a TicketBAI--------------->    Job en cola (reintentos, idempotencia)
+Guardar QR + TBaiId-------------->    Misma transacción o tras respuesta OK
+Mostrar al cliente -------------->    “Mis reservas” / email / descarga PDF
+
+
+
+
+
+---------------ACTUAL------------SI TIVCKET BAI AUN ----- 13/7
+
+
+flowchart TD
+    A[Mensaje usuario] --> B[FAQ local regex + artículos + páginas]
+    B -->|encuentra respuesta| C[Responde SIN Gemini]
+    B -->|context = fallback| D[Gemini + contexto S4]
+    D -->|respuesta segura| E[Responde con IA]
+    D -->|falla o TRIGGER_FALLBACK| F["No tengo respuesta 100% segura..."]
+    F -->|2º fallo seguido| G[Escalación WhatsApp S4-XXXXXX]
+
+
+
+
+
+
+
+
+
+
+
+--------------------------ESQUEMA COMPLETO PARA REALZIAR--------------------------------------------------
+
+[ USUARIO EN INTERFAZ WEB ]
+           │
+           ├─► ¿Estado? ──► ANÓNIMO ──► Carga historial desde LocalStorage
+           └─► ¿Estado? ──► LOGUEADO ─► Carga lazy prop desde MySQL (chatbot_interactions)
+           │
+           ▼
+[ INGRESO DE PREGUNTA (Input text max 500 chars) ] ──► Captura reactiva (React 19)
+           │
+           ▼
+[ CAPA 1: MIDDLEWARE LARAVEL (HTTP Request) ]
+           │
+           ├──► Rate Limiting Strict (Throttle: 5 req/min por IP/User) ──[Superado]──► 429 Too Many Requests
+           │
+           ▼
+[ CAPA 2: VALIDACIÓN RIGIDA (SanitizedChatbotRequest) ]
+           │
+           ├──► ¿Contiene patrones de riesgo o palabras prohibidas? 
+           │    (ej: "ignore", "drop table", "override rules")
+           │    │
+           │    └─── [SÍ (Anomalía)] ──► Intercepción Inmediata (No toca IA)
+           │                             │
+           │                             ▼
+           │                       [ BARRERA DE CONTROL: EMERGENCIA ]
+           │                       - Cambia estado a: REQUIRES_HUMAN
+           │                       - Persiste alerta en MySQL con contexto/IP
+           │                       - Retorna: "Consulta enviada a revisión manual."
+           │                       - Renderiza en UI: Botón Directo a WhatsApp (wa.me)
+           │
+           └─── [NO (Mensaje Seguro)]
+                │
+                ▼
+[ CAPA 3: CAPA DE NEGOCIO (ChatbotAgentService) ]
+           │
+           ├───► Inyección del Prompt Maestro Indexado (FAQ Estático S4 Rules)
+           ├───► Formateo del Historial JSON de la conversación
+           │
+           ▼
+[ GOOGLE AI SERVICE (Gemini API HTTP client) ] ──► Procesamiento NLU
+           │
+           ▼
+[ EVALUACIÓN POST-RESPUESTA (ChatbotAgentService) ]
+           │
+           ├─── ¿La respuesta cumple el Guardrail de Certeza Absoluta?
+           │    │
+           │    ├─── [SÍ] ──► Retorna respuesta limpia en texto plano (Zero XSS)
+           │    │             │
+           │    │             ▼
+           │    │       [ FLUJO DE PERSISTENCIA EXITOSO ]
+           │    │       - Logueado: Job encolado actualiza JSON en `chatbot_interactions`
+           │    │       - Anónimo: Evento React actualiza LocalStorage del navegador
+           │    │
+           │    └─── [NO / ALUCINACIÓN DETECTADA] ("No estoy seguro...", "Lo siento, no tengo esa información")
+           │          │
+           │          ▼
+           │    [ PROCESO DE DERIVACIÓN SÍNCRONO ]
+           │    1. Cambia estado de la interacción a `REQUIRES_HUMAN` en MySQL.
+           │    2. Congela temporalmente el bot para esta sesión/usuario.
+           │    3. Genera un ID de Caso único en la Base de Datos.
+           │    4. Despacha evento interno en el servidor.
+           │          │
+           │          ▼
+[ RETORNO AL FRONTEND (Inertia Response) ]
+           │
+           ├───► Notificación al componente React 19
+           ├───► Cambio de UI dinámico en el widget del Chatbot
+           │
+           ▼
+[ WIDGET ACTUALIZADO / INTERFAZ DE ADMINISTRACIÓN ]
+           │
+           ├───► CLIENTE VISTA: Muestra mensaje de bloqueo + Botón Flotante con enlace pre-rellenado:
+           │     `wa.me/34xxxxxxxxx?text=Hola+mi+caso+es+#ID_CASO...`[cite: 4]
+           │
+           └───► ADMIN VISTA (Panel /admin/chatbot):
+                 - Visualiza el flujo JSON completo del chat desde MySQL.
+                 - Filtra por estado `REQUIRES_HUMAN`.
+                 - Permite marcar el caso como `RESOLVED` para reactivar al Agente.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------PASOS RPEVISO DE DSIEÑO SIN FINALIZAR------------------------------------------------------
+
+
+
+
 
 _______________CHAT BOT CON WhatsApp ___________mejor opcion de momento por seguridad. 
 
@@ -24,8 +170,22 @@ _______________CHAT BOT CON WhatsApp ___________mejor opcion de momento por segu
                 [Panel de Soporte Humano (React 19)] ──► [Admin Responde]
 
 
+______________________SWEGURIDAD ____________________________
 
 
+[Usuario escribe en Web] 
+         │
+         ▼
+[Laravel Request: Rate Limiting + Sanitización] (Bloquea spam y scripts)
+         │
+         ▼
+[ChatbotAgentService: Inyección de Reglas S4] (Fuerza a la IA a usar solo tu FAQ estático)
+         │
+         ▼
+[GoogleAIService -> Gemini]
+
+
+__________________________________________________________________________
 
 
 

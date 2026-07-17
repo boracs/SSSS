@@ -21,6 +21,8 @@ class PagoCuotaQueueResource extends JsonResource
             'plan' => $this->plan?->nombre,
             'status' => $this->status,
             'payment_method' => $this->payment_method,
+            'is_stripe_card' => ($this->payment_method ?? '') === 'card',
+            'referencia_pago_externa' => $this->referencia_pago_externa,
             'is_checked' => (bool) ($this->is_checked ?? false),
             'admin_notes' => $this->admin_notes,
             'amount' => $this->monto_pagado,

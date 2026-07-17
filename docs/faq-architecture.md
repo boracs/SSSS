@@ -97,11 +97,16 @@ FormRequest → InitiatePaymentDto → InitiatePaymentAction
     → Redirect Checkout URL
 ```
 
-Ejemplo **FAQ chatbot** (sin BD):
+Ejemplo **chatbot híbrido** (FAQ local gratis → Gemini acotado solo si no entiende):
 
 ```
-ChatbotMessageRequest → ChatbotQueryDto → ProcessChatbotQueryAction
-    → ChatbotService::resolveQuery() → ChatbotReplyDto
+SanitizedChatbotRequest → ChatbotInteractionQueryDto → ProcessChatbotQueryAction
+    → ChatbotAgentService::processInteraction()
+        → ChatbotPromptGuard (anti-inyección, corta antes de tocar nada más)
+        → ChatbotService::resolveQuery() (regex, gratis, primera opción)
+        → [solo si fallback] GoogleAIService + S4BusinessContextService (Gemini acotado)
+        → contador de fallos consecutivos → ChatbotInteraction (MySQL) si escala a humano
+    → ChatbotAgentReplyDto
 ```
 
 **Regla:** el **Controller** solo orquesta; cero lógica de negocio intermedia.
@@ -116,7 +121,7 @@ ChatbotMessageRequest → ChatbotQueryDto → ProcessChatbotQueryAction
 
 ### ¿Qué ocurre en React si Firestore entra en degradación suave?
 
-**Estado actual del chatbot:** **`ChatbotService`** es **100 % local** (regex, sin Firestore/Gemini). En frontend, **`Chatbot.jsx`** persiste en **`localStorage`** y llama **`POST /api/chatbot/message`**.
+**Estado actual del chatbot:** **`ChatbotService`** (regex) resuelve gratis la mayoría de preguntas comunes. Solo cuando devuelve `fallback`, **`ChatbotAgentService`** consulta a **Gemini** (`GoogleAIService`) acotado al contexto de **`S4BusinessContextService`** (precios en vivo de `pack_bonos`/`planes_taquilla` + políticas fijas). Si Gemini no está configurado, falla, o responde `[TRIGGER_FALLBACK]`, se degrada de forma controlada al mismo contador de fallos consecutivos que ya existía — **nunca** se traduce en un 500 al cliente. Ver `docs/chatbot/informe-logica-negocio-s4.md` para el detalle de qué contexto de negocio se inyecta y de dónde sale cada dato. Firestore sigue sin usarse en el chatbot.
 
 Si reactivas **`FirestoreService`** para LTP:
 
@@ -137,7 +142,7 @@ Si reactivas **`FirestoreService`** para LTP:
 
 ### ¿Qué controladores están prohibidos de contener lógica de negocio?
 
-Todos. Especialmente **`ChatbotController`**: solo **`ChatbotMessageRequest` → ProcessChatbotQueryAction → JSON**. Validación en **FormRequest**, anti-spoofing en **`authorize()`**, patrones en **`ChatbotService`**.
+Todos. Especialmente **`ChatbotController`**: solo **`SanitizedChatbotRequest` → ProcessChatbotQueryAction → JSON**. Sanitización/límite de 500 caracteres en el **FormRequest**, patrones anti-inyección en **`ChatbotPromptGuard`**, orquestación regex+Gemini en **`ChatbotAgentService`**.
 
 ---
 

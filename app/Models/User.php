@@ -252,6 +252,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Subastas S4: acceso para socios VIP o con taquilla asignada.
+     */
+    public function canAccessAuctions(): bool
+    {
+        return (bool) $this->is_vip || $this->hasActiveLocker();
+    }
+
+    /**
      * Verificación estricta para semáforos visuales (no bloqueante).
      * true => tiene pago confirmado y fecha vigente.
      */

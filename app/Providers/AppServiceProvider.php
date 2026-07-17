@@ -2,12 +2,16 @@
 
 namespace App\Providers;
 
+use App\Contracts\Invoicing\FiscalInvoiceIssuerInterface;
+use App\Events\Payments\PaymentConfirmed;
 use App\Events\LessonRequestedEvent;
 use App\Events\LessonProofUploadedEvent;
 use App\Events\PrivateLessonRequestedEvent;
 use App\Events\SoloStudentLocked;
 use App\Events\Taquilla\PagoTaquillaConfirmado;
 use App\Events\Taquilla\PagoTaquillaRechazado;
+use App\Listeners\Payments\DispatchB2BRouterInvoiceListener;
+use App\Listeners\Payments\DispatchStripeReceiptCaptureListener;
 use App\Listeners\SendLessonRequestedMailListener;
 use App\Listeners\NotifyAdminLessonProofUploadedListener;
 use App\Listeners\SendPrivateLessonRequestedMailListener;
@@ -46,6 +50,18 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\App\Services\FirestoreService::class, function ($app) {
             return new \App\Services\FirestoreService($app->make(FirestoreClient::class));
         });
+
+        // Facturación fiscal (TicketBAI): driver configurable vía INVOICING_DRIVER.
+        $this->app->bind(FiscalInvoiceIssuerInterface::class, function ($app) {
+            $driver = config('invoicing.driver', 'b2brouter');
+
+            return match ($driver) {
+                'b2brouter' => new \App\Services\Invoicing\B2BRouterFiscalInvoiceIssuer(
+                    $app->make(\App\Services\Invoicing\B2BRouterClient::class)
+                ),
+                default => throw new \RuntimeException("Driver de facturación no soportado: {$driver}"),
+            };
+        });
     }
 
     /**
@@ -60,6 +76,8 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(PrivateLessonRequestedEvent::class, SendPrivateLessonRequestedMailListener::class);
         Event::listen(PagoTaquillaConfirmado::class, EnviarCorreoConfirmacionTaquilla::class);
         Event::listen(PagoTaquillaRechazado::class, EnviarCorreoRechazoTaquilla::class);
+        Event::listen(PaymentConfirmed::class, DispatchStripeReceiptCaptureListener::class);
+        Event::listen(PaymentConfirmed::class, DispatchB2BRouterInvoiceListener::class);
 
         Vite::prefetch(concurrency: 3);
 

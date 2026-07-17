@@ -20,6 +20,8 @@ use App\Http\Resources\PagoCuotaQueueResource;
 use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
 use App\Models\User;
+use App\Services\Chatbot\S4BusinessContextService;
+use App\Services\Payments\PaymentReceiptAccessService;
 use App\Support\MoneyCents;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
@@ -35,6 +37,8 @@ class TaquillaMembershipService
 {
     public function __construct(
         private readonly LockerPaymentIndexBuilder $lockerPaymentIndex,
+        private readonly S4BusinessContextService $chatbotBusinessContext,
+        private readonly PaymentReceiptAccessService $paymentReceipts,
     ) {}
 
     /**
@@ -147,7 +151,25 @@ class TaquillaMembershipService
         $planes = $this->buildPublicPlans();
         $ultimoPago = $user->pagosCuotas->sortByDesc('periodo_fin')->first();
 
-        $historialPagos = $user->pagosCuotas->map(function (PagoCuota $pago): array {
+        $historialPagos = $user->pagosCuotas;
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
+            $historialPagos
+                ->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])
+                ->all(),
+        );
+
+        $historialPagos = $historialPagos->map(function (PagoCuota $pago) use ($receiptMap): array {
+            $manualProofUrl = ! empty($pago->payment_proof_path)
+                ? route('taquillas.pago.proof', $pago->id)
+                : null;
+            $proof = $this->paymentReceipts->proofFieldsForPayable(
+                PagoCuota::class,
+                (int) $pago->id,
+                ! empty($pago->payment_proof_path),
+                $manualProofUrl,
+                $receiptMap,
+            );
+
             return [
                 'id' => $pago->id,
                 'status' => $pago->status ?? PagoCuota::STATUS_PENDING,
@@ -157,9 +179,8 @@ class TaquillaMembershipService
                 'is_checked' => (bool) ($pago->is_checked ?? false),
                 'periodo_inicio' => optional($pago->periodo_inicio)->toDateString(),
                 'periodo_fin' => optional($pago->periodo_fin)->toDateString(),
-                'proof_url' => ! empty($pago->payment_proof_path)
-                    ? route('taquillas.pago.proof', $pago->id)
-                    : null,
+                'proof_url' => $proof['proof_url'],
+                'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
                 'plan' => [
                     'id' => $pago->plan->id ?? null,
                     'nombre' => $pago->plan->nombre ?? null,
@@ -218,7 +239,11 @@ class TaquillaMembershipService
             : $now;
         $fechaFin = (clone $fechaInicio)->addDays((int) $plan->duracion_dias)->subDay()->endOfDay();
 
-        return DB::transaction(function () use ($user, $plan, $planCents, $fechaInicio, $fechaFin, $referenciaExterna, $planId): PagoCuota {
+        $referencia = is_string($referenciaExterna) && trim($referenciaExterna) !== ''
+            ? trim($referenciaExterna)
+            : $this->buildDefaultPaymentReference($user, $plan);
+
+        return DB::transaction(function () use ($user, $plan, $planCents, $fechaInicio, $fechaFin, $referencia, $planId): PagoCuota {
             try {
                 $lockedDuplicate = PagoCuota::query()
                     ->where('user_id', $user->id)
@@ -238,7 +263,7 @@ class TaquillaMembershipService
                     'id_plan_pagado'          => $plan->id,
                     'monto_pagado_cents'      => $planCents,
                     'status'                  => PagoCuota::STATUS_PENDING,
-                    'referencia_pago_externa' => $referenciaExterna,
+                    'referencia_pago_externa' => $referencia,
                     'periodo_inicio'          => $fechaInicio,
                     'periodo_fin'             => $fechaFin,
                     'fecha_pago'              => now(),
@@ -261,6 +286,47 @@ class TaquillaMembershipService
                 throw $e;
             }
         });
+    }
+
+    /** Concepto legible para admin, emails y descripción en Stripe. */
+    public function buildDefaultPaymentReference(User $user, PlanTaquilla $plan): string
+    {
+        $nombre = trim(trim((string) ($user->nombre ?? '')).' '.trim((string) ($user->apellido ?? '')));
+        if ($nombre === '') {
+            $nombre = trim((string) ($user->email ?? 'Socio S4'));
+        }
+
+        $planName = trim((string) ($plan->nombre ?? 'Plan taquilla'));
+        $reference = "{$nombre} — {$planName}";
+
+        if ($user->hasPhysicalLocker() && $user->numeroTaquilla !== null) {
+            $withLocker = "{$reference} · T#{$user->numeroTaquilla}";
+            if (mb_strlen($withLocker) <= 255) {
+                $reference = $withLocker;
+            }
+        }
+
+        return mb_substr($reference, 0, 255);
+    }
+
+    /** Rellena referencia en pagos pendientes antiguos antes de abrir Stripe. */
+    public function ensurePaymentReference(PagoCuota $pago, User $user): PagoCuota
+    {
+        $current = trim((string) ($pago->referencia_pago_externa ?? ''));
+        if ($current !== '') {
+            return $pago;
+        }
+
+        $plan = $pago->plan ?? PlanTaquilla::query()->find($pago->id_plan_pagado);
+        if ($plan === null) {
+            return $pago;
+        }
+
+        $pago->update([
+            'referencia_pago_externa' => $this->buildDefaultPaymentReference($user, $plan),
+        ]);
+
+        return $pago->fresh(['plan']);
     }
 
     /**
@@ -459,10 +525,22 @@ class TaquillaMembershipService
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
             ->when($pendingOnly, fn ($q) => $q->whereNull('reviewed_at'))
             ->when($search !== '', function ($q) use ($search): void {
-                $q->whereHas('user', function ($u) use ($search): void {
-                    $u->where('nombre', 'like', "%{$search}%")
-                        ->orWhere('apellido', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                $q->where(function ($outer) use ($search): void {
+                    $outer->whereHas('user', function ($u) use ($search): void {
+                        $u->where('nombre', 'like', "%{$search}%")
+                            ->orWhere('apellido', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+
+                        if (ctype_digit($search)) {
+                            $u->orWhere('numeroTaquilla', (int) $search);
+                        }
+                    });
+
+                    $outer->orWhere('referencia_pago_externa', 'like', "%{$search}%");
+
+                    if (ctype_digit($search)) {
+                        $outer->orWhereKey((int) $search);
+                    }
                 });
             })
             ->orderByDesc('created_at')
@@ -484,8 +562,15 @@ class TaquillaMembershipService
             $userOptionsSource->pluck('id')->merge($lockerUsersSource->pluck('id'))->unique(),
         );
 
+        $availabilityUserIds = $rows->pluck('user_id')
+            ->merge($lockerUsersSource->pluck('id'))
+            ->unique()
+            ->values();
+        $availabilityMap = $this->lockerPaymentIndex->computeAvailabilityMap($availabilityUserIds);
+
         return [
-            'rows' => PagoCuotaQueueResource::collection($rows)->resolve(),
+            'rows' => $this->enrichQueueRowsWithReceipts($rows, $availabilityMap),
+            'activePlanSummary' => $this->buildActivePlanSummaryToday(),
             'counts' => [
                 'all' => (int) PagoCuota::query()->count(),
                 'pending' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_PENDING)->count(),
@@ -509,7 +594,11 @@ class TaquillaMembershipService
                 ])
                 ->values(),
             'lockerUsers' => $lockerUsersSource
-                ->map(fn (User $u) => $this->lockerPaymentIndex->mapLockerUserRow($u, $index))
+                ->map(function (User $u) use ($index, $availabilityMap): array {
+                    $row = $this->lockerPaymentIndex->mapLockerUserRow($u, $index);
+
+                    return $this->mergeTaquillaAvailability($row, $availabilityMap[(int) $u->id] ?? null);
+                })
                 ->values(),
             'lockerGrid' => $this->buildLockerGrid(),
         ];
@@ -541,13 +630,14 @@ class TaquillaMembershipService
         }
 
         $mapMethod = [
+            'online' => 'card',
             'transferencia' => 'transferencia',
             'metalico' => 'tienda',
+            'datafono' => 'datafono',
             'domiciliado' => 'domiciliado',
         ];
 
         $nextStatus = match ($nextState) {
-            'pending' => PagoCuota::STATUS_PENDING,
             'failed' => PagoCuota::STATUS_REJECTED,
             default => PagoCuota::STATUS_CONFIRMED,
         };
@@ -704,12 +794,16 @@ class TaquillaMembershipService
     {
         $validated = $request->validated();
 
-        return PlanTaquilla::query()->create([
+        $plan = PlanTaquilla::query()->create([
             'nombre' => $validated['nombre'],
             'precio_total_cents' => MoneyCents::eurosToCents($validated['precio_total']),
             'duracion_dias' => (int) $validated['duracion_meses'] * 30,
             'activo' => (bool) ($validated['visible'] ?? true),
         ]);
+
+        $this->chatbotBusinessContext->forget();
+
+        return $plan;
     }
 
     public function updatePlan(PlanTaquilla $plan, UpdatePlanTaquillaRequest $request): void
@@ -722,11 +816,15 @@ class TaquillaMembershipService
             'duracion_dias' => (int) $validated['duracion_meses'] * 30,
             'activo' => (bool) ($validated['visible'] ?? true),
         ]);
+
+        $this->chatbotBusinessContext->forget();
     }
 
     public function togglePlanActive(PlanTaquilla $plan): bool
     {
         $plan->update(['activo' => ! (bool) $plan->activo]);
+
+        $this->chatbotBusinessContext->forget();
 
         return (bool) $plan->activo;
     }
@@ -882,6 +980,171 @@ class TaquillaMembershipService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, PagoCuota>  $rows
+     * @return list<array<string, mixed>>
+     */
+    private function enrichQueueRowsWithReceipts(Collection $rows, array $availabilityMap = []): array
+    {
+        $rowsList = $rows->values();
+        $resolved = PagoCuotaQueueResource::collection($rowsList)->resolve();
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
+            $rowsList->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])->all(),
+        );
+
+        foreach ($resolved as $index => $row) {
+            $pago = $rowsList->get($index);
+            if ($pago === null) {
+                continue;
+            }
+
+            $manualProofUrl = ! empty($pago->payment_proof_path)
+                ? route('taquilla.pagos.proof', $pago->id)
+                : null;
+            $proof = $this->paymentReceipts->proofFieldsForPayable(
+                PagoCuota::class,
+                (int) $pago->id,
+                ! empty($pago->payment_proof_path),
+                $manualProofUrl,
+                $receiptMap,
+            );
+
+            $row['proof_url'] = $proof['proof_url'];
+            $row['proof_is_stripe_receipt'] = $proof['proof_is_stripe_receipt'];
+            $row = $this->mergeTaquillaAvailability($row, $availabilityMap[(int) ($pago->user_id ?? 0)] ?? null);
+            $resolved[$index] = $row;
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, mixed>|null  $availability
+     * @return array<string, mixed>
+     */
+    private function mergeTaquillaAvailability(array $row, ?array $availability): array
+    {
+        if ($availability === null) {
+            $row['taquilla_total_days_remaining'] = null;
+            $row['taquilla_current_days_remaining'] = null;
+            $row['taquilla_prepaid_extra_days'] = 0;
+            $row['taquilla_current_expires_at'] = null;
+            $row['taquilla_final_expires_at'] = null;
+
+            return $row;
+        }
+
+        $row['taquilla_total_days_remaining'] = $availability['total_days_remaining'] ?? null;
+        $row['taquilla_current_days_remaining'] = $availability['current_days_remaining'] ?? null;
+        $row['taquilla_prepaid_extra_days'] = (int) ($availability['prepaid_extra_days'] ?? 0);
+        $row['taquilla_current_expires_at'] = $availability['current_expires_at'] ?? null;
+        $row['taquilla_final_expires_at'] = $availability['final_expires_at'] ?? null;
+
+        return $row;
+    }
+
+    /**
+     * Socios con periodo de cuota activo hoy, agrupados por tipo de plan.
+     *
+     * @return array{as_of: string, as_of_human: string, total: int, items: list<array{label: string, count: int, sort: int}>}
+     */
+    private function buildActivePlanSummaryToday(): array
+    {
+        $today = Carbon::today();
+
+        $activeRows = PagoCuota::query()
+            ->from('pagos_cuotas as pc')
+            ->join('users as u', 'u.id', '=', 'pc.user_id')
+            ->join('planes_taquilla as pt', 'pt.id', '=', 'pc.id_plan_pagado')
+            ->where('pc.status', PagoCuota::STATUS_CONFIRMED)
+            ->whereDate('pc.periodo_inicio', '<=', $today)
+            ->whereDate('pc.periodo_fin', '>=', $today)
+            ->whereNotNull('u.numeroTaquilla')
+            ->selectRaw('pc.user_id, pt.nombre as plan_nombre, pt.duracion_dias as plan_duracion_dias')
+            ->get()
+            ->unique('user_id');
+
+        $grouped = [];
+
+        foreach ($activeRows as $row) {
+            $short = $this->resolveShortPlanLabel(
+                (string) ($row->plan_nombre ?? ''),
+                (int) ($row->plan_duracion_dias ?? 0),
+            );
+            $adjective = $this->planSummaryAdjective($short);
+            $sort = $this->planSummarySortOrder($short);
+
+            if (! isset($grouped[$adjective])) {
+                $grouped[$adjective] = ['label' => $adjective, 'count' => 0, 'sort' => $sort];
+            }
+
+            $grouped[$adjective]['count']++;
+        }
+
+        $items = array_values($grouped);
+        usort($items, static fn (array $a, array $b): int => $b['sort'] <=> $a['sort']);
+
+        $total = array_sum(array_column($items, 'count'));
+
+        return [
+            'as_of' => $today->toDateString(),
+            'as_of_human' => $today->locale('es')->translatedFormat('j \d\e F \d\e Y'),
+            'total' => $total,
+            'items' => array_map(
+                static fn (array $item): array => ['label' => $item['label'], 'count' => $item['count']],
+                $items,
+            ),
+        ];
+    }
+
+    private function resolveShortPlanLabel(string $nombre, int $duracionDias): string
+    {
+        $normalized = mb_strtolower(trim($nombre));
+
+        if (str_contains($normalized, 'anual') || $duracionDias >= 330) {
+            return '1 año';
+        }
+        if (str_contains($normalized, 'semestral') || $duracionDias >= 150) {
+            return '6 meses';
+        }
+        if (str_contains($normalized, 'trimestral') || $duracionDias >= 80) {
+            return '3 meses';
+        }
+        if (str_contains($normalized, 'bimestral') || $duracionDias >= 55) {
+            return '2 meses';
+        }
+        if (str_contains($normalized, 'mensual') || $duracionDias >= 25) {
+            return '1 mes';
+        }
+
+        return $nombre !== '' ? $nombre : 'Otro';
+    }
+
+    private function planSummaryAdjective(string $shortLabel): string
+    {
+        return match ($shortLabel) {
+            '1 año' => 'anuales',
+            '6 meses' => 'semestrales',
+            '3 meses' => 'trimestrales',
+            '2 meses' => 'bimestrales',
+            '1 mes' => 'mensuales',
+            default => mb_strtolower($shortLabel),
+        };
+    }
+
+    private function planSummarySortOrder(string $shortLabel): int
+    {
+        return match ($shortLabel) {
+            '1 año' => 500,
+            '6 meses' => 400,
+            '3 meses' => 300,
+            '2 meses' => 200,
+            '1 mes' => 100,
+            default => 0,
+        };
     }
 
     private function storeProofFile(int $pagoId, UploadedFile $proof): string

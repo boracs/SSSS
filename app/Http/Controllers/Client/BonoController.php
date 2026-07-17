@@ -12,6 +12,8 @@ use App\Models\LessonUser;
 use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Services\Payments\PaymentReceiptAccessService;
+use App\Services\Invoicing\FiscalInvoiceAccessService;
 use App\Services\BonoService;
 use App\Support\AcademyContact;
 use App\Support\LessonBonoCreditUnits;
@@ -27,6 +29,8 @@ class BonoController extends Controller
     public function __construct(
         protected BonoService $bonoService,
         protected InitiatePaymentAction $initiatePayment,
+        protected PaymentReceiptAccessService $paymentReceipts,
+        protected FiscalInvoiceAccessService $fiscalInvoices,
     ) {}
 
 
@@ -98,12 +102,30 @@ class BonoController extends Controller
             $consumptionHistory = $this->buildUnifiedMovementHistory($userBonos, []);
         }
 
-        $myBonos = $userBonos
-            ->map(function (UserBono $b) use ($usageStates, $consumptionsByBonoId) {
+        $myBonos = $userBonos;
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
+            $myBonos->map(fn (UserBono $b) => ['type' => UserBono::class, 'id' => (int) $b->id])->all(),
+        );
+        $fiscalMap = $this->fiscalInvoices->mapForPayables(
+            $myBonos->map(fn (UserBono $b) => ['type' => UserBono::class, 'id' => (int) $b->id])->all(),
+        );
+
+        $myBonos = $myBonos
+            ->map(function (UserBono $b) use ($usageStates, $consumptionsByBonoId, $receiptMap, $fiscalMap) {
                 $usage = $usageStates[(int) $b->id] ?? [
                     'usage_status' => 'unknown',
                     'usage_label' => 'Desconocido',
                 ];
+                $manualProofUrl = $b->payment_proof_path ? Storage::url($b->payment_proof_path) : null;
+                $proof = $this->paymentReceipts->proofFieldsForPayable(
+                    UserBono::class,
+                    (int) $b->id,
+                    ! empty($b->payment_proof_path),
+                    $manualProofUrl,
+                    $receiptMap,
+                );
+                $fiscalKey = $this->fiscalInvoices->cacheKey(UserBono::class, (int) $b->id);
+                $fiscal = $fiscalMap[$fiscalKey] ?? null;
 
                 return [
                     'id' => $b->id,
@@ -116,7 +138,10 @@ class BonoController extends Controller
                     'usage_label' => $usage['usage_label'],
                     'purchased_at_human' => $b->created_at?->locale('es')->translatedFormat('d/m/Y H:i'),
                     'consumptions' => $consumptionsByBonoId[(int) $b->id] ?? [],
-                    'proof_url' => $b->payment_proof_path ? Storage::url($b->payment_proof_path) : null,
+                    'proof_url' => $proof['proof_url'],
+                    'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                    'fiscal_invoice_url' => $fiscal?->detailUrl,
+                    'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
                     'created_at' => $b->created_at?->toIso8601String(),
                     'admin_notes' => $b->admin_notes,
                 ];

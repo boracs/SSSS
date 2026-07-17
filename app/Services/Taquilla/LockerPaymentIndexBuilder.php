@@ -113,4 +113,106 @@ final class LockerPaymentIndexBuilder
             'is_expired' => $isExpired,
         ];
     }
+
+    /**
+     * Días de taquilla: periodo activo + planes confirmados ya pagados y encadenados.
+     *
+     * @param  Collection<int, int|string>|array<int, int|string>  $userIds
+     * @return array<int, array{
+     *     total_days_remaining: int|null,
+     *     current_days_remaining: int|null,
+     *     prepaid_extra_days: int,
+     *     current_expires_at: string|null,
+     *     final_expires_at: string|null
+     * }>
+     */
+    public function computeAvailabilityMap(Collection|array $userIds): array
+    {
+        $ids = collect($userIds)->filter()->map(fn ($id) => (int) $id)->unique()->values();
+        if ($ids->isEmpty()) {
+            return [];
+        }
+
+        $today = Carbon::today()->startOfDay();
+
+        $pagos = PagoCuota::query()
+            ->whereIn('user_id', $ids)
+            ->where('status', PagoCuota::STATUS_CONFIRMED)
+            ->whereDate('periodo_fin', '>=', $today)
+            ->orderBy('user_id')
+            ->orderBy('periodo_inicio')
+            ->get(['user_id', 'periodo_inicio', 'periodo_fin']);
+
+        $byUser = $pagos->groupBy('user_id');
+        $result = [];
+
+        foreach ($ids as $userId) {
+            $result[$userId] = $this->computeAvailabilityFromPagos($byUser->get($userId, collect()), $today);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param  Collection<int, PagoCuota>  $confirmed
+     * @return array{
+     *     total_days_remaining: int|null,
+     *     current_days_remaining: int|null,
+     *     prepaid_extra_days: int,
+     *     current_expires_at: string|null,
+     *     final_expires_at: string|null
+     * }
+     */
+    private function computeAvailabilityFromPagos(Collection $confirmed, Carbon $today): array
+    {
+        if ($confirmed->isEmpty()) {
+            return [
+                'total_days_remaining' => null,
+                'current_days_remaining' => null,
+                'prepaid_extra_days' => 0,
+                'current_expires_at' => null,
+                'final_expires_at' => null,
+            ];
+        }
+
+        $finalEnd = $confirmed
+            ->map(fn (PagoCuota $p) => Carbon::parse($p->periodo_fin)->startOfDay())
+            ->max();
+
+        $activeRow = $confirmed->first(function (PagoCuota $p) use ($today): bool {
+            $start = Carbon::parse($p->periodo_inicio)->startOfDay();
+            $end = Carbon::parse($p->periodo_fin)->startOfDay();
+
+            return $start->lte($today) && $end->gte($today);
+        });
+
+        $currentDays = null;
+        $prepaidExtra = 0;
+        $currentExpiresAt = null;
+
+        if ($activeRow) {
+            $activeEnd = Carbon::parse($activeRow->periodo_fin)->startOfDay();
+            $currentExpiresAt = $activeEnd->toDateString();
+            $currentDays = (int) $today->diffInDays($activeEnd, false);
+
+            $prepaidExtra = (int) $confirmed
+                ->filter(fn (PagoCuota $p) => Carbon::parse($p->periodo_inicio)->startOfDay()->gt($activeEnd))
+                ->sum(function (PagoCuota $p): int {
+                    $start = Carbon::parse($p->periodo_inicio)->startOfDay();
+                    $end = Carbon::parse($p->periodo_fin)->startOfDay();
+
+                    return (int) ($start->diffInDays($end) + 1);
+                });
+        }
+
+        $totalDays = (int) $today->diffInDays($finalEnd, false);
+
+        return [
+            'total_days_remaining' => $totalDays,
+            'current_days_remaining' => $currentDays,
+            'prepaid_extra_days' => $prepaidExtra,
+            'current_expires_at' => $currentExpiresAt,
+            'final_expires_at' => $finalEnd->toDateString(),
+        ];
+    }
 }

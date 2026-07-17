@@ -1,8 +1,10 @@
 import { Head, router, usePage } from "@inertiajs/react";
 import React, { useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import { Combobox } from "@headlessui/react";
 import { ChevronUpDownIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Layout1 from "../layouts/Layout1";
+import { showInertiaErrors } from "../lib/inertiaErrors";
 
 const inputClass =
     "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
@@ -98,7 +100,9 @@ export default function AsignarTaquilla() {
                     setNumeroTaquilla("");
                     setQuery("");
                     setSelectedUser(null);
+                    toast.success("Taquilla asignada correctamente.");
                 },
+                onError: (errors) => showInertiaErrors(errors, toast, "No se pudo asignar la taquilla."),
                 onFinish: () => setIsSubmitting(false),
             },
         );
@@ -108,6 +112,8 @@ export default function AsignarTaquilla() {
         setReleasingId(userId);
         router.post(route("asignar.taquilla.liberar", userId), {}, {
             preserveScroll: true,
+            onSuccess: () => toast.success("Taquilla liberada."),
+            onError: (errors) => showInertiaErrors(errors, toast, "No se pudo liberar la taquilla."),
             onFinish: () => setReleasingId(null),
         });
     };

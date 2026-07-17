@@ -7,12 +7,14 @@ namespace App\Services\Payments;
 use App\DTOs\Payments\CheckoutSessionResultDto;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\Enums\PaymentStatus;
+use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
 use App\Models\PaymentWebhookIdempotency;
 use App\Models\UserBono;
+use App\Services\Auctions\AuctionSettlementService;
 use App\Services\BonoService;
 use App\Services\Taquilla\TaquillaMembershipService;
 use App\Support\BusinessDateTime;
@@ -173,6 +175,54 @@ final class PaymentGatewayService
     }
 
     /**
+     * Respaldo idempotente cuando el usuario vuelve de Stripe Checkout.
+     * El webhook sigue siendo la vía principal; esto cubre local sin túnel y latencia del webhook.
+     *
+     * @return array{ok: bool, duplicate: bool, payable_type: string, payable_id: int, message: string, amount_cents?: int}
+     */
+    public function syncCheckoutSessionIfPaid(string $sessionId): array
+    {
+        $sessionId = trim($sessionId);
+        if ($sessionId === '') {
+            return $this->failure('session_id vacío');
+        }
+
+        try {
+            $session = $this->stripe()->checkout->sessions->retrieve($sessionId);
+        } catch (ApiErrorException $e) {
+            Log::warning('PaymentGatewayService::syncCheckoutSessionIfPaid sesión no recuperable', [
+                'session_id' => $sessionId,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return $this->failure('Sesión Stripe no encontrada');
+        } catch (Throwable $e) {
+            Log::error('PaymentGatewayService::syncCheckoutSessionIfPaid error inesperado', [
+                'session_id' => $sessionId,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return $this->failure('Error al verificar el pago');
+        }
+
+        if (($session->payment_status ?? '') !== 'paid') {
+            return $this->failure('El pago aún no está completado en Stripe');
+        }
+
+        $result = $this->confirmPaymentFromWebhook(
+            transactionId: $sessionId,
+            amountCents: (int) ($session->amount_total ?? 0),
+            idempotencyToken: (string) ($session->metadata['idempotency_token'] ?? ''),
+        );
+
+        if ($result['ok']) {
+            $result['amount_cents'] = (int) ($session->amount_total ?? 0);
+        }
+
+        return $result;
+    }
+
+    /**
      * Confirma reserva/pedido tras webhook exitoso de Stripe.
      *
      * @return array{ok: bool, duplicate: bool, payable_type: string, payable_id: int, message: string}
@@ -262,6 +312,7 @@ final class PaymentGatewayService
                 Pedido::class     => $this->confirmPedidoPayment((int) $intent->payable_id),
                 UserBono::class   => $this->confirmUserBonoPayment((int) $intent->payable_id),
                 PagoCuota::class  => $this->confirmPagoCuotaPayment((int) $intent->payable_id),
+                Auction::class    => $this->confirmAuctionPayment((int) $intent->payable_id),
                 default           => $this->confirmGenericPayment($intent->payable_type, (int) $intent->payable_id),
             };
 
@@ -386,6 +437,20 @@ final class PaymentGatewayService
             Log::error('PaymentGatewayService::confirmPagoCuotaPayment error', [
                 'pago_id' => $pagoId,
                 'error'   => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function confirmAuctionPayment(int $auctionId): bool
+    {
+        try {
+            return app(AuctionSettlementService::class)->confirmPayment($auctionId);
+        } catch (Throwable $e) {
+            Log::error('PaymentGatewayService::confirmAuctionPayment error', [
+                'auction_id' => $auctionId,
+                'error'      => $e->getMessage(),
             ]);
 
             return false;

@@ -36,11 +36,13 @@ return [
     ],
 
     // ====================================================================
-    // 💡 AGREGADO PARA GEMINI
+    // Gemini — usado por App\Services\Chatbot\GoogleAIService
     // ====================================================================
     'gemini' => [
-        // El controlador lo buscará con Config::get('services.gemini.key')
         'key' => env('GEMINI_API_KEY'),
+        // Modelo estable recomendado a fecha 2026; si Google lo retira, cambia
+        // solo esta variable de entorno (sin tocar código).
+        'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
     'academy' => [
@@ -49,6 +51,8 @@ return [
         'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
         /** Texto mostrado en plantillas/UI (si vacío, se formatea whatsapp_number). */
         'whatsapp_display' => env('ACADEMY_WHATSAPP_DISPLAY'),
+        /** Email de contacto público (chatbot FAQ, marketing). */
+        'contact_email' => env('ACADEMY_CONTACT_EMAIL', 'info@sansebastiansurfschool.com'),
         'maps_url' => env('ACADEMY_MAPS_URL', 'https://maps.app.goo.gl/TuUbicacion'),
         /** Reloj de pared de la escuela (columnas naive starts_at/ends_at); independiente de APP_TIMEZONE. */
         'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
@@ -62,6 +66,14 @@ return [
         'cancel_cutoff_hours' => (int) env('ACADEMY_CANCEL_CUTOFF_HOURS', 4),
         /** Alumnos por monitor antes de requerir aprobación admin (7.º en adelante). */
         'standard_monitor_capacity' => (int) env('ACADEMY_STANDARD_MONITOR_CAPACITY', 6),
+        /** Ubicación pública para chatbot / Gemini (editable sin tocar código). */
+        'location_label' => env('ACADEMY_LOCATION_LABEL', 'Playa de Zurriola, Donostia — instalaciones del club'),
+        /** Horario de apertura / atención (texto libre; confirmar en producción). */
+        'opening_hours' => env('ACADEMY_OPENING_HOURS', 'Horario variable según temporada; confirma por WhatsApp el día de tu clase.'),
+        /** Cómo llegar / punto de encuentro (texto libre). */
+        'getting_here' => env('ACADEMY_GETTING_HERE', 'Llega 10–15 minutos antes de tu clase. Punto de encuentro en Zurriola, junto a las instalaciones del club.'),
+        /** Instagram público (opcional). */
+        'instagram_handle' => env('ACADEMY_INSTAGRAM_HANDLE', '@sansebastiansurfschool'),
     ],
 
     'contact_form' => [

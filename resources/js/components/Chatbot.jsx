@@ -1,6 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback, useActionState } from "react";
+import React, { useState, useRef, useEffect, useActionState } from "react";
+import { createPortal } from "react-dom";
 import { usePage } from "@inertiajs/react";
-import { postChatbotMessage } from "../lib/chatbotApi";
+import { postChatbotMessage, fetchChatbotHistory, registerChatbotContactPhone } from "../lib/chatbotApi";
+import { whatsappUrlWithMessage } from "../lib/whatsapp";
 import {
     MessageCircle,
     Send,
@@ -11,95 +13,42 @@ import {
     MessageSquare,
     List,
     Archive,
-    CheckCircle,
     Clock,
-    User,
+    Sparkles,
+    ShieldAlert,
 } from "lucide-react";
-// import { initializeApp } from "firebase/app";
-// import {
-//     getAuth,
-//     signInAnonymously,
-//     onAuthStateChanged,
-//     signInWithCustomToken,
-// } from "firebase/auth";
-// import {
-//     getFirestore,
-//     collection,
-//     query,
-//     onSnapshot,
-//     addDoc,
-//     serverTimestamp,
-//     doc,
-//     orderBy,
-//     setDoc,
-// } from "firebase/firestore";
 import ReactMarkdown from "react-markdown";
 
-// // --- CONFIGURACIÓN DE FIREBASE (Uso de variables globales de Canvas) ---
-// const firebaseConfig =
-//     typeof __firebase_config !== "undefined"
-//         ? JSON.parse(__firebase_config)
-//         : {};
-// const initialAuthToken =
-//     typeof __initial_auth_token !== "undefined" ? __initial_auth_token : null;
-// const MASTER_APP_ID =
-//     typeof __app_id !== "undefined" ? __app_id : "default-app-id";
-
-// // --- CONSTANTES ---
-const ANONYMOUS_USER_ID_KEY = "chatbot_anon_id";
-const LOCAL_CHAT_KEY = "chatbot_local_history_";
-
-// // --- INICIALIZACIÓN DE FIREBASE COMO SINGLETON ---
-// const firebaseInstances = {
-//     app: null,
-//     db: null,
-//     auth: null,
-// };
-
-// const initializeFirebase = () => {
-//     // Si la configuración de Firebase está vacía, no inicializamos Firebase.
-//     if (Object.keys(firebaseConfig).length === 0) {
-//         return { app: null, db: null, auth: null };
-//     }
-
-//     if (firebaseInstances.app) {
-//         return firebaseInstances;
-//     }
-
-//     try {
-//         firebaseInstances.app = initializeApp(firebaseConfig);
-//         firebaseInstances.db = getFirestore(firebaseInstances.app);
-//         firebaseInstances.auth = getAuth(firebaseInstances.app);
-//     } catch (error) {
-//         console.error(
-//             "Error al inicializar Firebase. Cayendo a LocalStorage:",
-//             error
-//         );
-//         return { app: null, db: null, auth: null };
-//     }
-//     return firebaseInstances;
-// };
-
-// const { db, auth } = initializeFirebase();
-// const IS_FIREBASE_CONFIGURED = !!db;
-
-// --- STUBS SIN FIREBASE: chat local y Firebase desactivado temporalmente ---
-const firebaseConfig = {};
-const initialAuthToken = null;
-const MASTER_APP_ID = "default-app-id";
-const db = null;
-const auth = null;
+// --- CONSTANTES ---
+// Clave exacta requerida para el historial anónimo (sin IA/Firebase: 100% cliente).
+const LOCAL_CHAT_KEY = "s4_anon_chat_v1";
+const ANON_SESSION_TOKEN_KEY = "s4_anon_chat_token";
+// El panel de Artefactos queda deshabilitado: no hay backend de memoria compartida (Firebase desactivado).
 const IS_FIREBASE_CONFIGURED = false;
+
+const CHAT_Z = "z-[850]";
+
+const fieldShell =
+    "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-orange-400/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-orange-500/10";
+
+const fieldInput =
+    "min-w-0 flex-1 border-0 bg-transparent py-1 text-[15px] text-slate-900 outline-none placeholder:text-slate-400";
+
+const panelShell =
+    "fixed bottom-6 right-6 flex w-[calc(100%-3rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-white/60 bg-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.35)] transition-all duration-300 " +
+    CHAT_Z;
 
 // --- HOOK PERSONALIZADO: useChatbot ---
 const useChatbot = () => {
     const { props } = usePage();
     const laravelUserId = props?.auth?.user?.id;
+    const userTelefono = props?.auth?.user?.telefono ?? null;
+    const academyWhatsappUrl = props?.academyWhatsappUrl ?? null;
 
     const [isOpen, setIsOpen] = useState(false);
     const [view, setView] = useState("chat");
     const [messages, setMessages] = useState([]);
-    const [artifacts, setArtifacts] = useState([]);
+    const [artifacts] = useState([]);
     const [inputMessage, setInputMessage] = useState("");
     const [apiError, setApiError] = useState(null);
     const [isRateLimited, setIsRateLimited] = useState(false);
@@ -107,17 +56,21 @@ const useChatbot = () => {
     const [userId, setUserId] = useState(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAuthReady, setIsAuthReady] = useState(false);
+    const [requiresHuman, setRequiresHuman] = useState(false);
+    const [caseReference, setCaseReference] = useState(null);
+    const [savedContactPhone, setSavedContactPhone] = useState(null);
+    const [phoneInput, setPhoneInput] = useState("");
+    const [whatsappBusy, setWhatsappBusy] = useState(false);
 
     const messagesEndRef = useRef(null);
-    const userIdRef = useRef(null);
     const messagesRef = useRef([]);
+    const sessionTokenRef = useRef(null);
     const setInputRef = useRef(setInputMessage);
     const setMessagesRef = useRef(setMessages);
     const setApiErrorRef = useRef(setApiError);
     const setRateLimitRef = useRef(setIsRateLimited);
     const setRetryRef = useRef(setRetryAfterSeconds);
 
-    userIdRef.current = userId;
     messagesRef.current = messages;
     setInputRef.current = setInputMessage;
     setMessagesRef.current = setMessages;
@@ -125,25 +78,20 @@ const useChatbot = () => {
     setRateLimitRef.current = setIsRateLimited;
     setRetryRef.current = setRetryAfterSeconds;
 
-    /**
-     * Gestión del ID Anónimo Persistente.
-     * Genera o recupera un ID único para usuarios sin Firebase o sin sesión.
-     */
-    const getOrCreateAnonId = () => {
-        let anonId = localStorage.getItem(ANONYMOUS_USER_ID_KEY);
-        if (!anonId) {
-            anonId = crypto.randomUUID();
-            localStorage.setItem(ANONYMOUS_USER_ID_KEY, anonId);
+    /** Token de correlación anónimo (crypto.randomUUID persistido en localStorage). */
+    const getOrCreateSessionToken = () => {
+        let token = localStorage.getItem(ANON_SESSION_TOKEN_KEY);
+        if (!token) {
+            token = crypto.randomUUID();
+            localStorage.setItem(ANON_SESSION_TOKEN_KEY, token);
         }
-        return `anon-${anonId}`; // Prefijo para distinguirlo de los UIDs de Firebase
+        return token;
     };
 
-    /**
-     * Carga el historial de chat desde localStorage (solo para usuarios anónimos).
-     */
-    const loadLocalChat = (anonId) => {
+    /** Historial anónimo — única fuente de verdad en el cliente, sin backend. */
+    const loadLocalChat = () => {
         try {
-            const history = localStorage.getItem(LOCAL_CHAT_KEY + anonId);
+            const history = localStorage.getItem(LOCAL_CHAT_KEY);
             return history ? JSON.parse(history) : [];
         } catch (error) {
             console.error("Error cargando chat local:", error);
@@ -151,173 +99,80 @@ const useChatbot = () => {
         }
     };
 
-    /**
-     * Guarda el historial de chat en localStorage (solo para usuarios anónimos).
-     */
-    const saveLocalChat = (anonId, currentMessages) => {
+    const saveLocalChat = (currentMessages) => {
         try {
-            localStorage.setItem(
-                LOCAL_CHAT_KEY + anonId,
-                JSON.stringify(currentMessages),
-            );
+            localStorage.setItem(LOCAL_CHAT_KEY, JSON.stringify(currentMessages));
         } catch (error) {
             console.error("Error guardando chat local:", error);
         }
     };
 
-    // EFECTO 1: Gestión de la autenticación y el userId
+    // EFECTO 1: Identidad — logueado (Laravel) vs anónimo (localStorage + sessionToken).
     useEffect(() => {
-        if (!IS_FIREBASE_CONFIGURED || !auth) {
-            // Si el usuario está autenticado en Laravel, usar su ID para evitar 403 en el backend.
-            if (laravelUserId != null) {
-                const uid = String(laravelUserId);
-                setUserId(uid);
-                setIsLoggedIn(true);
-                setMessages(loadLocalChat(`user-${uid}`));
-                setIsAuthReady(true);
-                return;
-            }
-            // Modo LocalStorage/Anónimo: Usar ID persistente del navegador.
-            const anonId = getOrCreateAnonId();
-            setUserId(anonId);
-            setIsLoggedIn(false);
-            setMessages(loadLocalChat(anonId));
+        if (laravelUserId != null) {
+            setUserId(String(laravelUserId));
+            setIsLoggedIn(true);
+            sessionTokenRef.current = null;
             setIsAuthReady(true);
             return;
         }
 
-        const setupAuth = async () => {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error(
-                    "Error signing in with Firebase. Falling back to anon ID:",
-                    error,
-                );
-                const anonId = getOrCreateAnonId();
-                setUserId(anonId);
-                setIsLoggedIn(false);
-            }
-        };
-
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            if (user && !user.isAnonymous) {
-                // Usuario autenticado (ej. via Custom Token)
-                setUserId(user.uid);
-                setIsLoggedIn(true);
-            } else if (user && user.isAnonymous) {
-                // Usuario anónimo de Firebase (si no hay Custom Token)
-                setUserId(user.uid);
-                setIsLoggedIn(false); // Considerado no 'logeado' en el sentido de una cuenta
-            } else {
-                // Error de autenticación/Logout, caer a ID persistente local
-                const anonId = getOrCreateAnonId();
-                setUserId(anonId);
-                setIsLoggedIn(false);
-            }
-            setIsAuthReady(true);
-        });
-
-        setupAuth();
-        return () => unsubscribe();
+        sessionTokenRef.current = getOrCreateSessionToken();
+        setUserId(sessionTokenRef.current);
+        setIsLoggedIn(false);
+        setMessages(loadLocalChat());
+        setIsAuthReady(true);
     }, [laravelUserId]);
 
-    // EFECTO 2: Suscripción a mensajes de chat (Firebase) o guardado (Local)
+    // EFECTO 2: Carga perezosa del historial en MySQL para usuarios logueados.
     useEffect(() => {
-        const currentUserId = userId;
-        if (!isAuthReady || !currentUserId) return;
+        if (!isAuthReady || !isLoggedIn) return;
 
-        // Caso 1: Usuario con persistencia en Firebase (Autenticado o Anónimo de Firebase)
-        if (
-            IS_FIREBASE_CONFIGURED &&
-            db &&
-            currentUserId &&
-            !currentUserId.startsWith("anon-")
-        ) {
-            const chatRef = collection(
-                db,
-                "artifacts",
-                MASTER_APP_ID,
-                "users",
-                currentUserId,
-                "chat_messages",
-            );
-            const q = query(chatRef, orderBy("createdAt", "asc"));
+        let cancelled = false;
+        fetchChatbotHistory()
+            .then(({ history, status, caseReference: serverCase, contactPhone }) => {
+                if (cancelled) return;
+                if (history.length > 0) {
+                    setMessages(history.map((turn, index) => ({ id: `srv-${index}`, ...turn })));
+                }
+                if (status === "requires_human") {
+                    setRequiresHuman(true);
+                    setCaseReference(serverCase);
+                }
+                if (contactPhone) {
+                    setSavedContactPhone(contactPhone);
+                }
+            })
+            .catch((error) => console.error("Error cargando historial del chatbot:", error));
 
-            const unsubscribe = onSnapshot(
-                q,
-                (snapshot) => {
-                    const fetchedMessages = snapshot.docs.map((doc) => {
-                        const data = doc.data();
-                        return {
-                            id: doc.id,
-                            role: data.role,
-                            text: data.text,
-                            createdAt: data.createdAt?.toDate
-                                ? data.createdAt.toDate()
-                                : new Date(),
-                        };
-                    });
-                    setMessages(fetchedMessages);
-                },
-                (error) => {
-                    console.error(
-                        "Error al escuchar mensajes de Firestore:",
-                        error,
-                    );
-                },
-            );
-            return () => unsubscribe();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthReady, isLoggedIn]);
+
+    // Si el usuario logueado tiene teléfono en perfil, vincularlo al caso automáticamente.
+    useEffect(() => {
+        if (!requiresHuman || !isLoggedIn || !userTelefono || savedContactPhone) {
+            return;
         }
 
-        // Caso 2: Usuario Anónimo Local (Persistencia en localStorage)
-        else if (currentUserId.startsWith("anon-")) {
-            // Ya se cargó en el efecto inicial. Ahora solo se guarda al enviar.
-            // No hay suscripción en este caso, el estado 'messages' se actualiza localmente.
-        }
-    }, [isAuthReady, userId]);
+        let cancelled = false;
+        registerChatbotContactPhone({
+            phone: userTelefono,
+            sessionToken: null,
+            caseReference,
+        })
+            .then((result) => {
+                if (!cancelled && result.success && result.contactPhone) {
+                    setSavedContactPhone(result.contactPhone);
+                }
+            })
+            .catch(() => {});
 
-    // EFECTO 3: Suscripción de Artefactos (Público, solo si Firebase está configurado)
-    useEffect(() => {
-        if (!IS_FIREBASE_CONFIGURED || !db || !isAuthReady) return;
-
-        const artifactsRef = collection(
-            db,
-            `artifacts/${MASTER_APP_ID}/public/data/user_artifacts`,
-        );
-        const q = query(artifactsRef, orderBy("createdAt", "desc"));
-
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                const fetchedArtifacts = snapshot.docs.map((doc) => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        title: data.title || "Artefacto sin título",
-                        type: data.type || "Nota",
-                        content: data.content,
-                        userId: data.userId,
-                        createdAt: data.createdAt?.toDate
-                            ? data.createdAt.toDate()
-                            : new Date(),
-                    };
-                });
-                setArtifacts(fetchedArtifacts);
-            },
-            (error) => {
-                console.error(
-                    "Error al escuchar artefactos de Firestore:",
-                    error,
-                );
-            },
-        );
-        return () => unsubscribe();
-    }, [isAuthReady]);
+        return () => {
+            cancelled = true;
+        };
+    }, [requiresHuman, isLoggedIn, userTelefono, caseReference, savedContactPhone]);
 
     // --- FUNCIONES UTILITARIAS ---
 
@@ -327,59 +182,45 @@ const useChatbot = () => {
 
     const [, submitMessage, isPending] = useActionState(async (_prev, formData) => {
         const userText = String(formData.get("message") ?? "").trim();
-        const uid = userIdRef.current;
 
-        if (!userText || !uid) {
+        if (!userText) {
             return { ok: false };
         }
 
         setApiErrorRef.current(null);
         setInputRef.current("");
 
-        const userMessage = {
-            role: "user",
-            text: userText,
-            createdAt: new Date(),
-        };
-
+        const userMessage = { role: "user", text: userText, createdAt: new Date() };
         const snapshot = [...messagesRef.current, userMessage];
         setMessagesRef.current(snapshot);
 
-        const persistKey = uid.startsWith("anon-") ? uid : `user-${uid}`;
-        if (persistKey.startsWith("anon-") || persistKey.startsWith("user-")) {
-            try {
-                localStorage.setItem(
-                    LOCAL_CHAT_KEY + persistKey,
-                    JSON.stringify(snapshot),
-                );
-            } catch {
-                /* ignore quota errors */
-            }
+        if (!isLoggedIn) {
+            saveLocalChat(snapshot);
         }
 
         const historyForApi = snapshot
+            .slice(0, -1)
             .filter((m) => m.text && m.text.trim())
             .map((m) => ({ role: m.role, text: m.text }));
 
         try {
-            const { message } = await postChatbotMessage(uid, historyForApi);
-            const botMessage = {
-                role: "model",
-                text: message,
-                createdAt: new Date(),
-            };
+            const reply = await postChatbotMessage({
+                message: userText,
+                history: historyForApi,
+                sessionToken: sessionTokenRef.current,
+            });
+
+            const botMessage = { role: "model", text: reply.message, createdAt: new Date() };
             const finalMessages = [...snapshot, botMessage];
             setMessagesRef.current(finalMessages);
 
-            if (persistKey.startsWith("anon-") || persistKey.startsWith("user-")) {
-                try {
-                    localStorage.setItem(
-                        LOCAL_CHAT_KEY + persistKey,
-                        JSON.stringify(finalMessages),
-                    );
-                } catch {
-                    /* ignore */
-                }
+            if (!isLoggedIn) {
+                saveLocalChat(finalMessages);
+            }
+
+            if (reply.requiresHuman) {
+                setRequiresHuman(true);
+                setCaseReference(reply.caseReference);
             }
 
             return { ok: true };
@@ -393,10 +234,6 @@ const useChatbot = () => {
                 setApiErrorRef.current(
                     `Has excedido el límite de mensajes. Por favor, espera ${waitTime} segundos.`,
                 );
-            } else if (error.response?.status === 403) {
-                setApiErrorRef.current(
-                    "Error de seguridad: recarga la página e inicia sesión de nuevo.",
-                );
             } else {
                 setApiErrorRef.current(
                     `Error de comunicación (${error.response?.status || "network"}). Maider no pudo responder.`,
@@ -408,11 +245,68 @@ const useChatbot = () => {
 
     useEffect(scrollToBottom, [messages, isPending, isOpen, apiError]);
 
+    const buildWhatsappMessage = () => {
+        const parts = [`Hola, mi caso es ${caseReference ?? "sin número"}.`];
+        const phone = savedContactPhone ?? userTelefono ?? phoneInput.trim();
+        if (phone) {
+            parts.push(`Mi móvil es ${phone}.`);
+        }
+        parts.push("Necesito ayuda con mi consulta al chatbot.");
+
+        return parts.join(" ");
+    };
+
+    const handleWhatsappContinue = async (e) => {
+        e.preventDefault();
+        if (!academyWhatsappUrl || whatsappBusy) {
+            return;
+        }
+
+        const phoneToSave = userTelefono ?? phoneInput.trim();
+        if (!savedContactPhone && !userTelefono) {
+            if (!phoneToSave || phoneToSave.replace(/\D/g, "").length < 9) {
+                setApiError("Introduce un móvil válido (9 dígitos) para que podamos responderte.");
+                return;
+            }
+        }
+
+        setWhatsappBusy(true);
+        setApiError(null);
+
+        try {
+            if (!savedContactPhone) {
+                const result = await registerChatbotContactPhone({
+                    phone: phoneToSave,
+                    sessionToken: sessionTokenRef.current,
+                    caseReference,
+                });
+                if (!result.success) {
+                    setApiError(result.message || "No se pudo guardar el teléfono.");
+                    return;
+                }
+                if (result.contactPhone) {
+                    setSavedContactPhone(result.contactPhone);
+                }
+            }
+
+            const url = whatsappUrlWithMessage(academyWhatsappUrl, buildWhatsappMessage());
+            if (url) {
+                window.open(url, "_blank", "noopener,noreferrer");
+            }
+        } catch {
+            setApiError("Error al conectar con WhatsApp. Inténtalo de nuevo.");
+        } finally {
+            setWhatsappBusy(false);
+        }
+    };
+
+    const needsPhoneInput = requiresHuman && !savedContactPhone && !userTelefono;
+
     const handleSend = (e) => {
         e.preventDefault();
         if (isPending || isRateLimited || !userId) return;
         const fd = new FormData(e.currentTarget);
-        fd.set("message", inputMessage.trim());
+        fd.set("message", inputMessage.trim().slice(0, 500));
         submitMessage(fd);
     };
 
@@ -437,6 +331,15 @@ const useChatbot = () => {
         isAuthReady,
         IS_FIREBASE_CONFIGURED,
         isLocalUser: true,
+        requiresHuman,
+        caseReference,
+        savedContactPhone,
+        phoneInput,
+        setPhoneInput,
+        needsPhoneInput,
+        whatsappBusy,
+        handleWhatsappContinue,
+        userTelefono,
     };
 };
 
@@ -444,24 +347,39 @@ const useChatbot = () => {
 
 const Message = ({ message }) => {
     const isUser = message.role === "user";
-    const alignment = isUser ? "self-end" : "self-start";
-    const bgColor = isUser
-        ? "bg-indigo-600 text-white"
-        : "bg-white text-gray-800 border border-gray-100";
 
     return (
         <div
-            className={`max-w-[85%] rounded-xl shadow-sm p-3 my-2 transition duration-200 ease-in-out ${alignment} ${bgColor}`}
+            className={`max-w-[88%] transition duration-200 ease-in-out ${
+                isUser ? "self-end" : "self-start"
+            }`}
         >
-            <ReactMarkdown>{message.text}</ReactMarkdown>
+            <div
+                className={
+                    isUser
+                        ? "rounded-2xl rounded-br-md bg-slate-900 px-4 py-3 text-sm leading-relaxed text-white shadow-md shadow-slate-900/15"
+                        : "rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm"
+                }
+            >
+                <ReactMarkdown
+                    components={{
+                        p: ({ children }) => <p className="mb-0 last:mb-0">{children}</p>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    }}
+                >
+                    {message.text}
+                </ReactMarkdown>
+            </div>
         </div>
     );
 };
 
 const TypingIndicator = () => (
-    <div className="max-w-[85%] self-start bg-white text-gray-800 rounded-xl shadow-sm p-3 my-1 flex items-center border border-gray-100">
-        <Loader2 className="h-5 w-5 animate-spin mr-2 text-indigo-500" />
-        <span>Consultando FAQ…</span>
+    <div className="max-w-[88%] self-start rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Loader2 className="h-4 w-4 animate-spin text-orange-500" aria-hidden="true" />
+            <span>Consultando FAQ…</span>
+        </div>
     </div>
 );
 
@@ -471,21 +389,19 @@ const ArtifactItem = ({ artifact, currentUserId }) => {
 
     return (
         <div
-            className={`p-4 rounded-lg border-l-4 ${
+            className={`mb-3 rounded-2xl border-l-4 p-4 shadow-sm transition hover:shadow-md ${
                 isCurrentUser
-                    ? "border-green-500 bg-white"
-                    : "border-gray-300 bg-gray-100"
-            } shadow-sm mb-3 transition hover:shadow-md`}
+                    ? "border-orange-500 bg-white"
+                    : "border-slate-200 bg-slate-50"
+            }`}
         >
-            <div className="flex justify-between items-start">
-                <h4 className="font-bold text-lg text-gray-800">
-                    {artifact.title}
-                </h4>
+            <div className="flex items-start justify-between gap-2">
+                <h4 className="text-base font-bold text-slate-900">{artifact.title}</h4>
                 <span
-                    className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
                         artifact.type === "Recomendación"
-                            ? "bg-indigo-100 text-indigo-600"
-                            : "bg-gray-200 text-gray-600"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-slate-200 text-slate-600"
                     }`}
                 >
                     {artifact.type}
@@ -525,30 +441,46 @@ const Chatbot = () => {
         isLoggedIn,
         isAuthReady,
         IS_FIREBASE_CONFIGURED,
-        isLocalUser,
+        requiresHuman,
+        caseReference,
+        savedContactPhone,
+        phoneInput,
+        setPhoneInput,
+        needsPhoneInput,
+        whatsappBusy,
+        handleWhatsappContinue,
+        userTelefono,
     } = useChatbot();
 
-    if (!isOpen) {
-        return (
-            <button
-                onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 bg-indigo-600 text-white rounded-full p-4 shadow-xl hover:bg-indigo-700 transition duration-300 transform hover:scale-110 z-[200]"
-                aria-label="Abrir Chatbot"
-            >
-                <MessageCircle className="h-7 w-7" />
-            </button>
-        );
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
+    const fabButton = (
+        <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className={`fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/25 transition duration-300 hover:scale-110 hover:bg-slate-800 ${CHAT_Z}`}
+            aria-label="Abrir chat con Maider"
+        >
+            <MessageCircle className="h-7 w-7" aria-hidden="true" />
+        </button>
+    );
+
+    if (!mounted) {
+        return null;
     }
 
-    // Pantalla de carga mientras se conecta la autenticación de Firebase
+    if (!isOpen) {
+        return createPortal(fabButton, document.body);
+    }
+
     if (IS_FIREBASE_CONFIGURED && !isAuthReady) {
-        return (
-            <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col justify-center items-center bg-gray-50 rounded-xl shadow-2xl z-[200] p-4">
-                <Loader2 className="h-10 w-10 animate-spin text-indigo-500" />
-                <p className="mt-4 text-gray-600">
-                    Conectando servicio de autenticación...
-                </p>
-            </div>
+        return createPortal(
+            <div className={`${panelShell} h-[80vh] items-center justify-center p-6 sm:h-[600px]`}>
+                <Loader2 className="h-10 w-10 animate-spin text-orange-500" />
+                <p className="mt-4 text-sm text-slate-600">Conectando servicio de autenticación…</p>
+            </div>,
+            document.body,
         );
     }
 
@@ -556,194 +488,224 @@ const Chatbot = () => {
         if (view === "artifacts") {
             if (!IS_FIREBASE_CONFIGURED) {
                 return (
-                    <div className="p-4 text-center text-gray-500 mt-20">
-                        <Archive className="h-10 w-10 mx-auto mb-3 text-red-400" />
-                        <p className="font-bold">Artefactos no disponibles</p>
-                        <p className="text-sm mt-2">
-                            La función de Artefactos requiere que la
-                            configuración de Firebase esté disponible.
-                        </p>
+                    <div className="p-6 text-center text-slate-500">
+                        <Archive className="mx-auto mb-3 h-10 w-10 text-slate-300" aria-hidden="true" />
+                        <p className="font-semibold text-slate-700">Artefactos no disponibles</p>
+                        <p className="mt-2 text-sm">Requiere configuración de Firebase.</p>
                     </div>
                 );
             }
             return (
-                <div className="p-4 overflow-y-auto">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <Archive className="h-5 w-5 mr-2 text-indigo-500" />
-                        Artefactos de Conversación (Compartidos)
+                <div className="overflow-y-auto p-4">
+                    <h3 className="mb-4 flex items-center text-lg font-bold text-slate-900">
+                        <Archive className="mr-2 h-5 w-5 text-orange-500" aria-hidden="true" />
+                        Artefactos guardados
                     </h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                        Aquí se guardan las **notas o recomendaciones clave**
-                        extraídas del chat.
-                    </p>
                     {artifacts.length === 0 && (
-                        <div className="text-center p-8 bg-white rounded-lg border border-dashed border-gray-300 text-gray-500">
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
                             No hay artefactos guardados aún.
                         </div>
                     )}
                     {artifacts.map((artifact) => (
-                        <ArtifactItem
-                            key={artifact.id}
-                            artifact={artifact}
-                            currentUserId={userId}
-                        />
+                        <ArtifactItem key={artifact.id} artifact={artifact} currentUserId={userId} />
                     ))}
                 </div>
             );
         }
 
         return (
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
-                {/* Alerta de Error de API */}
-                {apiError && !isRateLimited && (
-                    <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center shadow-md animate-pulse">
-                        <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0" />
-                        <span className="text-sm font-medium">{apiError}</span>
+            <div className="flex flex-1 flex-col space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4">
+                {apiError && !isRateLimited ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>{apiError}</span>
                     </div>
-                )}
-                {/* Alerta de Límite de Tasa */}
-                {isRateLimited && (
-                    <div className="p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-lg flex items-center shadow-md">
-                        <Clock className="h-5 w-5 mr-2 flex-shrink-0 animate-spin" />
-                        <span className="text-sm font-medium">
-                            Límite excedido. Reintento en **{retryAfterSeconds}
-                            ** segundos.
+                ) : null}
+                {isRateLimited ? (
+                    <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                        <Clock className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+                        <span>
+                            Límite excedido. Reintento en {retryAfterSeconds} segundos.
                         </span>
                     </div>
-                )}
-                {messages.length === 0 && (
-                    <div className="text-center text-gray-500 mt-20 p-4 bg-white rounded-lg shadow-inner">
-                        <MessageCircle className="h-10 w-10 mx-auto mb-3 text-indigo-500" />
-                        <p className="font-bold text-lg text-gray-700">
-                            ¡Hola! Soy Maider.
-                        </p>
-                        <p className="text-sm mt-2">
-                            Pregúntame sobre clases, bonos VIP, alquiler de tablas o pagos.
-                            Las respuestas son instantáneas según las reglas del sistema.
-                        </p>
-                        <p className="text-xs mt-3 font-semibold flex items-center justify-center text-indigo-600">
-                            <Database className="h-3 w-3 mr-1" />
-                            FAQ local · sin IA externa
-                        </p>
-                        {userId && (
-                            <p className="text-xs mt-3 text-gray-400 truncate">
-                                ID de Sesión: {userId}
-                            </p>
-                        )}
+                ) : null}
+                {requiresHuman ? (
+                    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                        <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                        <span>
+                            Esta conversación tiene **revisión manual**
+                            {caseReference ? ` (caso ${caseReference})` : ""}. Puedes seguir preguntando cosas
+                            sencillas aquí o usar **WhatsApp** para tu caso concreto.
+                        </span>
                     </div>
-                )}
-                {messages.map((msg, index) => (
-                    <Message key={msg.id || index} message={msg} />
-                ))}
-                {/* Indicador de que el bot está respondiendo */}
-                {isLoading && <TypingIndicator />}
+                ) : null}
+                {messages.length === 0 ? (
+                    <div className="mt-4 rounded-2xl border border-slate-200/90 bg-white p-5 text-center shadow-sm">
+                        <Sparkles className="mx-auto mb-3 h-8 w-8 text-orange-500" aria-hidden="true" />
+                        <p className="font-heading text-base font-bold text-slate-900">¡Hola! Soy Maider</p>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                            Te ayudo con clases, bonos VIP, alquiler de tablas y dudas del día a día.
+                        </p>
+                        <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-cyan-700">
+                            <Database className="h-3 w-3" aria-hidden="true" />
+                            FAQ local · respuesta instantánea
+                        </p>
+                    </div>
+                ) : null}
+                <div className="flex flex-col gap-2">
+                    {messages.map((msg, index) => (
+                        <Message key={msg.id || index} message={msg} />
+                    ))}
+                </div>
+                {isLoading ? <TypingIndicator /> : null}
                 <div ref={messagesEndRef} />
             </div>
         );
     };
 
-    return (
-        <div className="fixed bottom-6 right-6 w-full max-w-sm h-[80vh] sm:h-[600px] flex flex-col bg-gray-50 rounded-xl shadow-2xl z-[200] overflow-hidden border border-gray-300 transition-all duration-300">
-            {/* Encabezado y Pestañas */}
-            <div className="bg-indigo-600 text-white shadow-md border-b border-indigo-700">
-                <div className="flex justify-between items-center p-4">
-                    <h3 className="text-lg font-bold flex items-center">
-                        <User
-                            className={`h-5 w-5 mr-2 ${
-                                isLoggedIn
-                                    ? "text-green-300"
-                                    : "text-yellow-300"
-                            }`}
-                        />
-                        Asistente Maider (
-                        {isLoggedIn ? "Registrado" : "Anónimo"})
-                    </h3>
+    const panel = (
+        <div className={`${panelShell} h-[80vh] sm:h-[600px]`}>
+            <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-400 to-cyan-500" aria-hidden="true" />
+
+            <div className="border-b border-slate-100 px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                            San Sebastián Surf School
+                        </p>
+                        <h3 className="mt-1 font-heading text-lg font-bold tracking-tight text-slate-900">
+                            Maider{" "}
+                            <span className="bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
+                                Asistente
+                            </span>
+                        </h3>
+                        <p className="mt-0.5 text-xs text-slate-500">
+                            {isLoggedIn ? "Sesión registrada" : "Sesión anónima"}
+                        </p>
+                    </div>
                     <button
+                        type="button"
                         onClick={() => setIsOpen(false)}
-                        className="p-1 rounded-full hover:bg-indigo-700 transition duration-150"
-                        aria-label="Cerrar Chatbot"
+                        className="rounded-xl border border-slate-200/90 p-2 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                        aria-label="Cerrar chat"
                     >
-                        <X className="h-6 w-6" />
+                        <X className="h-5 w-5" aria-hidden="true" />
                     </button>
                 </div>
-                {/* Pestañas de Navegación */}
-                <div className="flex border-t border-indigo-700">
+
+                <div className="mt-4 flex gap-2">
                     <button
+                        type="button"
                         onClick={() => setView("chat")}
-                        className={`flex-1 flex justify-center items-center py-2 transition duration-200 ${
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition ${
                             view === "chat"
-                                ? "bg-indigo-700"
-                                : "bg-indigo-600 hover:bg-indigo-500"
+                                ? "bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                                : "border border-slate-200/90 bg-slate-50 text-slate-600 hover:bg-white"
                         }`}
                     >
-                        <MessageSquare className="h-5 w-5 mr-2" />
+                        <MessageSquare className="h-4 w-4" aria-hidden="true" />
                         Chat
                     </button>
                     <button
+                        type="button"
                         onClick={() => setView("artifacts")}
-                        className={`flex-1 flex justify-center items-center py-2 transition duration-200 ${
-                            view === "artifacts"
-                                ? "bg-indigo-700"
-                                : "bg-indigo-600 hover:bg-indigo-500"
-                        }`}
                         disabled={!IS_FIREBASE_CONFIGURED}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                            view === "artifacts"
+                                ? "bg-slate-900 text-white shadow-md shadow-slate-900/15"
+                                : "border border-slate-200/90 bg-slate-50 text-slate-600 hover:bg-white"
+                        }`}
                     >
-                        <List className="h-5 w-5 mr-2" />
-                        Artefactos ({artifacts.length})
+                        <List className="h-4 w-4" aria-hidden="true" />
+                        Notas ({artifacts.length})
                     </button>
                 </div>
             </div>
-            {/* Área de Contenido */}
-            <div className="flex-1 overflow-y-auto bg-gray-50">
-                {renderContent()}
-            </div>
-            {/* Formulario de Entrada (Solo visible en vista 'chat') */}
-            {view === "chat" && (
-                <form
-                    onSubmit={handleSend}
-                    className="p-4 bg-white border-t border-gray-200"
-                >
-                    <div className="flex space-x-3">
-                        <input
-                            type="text"
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            placeholder={
-                                isRateLimited
-                                    ? `Espera ${retryAfterSeconds} segundos...(máximo 10 mensaje por minuto) `
-                                    : "Escribe tu mensaje..."
-                            }
-                            className="flex-1 p-3 border border-gray-200 rounded-xl shadow-inner focus:ring-indigo-500 focus:border-indigo-500 transition duration-200"
-                            disabled={isLoading || isRateLimited}
-                            autoComplete="off"
-                        />
+
+            <div className="flex min-h-0 flex-1 flex-col">{renderContent()}</div>
+
+            {view === "chat" && requiresHuman ? (
+                <div className="border-t border-slate-100 bg-white p-4">
+                    {needsPhoneInput ? (
+                        <div className="mb-3">
+                            <label htmlFor="chatbot-contact-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
+                                Tu móvil (para que podamos responderte)
+                            </label>
+                            <input
+                                id="chatbot-contact-phone"
+                                type="tel"
+                                inputMode="tel"
+                                autoComplete="tel"
+                                value={phoneInput}
+                                onChange={(e) => setPhoneInput(e.target.value)}
+                                placeholder="600 000 000"
+                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                            />
+                        </div>
+                    ) : savedContactPhone || userTelefono ? (
+                        <p className="mb-3 text-center text-xs text-slate-500">
+                            Móvil registrado:{" "}
+                            <span className="font-semibold text-slate-700">{savedContactPhone ?? userTelefono}</span>
+                        </p>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={handleWhatsappContinue}
+                        disabled={whatsappBusy || (needsPhoneInput && phoneInput.replace(/\D/g, "").length < 9)}
+                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        {whatsappBusy ? (
+                            <Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />
+                        ) : (
+                            <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
+                        )}
+                        Continuar por WhatsApp{caseReference ? ` · ${caseReference}` : ""}
+                    </button>
+                </div>
+            ) : null}
+
+            {view === "chat" ? (
+                <form onSubmit={handleSend} className="border-t border-slate-100 bg-white p-4">
+                    <div className="flex items-center gap-2">
+                        <div className={fieldShell}>
+                            <MessageSquare
+                                className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-focus-within:text-orange-500"
+                                aria-hidden="true"
+                            />
+                            <input
+                                type="text"
+                                value={inputMessage}
+                                onChange={(e) => setInputMessage(e.target.value)}
+                                placeholder={
+                                    isRateLimited
+                                        ? `Espera ${retryAfterSeconds}s…`
+                                        : "Escribe tu mensaje…"
+                                }
+                                className={fieldInput}
+                                disabled={isLoading || isRateLimited}
+                                autoComplete="off"
+                                maxLength={500}
+                            />
+                        </div>
                         <button
                             type="submit"
-                            className={`p-3 rounded-xl transition duration-200 transform ${
-                                isLoading ||
-                                isRateLimited ||
-                                !inputMessage.trim()
-                                    ? "bg-gray-400 cursor-not-allowed text-gray-200"
-                                    : "bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-lg hover:scale-[1.02]"
-                            }`}
-                            disabled={
-                                isLoading ||
-                                isRateLimited ||
-                                !inputMessage.trim()
-                            }
-                            aria-label="Enviar Mensaje"
+                            disabled={isLoading || isRateLimited || !inputMessage.trim()}
+                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Enviar mensaje"
                         >
                             {isLoading ? (
-                                <Loader2 className="h-6 w-6 animate-spin" />
+                                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
                             ) : (
-                                <Send className="h-6 w-6" />
+                                <Send className="h-5 w-5" aria-hidden="true" />
                             )}
                         </button>
                     </div>
                 </form>
-            )}
+            ) : null}
         </div>
     );
+
+    return createPortal(panel, document.body);
 };
 
 export default Chatbot;

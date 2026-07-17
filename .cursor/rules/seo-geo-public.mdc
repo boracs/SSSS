@@ -50,7 +50,7 @@ Controller → SeoMetaDto (readonly) + JsonLd via *SeoService
 
 **SeoMetaDto mínimo:** `title`, `description`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `ogType`, `robots`, `jsonLd` (array Schema.org ya sanitizado).
 
-**Frontend:** componente compartido `resources/js/components/seo/SeoHead.jsx` (crear si no existe). `@inertiaHead` en `app.blade.php` debe recibir tags de la primera carga.
+**Frontend:** si existe `resources/js/components/seo/SeoHead.jsx`, usarlo; si no, `<Head>` de `@inertiajs/react` con props del DTO `seo` (no crear SeoHead salvo petición explícita). `@inertiaHead` en `app.blade.php` debe recibir tags de la primera carga.
 
 **Schemas por tipo de página:**
 

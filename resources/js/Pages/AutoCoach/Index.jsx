@@ -20,15 +20,166 @@ import {
 
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1];
 
+function getPlayableDuration(video) {
+    if (!video) return 0;
+    if (Number.isFinite(video.duration) && video.duration > 0) {
+        return video.duration;
+    }
+    if (video.seekable?.length > 0) {
+        const end = video.seekable.end(video.seekable.length - 1);
+        if (Number.isFinite(end) && end > 0) {
+            return end;
+        }
+    }
+
+    return 0;
+}
+
+function seekVideoToPercent(video, pct) {
+    const duration = getPlayableDuration(video);
+    if (!video || duration <= 0) {
+        return false;
+    }
+
+    let target = (pct / 100) * duration;
+
+    if (video.seekable?.length > 0) {
+        const seekStart = video.seekable.start(0);
+        const seekEnd = video.seekable.end(video.seekable.length - 1);
+        if (seekEnd > 0) {
+            target = Math.min(Math.max(target, seekStart), Math.max(seekStart, seekEnd - 0.05));
+        }
+    } else {
+        target = Math.min(Math.max(0, target), Math.max(0, duration - 0.001));
+    }
+
+    try {
+        video.currentTime = target;
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function labelize(value) {
     if (!value) return value;
     return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, " ");
 }
 
 /** Marco 16:9 fijo: el vídeo escala con object-contain (vertical, cuadrado, horizontal). */
-function VideoFrame({ videoRef, canvasRef, progress, onProgress, onScrubStart, onScrubEnd, label, paintEnabled }) {
+function VideoFrame({
+    videoRef,
+    canvasRef,
+    src = "",
+    videoKey = "",
+    onScrubStart,
+    onScrubEnd,
+    label,
+    paintEnabled,
+}) {
     const containerRef = useRef(null);
+    const scrubberRef = useRef(null);
     const isDrawing = useRef(false);
+    const scrubbingRef = useRef(false);
+    const pendingSeekPctRef = useRef(null);
+    const userIntentPctRef = useRef(null);
+    const [sliderPct, setSliderPct] = useState(0);
+
+    useEffect(() => {
+        setSliderPct(0);
+        pendingSeekPctRef.current = null;
+        userIntentPctRef.current = null;
+    }, [videoKey]);
+
+    const applySeek = useCallback((pct) => {
+        const video = videoRef.current;
+        if (!video) {
+            pendingSeekPctRef.current = pct;
+            return false;
+        }
+
+        if (seekVideoToPercent(video, pct)) {
+            pendingSeekPctRef.current = null;
+            return true;
+        }
+
+        pendingSeekPctRef.current = pct;
+        return false;
+    }, [videoRef]);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) {
+            return undefined;
+        }
+
+        const handleReady = () => {
+            if (pendingSeekPctRef.current !== null) {
+                applySeek(pendingSeekPctRef.current);
+            }
+        };
+
+        const handleTimeUpdate = () => {
+            if (scrubbingRef.current || video.paused || userIntentPctRef.current !== null) {
+                return;
+            }
+
+            const duration = getPlayableDuration(video);
+            if (duration > 0) {
+                setSliderPct((video.currentTime / duration) * 100);
+            }
+        };
+
+        const handleSeeked = () => {
+            if (scrubbingRef.current) {
+                return;
+            }
+
+            const duration = getPlayableDuration(video);
+            if (duration <= 0) {
+                return;
+            }
+
+            const actualPct = (video.currentTime / duration) * 100;
+            const intent = userIntentPctRef.current;
+
+            if (intent !== null) {
+                if (Math.abs(actualPct - intent) < 1.5) {
+                    userIntentPctRef.current = null;
+                    pendingSeekPctRef.current = null;
+                    setSliderPct(actualPct);
+                }
+
+                return;
+            }
+
+            if (!video.paused) {
+                setSliderPct(actualPct);
+            }
+        };
+
+        const handleProgress = () => {
+            if (pendingSeekPctRef.current !== null) {
+                applySeek(pendingSeekPctRef.current);
+            }
+        };
+
+        video.addEventListener("loadeddata", handleReady);
+        video.addEventListener("canplay", handleReady);
+        video.addEventListener("canplaythrough", handleReady);
+        video.addEventListener("timeupdate", handleTimeUpdate);
+        video.addEventListener("seeked", handleSeeked);
+        video.addEventListener("progress", handleProgress);
+
+        return () => {
+            video.removeEventListener("loadeddata", handleReady);
+            video.removeEventListener("canplay", handleReady);
+            video.removeEventListener("canplaythrough", handleReady);
+            video.removeEventListener("timeupdate", handleTimeUpdate);
+            video.removeEventListener("seeked", handleSeeked);
+            video.removeEventListener("progress", handleProgress);
+        };
+    }, [videoRef, videoKey, applySeek]);
 
     const syncFrame = useCallback(() => {
         const container = containerRef.current;
@@ -132,26 +283,64 @@ function VideoFrame({ videoRef, canvasRef, progress, onProgress, onScrubStart, o
         };
     }, [stopDrawing]);
 
+    const handleScrubPointerDown = useCallback((e) => {
+        e.stopPropagation();
+        scrubbingRef.current = true;
+        try {
+            scrubberRef.current?.setPointerCapture(e.pointerId);
+        } catch {
+            // Algunos navegadores no soportan capture en range; el scrub sigue funcionando.
+        }
+        onScrubStart?.();
+    }, [onScrubStart]);
+
+    const handleScrubPointerUp = useCallback((e) => {
+        if (scrubberRef.current?.hasPointerCapture(e.pointerId)) {
+            scrubberRef.current.releasePointerCapture(e.pointerId);
+        }
+        scrubbingRef.current = false;
+
+        const intent = userIntentPctRef.current;
+        if (intent !== null) {
+            applySeek(intent);
+        }
+
+        onScrubEnd?.();
+    }, [applySeek, onScrubEnd]);
+
+    const handleScrubInput = useCallback((e) => {
+        const pct = Number(e.target.value);
+        userIntentPctRef.current = pct;
+        pendingSeekPctRef.current = pct;
+        setSliderPct(pct);
+        applySeek(pct);
+    }, [applySeek]);
+
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-            <p className="absolute left-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
-                {label}
-            </p>
-            {paintEnabled ? (
-                <p className="absolute right-3 top-3 z-10 rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                    Modo dibujo
-                </p>
-            ) : null}
+        <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
             <div
                 ref={containerRef}
                 className="relative aspect-video w-full bg-black"
             >
+                <p className="absolute left-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
+                    {label}
+                </p>
+                {paintEnabled ? (
+                    <p className="absolute right-3 top-3 z-10 rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        Modo dibujo
+                    </p>
+                ) : null}
                 <video
+                    key={videoKey || "empty"}
                     ref={videoRef}
+                    src={src || undefined}
                     className={`absolute inset-0 h-full w-full object-contain object-center ${paintEnabled ? "pointer-events-none" : "cursor-pointer"}`}
                     muted
                     playsInline
-                    onLoadedMetadata={syncFrame}
+                    preload="auto"
+                    onLoadedMetadata={() => {
+                        syncFrame();
+                    }}
                     onClick={() => {
                         if (paintEnabled) return;
                         const v = videoRef.current;
@@ -170,24 +359,21 @@ function VideoFrame({ videoRef, canvasRef, progress, onProgress, onScrubStart, o
                     onPointerCancel={stopDrawing}
                 />
             </div>
-            <div className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 pb-2.5 pt-8">
+            <div className="border-t border-white/10 bg-slate-950/80 px-3 py-3">
                 <input
+                    ref={scrubberRef}
                     type="range"
                     min={0}
                     max={100}
-                    step={0.05}
-                    value={Number.isFinite(progress) ? progress : 0}
+                    step={0.01}
+                    value={Number.isFinite(sliderPct) ? sliderPct : 0}
                     aria-label={`Posición de reproducción — ${label}`}
-                    onInput={(e) => onProgress(Number(e.target.value))}
-                    onChange={(e) => onProgress(Number(e.target.value))}
-                    onPointerDown={(e) => {
-                        e.stopPropagation();
-                        onScrubStart?.();
-                    }}
-                    onPointerUp={() => onScrubEnd?.()}
-                    onPointerCancel={() => onScrubEnd?.()}
-                    onLostPointerCapture={() => onScrubEnd?.()}
-                    className="h-2 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-cyan-400 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:cursor-grab [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-cyan-400 [&::-moz-range-thumb]:shadow-md [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-md active:[&::-moz-range-thumb]:cursor-grabbing active:[&::-webkit-slider-thumb]:cursor-grabbing"
+                    onInput={handleScrubInput}
+                    onChange={handleScrubInput}
+                    onPointerDown={handleScrubPointerDown}
+                    onPointerUp={handleScrubPointerUp}
+                    onPointerCancel={handleScrubPointerUp}
+                    className="h-3 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-cyan-400 touch-none [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-grab [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-cyan-400 [&::-moz-range-thumb]:shadow-md [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:shadow-md active:[&::-moz-range-thumb]:cursor-grabbing active:[&::-webkit-slider-thumb]:cursor-grabbing"
                 />
             </div>
         </div>
@@ -310,8 +496,7 @@ export default function AutoCoachIndex({ limits }) {
     const [trick, setTrick] = useState("");
     const [speed, setSpeed] = useState(1);
     const [playing, setPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const isScrubbingRef = useRef(false);
+    const [proVideoSrc, setProVideoSrc] = useState("");
     const [uploads, setUploads] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [deletingUploads, setDeletingUploads] = useState(false);
@@ -378,63 +563,28 @@ export default function AutoCoachIndex({ limits }) {
         )
             .then((r) => r.json())
             .then((d) => {
-                if (d.success && proRef.current) {
-                    proRef.current.src = d.video_url;
-                    proRef.current.load();
-                    setProgress(0);
+                if (d.success) {
+                    setProVideoSrc(d.video_url);
                 } else {
+                    setProVideoSrc("");
                     setError(d.message || "Vídeo no encontrado.");
                 }
             });
     }, [sport, posture, trick]);
 
-    useEffect(() => {
-        const tick = () => {
-            if (isScrubbingRef.current) return;
-
-            const v = proRef.current;
-            if (v?.duration && Number.isFinite(v.duration)) {
-                setProgress((v.currentTime / v.duration) * 100);
-            }
-        };
-        const id = setInterval(tick, 100);
-        return () => clearInterval(id);
-    }, []);
-
-    const syncProgressFromVideos = useCallback(() => {
-        const v = proRef.current;
-        if (v?.duration && Number.isFinite(v.duration)) {
-            setProgress((v.currentTime / v.duration) * 100);
-        }
-    }, []);
-
-    const seekBoth = useCallback((pct) => {
-        [proRef, userRef].forEach((ref) => {
-            const v = ref.current;
-            if (v?.duration && Number.isFinite(v.duration)) {
-                v.currentTime = (pct / 100) * v.duration;
-            }
-        });
-    }, []);
-
-    const handleSeek = useCallback(
-        (pct) => {
-            setProgress(pct);
-            seekBoth(pct);
-        },
-        [seekBoth],
-    );
-
-    const handleScrubStart = useCallback(() => {
-        isScrubbingRef.current = true;
-        [proRef, userRef].forEach((ref) => ref.current?.pause());
+    const pauseBoth = useCallback(() => {
+        proRef.current?.pause();
+        userRef.current?.pause();
         setPlaying(false);
     }, []);
 
-    const handleScrubEnd = useCallback(() => {
-        isScrubbingRef.current = false;
-        syncProgressFromVideos();
-    }, [syncProgressFromVideos]);
+    const handleProScrubStart = useCallback(() => {
+        pauseBoth();
+    }, [pauseBoth]);
+
+    const handleUserScrubStart = useCallback(() => {
+        pauseBoth();
+    }, [pauseBoth]);
 
     useEffect(() => {
         [proRef.current, userRef.current].forEach((v) => {
@@ -461,9 +611,10 @@ export default function AutoCoachIndex({ limits }) {
         [proRef, userRef].forEach((ref) => {
             const v = ref.current;
             if (!v) return;
-            v.currentTime = Math.min(Math.max(0, v.currentTime + delta), v.duration || 0);
+            const duration = getPlayableDuration(v);
+            if (duration <= 0) return;
+            v.currentTime = Math.min(Math.max(0, v.currentTime + delta), duration);
         });
-        syncProgressFromVideos();
     };
 
     const formatMb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
@@ -550,12 +701,8 @@ export default function AutoCoachIndex({ limits }) {
     };
 
     const selectUserClip = (url) => {
-        if (!userRef.current) return;
         setSelectedClipUrl(url);
-        userRef.current.src = url;
-        userRef.current.load();
-        setProgress(0);
-        userRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+        userRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
 
     const handleDeleteMyVideos = async () => {
@@ -585,11 +732,8 @@ export default function AutoCoachIndex({ limits }) {
             setUploads([]);
             setDeleteConfirmOpen(false);
 
-            if (userRef.current && selectedClipUrl && deletedUrls.has(selectedClipUrl)) {
-                userRef.current.removeAttribute("src");
-                userRef.current.load();
+            if (selectedClipUrl && deletedUrls.has(selectedClipUrl)) {
                 setSelectedClipUrl(null);
-                setProgress(0);
             }
 
             clearCanvases();
@@ -672,20 +816,18 @@ export default function AutoCoachIndex({ limits }) {
                     <VideoFrame
                         videoRef={proRef}
                         canvasRef={canvasProRef}
-                        progress={progress}
-                        onProgress={handleSeek}
-                        onScrubStart={handleScrubStart}
-                        onScrubEnd={handleScrubEnd}
+                        src={proVideoSrc}
+                        videoKey={proVideoSrc}
+                        onScrubStart={handleProScrubStart}
                         label="Referencia pro"
                         paintEnabled={paintEnabled}
                     />
                     <VideoFrame
                         videoRef={userRef}
                         canvasRef={canvasUserRef}
-                        progress={progress}
-                        onProgress={handleSeek}
-                        onScrubStart={handleScrubStart}
-                        onScrubEnd={handleScrubEnd}
+                        src={selectedClipUrl ?? ""}
+                        videoKey={selectedClipUrl ?? ""}
+                        onScrubStart={handleUserScrubStart}
                         label="Tu clip"
                         paintEnabled={paintEnabled}
                     />

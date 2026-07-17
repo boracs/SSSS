@@ -34,7 +34,7 @@ function AccountMenuIdentity({ user }) {
  * - type "link": enlace directo en la barra.
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
-function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
+function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     const publicTopLinks = [
         { type: "link", id: "autocoach", label: "Comparador de maniobras", href: safeRoute("autocoach.index") },
         { type: "link", id: "taller", label: "Taller de Surf", href: safeRoute("taller.index") },
@@ -72,6 +72,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                             { label: "Inventario de Tablas", href: safeRoute("admin.surfboards.index"), featured: true },
                             { label: "Reservas de Alquiler", href: safeRoute("admin.bookings.index") },
                             { label: "Segunda Mano", href: safeRoute("admin.second-hand.index") },
+                            { label: "Subastas", href: safeRoute("admin.auctions.index") },
                         ],
                     },
                     {
@@ -79,6 +80,12 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                         links: [
                             { label: "Gestor de Clases", href: safeRoute("admin.class-manager.index"), featured: true },
                             { label: "Packs de Bonos", href: safeRoute("admin.bonos.index") },
+                        ],
+                    },
+                    {
+                        title: "Chatbot",
+                        links: [
+                            { label: "Casos derivados", href: safeRoute("admin.chatbot.index"), featured: true },
                         ],
                     },
                     {
@@ -93,6 +100,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                         title: "Pagos",
                         links: [
                             { label: "Dashboard Global", href: safeRoute("admin.payments.global"), featured: true },
+                            { label: "Clientes · Historial de pagos", href: safeRoute("admin.payments.clients.index") },
                             { label: "Validacion de Bonos", href: safeRoute("admin.payment-validation.index") },
                         ],
                     },
@@ -128,6 +136,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     clasesLinks.push(
         { label: "Surf", href: safeRoute("servicios.surf"), featured: !isAuth },
         { label: "Surfskate", href: safeRoute("servicios.surfSkate") },
+        { label: "Guía de equipamiento", href: safeRoute("servicios.surfSkate.guia") },
         { label: "Surftrips", href: safeRoute("servicios.surfTrips") },
     );
 
@@ -167,6 +176,17 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         tiendaLinks.splice(1, 0, { label: "Mis Pedidos", href: safeRoute("pedidos") });
     }
 
+    const serviciosLinks = [
+        { label: "Reparaciones", href: safeRoute("servicios"), featured: true },
+        {
+            label: "Neoprenos",
+            href: safeRoute("servicios.reparacionNeoprenos", undefined, "/servicios/reparacion-neoprenos"),
+        },
+    ];
+    if (canAccessAuctions) {
+        serviciosLinks.push({ label: "Subastas", href: safeRoute("auctions.index") });
+    }
+
     const serviciosGroups = [
             {
                 title: "Tienda",
@@ -174,13 +194,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             },
             {
                 title: "Servicios",
-                links: [
-                    { label: "Reparaciones", href: safeRoute("servicios"), featured: true },
-                    {
-                        label: "Neoprenos",
-                        href: safeRoute("servicios.reparacionNeoprenos", undefined, "/servicios/reparacion-neoprenos"),
-                    },
-                ],
+                links: serviciosLinks,
             },
             {
                 title: "Alquileres",
@@ -258,9 +272,11 @@ export default function GlobalNav() {
     const isVip = user?.is_vip === true || String(user?.is_vip) === "1";
     const hasLocker =
         user?.has_physical_locker === true || String(user?.has_physical_locker) === "1";
+    const canAccessAuctions =
+        user?.can_access_auctions === true || String(user?.can_access_auctions) === "1";
     const cartCount = Number(props?.cart?.count ?? props?.cartCount ?? 0);
 
-    const menus = buildMenus({ isAdmin, isAuth, isVip, hasLocker });
+    const menus = buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions });
 
     const baseId = useId();
     const closeTimerRef = useRef(null);
@@ -316,6 +332,7 @@ export default function GlobalNav() {
             { label: "Mis clases reservadas", href: `${safeRoute("my-reservations.index")}?tab=classes` },
             { label: "Mis alquileres", href: `${safeRoute("my-reservations.index")}?tab=rentals` },
             { label: "Mis Pedidos", href: safeRoute("pedidos") },
+            { label: "Mis facturas", href: safeRoute("my-invoices.index") },
         );
         if (hasLocker) {
             accountLinks.push({ label: "Me quedé sin llave", href: safeRoute("emergency-key.show") });

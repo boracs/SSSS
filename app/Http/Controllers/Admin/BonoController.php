@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Services\Chatbot\S4BusinessContextService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class BonoController extends Controller
 {
+    public function __construct(
+        private readonly S4BusinessContextService $chatbotBusinessContext,
+    ) {}
+
     public function index()
     {
         return Inertia::render('Admin/Bonos/Index', [
@@ -39,6 +44,8 @@ class BonoController extends Controller
             'precio' => $validated['precio'],
             'activo' => (bool) ($validated['activo'] ?? true),
         ]);
+
+        $this->chatbotBusinessContext->forget();
 
         return back()->with('success', 'Pack bono creado.');
     }
@@ -90,6 +97,8 @@ class BonoController extends Controller
         $packBono->update([
             'activo' => ! $old,
         ]);
+
+        $this->chatbotBusinessContext->forget();
 
         if ($old && ! (bool) $packBono->activo) {
             Log::info('[PackBono] desactivado', [

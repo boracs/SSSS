@@ -159,8 +159,13 @@ class PlanesTaquillasController extends Controller
         }
 
         try {
+            $pago = $this->taquillaService->ensurePaymentReference(
+                $pago->load('plan'),
+                $user,
+            );
+
             $checkoutUrl = $this->initiatePayment->execute(
-                $this->buildStripeDtoForPago($pago->load('plan'), $user),
+                $this->buildStripeDtoForPago($pago, $user),
             );
         } catch (Throwable $e) {
             Log::error('PlanesTaquillasController::payPendingPago Stripe error', [
@@ -179,6 +184,7 @@ class PlanesTaquillasController extends Controller
     {
         $planName = (string) ($pago->plan?->nombre ?? 'Plan taquilla');
         $amountCents = (int) $pago->monto_pagado_cents;
+        $reference = trim((string) ($pago->referencia_pago_externa ?? ''));
 
         return new InitiatePaymentDto(
             payableType:   PagoCuota::class,
@@ -186,7 +192,7 @@ class PlanesTaquillasController extends Controller
             lineItems:     [
                 new PaymentLineItemDto(
                     name:            $planName,
-                    description:     'Renovación taquilla',
+                    description:     $reference !== '' ? $reference : 'Renovación cuota taquilla',
                     unitAmountCents: $amountCents,
                     quantity:        1,
                 ),

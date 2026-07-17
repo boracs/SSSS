@@ -14,7 +14,8 @@
 | UI                    | Tailwind CSS 3, Radix/shadcn (`resources/js/components/ui/`) |
 | Auth                  | Laravel Breeze (session) + Sanctum (API tokens)              |
 | Rutas JS              | Ziggy (`resources/js/ziggy.js`)                              |
-| Persistencia auxiliar | Google Firestore REST (chatbot memoria LTP)                  |
+| Chatbot (memoria)     | MySQL `chatbot_interactions` + `localStorage` (anónimos)     |
+| Persistencia auxiliar | Google Firestore REST (legacy; chatbot ya no lo usa)         |
 | IA externa            | Google Gemini REST (`GoogleAIService`)                       |
 
 **Convención Inertia:** `routes/web.php` → `Controller@method` → `Inertia::render('Pages/...')` → `resources/js/Pages/{Name}.jsx`.
@@ -39,16 +40,18 @@
 │ Academia        │ Academy/*, Lesson*, Actions  │ Academy/, Admin/Academy/         │
 │ Alquileres      │ Rentals/*, BookingService    │ Rentals/Surfboards/, Admin/…     │
 │ Segunda Mano    │ SecondHandBoard, SecondHandStatus │ SecondHand/, Admin/SecondHand/ │
+│ Subastas        │ Auction, AuctionBid, Auction*Service │ Auctions/, Admin/Auctions/   │
 │ Taquillas       │ Taquilla, PlanesTaquillas, EmergencyKey │ PlanesTaquillas*, MeQuedeSinLlave, Admin/EmergencyKeys │
 │ VIP / Bonos     │ BonoService, Client/Bono     │ Client/Bonos/, Admin/Bonos/      │
 │ Pagos admin     │ PaymentValidation            │ Admin/Payments/*                 │
 │ AutoCoach       │ AutoCoachController + Services │ AutoCoach/Index.jsx            │
+│ Chatbot         │ ChatbotAgentService (regex→Gemini), GoogleAIService, S4BusinessContextService │ Admin/Chatbot/Index.jsx │
 │ Webcams         │ ServicioController (ruta)    │ Servicios_Webcams.jsx            │
 │ Auth / Perfil   │ Auth/*, ProfileController    │ Auth/, Partials/                 │
 └─────────────────┴──────────────────────────────┴────────────────────────────────────┘
 ```
 
-**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `WhatsAppFloatingButton` + `Chatbot` (no-admin). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
+**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `Chatbot` (no-admin; único FAB — WhatsAppFloatingButton retirado). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global.
 
 **Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`GlobalNav.jsx` vía `Header.jsx`) y políticas.
 
@@ -63,7 +66,8 @@ maider_0/
 ├── .cursor/
 │   ├── rules/
 │   │   ├── tunnel-share-modes.mdc          ──► Modos local vs Cloudflare túnel (Vite/build)
-│   │   └── seo-geo-public.mdc              ──► Reglas SEO/GEO páginas públicas
+│   │   ├── seo-geo-public.mdc              ──► Reglas SEO/GEO páginas públicas
+│   │   └── chatbot-s4.mdc                  ──► Embudo FAQ→Gemini→escalación; fuentes de verdad S4
 │   └── skills/
 │       └── sovereign-architect-protocol/
 │           └── SKILL.md
@@ -79,7 +83,11 @@ maider_0/
 │   │   └── UploadLessonProofAction.php     ──► LessonProofStorageService; LessonProofUploadedEvent
 │   │
 │   ├── Actions/Chatbot/
-│   │   └── ProcessChatbotQueryAction.php   ──► ChatbotQueryDto → ChatbotService (FAQ local)
+│   │   └── ProcessChatbotQueryAction.php   ──► ChatbotInteractionQueryDto → ChatbotAgentService (guard + FAQ + derivación)
+│   │
+│   ├── Actions/Invoicing/
+│   │   ├── IssueFiscalInvoiceAction.php    ──► Idempotente por stripe_checkout_session_id; crea factura en B2BRouter (HTTP fuera de lockForUpdate)
+│   │   └── SyncFiscalTaxReportAction.php   ──► Sondea tax_report; registered/error → persiste; nunca revierte el pago Stripe
 │   │
 │   ├── Casts/
 │   │   └── BusinessWallClockDatetime.php   ──► TZ negocio (Madrid) en Eloquent
@@ -91,14 +99,16 @@ maider_0/
 │   │       ├── CleanupExpiredReservations.php   ──► Invoca AutoReleaseService (cron)
 │   │       ├── MakeUserVip.php
 │   │       ├── OperationalSanityCheckCommand.php
-│   │       └── SyncAutoCoachReferenceVideos.php ──► Sincroniza catálogo vídeos referencia
+│   │       ├── SyncAutoCoachReferenceVideos.php ──► Sincroniza catálogo vídeos referencia
+│   │       └── SyncStripeCheckoutSessionCommand.php ──► Recupera pagos Stripe pending (webhook perdido)
 │   │
 │   ├── DTOs/
 │   │   ├── Academy/
 │   │   │   └── AdminGuestEnrollmentDto.php     ──► DTO readonly inscripción walk-in (nombre, pago)
 │   │   ├── Chatbot/
 │   │   │   └── ChatbotReplyDto.php             ──► FAQ local: response + context (readonly)
-│   │   │   └── ChatbotQueryDto.php             ──► userId + query sanitizado (readonly)
+│   │   │   └── ChatbotInteractionQueryDto.php  ──► message + userId/sessionToken/ip + history (readonly)
+│   │   │   └── ChatbotAgentReplyDto.php        ──► message + context + requiresHuman + caseReference (readonly)
 │   │   ├── EmergencyKey/
 │   │   │   ├── EmergencyKeyRevealDto.php       ──► Código revelado post-solicitud (flash único)
 │   │   │   └── EmergencyLockStatusDto.php      ──► is_active + can_request (sin exponer código)
@@ -108,10 +118,29 @@ maider_0/
 │   │       ├── InitiatePaymentDto.php          ──► Intención de cobro: payable_type/id, lineItems[], success/cancel paths
 │   │       ├── PaymentLineItemDto.php          ──► Línea Stripe (céntimos int)
 │   │       └── CheckoutSessionResultDto.php    ──► URL checkout + session_id + idempotency_token
+│   │   └── Invoicing/
+│   │       ├── FiscalInvoiceLineDto.php        ──► Línea factura (céntimos int); conversión € solo en el client B2B
+│   │       ├── FiscalInvoiceContactDto.php     ──► Destinatario factura simplificada (nombre+email; sin NIF/dirección hoy)
+│   │       ├── FiscalInvoiceDraftDto.php       ──► Borrador payable→factura: contact + lines[]
+│   │       ├── FiscalInvoiceResultDto.php      ──► Respuesta alta B2BRouter: b2b_invoice_id + tax_report_ids[]
+│   │       ├── FiscalTaxReportStatusDto.php    ──► Estado sondeo: state/identifier/qr/error_message
+│   │       ├── FiscalInvoicePublicDto.php      ──► Vista cliente 1 factura: status/QR/PDF url (sin secrets B2B)
+│   │       ├── ClientFiscalInvoiceRowDto.php   ──► Fila de "Mis facturas": categoría + descripción + reusa status/PDF de FiscalInvoicePublicDto
+│   │       ├── ClientFiscalInvoiceCategoryOptionDto.php ──► Chip de filtro: value/label/enabled ("Próximamente" si enabled=false)
+│   │       └── ClientFiscalInvoiceListPageDto.php ──► Página paginada devuelta por ClientFiscalInvoiceListService
+│   │
+│   ├── Contracts/Invoicing/
+│   │   └── FiscalInvoiceIssuerInterface.php    ──► Puerto facturación fiscal; createIssuedInvoice()/getTaxReport(); bind en AppServiceProvider según invoicing.driver
 │   │
 │   ├── Exceptions/
 │   │   ├── EmergencyKeyNotEligibleException.php
-│   │   └── TransactionRequiredException.php  ──► Lanza si AvailabilityService/BookingService sin DB::transaction activa
+│   │   ├── TransactionRequiredException.php  ──► Lanza si AvailabilityService/BookingService sin DB::transaction activa
+│   │   ├── Chatbot/
+│   │   │   └── GeminiUnavailableException.php ──► Sin key/HTTP fail/respuesta vacía; ChatbotAgentService la degrada a incertidumbre (nunca 500)
+│   │   └── Invoicing/
+│   │       ├── MissingFiscalDataException.php       ──► Payable/usuario sin datos mínimos; status=failed determinista
+│   │       ├── UnsupportedFiscalPayableException.php ──► payable_type fuera de config('invoicing.payable_types')
+│   │       └── B2BRouterApiException.php             ──► Fallo HTTP/API B2BRouter; error transitorio, permite retry del Job
 │   ├── Events/                             ──► Desacoplamiento mail/notificaciones
 │   │   ├── LessonProofUploadedEvent.php
 │   │   ├── LessonRequestedEvent.php
@@ -134,12 +163,14 @@ maider_0/
 │   │   │   │       ├── BonoController.php
 │   │   │   │       ├── BookingController.php
 │   │   │   │       ├── PaymentValidationController.php
+│   │   │   │       ├── ClientPaymentsController.php ──► Admin · Pagos · Clientes: index (listado ligero + nº pagos) + history() JSON perezoso por acordeón; usa Services/Payments/ClientPaymentHistoryService
 │   │   │   │       ├── EmergencyKeyController.php ──► CRUD candado + histórico solicitudes
 │   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; filtros search/status/board_type/date_type/fechas; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php
 │   │   │   │       ├── UserController.php
 │   │   │   │       ├── ClassManagerController.php   ──► Gestor unificado calendario (VIP+grupal+semanal+particular)
 │   │   │   │       ├── ClassManagerEnrollmentController.php ──► CRUD apuntados walk-in + estado pago
+│   │   │   │       ├── ChatbotInteractionController.php ──► Panel casos derivados; index (filtro status, teléfono, whatsapp_reply_url) + resolve
 │   │   │   │       ├── VipClassManagerController.php
 │   │   │   │       └── VipController.php
 │   │   │   │
@@ -173,7 +204,7 @@ maider_0/
 │   │   │       ├── AuthController.php
 │   │   │       ├── AutoCoachController.php        ──► Comparador maniobras; uploads + catálogo referencia
 │   │   │       ├── CarritoController.php
-│   │   │       ├── ChatbotController.php          ──► ChatbotService FAQ local (sin Gemini/Firestore)
+│   │   │       ├── ChatbotController.php          ──► SanitizedChatbotRequest → ProcessChatbotQueryAction; history; registerContactPhone (POST /api/chatbot/contact-phone)
 │   │   │       ├── ContactMessageController.php
 │   │   │       ├── Controller.php
 │   │   │       ├── Pag_principalController.php
@@ -212,7 +243,8 @@ maider_0/
 │   │   │   │   ├── CatalogQueryRequest.php
 │   │   │   │   └── UploadVideosRequest.php
 │   │   │   ├── Chatbot/
-│   │   │   │   ├── ChatbotMessageRequest.php      ──► FAQ: history + anti-spoofing userId
+│   │   │   │   ├── SanitizedChatbotRequest.php    ──► strict_types; message max:500 + history/sessionToken sanitizados
+│   │   │   │   ├── RegisterChatbotContactPhoneRequest.php ──► POST contact-phone: phone + sessionToken/caseReference
 │   │   │   │   └── ChatbotArtifactRequest.php     ──► Stub compat. memoria LTP
 │   │   │   ├── StoreSecondHandBoardRequest.php    ──► Valida + sanitiza; autorización role=admin
 │   │   │   └── UpdateSecondHandBoardRequest.php   ──► Same; reglas 'sometimes'
@@ -239,19 +271,33 @@ maider_0/
 │   │       └── PagoCuotaQueueResource.php
 │   │
 │   ├── Enums/
+│   │   ├── ChatbotInteractionStatus.php    ──► ACTIVE | REQUIRES_HUMAN | RESOLVED; label() y badgeColor()
+│   │   ├── FiscalInvoiceStatus.php           ──► Pending | Processing | Registered | Failed; label() + isTerminal()
 │   │   ├── PaymentStatus.php                 ──► Pending | Confirmed | Rejected (pasarela + comprobantes)
 │   │   ├── ProductTag.php                    ──► Tags tienda (invierno, neopreno, material_surf, …)
 │   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() descriptivo
-│   │   └── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
+│   │   ├── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
+│   │   └── Invoicing/
+│   │       └── FiscalInvoiceCategory.php   ──► Tienda|BonosClases|BonosTaquilla|Alquileres|Clases; isEnabled() lee config('invoicing.payable_types') (nunca hardcodeado)
 │   │
 │   ├── Jobs/
-│   │   └── SendContactMessageJob.php       ──► ShouldQueue; delega a ContactMessageService; 3 reintentos
+│   │   ├── SendContactMessageJob.php       ──► ShouldQueue; delega a ContactMessageService; 3 reintentos
+│   │   ├── Chatbot/
+│   │   │   └── PersistChatbotHistoryJob.php ──► ShouldQueue; upsert history logueados (lockForUpdate); no bloquea respuesta
+│   │   ├── Payments/
+│   │   │   └── CaptureStripeReceiptJob.php     ──► ShouldQueue; PaymentConfirmed → captura recibo Stripe (reintentos)
+│   │   └── Invoicing/
+│   │       ├── CreateB2BRouterInvoiceJob.php   ──► ShouldQueue; WithoutOverlapping(session_id); IssueFiscalInvoiceAction → encola Poll
+│   │       └── PollB2BRouterTaxReportJob.php   ──► ShouldQueue; auto-reencola con backoff hasta registered/error/max_attempts
 │   │
 │   ├── Listeners/
 │   │   ├── NotifyAdminLessonProofUploadedListener.php
 │   │   ├── SendLessonRequestedMailListener.php
 │   │   ├── SendPrivateLessonRequestedMailListener.php
 │   │   ├── SendSoloStudentNotification.php
+│   │   ├── Payments/
+│   │   │   ├── DispatchStripeReceiptCaptureListener.php ──► ShouldQueue; PaymentConfirmed → CaptureStripeReceiptJob
+│   │   │   └── DispatchB2BRouterInvoiceListener.php     ──► ShouldQueue; PaymentConfirmed → CreateB2BRouterInvoiceJob; early-return si INVOICING_ENABLED=false
 │   │   └── Taquilla/
 │   │       ├── EnviarCorreoConfirmacionTaquilla.php  ──► ShouldQueue; try/catch + Log::error; resiliente
 │   │       └── EnviarCorreoRechazoTaquilla.php       ──► Mail rechazo pago taquilla
@@ -264,21 +310,24 @@ maider_0/
 │   │       └── PagoTaquillaRechazadoMail.php
 │   │
 │   ├── Models/                               ──► 25 modelos Eloquent (ver tabla abajo)
-│   │   ├── Article.php                       ──► Blog Taller de Surf; route key slug; accessors seo_title/seo_description
+│   │   ├── Article.php                       ──► Blog Taller de Surf; route key slug; chatbot_summary/chatbot_keywords (opc.) para catálogo FAQ/Gemini
 │   │   ├── AttendanceNote.php
 │   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
 │   │   ├── Booking.php
 │   │   ├── Carrito.php
+│   │   ├── ChatbotInteraction.php            ──► history JSON acotado (trimHistory); status enum; contact_phone; accessor case_reference (S4-000123)
 │   │   ├── CreditTransaction.php
 │   │   ├── EmergencyKeyRequest.php         ──► Histórico solicitudes llave; toAdminArray()
 │   │   ├── EmergencyLockSetting.php        ──► Singleton candado; current_code + is_active
+│   │   ├── FiscalInvoice.php                 ──► Factura TicketBAI/B2BRouter por payable (session_id UNIQUE, status, b2b_invoice_id, tbai_identifier, qr_payload)
 │   │   ├── Imagen.php
 │   │   ├── Lesson.php
 │   │   ├── LessonUser.php                    ──► Pivot crítico: estados pago/enrollment
 │   │   ├── PackBono.php
 │   │   ├── PagoCuota.php
 │   │   ├── PaymentWebhookIdempotency.php   ──► Idempotencia webhooks (transaction_id, idempotency_token, payable polimórfico)
+│   │   ├── PaymentReceipt.php              ──► Recibo Stripe por payable (session_id, receipt_url, storage_path)
 │   │   ├── Pedido.php
 │   │   ├── PedidoProducto.php
 │   │   ├── PlanTaquilla.php
@@ -321,7 +370,16 @@ maider_0/
 │   │   ├── CuotaService.php                    ──► Ciclo vida cuotas taquilla
 │   │   ├── EmergencyKeyService.php             ──► lockForUpdate; requestCode atómico; updateLockCode ON
 │   │   ├── Payments/
-│   │   │   └── PaymentGatewayService.php       ──► lazy StripeClient; createCheckoutSession→CheckoutSessionResultDto; idempotency_token; confirmPaymentFromWebhook (lockForUpdate)
+│   │   │   ├── PaymentGatewayService.php       ──► lazy StripeClient; createCheckoutSession→CheckoutSessionResultDto; idempotency_token; confirmPaymentFromWebhook (lockForUpdate)
+│   │   │   ├── StripeReceiptCaptureService.php ──► Tras webhook: recupera charge.receipt_url de Stripe y persiste PaymentReceipt
+│   │   │   ├── PaymentReceiptAccessService.php ──► proofMetaMapForPayables(); prioriza recibo Stripe sobre justificante manual
+│   │   │   └── ClientPaymentHistoryService.php ──► Admin · Pagos · Clientes: historyForUser() unifica Pedido/UserBono/Booking/LessonUser/PagoCuota de UN cliente (a demanda); confirmedPaymentCountsForUsers() agrega solo COUNT ligero para el listado
+│   │   ├── Invoicing/
+│   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (Pedido/UserBono/Booking/LessonUser/PagoCuota) → FiscalInvoiceDraftDto; los 5 dominios ya tienen rama; fallback de contacto invitado (client_name/guest_email) cuando no hay user_id
+│   │   │   ├── FiscalInvoiceAccessService.php    ──► Vista cliente: ownership + DTO público (TBAI id, QR, PDF URL)
+│   │   │   ├── ClientFiscalInvoiceListService.php ──► "Mis facturas" (/mis-facturas): paginado + filtro por FiscalInvoiceCategory; ownership por user_id; reusa FiscalInvoiceAccessService::toPublicDto()
+│   │   │   ├── B2BRouterClient.php               ──► HTTP fino: POST invoices, GET tax_reports, GET PDF; headers X-B2B-API-Key/Version
+│   │   │   └── B2BRouterFiscalInvoiceIssuer.php   ──► Adapter FiscalInvoiceIssuerInterface; única conversión céntimos→euros (MoneyCents)
 │   │   ├── Taquilla/
 │   │   │   ├── TaquillaMembershipService.php   ──► Pagos/planes/cola; DB::transaction; MoneyCents; event PagoTaquillaConfirmado
 │   │   │   ├── TaquillaConfirmationMailService.php ──► Envio correo confirmacion cuota
@@ -329,15 +387,24 @@ maider_0/
 │   │   ├── Vip/
 │   │   │   └── VipMembershipService.php        ──► Activar/desactivar VIP; taquilla virtual #500 si sin casillero
 │   │   ├── Chatbot/
-│   │   │   └── ChatbotService.php              ──► FAQ cliente: resolveQuery() regex (sin BD)
+│   │   │   ├── ChatbotService.php              ──► FAQ cliente: resolveQuery() regex + chatbot_faq intents (sin BD, gratis, 1ª opción)
+│   │   │   ├── ChatbotPromptGuard.php          ──► detect(): patrones prompt_injection/role_override/sql/script (pre-Service)
+│   │   │   ├── GoogleAIService.php             ──► Http::withHeaders() → Gemini generateContent; SIN grounding search; GeminiUnavailableException si falla
+│   │   │   ├── S4BusinessContextService.php    ──► systemInstruction Gemini: PackBono/PlanTaquilla en vivo (cache 5min) + políticas fijas + catálogo Taller de Surf + sample_questions FAQ
+│   │   │   ├── ChatbotArticleCatalogService.php ──► Artículos `articles` en vivo: matching FAQ + enlaces /taller/{slug} + bloque Gemini (cache 5min)
+│   │   │   ├── ChatbotPageCatalogService.php     ──► Páginas públicas (Nosotros, reparaciones, servicios…): config/chatbot_pages.php + FAQ/Gemini
+│   │   │   ├── ChatbotFaqCatalogService.php      ──► Intents FAQ: config/chatbot_faq.php (regex + static/dynamic handlers)
+│   │   │   ├── ChatbotUserAccountFaqService.php  ──► Respuestas dinámicas cuenta: taquilla (días/vencimiento), saldo bono
+│   │   │   ├── ChatbotContactPhoneService.php    ──► Normaliza móvil ES; register() en caso REQUIRES_HUMAN; syncFromUserProfile(); adminReplyWhatsappUrl()
+│   │   │   └── ChatbotAgentService.php         ──► processInteraction(): guard → FAQ → [fallback] Gemini acotado → streak O(1) por marcador texto → escalate/persist
 │   │   ├── FirestoreService.php                ──► Inyección obligatoria FirestoreClient REST (AppServiceProvider)
-│   │   ├── GoogleAIService.php                 ──► Gemini HTTP; GEMINI_API_KEY requerida o 500
 │   │   ├── LessonProofStorageService.php       ──► Disco: storage/app/private/lesson-proofs
 │   │   ├── VipLoyaltyService.php
 │   │   └── VipStudentPerformanceService.php    ──► Agregación pesada BD; ~800 LOC; perfil VIP/admin
 │   │
 │   └── Support/
 │       ├── AcademyContact.php                ──► WhatsApp escuela: dígitos, wa.me base/url, urlForPhone()
+│       ├── ChatbotQueryNormalizer.php        ──► Normalización consultas chatbot (acentos + raíces verbales ES)
 │       ├── BusinessDateTime.php                ──► Now() negocio Europe/Madrid
 │       └── StaffVisualIdentity.php             ──► Iniciales + color estable por monitor
 │       ├── IniSize.php                         ──► Parseo upload/post limits de php.ini
@@ -352,18 +419,27 @@ maider_0/
 ├── config/
 │   ├── app.php, auth.php, autocoach.php, cache.php, cors.php, database.php
 │   ├── filesystems.php, google.php, logging.php, mail.php
-│   ├── queue.php, sanctum.php, services.php, session.php, vip.php
+│   ├── queue.php, sanctum.php, services.php, chatbot_pages.php, chatbot_faq.php, session.php, vip.php
+│   └── invoicing.php  ──► INVOICING_ENABLED (kill-switch), driver, credenciales B2BRouter, payable_types whitelist, IVA default, backoff sondeo
 │
 ├── database/
 │   ├── factories/          (7)
-│   ├── migrations/         (58) — … payment_webhook_idempotency; autocoach_reference_videos; emergency_lock_settings
+│   ├── migrations/         (76) — … payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions
 │   └── seeders/            (26) — CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, …
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
-│   ├── ai/
+│   ├── ia/
 │   │   ├── 01-cto-protocol.md
 │   │   └── 02-master-prompt-v3-ultra.md
+│   ├── chatbot/
+│   │   ├── informe-logica-negocio-s4.md        ← contexto de negocio inyectado a Gemini; borrador a matizar por el cliente
+│   │   └── CHATBOT-AGENT-BRIEF.md              ← briefing + prompt de arranque para chat dedicado al chatbot
+│   ├── payments/
+│   │   └── STRIPE-WEBHOOK.md                   ← webhook producción/local + comando sync-stripe-session
+│   ├── invoicing/
+│   │   └── B2BROUTER-TICKETBAI.md              ← flujo PaymentConfirmed→B2BRouter, setup cuenta B2B, cómo probar en staging, TODO iteración 2
+│   ├── faq-architecture.md                     ← FAQ técnico dev (V3-ULTRA); incluye flujo chatbot híbrido regex+Gemini
 │   ├── PROJECT_TREE.md
 │   ├── INFORME_TECNICO_COTIZACION.md           ← informe estructural/funcional para cotización
 │   └── PROJECT_TREE_FOR_GEMINI.md              ← este documento
@@ -373,8 +449,9 @@ maider_0/
 │   │   ├── brand/          — logos S4 WebP/PNG (nav, hero, mark, og-share)
 │   │   │   └── source/     — masters PNG IA (logo-s4-navy/white-master.png)
 │   │   └── sponsors/
-│   │       └── bunker/     — logo The Bunker Surf Shop (nav, mark, hero WebP/PNG)
-│   │           └── source/ — masters PNG IA (bunker-navy/white-master.png)
+│   │       ├── bunker/     — logo The Bunker Surf Shop (nav, mark, hero WebP/PNG)
+│   │       │   └── source/ — masters PNG IA (bunker-navy/white-master.png)
+│   │       └── yow/        — logo YOW Surfskate (guía equipamiento; yow-logo-white.svg)
 │   │   └── placeholder.svg
 │   ├── favicon.ico, favicon.svg, favicon-*.png, apple-touch-icon.png, site.webmanifest
 │   ├── index.php
@@ -422,8 +499,9 @@ maider_0/
 | `PaymentWebhookController`                         | Webhook Stripe            | Firma HMAC → confirmPaymentFromWebhook → PaymentConfirmed (graceful). POST /webhooks/stripe. |
 | `RedirectsToStripeCheckout` (trait Controller)     | Redirección Inertia 2     | `Inertia::location()` si X-Inertia; `redirect()->away()` si no. |
 | `PaymentSuccessController`                         | Retorno Stripe            | Página de aterrizaje tras pago: lee session_id → redirige contextualmente. |
+| `MyFiscalInvoicesController` / `ClientFiscalInvoiceListService` | Panel cliente | `/mis-facturas`; filtro por las 5 categorías (tienda, bonos_clases, alquileres, clases, bonos_taquilla). Las 5 ramas están implementadas en `FiscalInvoiceBuilderService`, pero `FiscalInvoiceCategory::isEnabled()` exige además `INVOICING_ENABLED=true`; con el flag en `false` (entorno de prueba actual) todas se muestran como "Próximamente". |
 | `AutoReleaseService`                               | Batch + lock              | `lockForUpdate` sobre pending sin `payment_proof_path`; grace 30min (<4h clase) o 120min.                                                                                                                                 |
-| `FirestoreService`                                 | Singleton REST            | Cliente **obligatorio** inyectado; `transport => 'rest'` en `AppServiceProvider` (evita gRPC/caché roto). Chatbot LTP: `/artifacts/{appId}/users/{userId}/artifacts`.                                                     |
+| `FirestoreService`                                 | Singleton REST            | Cliente inyectado; `transport => 'rest'` en `AppServiceProvider`. Legacy artifacts; **chatbot ya no usa Firestore** (MySQL + localStorage).                                                     |
 | `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`.                                                                                                                                         |
 | `VipStudentPerformanceService`                     | Read-heavy agregador      | Consultas amplias por mes bono; usar con `loadHistory` consciente en admin.                                                                                                                                               |
 | `LessonProofStorageService`                        | Filesystem                | Privado; no exponer URL directa sin policy.                                                                                                                                                                               |
@@ -480,14 +558,15 @@ resources/
     │   ├── staffConflictFormat.js   ──► Formato legible ventanas horarias en conflictos staff
     │   ├── surfboardMeasures.js ──► Altura/volumen surf (3'5"→11'0", filtros alquiler)
     │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla…)
-    │   ├── chatbotApi.js       ──► POST /api/chatbot/message (FAQ local)
+    │   ├── chatbotApi.js       ──► POST message + GET history + POST contact-phone (FAQ + derivación WhatsApp)
+    │   ├── inertiaErrors.js    ──► inertiaErrorMessages + showInertiaErrors (toasts desde errors Laravel)
     │   └── utils.ts            ──► cn() shadcn
     │
     ├── utils/
     │   └── money.js            ──► formatEur(), formatEurFromCents() (Intl es-ES)
     │
     ├── layouts/
-    │   ├── PublicLayout.jsx          ──► Header + main + Footer + WhatsAppFloatingButton + Chatbot
+    │   ├── PublicLayout.jsx          ──► Header + main + Footer + Chatbot (único FAB flotante)
     │   ├── AuthenticatedLayout.jsx   ──► Alias de PublicLayout
     │   ├── GuestLayout.jsx           ──► Auth Breeze (sin Header global)
     │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; suele ir dentro de PublicLayout)
@@ -499,10 +578,10 @@ resources/
     │   ├── GlobalNav.jsx             ──► Menú flyout por rol; admin: Gestión (6 cols) + Extras; móvil acordeón
     │   ├── BrandLogo.jsx             ──► `<picture>` WebP/PNG logos S4 (nav, hero, mark)
     │   ├── BunkerLogo.jsx            ──► Logo patrocinador The Bunker Surf Shop
+    │   ├── YowLogo.jsx               ──► Logo YOW Surfskate (guía equipamiento)
     │   ├── SponsorsStrip.jsx         ──► Bloque patrocinadores (footer, home)
     │   ├── Footer.jsx
-    │   ├── WhatsAppFloatingButton.jsx  ──► FAB wa.me escuela (inferior izq.; mensaje contextual por ruta)
-    │   ├── Chatbot.jsx
+    │   ├── Chatbot.jsx                 ──► FAB chat; captura móvil al derivar a humano; POST contact-phone + wa.me escuela
     │   ├── OpcionesIntro.jsx         ──► Carrusel home (solo isHome en Header)
     │   ├── webcam/
     │   │   └── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa)
@@ -535,6 +614,7 @@ resources/
         │   ├── Servicios_ReparacionNeoprenos.jsx ──► Reparación neoprenos (Willy)
         │   ├── Servicios_ClasesDeSurf.jsx
         │   ├── Servicios_SurfSkate.jsx
+        │   ├── Servicios_SurfskateGuia.jsx   ──► Guía YOW: altura/peso, tabla selección, perfiles rider
         │   ├── Servicios_SurfTrips.jsx
         │   ├── Servicios_Fotos.jsx
         │   ├── Servicios_Videograbaciones.jsx   ──► Landing videograbación + análisis técnico
@@ -560,6 +640,15 @@ resources/
         │   └── SecondHand/
         │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda
         │       └── Show.jsx    ──► Detalle tabla; galería + CTA WhatsApp
+        │
+        ├── [DOMINIO: SUBASTAS]
+        │   ├── Auctions/
+        │   │   ├── Index.jsx   ──► Catálogo subastas; filtros en curso/finalizadas
+        │   │   └── Show.jsx    ──► Detalle + pujar + pagar Stripe (ganador)
+        │   └── Admin/Auctions/
+        │       ├── Index.jsx   ──► Gestión: publicar, cerrar, cancelar
+        │       ├── Create.jsx
+        │       └── Edit.jsx
         │
         ├── [DOMINIO: TALLER DE SURF — blog SEO]
         │   └── Taller/
@@ -628,6 +717,8 @@ resources/
                 ├── Bonos/
                 │   └── Index.jsx
                 ├── Bookings/
+                ├── Chatbot/
+                │   └── Index.jsx           ──► Casos derivados (requires_human/resolved); historial expandible + botón resolver
                 ├── SecondHand/
                 │   ├── Index.jsx           ──► CRUD admin; barra filtros (marca/modelo, estado, fechas); stats margen/ingresos; modal confirmación borrado
                 │   ├── Create.jsx
@@ -637,7 +728,8 @@ resources/
                 │   └── Index.jsx             ──► Admin: reponer código (ON), histórico, marcar extravío
                 ├── Payments/
                 │   ├── Dashboard.jsx
-                │   └── GlobalDashboard.jsx
+                │   ├── GlobalDashboard.jsx
+                │   └── Clients.jsx ──► Admin · Pagos · Clientes: acordeón por cliente, historial (5 dominios) cargado a demanda vía admin.payments.clients.history
                 ├── Surfboards/
                 │   ├── Index.jsx
                 │   ├── Create.jsx

@@ -4,21 +4,21 @@ declare(strict_types=1);
 
 namespace App\Actions\Chatbot;
 
-use App\DTOs\Chatbot\ChatbotQueryDto;
-use App\DTOs\Chatbot\ChatbotReplyDto;
-use App\Services\Chatbot\ChatbotService;
+use App\DTOs\Chatbot\ChatbotAgentReplyDto;
+use App\DTOs\Chatbot\ChatbotInteractionQueryDto;
+use App\Services\Chatbot\ChatbotAgentService;
 
 /**
- * Punto de entrada único FAQ: DTO → ChatbotService (síncrono, sin BD).
+ * Punto de entrada único del agente: DTO → ChatbotAgentService (guard + FAQ + derivación).
  */
 final class ProcessChatbotQueryAction
 {
     public function __construct(
-        private readonly ChatbotService $chatbotService,
+        private readonly ChatbotAgentService $chatbotAgentService,
     ) {}
 
-    public function execute(ChatbotQueryDto $dto): ChatbotReplyDto
+    public function execute(ChatbotInteractionQueryDto $dto): ChatbotAgentReplyDto
     {
-        return $this->chatbotService->resolveQuery($dto->query);
+        return $this->chatbotAgentService->processInteraction($dto);
     }
 }

@@ -28,6 +28,8 @@ const PARTICULARES = [
     { pax: "2 personas", precio: "55 €", nota: "por persona" },
     { pax: "3 personas", precio: "40 €", nota: "por persona" },
     { pax: "4 personas", precio: "30 €", nota: "por persona" },
+    { pax: "5 personas", precio: "30 €", nota: "por persona" },
+    { pax: "6 personas", precio: "30 €", nota: "por persona" },
 ];
 
 const BONOS = [
@@ -93,14 +95,13 @@ const PASOS = [
 
 const NIVEL_STYLE = {
     Principiante: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30",
-    Iniciación: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30",
     Intermedio: "bg-cyan-500/15 text-cyan-200 ring-cyan-400/30",
     Avanzado: "bg-orange-500/15 text-orange-200 ring-orange-400/30",
 };
 
 const NIVELES_CLASE = [
     {
-        nivel: "Iniciación",
+        nivel: "Principiante",
         icon: GraduationCap,
         olas: "Espuma y olas pequeñas (rodilla a cadera)",
         resumen: "Primeros pasos en el agua. Ideal tras el tutorial de primer día o una particular inicial.",
@@ -115,7 +116,7 @@ const NIVELES_CLASE = [
         nivel: "Intermedio",
         icon: Target,
         olas: "Hasta hombro, olas con algo de fuerza",
-        resumen: "Ya dominas la base. Entras al agua sin que el monitor repita conceptos de iniciación.",
+        resumen: "Ya dominas la base. Entras al agua sin que el monitor repita conceptos de principiante.",
         requisitos: [
             "Puesta en pie consistente en espuma y primeras olas verdes pequeñas",
             "Remar con control, girar la tabla y desplazarte en el agua sin ayuda constante",
@@ -223,14 +224,102 @@ const VENTAJAS = [
     },
 ];
 
+function SectionChapterBadge({ number, label, sublabel, theme }) {
+    const styles = {
+        particulares: {
+            wrap: "border-amber-400/35 bg-amber-500/10",
+            num: "text-amber-400",
+            label: "text-amber-200",
+            sub: "text-amber-100/50",
+        },
+        bonos: {
+            wrap: "border-emerald-400/35 bg-emerald-500/10",
+            num: "text-emerald-400",
+            label: "text-emerald-200",
+            sub: "text-emerald-100/50",
+        },
+    };
+    const s = styles[theme];
+
+    return (
+        <div
+            className={`inline-flex items-center gap-4 rounded-2xl border px-5 py-3.5 shadow-lg backdrop-blur-sm ${s.wrap}`}
+        >
+            <span className={`text-4xl font-black leading-none tabular-nums ${s.num}`}>
+                {number}
+            </span>
+            <div className="text-left">
+                <p className={`text-sm font-bold uppercase tracking-[0.18em] ${s.label}`}>
+                    {label}
+                </p>
+                {sublabel ? (
+                    <p className={`mt-0.5 text-xs font-medium ${s.sub}`}>{sublabel}</p>
+                ) : null}
+            </div>
+        </div>
+    );
+}
+
+function ModalidadPickerCard({ href, number, icon: Icon, title, subtitle, hint, theme }) {
+    const styles = {
+        particulares: {
+            card: "border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-violet-950/40 to-slate-950/80 hover:border-amber-400/50 hover:from-amber-500/15",
+            num: "text-amber-500/25 group-hover:text-amber-400/40",
+            icon: "bg-amber-500/15 text-amber-200 ring-amber-400/30",
+            title: "text-white",
+            hint: "text-amber-200/80",
+        },
+        bonos: {
+            card: "border-emerald-400/25 bg-gradient-to-br from-emerald-500/10 via-cyan-950/40 to-slate-950/80 hover:border-emerald-400/50 hover:from-emerald-500/15",
+            num: "text-emerald-500/25 group-hover:text-emerald-400/40",
+            icon: "bg-emerald-500/15 text-emerald-200 ring-emerald-400/30",
+            title: "text-white",
+            hint: "text-emerald-200/80",
+        },
+    };
+    const s = styles[theme];
+
+    return (
+        <a
+            href={href}
+            className={`group relative flex flex-col overflow-hidden rounded-2xl border p-6 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl sm:p-8 ${s.card}`}
+        >
+            <span
+                className={`pointer-events-none absolute -right-2 -top-4 text-7xl font-black transition-colors ${s.num}`}
+                aria-hidden
+            >
+                {number}
+            </span>
+            <div
+                className={`relative mb-4 flex h-12 w-12 items-center justify-center rounded-xl ring-1 ${s.icon}`}
+            >
+                <Icon className="h-6 w-6" />
+            </div>
+            <h3 className={`relative text-xl font-extrabold sm:text-2xl ${s.title}`}>{title}</h3>
+            <p className="relative mt-2 text-sm leading-relaxed text-slate-300">{subtitle}</p>
+            <p className={`relative mt-4 text-xs font-semibold uppercase tracking-wider ${s.hint}`}>
+                {hint}
+            </p>
+            <span className="relative mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-white/90">
+                Ver tarifas
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+        </a>
+    );
+}
+
 const BonoCard = ({ bono }) => {
     const Icon = bono.icon;
+    const isParticularPack = bono.titulo.toLowerCase().includes("particulares");
+
     return (
         <div
             className={`relative flex flex-col rounded-2xl border p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 ${
                 bono.destacado
                     ? "border-emerald-400/40 bg-gradient-to-b from-emerald-500/10 to-white/5 shadow-lg shadow-emerald-950/30"
-                    : "border-white/10 bg-white/5 hover:border-cyan-400/30 hover:bg-white/10"
+                    : isParticularPack
+                      ? "border-amber-400/30 bg-gradient-to-b from-amber-500/10 to-white/5 hover:border-amber-400/45"
+                      : "border-white/10 bg-white/5 hover:border-cyan-400/30 hover:bg-white/10"
             }`}
         >
             {bono.destacado && (
@@ -238,7 +327,18 @@ const BonoCard = ({ bono }) => {
                     Mejor precio
                 </span>
             )}
-            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-400/30">
+            {isParticularPack && !bono.destacado ? (
+                <span className="absolute -top-3 left-6 rounded-full border border-amber-400/40 bg-amber-500/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-100">
+                    Pack particulares
+                </span>
+            ) : null}
+            <div
+                className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ring-1 ${
+                    isParticularPack
+                        ? "bg-amber-500/15 text-amber-200 ring-amber-400/30"
+                        : "bg-cyan-500/15 text-cyan-200 ring-cyan-400/30"
+                }`}
+            >
                 <Icon className="h-5 w-5" />
             </div>
             <h3 className="text-lg font-bold text-white">{bono.titulo}</h3>
@@ -359,7 +459,7 @@ const InvitadoAmigoCard = () => {
                                     nivel real. Si nunca ha surfeado, lo correcto
                                     es empezar por{" "}
                                     <strong className="text-slate-200">
-                                        iniciación
+                                        principiante
                                     </strong>
                                     , no por una sesión de nivel superior.
                                 </p>
@@ -404,114 +504,196 @@ export default function ServiciosClasesDeSurf() {
                         incluido.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
+                        <a
+                            href="#particulares"
+                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                        >
+                            <UserCheck className="h-4 w-4" />
+                            Ver particulares
+                        </a>
+                        <a
+                            href="#bonos"
+                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                        >
+                            <Ticket className="h-4 w-4" />
+                            Ver bonos
+                        </a>
                         <Link
                             href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-amber-400 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110"
-                        >
-                            <Waves className="h-4 w-4" />
-                            Reservar mi plaza
-                        </Link>
-                        <Link
-                            href={route("servicios.videograbaciones")}
                             className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
                         >
-                            Ver videograbaciones
+                            <MessageCircle className="h-4 w-4" />
+                            Contactar
                         </Link>
                     </div>
                 </div>
             </section>
 
-            {/* Clases particulares */}
-            <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
-                <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-400">
-                            Clases particulares
-                        </p>
-                        <h2 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
-                            Atención 100% personalizada
-                        </h2>
-                        <p className="mt-4 leading-relaxed text-slate-300">
-                            La opción ideal si buscas progresar rápido o prefieres
-                            una experiencia a medida. Sesiones de{" "}
-                            <strong className="text-white">hora y media</strong> con
-                            tabla y neopreno incluidos. El precio por persona baja
-                            cuanto mayor es el grupo.
-                        </p>
-                        <Link
-                            href={route("contacto")}
-                            className="mt-6 inline-flex items-center gap-2 rounded-full bg-cyan-500/15 px-5 py-2.5 text-sm font-semibold text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-500/25"
-                        >
-                            Reservar particular
-                            <ArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
-                        <div className="space-y-2">
-                            {PARTICULARES.map((p) => (
-                                <div
-                                    key={p.pax}
-                                    className="flex items-center justify-between rounded-xl bg-slate-900/40 px-4 py-3"
-                                >
-                                    <span className="flex items-center gap-2 text-sm font-medium text-slate-300">
-                                        <Users className="h-4 w-4 text-slate-500" />
-                                        {p.pax}
-                                    </span>
-                                    <span className="text-right">
-                                        <span className="text-xl font-extrabold text-white">
-                                            {p.precio}
-                                        </span>
-                                        <span className="ml-1 text-xs text-slate-500">
-                                            {p.nota}
-                                        </span>
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                        <p className="mt-4 text-xs text-slate-500">
-                            Todas las sesiones duran 1,5 h e incluyen tabla y
-                            neopreno.
-                        </p>
-                    </div>
-                </div>
-            </section>
-
-            {/* Bonos */}
-            <section className="border-y border-white/5 bg-[#0f5f74]/15 py-16">
+            {/* Selector de modalidad */}
+            <section className="border-b border-white/10 bg-slate-950/90 py-12 sm:py-14">
                 <div className="mx-auto max-w-6xl px-4 sm:px-6">
-                    <div className="mb-10 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/80">
-                            Nuestros bonos
-                        </p>
-                        <h2 className="mt-2 text-3xl font-extrabold text-white">
+                    <p className="text-center text-xs font-bold uppercase tracking-[0.25em] text-slate-500">
+                        Elige tu forma de surfear
+                    </p>
+                    <h2 className="mt-3 text-center text-2xl font-extrabold text-white sm:text-3xl">
+                        Dos modalidades, dos experiencias
+                    </h2>
+                    <p className="mx-auto mt-3 max-w-xl text-center text-sm text-slate-400">
+                        Las <strong className="text-amber-200">particulares</strong> son sesiones a
+                        medida con tu monitor. Los{" "}
+                        <strong className="text-emerald-200">bonos</strong> son packs flexibles en
+                        grupo según el oleaje de la semana.
+                    </p>
+                    <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                        <ModalidadPickerCard
+                            href="#particulares"
+                            number="01"
+                            icon={UserCheck}
+                            theme="particulares"
+                            title="Clases particulares"
+                            subtitle="Monitor dedicado a tu grupo. Ideal para progresar rápido o tu primera vez con atención total."
+                            hint="Desde 30 €/persona en grupos de 4 a 6"
+                        />
+                        <ModalidadPickerCard
+                            href="#bonos"
+                            number="02"
+                            icon={Ticket}
+                            theme="bonos"
+                            title="Bonos en grupo"
+                            subtitle="Compras el pack y surfeas cuando mejor esté el mar. Clases de 1,5 h con equipo incluido."
+                            hint="Desde 25 €/clase con bono de 10"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            {/* ── SECCIÓN 01: Clases particulares ── */}
+            <section
+                id="particulares"
+                className="relative scroll-mt-20 overflow-hidden border-b-4 border-amber-400/50"
+            >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-violet-950/90 via-[#1a1028] to-amber-950/50" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(251,191,36,0.12),_transparent_50%)]" />
+                <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-amber-400/40 to-transparent" />
+
+                <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+                    <SectionChapterBadge
+                        number="01"
+                        label="Clases particulares"
+                        sublabel="Sesión a medida · monitor solo para tu grupo"
+                        theme="particulares"
+                    />
+                    <div className="mt-8 grid gap-10 lg:grid-cols-2 lg:items-center">
+                        <div>
+                            <h2 className="text-3xl font-extrabold leading-tight text-white sm:text-4xl lg:text-[2.75rem]">
+                                Atención 100% personalizada
+                            </h2>
+                            <p className="mt-4 leading-relaxed text-slate-300">
+                                La opción ideal si buscas progresar rápido o prefieres una experiencia
+                                a medida. Sesiones de{" "}
+                                <strong className="text-amber-100">hora y media</strong> con tabla y
+                                neopreno incluidos. El precio por persona baja cuanto mayor es el
+                                grupo.
+                            </p>
+                            <ul className="mt-5 space-y-2 text-sm text-slate-400">
+                                <li className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-amber-400" />
+                                    Reserva para ti solo o con amigos (hasta 6 personas)
+                                </li>
+                                <li className="flex items-center gap-2">
+                                    <CheckCircle2 className="h-4 w-4 shrink-0 text-amber-400" />
+                                    Horario y enfoque adaptados a tu nivel
+                                </li>
+                            </ul>
+                            <Link
+                                href={route("contacto")}
+                                className="mt-8 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                            >
+                                Reservar particular
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </div>
+                        <div className="rounded-2xl border border-amber-400/25 bg-slate-950/60 p-6 shadow-xl shadow-amber-950/20 backdrop-blur-md">
+                            <p className="mb-4 text-center text-xs font-bold uppercase tracking-widest text-amber-300/80">
+                                Tarifas por tamaño de grupo
+                            </p>
+                            <div className="space-y-2">
+                                {PARTICULARES.map((p) => (
+                                    <div
+                                        key={p.pax}
+                                        className="flex items-center justify-between rounded-xl border border-amber-400/10 bg-amber-500/5 px-4 py-3.5"
+                                    >
+                                        <span className="flex items-center gap-2 text-sm font-medium text-slate-200">
+                                            <Users className="h-4 w-4 text-amber-400/70" />
+                                            {p.pax}
+                                        </span>
+                                        <span className="text-right">
+                                            <span className="text-2xl font-extrabold text-white">
+                                                {p.precio}
+                                            </span>
+                                            <span className="ml-1 text-xs text-amber-200/50">
+                                                {p.nota}
+                                            </span>
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <p className="mt-4 text-center text-xs text-slate-500">
+                                Todas las sesiones duran 1,5 h e incluyen tabla y neopreno.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── SECCIÓN 02: Bonos ── */}
+            <section
+                id="bonos"
+                className="relative scroll-mt-20 overflow-hidden border-b-4 border-emerald-400/50"
+            >
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[#062a2f] via-emerald-950/40 to-slate-950" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(52,211,153,0.14),_transparent_55%)]" />
+                <div className="pointer-events-none absolute bottom-0 left-0 h-px w-full bg-gradient-to-r from-transparent via-emerald-400/40 to-transparent" />
+
+                <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+                    <div className="mb-10 flex flex-col items-center text-center">
+                        <SectionChapterBadge
+                            number="02"
+                            label="Nuestros bonos"
+                            sublabel="Clases en grupo · flexibles según el oleaje"
+                            theme="bonos"
+                        />
+                        <h2 className="mt-8 max-w-2xl text-3xl font-extrabold text-white sm:text-4xl">
                             Surfea con libertad y al mejor precio
                         </h2>
-                        <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-400">
-                            Compra tu bono una vez y úsalo durante la semana cuando
-                            las condiciones acompañen. Tú eliges cuándo entras al
-                            agua.
+                        <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-slate-300">
+                            Compra tu bono una vez y úsalo durante la semana cuando las condiciones
+                            acompañen. Tú eliges cuándo entras al agua — no es lo mismo que una
+                            clase particular reservada a fecha fija.
                         </p>
                     </div>
 
-                    <div className="mb-10 overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-cyan-950/30">
+                    <div className="mb-10 overflow-hidden rounded-3xl border border-emerald-400/20 shadow-2xl shadow-emerald-950/40">
                         <img
                             src="/img/surf-grupo-bonos.png"
                             alt="Grupo de alumnos con monitor en la playa durante una clase de surf en grupo"
-                            className="h-auto w-full max-h-[22rem] object-cover object-center"
+                            className="h-auto max-h-[22rem] w-full object-cover object-center"
                         />
-                        <p className="border-t border-white/10 bg-slate-900/60 px-4 py-3 text-center text-xs text-slate-400">
-                            Clases en grupo con monitor certificado — la dinámica
-                            de nuestros bonos en la Zurriola.
+                        <p className="border-t border-emerald-400/15 bg-emerald-950/40 px-4 py-3 text-center text-xs text-emerald-100/60">
+                            Clases en grupo con monitor certificado — la dinámica de nuestros bonos
+                            en la Zurriola.
                         </p>
                     </div>
 
+                    <p className="mb-6 text-center text-xs font-bold uppercase tracking-[0.2em] text-emerald-300/70">
+                        Elige tu pack
+                    </p>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         {BONOS.map((bono) => (
                             <BonoCard key={bono.titulo} bono={bono} />
                         ))}
                     </div>
 
-                    {/* Invita a un amigo */}
                     <InvitadoAmigoCard />
                 </div>
             </section>
@@ -877,7 +1059,7 @@ export default function ServiciosClasesDeSurf() {
                                     En ese caso, es responsabilidad del alumno
                                     haber elegido una clase por encima de su
                                     nivel real. Si nunca ha surfeado, lo correcto
-                                    es empezar por iniciación, no por una sesión
+                                    es empezar por principiante, no por una sesión
                                     de nivel superior.
                                 </p>
                             </div>
@@ -910,19 +1092,19 @@ export default function ServiciosClasesDeSurf() {
                                     esenciales antes de entrar al agua:{" "}
                                     <strong className="text-white">seguridad, postura, remada</strong> y
                                     primeros intentos en espuma. Es la base para unirte después a las
-                                    clases de iniciación del bono con confianza.
+                                    clases de principiante del bono con confianza.
                                 </p>
 
                                 <p className="mt-3 text-sm leading-relaxed text-slate-400">
                                     En las clases de{" "}
-                                    <strong className="text-slate-200">nivel iniciación</strong> trabajamos
+                                    <strong className="text-slate-200">nivel principiante</strong> trabajamos
                                     olas pequeñas (rodilla a cadera) con objetivos como la puesta en pie,
                                     bajar la ola de lado y empezar a coger espumas por tu cuenta.
                                 </p>
 
                                 <p className="mt-3 text-sm leading-relaxed text-slate-400">
                                     Si un principiante entra directamente a una clase mixta, el monitor
-                                    suele dedicar los primeros minutos a conceptos de iniciación que el
+                                    suele dedicar los primeros minutos a conceptos básicos que el
                                     resto del grupo{" "}
                                     <strong className="text-slate-200">
                                         ya escuchó en su primera sesión
@@ -937,7 +1119,7 @@ export default function ServiciosClasesDeSurf() {
                                 <p className="mt-3 text-sm leading-relaxed text-slate-400">
                                     Una vez completado el tutorial o tu primera particular, podrás{" "}
                                     <strong className="text-slate-200">
-                                        integrarte en las clases de iniciación
+                                        integrarte en las clases de principiante
                                     </strong>{" "}
                                     del bono cuando estés preparado. Así la sesión rinde desde el primer
                                     minuto y todo el mundo avanza al mismo ritmo.

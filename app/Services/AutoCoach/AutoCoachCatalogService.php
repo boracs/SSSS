@@ -55,6 +55,8 @@ class AutoCoachCatalogService
 
     public function publicUrl(string $filePath): string
     {
-        return '/storage/'.ltrim(str_replace('\\', '/', $filePath), '/');
+        $normalized = ltrim(str_replace('\\', '/', $filePath), '/');
+
+        return route('autocoach.reference.show', ['path' => $normalized], false);
     }
 }

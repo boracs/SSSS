@@ -13,6 +13,7 @@ use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Services\Payments\PaymentReceiptAccessService;
 use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
 use App\Support\AcademyContact;
@@ -33,6 +34,7 @@ class AcademyController extends Controller
         protected AvailabilityService $availabilityService,
         protected AdminGuestEnrollmentAction $guestEnrollmentAction,
         protected SyncLessonStaffAction $syncLessonStaffAction,
+        protected PaymentReceiptAccessService $paymentReceipts,
     ) {
         Cache::remember('auto_cleanup_check', 900, function () {
             return $this->autoReleaseService->cleanupExpiredReservations();
@@ -291,86 +293,25 @@ class AcademyController extends Controller
         $startDate = is_string($startDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate) ? $startDate : null;
         $endDate = is_string($endDate) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate) ? $endDate : null;
 
-        $lessonRows = LessonUser::query()
+        $lessonEntities = LessonUser::query()
             ->with(['user', 'lesson'])
             ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
             ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
             ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate))
             ->orderByDesc('created_at')
             ->limit(400)
-            ->get()
-            ->map(function (LessonUser $e) {
-                $paymentStatus = $e->payment_status ?? LessonUser::PAYMENT_PENDING;
-                $reviewedAt = $e->reviewed_at?->toIso8601String();
-                $createdAt = $e->created_at?->toIso8601String();
-                return [
-                    'id' => $e->id,
-                    'entity' => 'class',
-                    'user_name' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
-                    'user' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
-                    'email' => $e->user?->email,
-                    'phone' => $e->user?->telefono,
-                    'status' => $paymentStatus,
-                    'enrollment_status' => $e->status,
-                    'lesson_status' => $e->lesson?->status,
-                    'refund_status' => $this->resolveEnrollmentRefundStatus($e, $e->lesson),
-                    'is_new' => $reviewedAt === null,
-                    'reviewed_at' => $reviewedAt,
-                    'created_at' => $createdAt,
-                    'created_at_human' => $this->dashboardCreatedAtHuman($e->created_at),
-                    'proof_url' => ! empty($e->payment_proof_path) ? route('admin.academy.enrollments.proof', $e->id) : null,
-                    'payment_method' => $e->payment_method,
-                    'is_stripe_automated' => ($e->payment_method ?? '') === 'card',
-                    'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
-                    'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
-                    'modality' => $e->lesson?->modality ?: 'grupal',
-                    'date' => $e->lesson?->starts_at ? BusinessDateTime::toApi($e->lesson->starts_at) : null,
-                    'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y'),
-                    'admin_notes' => $e->admin_notes,
-                ];
-            })
-            ->values();
+            ->get();
 
-        $rentalRows = Booking::query()
+        $rentalEntities = Booking::query()
             ->with(['user', 'surfboard'])
             ->when($status !== 'all', fn ($q) => $q->where('payment_status', $status))
             ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
             ->when($endDate, fn ($q) => $q->whereDate('created_at', '<=', $endDate))
             ->orderByDesc('created_at')
             ->limit(400)
-            ->get()
-            ->map(function (Booking $b) {
-                $paymentStatus = $b->payment_status ?? Booking::PAYMENT_PENDING;
-                $reviewedAt = $b->reviewed_at?->toIso8601String();
-                $createdAt = $b->created_at?->toIso8601String();
-                return [
-                    'id' => $b->id,
-                    'entity' => 'rental',
-                    'user_name' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
-                    'user' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
-                    'email' => $b->user?->email,
-                    'phone' => $b->phone ?: $b->user?->telefono,
-                    'status' => $paymentStatus,
-                    'refund_status' => $this->resolveBookingRefundStatus($b),
-                    'is_new' => $reviewedAt === null,
-                    'reviewed_at' => $reviewedAt,
-                    'created_at' => $createdAt,
-                    'created_at_human' => $this->dashboardCreatedAtHuman($b->created_at),
-                    'proof_url' => ! empty($b->payment_proof_path) ? route('admin.bookings.proof', $b->id) : null,
-                    'payment_method' => $b->payment_method,
-                    'is_stripe_automated' => ($b->payment_method ?? '') === 'card',
-                    'amount' => (float) ($b->total_price ?? 0),
-                    'deposit_amount' => (float) ($b->deposit_amount ?? 0),
-                    'booking_status' => $b->status,
-                    'rental_name' => $b->surfboard?->name ? 'Alquiler · '.$b->surfboard->name : 'Alquiler',
-                    'date' => $b->start_date?->toIso8601String(),
-                    'date_human' => $b->start_date?->locale('es')->translatedFormat('d/m/Y'),
-                    'admin_notes' => $b->admin_notes,
-                ];
-            })
-            ->values();
+            ->get();
 
-        $bonoRows = UserBono::query()
+        $bonoEntities = UserBono::query()
             ->with(['user:id,nombre,apellido,email,telefono', 'pack:id,nombre,num_clases,precio'])
             ->when($bonoPackId, fn ($q) => $q->where('pack_id', $bonoPackId))
             ->when($startDate, fn ($q) => $q->whereDate('created_at', '>=', $startDate))
@@ -387,9 +328,111 @@ class AcademyController extends Controller
             })
             ->orderByDesc('created_at')
             ->limit(300)
-            ->get()
-            ->map(function (UserBono $row) {
+            ->get();
+
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(array_merge(
+            $lessonEntities->map(fn (LessonUser $e) => ['type' => LessonUser::class, 'id' => (int) $e->id])->all(),
+            $rentalEntities->map(fn (Booking $b) => ['type' => Booking::class, 'id' => (int) $b->id])->all(),
+            $bonoEntities->map(fn (UserBono $b) => ['type' => UserBono::class, 'id' => (int) $b->id])->all(),
+        ));
+
+        $lessonRows = $lessonEntities
+            ->map(function (LessonUser $e) use ($receiptMap) {
+                $paymentStatus = $e->payment_status ?? LessonUser::PAYMENT_PENDING;
+                $reviewedAt = $e->reviewed_at?->toIso8601String();
+                $createdAt = $e->created_at?->toIso8601String();
+                $manualProofUrl = ! empty($e->payment_proof_path) ? route('admin.academy.enrollments.proof', $e->id) : null;
+                $proof = $this->paymentReceipts->proofFieldsForPayable(
+                    LessonUser::class,
+                    (int) $e->id,
+                    ! empty($e->payment_proof_path),
+                    $manualProofUrl,
+                    $receiptMap,
+                );
+
+                return [
+                    'id' => $e->id,
+                    'entity' => 'class',
+                    'user_name' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
+                    'user' => $e->user ? ($e->user->nombre ?? $e->user->name ?? $e->user->email) : '—',
+                    'email' => $e->user?->email,
+                    'phone' => $e->user?->telefono,
+                    'status' => $paymentStatus,
+                    'enrollment_status' => $e->status,
+                    'lesson_status' => $e->lesson?->status,
+                    'refund_status' => $this->resolveEnrollmentRefundStatus($e, $e->lesson),
+                    'is_new' => $reviewedAt === null,
+                    'reviewed_at' => $reviewedAt,
+                    'created_at' => $createdAt,
+                    'created_at_human' => $this->dashboardCreatedAtHuman($e->created_at),
+                    'proof_url' => $proof['proof_url'],
+                    'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                    'payment_method' => $e->payment_method,
+                    'is_stripe_automated' => ($e->payment_method ?? '') === 'card',
+                    'amount' => $e->lesson?->price !== null ? (float) $e->lesson->price : 20.0,
+                    'lesson_name' => $e->lesson?->title ?: 'Clase de Surf',
+                    'modality' => $e->lesson?->modality ?: 'grupal',
+                    'date' => $e->lesson?->starts_at ? BusinessDateTime::toApi($e->lesson->starts_at) : null,
+                    'date_human' => $e->lesson?->starts_at?->locale('es')->translatedFormat('d/m/Y'),
+                    'admin_notes' => $e->admin_notes,
+                ];
+            })
+            ->values();
+
+        $rentalRows = $rentalEntities
+            ->map(function (Booking $b) use ($receiptMap) {
+                $paymentStatus = $b->payment_status ?? Booking::PAYMENT_PENDING;
+                $reviewedAt = $b->reviewed_at?->toIso8601String();
+                $createdAt = $b->created_at?->toIso8601String();
+                $manualProofUrl = ! empty($b->payment_proof_path) ? route('admin.bookings.proof', $b->id) : null;
+                $proof = $this->paymentReceipts->proofFieldsForPayable(
+                    Booking::class,
+                    (int) $b->id,
+                    ! empty($b->payment_proof_path),
+                    $manualProofUrl,
+                    $receiptMap,
+                );
+
+                return [
+                    'id' => $b->id,
+                    'entity' => 'rental',
+                    'user_name' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
+                    'user' => $b->client_name ?: ($b->user?->nombre ?? $b->user?->name ?? $b->user?->email ?? '—'),
+                    'email' => $b->user?->email,
+                    'phone' => $b->phone ?: $b->user?->telefono,
+                    'status' => $paymentStatus,
+                    'refund_status' => $this->resolveBookingRefundStatus($b),
+                    'is_new' => $reviewedAt === null,
+                    'reviewed_at' => $reviewedAt,
+                    'created_at' => $createdAt,
+                    'created_at_human' => $this->dashboardCreatedAtHuman($b->created_at),
+                    'proof_url' => $proof['proof_url'],
+                    'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                    'payment_method' => $b->payment_method,
+                    'is_stripe_automated' => ($b->payment_method ?? '') === 'card',
+                    'amount' => (float) ($b->total_price ?? 0),
+                    'deposit_amount' => (float) ($b->deposit_amount ?? 0),
+                    'booking_status' => $b->status,
+                    'rental_name' => $b->surfboard?->name ? 'Alquiler · '.$b->surfboard->name : 'Alquiler',
+                    'date' => $b->start_date?->toIso8601String(),
+                    'date_human' => $b->start_date?->locale('es')->translatedFormat('d/m/Y'),
+                    'admin_notes' => $b->admin_notes,
+                ];
+            })
+            ->values();
+
+        $bonoRows = $bonoEntities
+            ->map(function (UserBono $row) use ($receiptMap) {
                 $reviewedAt = $row->reviewed_at?->toIso8601String();
+                $manualProofUrl = $row->payment_proof_path ? Storage::url($row->payment_proof_path) : null;
+                $proof = $this->paymentReceipts->proofFieldsForPayable(
+                    UserBono::class,
+                    (int) $row->id,
+                    ! empty($row->payment_proof_path),
+                    $manualProofUrl,
+                    $receiptMap,
+                );
+
                 return [
                     'id' => $row->id,
                     'entity' => 'bono',
@@ -404,8 +447,9 @@ class AcademyController extends Controller
                     'pack' => $row->pack?->nombre,
                     'num_clases' => (int) ($row->pack?->num_clases ?? 0),
                     'amount' => (float) ($row->pack?->precio ?? 0),
-                    'has_proof' => ! empty($row->payment_proof_path),
-                    'proof_url' => $row->payment_proof_path ? Storage::url($row->payment_proof_path) : null,
+                    'has_proof' => ! empty($row->payment_proof_path) || $proof['proof_url'] !== null,
+                    'proof_url' => $proof['proof_url'],
+                    'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
                     'is_stripe_automated' => $row->status === UserBono::STATUS_PENDING && empty($row->payment_proof_path),
                     'created_at' => $row->created_at?->toIso8601String(),
                     'created_at_human' => $this->dashboardCreatedAtHuman($row->created_at),

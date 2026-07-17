@@ -53,6 +53,12 @@ final class AcademyContact
         return $base.'?text='.rawurlencode(trim($message));
     }
 
+    /** Email de contacto público de la escuela ({@see config('services.academy.contact_email')}). */
+    public static function contactEmail(): string
+    {
+        return trim((string) config('services.academy.contact_email', ''));
+    }
+
     public static function whatsappDisplay(): string
     {
         $display = trim((string) (config('services.academy.whatsapp_display') ?? ''));

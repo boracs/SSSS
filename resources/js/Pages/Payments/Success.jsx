@@ -9,24 +9,25 @@ const PAYABLE_LABELS = {
     PagoCuota: { label: "tu plan de taquilla", icon: "🔐", link: "/taquillas" },
 };
 
-export default function PaymentSuccess({ status, payableType, payableId, redirectTo }) {
+export default function PaymentSuccess({ status, payableType, payableId, redirectTo, fiscalInvoice = null }) {
     const info = PAYABLE_LABELS[payableType] ?? { label: "tu pago", icon: "✅", link: "/" };
     const isPending = status === "pending";
+    const hasFiscalLink = Boolean(fiscalInvoice?.detail_url);
 
-    // Auto-redirigir tras 6s
+    // Auto-redirigir tras 6s (si hay factura, alargamos un poco para que pueda abrirla)
     useEffect(() => {
+        const delay = hasFiscalLink ? 12000 : 6000;
         const t = setTimeout(() => {
             window.location.href = redirectTo ?? info.link;
-        }, 6000);
+        }, delay);
         return () => clearTimeout(t);
-    }, [redirectTo, info.link]);
+    }, [redirectTo, info.link, hasFiscalLink]);
 
     return (
         <>
             <Head title="Pago completado" />
             <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 px-4 py-16 text-white">
                 <div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 p-8 text-center shadow-2xl backdrop-blur-sm">
-                    {/* Icono animado */}
                     <div className="mb-6 flex justify-center">
                         <span className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/20 text-5xl ring-4 ring-emerald-500/30">
                             {isPending ? "⏳" : "✅"}
@@ -45,13 +46,31 @@ export default function PaymentSuccess({ status, payableType, payableId, redirec
                             : `Hemos confirmado ${info.label}. Serás redirigido automáticamente en unos segundos.`}
                     </p>
 
-                    {/* Barra de progreso auto-redirect */}
+                    {hasFiscalLink ? (
+                        <div className="mt-5 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 p-4 text-left">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200/80">
+                                Factura TicketBAI
+                            </p>
+                            <p className="mt-1 text-sm text-white/75">
+                                {fiscalInvoice.is_ready
+                                    ? "Ya puedes ver el identificador, el QR y descargar el PDF."
+                                    : "La factura fiscal se está registrando. Puedes abrirla y refrescar en unos minutos."}
+                            </p>
+                            <Link
+                                href={fiscalInvoice.detail_url}
+                                className="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                            >
+                                Ver factura / TicketBAI
+                            </Link>
+                        </div>
+                    ) : null}
+
                     <div className="mt-6 h-1 w-full overflow-hidden rounded-full bg-white/10">
                         <div
                             className="h-full rounded-full bg-emerald-500 transition-all"
                             style={{
                                 width: "100%",
-                                animation: "shrink 6s linear forwards",
+                                animation: `shrink ${hasFiscalLink ? "12s" : "6s"} linear forwards`,
                             }}
                         />
                     </div>

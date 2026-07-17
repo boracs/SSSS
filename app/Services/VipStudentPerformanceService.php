@@ -7,6 +7,7 @@ use App\Models\LessonUser;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\UserBono;
+use App\Services\Payments\PaymentReceiptAccessService;
 use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use App\Support\LessonBonoCreditUnits;
@@ -331,14 +332,37 @@ class VipStudentPerformanceService
         }
 
         $classDepositCap = (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $receiptAccess = app(PaymentReceiptAccessService::class);
 
-        $classRows = LessonUser::query()
+        $classEntities = LessonUser::query()
             ->with(['lesson:id,title,starts_at,level,modality,location,price'])
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->limit(120)
-            ->get()
-            ->map(function (LessonUser $row) use ($classDepositCap) {
+            ->get();
+
+        $rentalEntities = Booking::query()
+            ->with(['surfboard:id,name'])
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(120)
+            ->get();
+
+        $bonoEntities = UserBono::query()
+            ->with('pack:id,nombre,num_clases,precio')
+            ->where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->limit(120)
+            ->get();
+
+        $receiptMap = $receiptAccess->proofMetaMapForPayables(array_merge(
+            $classEntities->map(fn (LessonUser $row) => ['type' => LessonUser::class, 'id' => (int) $row->id])->all(),
+            $rentalEntities->map(fn (Booking $row) => ['type' => Booking::class, 'id' => (int) $row->id])->all(),
+            $bonoEntities->map(fn (UserBono $row) => ['type' => UserBono::class, 'id' => (int) $row->id])->all(),
+        ));
+
+        $classRows = $classEntities
+            ->map(function (LessonUser $row) use ($classDepositCap, $receiptAccess, $receiptMap) {
                 $startAt = $row->lesson?->starts_at;
                 $cancelHours = AcademyEnrollmentPolicy::cancelCutoffHours();
                 $isWithinCancellationWindow = $startAt
@@ -357,6 +381,13 @@ class VipStudentPerformanceService
                 $qty = max(1, (int) ($row->quantity ?: $row->party_size ?: 1));
                 $totalPrice = round($unitPrice * $qty, 2);
                 $depositAmount = $totalPrice > 0 ? round(min($classDepositCap, $totalPrice), 2) : 0.0;
+                $proof = $receiptAccess->proofFieldsForPayable(
+                    LessonUser::class,
+                    (int) $row->id,
+                    ! empty($row->payment_proof_path),
+                    null,
+                    $receiptMap,
+                );
 
                 return [
                     'id' => $row->id,
@@ -369,7 +400,9 @@ class VipStudentPerformanceService
                     'payment_status' => $row->payment_status ?: LessonUser::PAYMENT_PENDING,
                     'created_at' => $row->created_at?->toIso8601String(),
                     'start_time' => $startAt ? BusinessDateTime::toApi($startAt) : null,
-                    'has_proof' => ! empty($row->payment_proof_path),
+                    'has_proof' => ! empty($row->payment_proof_path) || $proof['proof_url'] !== null,
+                    'receipt_url' => $proof['proof_url'],
+                    'receipt_is_stripe' => $proof['proof_is_stripe_receipt'],
                     'can_cancel' => $canCancel,
                     'is_within_cancellation_window' => $isWithinCancellationWindow,
                     'cancel_block_reason' => $sessionExpired
@@ -385,13 +418,8 @@ class VipStudentPerformanceService
             })
             ->values();
 
-        $rentalRows = Booking::query()
-            ->with(['surfboard:id,name'])
-            ->where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->limit(120)
-            ->get()
-            ->map(function (Booking $row) {
+        $rentalRows = $rentalEntities
+            ->map(function (Booking $row) use ($receiptAccess, $receiptMap) {
                 $startAt = $row->start_date;
                 $paymentPending = ($row->payment_status ?? '') === Booking::PAYMENT_PENDING;
                 $sessionExpired = $paymentPending
@@ -411,6 +439,14 @@ class VipStudentPerformanceService
                         )
                     );
 
+                $proof = $receiptAccess->proofFieldsForPayable(
+                    Booking::class,
+                    (int) $row->id,
+                    ! empty($row->payment_proof_path),
+                    null,
+                    $receiptMap,
+                );
+
                 return [
                     'id' => $row->id,
                     'type' => 'rental',
@@ -424,7 +460,9 @@ class VipStudentPerformanceService
                     'total_price' => $totalPrice,
                     /** Importe a abonar como compromiso (p. ej. % del total); mismo valor que deposit_amount. */
                     'amount' => $deposit,
-                    'has_proof' => ! empty($row->payment_proof_path),
+                    'has_proof' => ! empty($row->payment_proof_path) || $proof['proof_url'] !== null,
+                    'receipt_url' => $proof['proof_url'],
+                    'receipt_is_stripe' => $proof['proof_is_stripe_receipt'],
                     'refund_pending' => $refundPending,
                     'can_cancel' => $canCancel,
                     'cancel_block_reason' => $sessionExpired
@@ -434,22 +472,30 @@ class VipStudentPerformanceService
             })
             ->values();
 
-        $bonoRows = UserBono::query()
-            ->with('pack:id,nombre,num_clases,precio')
-            ->where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->limit(120)
-            ->get()
-            ->map(fn (UserBono $row) => [
-                'id' => $row->id,
-                'type' => 'bono',
-                'title' => $row->pack?->nombre ?: 'Recarga de Créditos VIP',
-                'num_clases' => (int) ($row->pack?->num_clases ?? 0),
-                'clases_restantes' => (int) $row->clases_restantes,
-                'status' => $row->status,
-                'created_at' => $row->created_at?->toIso8601String(),
-                'price' => (float) ($row->pack?->precio ?? 0),
-            ])
+        $bonoRows = $bonoEntities
+            ->map(function (UserBono $row) use ($receiptAccess, $receiptMap) {
+                $proof = $receiptAccess->proofFieldsForPayable(
+                    UserBono::class,
+                    (int) $row->id,
+                    ! empty($row->payment_proof_path),
+                    null,
+                    $receiptMap,
+                );
+
+                return [
+                    'id' => $row->id,
+                    'type' => 'bono',
+                    'title' => $row->pack?->nombre ?: 'Recarga de Créditos VIP',
+                    'num_clases' => (int) ($row->pack?->num_clases ?? 0),
+                    'clases_restantes' => (int) $row->clases_restantes,
+                    'status' => $row->status,
+                    'payment_status' => $row->status === UserBono::STATUS_CONFIRMED ? 'confirmed' : 'pending',
+                    'created_at' => $row->created_at?->toIso8601String(),
+                    'price' => (float) ($row->pack?->precio ?? 0),
+                    'receipt_url' => $proof['proof_url'],
+                    'receipt_is_stripe' => $proof['proof_is_stripe_receipt'],
+                ];
+            })
             ->values();
 
         return [

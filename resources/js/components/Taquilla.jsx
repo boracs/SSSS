@@ -25,7 +25,7 @@ const FlashMessages = ({ flash }) => {
                     role="alert"
                 >
                     <p className="font-bold">Éxito</p>
-                    <p dangerouslySetInnerHTML={{ __html: flash.success }} />
+                    <p>{flash.success}</p>
                 </div>
             )}
             {flash.error && (

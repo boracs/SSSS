@@ -19,7 +19,7 @@ class UpdatePagoTaquillaPaymentStateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'pago_state' => ['required', 'string', 'in:pending,transferencia,metalico,domiciliado,failed'],
+            'pago_state' => ['required', 'string', 'in:online,transferencia,metalico,datafono,domiciliado,failed'],
             'failure_reason' => ['nullable', 'string', 'max:2000'],
         ];
     }

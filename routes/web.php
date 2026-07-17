@@ -2,6 +2,8 @@
 
 use App\Support\AcademyContact;
 use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\AuctionController;
+use App\Http\Controllers\Admin\AuctionController as AdminAuctionController;
 use App\Http\Controllers\AutoCoachController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use App\Http\Controllers\Payments\PaymentSuccessController;
@@ -56,6 +58,15 @@ Route::redirect('/tienda-oficial', '/tienda')->name('tienda.oficial');
 Route::get('/segunda-mano', [SecondHandBoardController::class, 'index'])->name('second-hand.index');
 Route::get('/segunda-mano/{secondHandBoard}', [SecondHandBoardController::class, 'show'])->name('second-hand.show');
 
+Route::middleware(['auth', 'auction.access'])->group(function () {
+    Route::get('/subastas', [AuctionController::class, 'index'])->name('auctions.index');
+    Route::get('/subastas/{auction:slug}', [AuctionController::class, 'show'])->name('auctions.show');
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::post('/subastas/{auction:slug}/pujar', [AuctionController::class, 'placeBid'])->name('auctions.bid');
+        Route::post('/subastas/{auction:slug}/pagar', [AuctionController::class, 'pay'])->name('auctions.pay');
+    });
+});
+
 // TALLER DE SURF — Blog / guías SEO
 Route::get('/taller', [ArticleController::class, 'index'])->name('taller.index');
 Route::get('/taller/{article:slug}', [ArticleController::class, 'show'])->name('taller.show');
@@ -74,6 +85,12 @@ Route::post('/webhooks/stripe', [PaymentWebhookController::class, 'handle'])
 
 // ── Retorno desde Stripe Checkout ──
 Route::middleware(['auth'])->group(function () {
+    Route::get('/pagos/recibos/{paymentReceipt}', [\App\Http\Controllers\Payments\PaymentReceiptController::class, 'show'])
+        ->name('payments.receipts.show');
+    Route::get('/pagos/facturas/{fiscalInvoice}', [\App\Http\Controllers\Payments\FiscalInvoiceController::class, 'show'])
+        ->name('payments.fiscal-invoices.show');
+    Route::get('/pagos/facturas/{fiscalInvoice}/pdf', [\App\Http\Controllers\Payments\FiscalInvoiceController::class, 'pdf'])
+        ->name('payments.fiscal-invoices.pdf');
     Route::get('/pago/exito', [PaymentSuccessController::class, 'show'])
         ->name('payment.success');
     Route::get('/pago/cancelado', function () {
@@ -82,10 +99,6 @@ Route::middleware(['auth'])->group(function () {
 });
 // PRODUCTO INDIV
 Route::get('/producto-ver/{productoId}', [ProductoController::class, 'ver'])->name('producto.ver');
-//
-Route::get('/producto-info', function () {
-    return Inertia::render('ProductoVer');
-})->name('producto.info'); // ESTACREO K SOBRA
 // SERVICIOS
 Route::get('/servicios', function () {
     $edy = config('services.repair.edy', []);
@@ -165,6 +178,9 @@ Route::get('/servicios/surf', function () {
 Route::get('/servicios/surf-skate', function () {
     return Inertia::render('Servicios_SurfSkate');
 })->name('servicios.surfSkate');
+Route::get('/servicios/surf-skate/guia-equipamiento', function () {
+    return Inertia::render('Servicios_SurfskateGuia');
+})->name('servicios.surfSkate.guia');
 Route::get('/servicios/surf-trips', function () {
     return Inertia::render('Servicios_SurfTrips');
 })->name('servicios.surfTrips');
@@ -182,6 +198,7 @@ Route::redirect('/webcams', '/servicios/webcams');
 Route::redirect('/clases-de-surf', '/servicios/surf');
 Route::redirect('/surftrips', '/servicios/surf-trips');
 Route::redirect('/surfskate', '/servicios/surf-skate');
+Route::redirect('/surfskate/guia', '/servicios/surf-skate/guia-equipamiento');
 Route::redirect('/taquillas', '/taquillas/planes-y-cuotas');
 
 // AutoCoach — comparador de maniobras (público)
@@ -199,6 +216,10 @@ Route::prefix('comparador-surf')->name('autocoach.')->group(function () {
     Route::delete('/api/uploads', [AutoCoachController::class, 'destroyUploads'])
         ->middleware('throttle:20,1')
         ->name('api.uploads.destroy');
+    Route::get('/referencia/{path}', [AutoCoachController::class, 'showReference'])
+        ->middleware('throttle:240,1')
+        ->where('path', '.+')
+        ->name('reference.show');
     Route::get('/uploads/{session}/{filename}', [AutoCoachController::class, 'showUpload'])
         ->middleware('throttle:180,1')
         ->where([
@@ -259,6 +280,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pedidos', [PedidoController::class, 'mostrarPedidos'])->name('pedidos');
     Route::get('/mostrar-pedido/{id_pedido}', [PedidoController::class, 'mostrarPedido'])->name('mostrar.pedido');
     Route::get('/mis-reservas', [MyReservationsController::class, 'index'])->name('my-reservations.index');
+    Route::get('/mis-facturas', [\App\Http\Controllers\Payments\MyFiscalInvoicesController::class, 'index'])->name('my-invoices.index');
     Route::get('/mi-perfil', [MyProfileController::class, 'index'])->name('my-profile.index');
     Route::post('/mis-reservas/clases/{enrollment}/pagar', [MyReservationsController::class, 'payClassEnrollment'])->name('my-reservations.class.pay');
     Route::post('/mis-reservas/alquileres/{booking}/pagar', [MyReservationsController::class, 'payRentalBooking'])->name('my-reservations.rental.pay');
@@ -382,6 +404,11 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::patch('second-hand/{secondHandBoard}/status', [AdminSecondHandBoardController::class, 'updateStatus'])
             ->name('second-hand.update-status');
 
+        Route::resource('auctions', AdminAuctionController::class)->except(['show']);
+        Route::patch('auctions/{auction}/publish', [AdminAuctionController::class, 'publish'])->name('auctions.publish');
+        Route::patch('auctions/{auction}/close', [AdminAuctionController::class, 'close'])->name('auctions.close');
+        Route::patch('auctions/{auction}/cancel', [AdminAuctionController::class, 'cancel'])->name('auctions.cancel');
+
         Route::get('bookings', [AdminBookingController::class, 'index'])->name('bookings.index');
         Route::post('bookings', [AdminBookingController::class, 'store'])->name('bookings.store');
         Route::get('bookings/check-availability', [AdminBookingController::class, 'checkAvailability'])->name('bookings.check-availability');
@@ -391,8 +418,12 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('bookings/{booking}/approve-proof', [AdminBookingController::class, 'approveProof'])->name('bookings.approve-proof');
         Route::post('bookings/{booking}/reject-proof', [AdminBookingController::class, 'rejectProof'])->name('bookings.reject-proof');
         Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');
+        Route::get('chatbot', [\App\Http\Controllers\Admin\ChatbotInteractionController::class, 'index'])->name('chatbot.index');
+        Route::patch('chatbot/{chatbotInteraction}/resolve', [\App\Http\Controllers\Admin\ChatbotInteractionController::class, 'resolve'])->name('chatbot.resolve');
         Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
         Route::get('payments/global-dashboard', [\App\Http\Controllers\Admin\AcademyController::class, 'globalPaymentsDashboard'])->name('payments.global');
+        Route::get('payments/clients', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'index'])->name('payments.clients.index');
+        Route::get('payments/clients/{user}/history', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'history'])->name('payments.clients.history');
         Route::patch('payments/reviewed', [\App\Http\Controllers\Admin\AcademyController::class, 'markPaymentReviewed'])->name('payments.reviewed');
         Route::patch('payments/refund-status', [\App\Http\Controllers\Admin\AcademyController::class, 'updateRefundStatus'])->name('payments.refund-status');
         Route::get('payment-validation', [PaymentValidationController::class, 'index'])->name('payment-validation.index');

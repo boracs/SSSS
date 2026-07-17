@@ -147,4 +147,22 @@ class AutoCoachController extends Controller
 
         return response()->file($path);
     }
+
+    /** Vídeos de referencia pro — streaming con soporte Range (seek en el reproductor). */
+    public function showReference(string $path): BinaryFileResponse
+    {
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        if ($normalized === '' || str_contains($normalized, '..')) {
+            abort(404);
+        }
+
+        $base = realpath(storage_path('app/public/autocoach/videos'));
+        $full = realpath(storage_path('app/public/'.$normalized));
+
+        if ($base === false || $full === false || ! is_file($full) || ! str_starts_with($full, $base)) {
+            abort(404);
+        }
+
+        return response()->file($full);
+    }
 }

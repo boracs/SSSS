@@ -50,6 +50,7 @@ createInertiaApp({
                 "Pedido",
                 "Pedidos",
                 "PedidoConfirmacion",
+                "Payments/MyInvoices",
                 "Edit",
             ];
             const shouldUseLightMode = lightModePages.includes(name);

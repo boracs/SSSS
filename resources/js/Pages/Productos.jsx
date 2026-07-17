@@ -1,9 +1,11 @@
 import Layout1 from "../layouts/Layout1";
 import { router } from "@inertiajs/react";
 import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
+import { toast } from "react-toastify";
 import ProductoGestor from "../components/ProductoGestor";
 import ProductoEditModal from "../components/ProductoEditModal";
 import ProductoCreateModal from "../components/ProductoCreateModal";
+import { showInertiaErrors } from "../lib/inertiaErrors";
 
 const emptyForm = {
     nombre: "",
@@ -190,7 +192,7 @@ export default function Productos({
                     )
                 );
             },
-            onError: (errors) => console.error("Error al cambiar el estado del producto:", errors),
+            onError: (errors) => showInertiaErrors(errors, toast, "No se pudo cambiar el estado del producto."),
         });
     };
 
@@ -198,7 +200,7 @@ export default function Productos({
         if (!productoSeleccionado) return;
 
         if (!formData.nombre || formData.precio === "" || formData.unidades === "") {
-            alert("Por favor, rellena todos los campos requeridos.");
+            toast.error("Por favor, rellena todos los campos requeridos.");
             return;
         }
 
@@ -260,7 +262,7 @@ export default function Productos({
                     setFormSnapshot(snapshotForm(formData));
                 }
             },
-            onError: (errors) => console.error("Error actualizando producto:", errors),
+            onError: (errors) => showInertiaErrors(errors, toast, "No se pudo actualizar el producto."),
             onFinish: () => {
                 setGuardando(false);
                 closeAfterSaveRef.current = false;
@@ -307,8 +309,11 @@ export default function Productos({
 
         router.post(route("producto.create"), formDataToSend, {
             forceFormData: true,
-            onSuccess: () => setCreateOpen(false),
-            onError: (errors) => console.error("Error creando producto:", errors),
+            onSuccess: () => {
+                setCreateOpen(false);
+                toast.success("Producto creado correctamente.");
+            },
+            onError: (errors) => showInertiaErrors(errors, toast, "No se pudo crear el producto."),
             onFinish: () => setCreando(false),
         });
     };

@@ -9,6 +9,7 @@ use App\DTOs\Payments\InitiatePaymentDto;
 use App\DTOs\Payments\PaymentLineItemDto;
 use App\Models\Pedido;
 use App\Models\Producto;
+use App\Services\Invoicing\FiscalInvoiceAccessService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class PedidoController extends Controller
 {
     public function __construct(
         private readonly InitiatePaymentAction $initiatePayment,
+        private readonly FiscalInvoiceAccessService $fiscalInvoices,
     ) {}
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -176,8 +178,12 @@ class PedidoController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
+        $fiscalMap = $this->fiscalInvoices->mapForPayables(
+            $pedidos->map(fn (Pedido $p) => ['type' => Pedido::class, 'id' => (int) $p->id])->all(),
+        );
+
         return Inertia::render('Pedidos', [
-            'pedidos' => $pedidos->map(fn ($p) => $this->mapPedidoListItem($p)),
+            'pedidos' => $pedidos->map(fn ($p) => $this->mapPedidoListItem($p, $fiscalMap)),
         ]);
     }
 
@@ -292,6 +298,7 @@ class PedidoController extends Controller
         }, 0.0);
 
         $totalDescuentos = round($subtotalSinDescuento - (float) $pedido->precio_total, 2);
+        $fiscal = $this->fiscalInvoices->forPayable(Pedido::class, (int) $pedido->id);
 
         return [
             'id'                => $pedido->id,
@@ -304,6 +311,8 @@ class PedidoController extends Controller
             'payment_method'    => $pedido->payment_method,
             'created_at'        => optional($pedido->created_at)->toIso8601String(),
             'proof_uploaded_at' => optional($pedido->proof_uploaded_at)->toIso8601String(),
+            'fiscal_invoice_url' => $fiscal?->detailUrl,
+            'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
             'cliente'           => [
                 'nombre'   => trim(($pedido->usuario->nombre ?? '').' '.($pedido->usuario->apellido ?? '')),
                 'email'    => $pedido->usuario->email ?? null,
@@ -313,9 +322,11 @@ class PedidoController extends Controller
         ];
     }
 
-    private function mapPedidoListItem(Pedido $pedido): array
+    /** @param array<string, \App\DTOs\Invoicing\FiscalInvoicePublicDto> $fiscalMap */
+    private function mapPedidoListItem(Pedido $pedido, array $fiscalMap = []): array
     {
         $resolveImagen = $this->makeImageResolver();
+        $fiscal = $fiscalMap[$this->fiscalInvoices->cacheKey(Pedido::class, (int) $pedido->id)] ?? null;
 
         return [
             'id'              => $pedido->id,
@@ -326,6 +337,8 @@ class PedidoController extends Controller
             'payment_method'  => $pedido->payment_method,
             'created_at'      => optional($pedido->created_at)->toIso8601String(),
             'total_articulos' => (int) $pedido->productos->sum(fn ($p) => (int) $p->pivot->cantidad),
+            'fiscal_invoice_url' => $fiscal?->detailUrl,
+            'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
             'productos'       => $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
                 return [
                     'id'                 => $producto->id,

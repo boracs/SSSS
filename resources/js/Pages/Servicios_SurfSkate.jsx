@@ -7,6 +7,7 @@ import {
     User,
     CalendarDays,
     ArrowRight,
+    BookOpen,
 } from "lucide-react";
 
 const CLASES = [
@@ -160,6 +161,13 @@ export default function ServiciosSurfSkate() {
                         >
                             <Activity className="h-4 w-4" />
                             Reservar mi clase
+                        </Link>
+                        <Link
+                            href={route("servicios.surfSkate.guia")}
+                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                        >
+                            <BookOpen className="h-4 w-4" />
+                            Guía: elige tu tabla
                         </Link>
                         <Link
                             href={route("servicios.surf")}

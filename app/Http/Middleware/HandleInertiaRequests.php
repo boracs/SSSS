@@ -49,6 +49,7 @@ class HandleInertiaRequests extends Middleware
                         'nombre' => $request->user()->nombre,
                         'apellido' => $request->user()->apellido,
                         'email' => $request->user()->email,
+                        'telefono' => $request->user()->telefono,
                         'role' => $request->user()->role ?? 'user',
                         'is_vip' => (bool) ($request->user()->is_vip ?? false),
                         'numeroTaquilla' => $request->user()->numeroTaquilla,
@@ -57,6 +58,8 @@ class HandleInertiaRequests extends Middleware
                         'has_active_locker' => $request->user()->hasPhysicalLocker(),
                         'has_locker' => $request->user()->hasPhysicalLocker(),
                         'has_store_discount_access' => $request->user()->canAccessStoreWithMemberDiscount(),
+                        'can_access_auctions' => $request->user()->role === 'admin'
+                            || $request->user()->canAccessAuctions(),
                     ]
                     : null,
             ],

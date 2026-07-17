@@ -9,6 +9,7 @@ import {
     Mail,
     MessageCircle,
     Percent,
+    CreditCard,
     Shirt,
     Waves,
     Wrench,
@@ -205,6 +206,21 @@ function PlanTimelineRow({ row, kind, onProofClick, compact = false }) {
                     >
                         PDF
                     </button>
+                ) : row.status === "confirmed" && row.proof_url ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (row.proof_is_stripe_receipt) {
+                                window.open(row.proof_url, "_blank", "noopener,noreferrer");
+                                return;
+                            }
+                            onProofClick(row.proof_url);
+                        }}
+                        className="shrink-0 text-[9px] font-semibold text-emerald-400 hover:underline sm:text-[10px]"
+                        title="Ver recibo de pago"
+                    >
+                        Recibo
+                    </button>
                 ) : null}
             </div>
             <p className="col-span-2 tabular-nums text-[10px] text-slate-500 sm:hidden">
@@ -298,7 +314,35 @@ function paymentMethodLabel(row) {
     if (method === "transferencia" || method === "bizum") return "Transferencia";
     if (method === "tienda") return "Cortesía";
     if (method === "domiciliado") return "Domiciliado";
+    if (method === "card") return "Tarjeta";
     return "Pendiente";
+}
+
+function buildPaymentConceptPreview({ memberName, planName, lockerNumber }) {
+    const name = String(memberName || "").trim() || "Socio S4";
+    const plan = String(planName || "").trim() || "Plan taquilla";
+    let concept = `${name} — ${plan}`;
+    if (lockerNumber != null && lockerNumber !== "") {
+        const withLocker = `${concept} · T#${lockerNumber}`;
+        if (withLocker.length <= 255) {
+            concept = withLocker;
+        }
+    }
+    return concept;
+}
+
+function PaymentSummaryRow({ label, value, highlight = false }) {
+    if (!value) {
+        return null;
+    }
+    return (
+        <div className="grid grid-cols-[5.5rem_1fr] gap-x-3 gap-y-0.5">
+            <dt className="text-[11px] font-semibold uppercase tracking-wide text-white/45">{label}</dt>
+            <dd className={`text-sm leading-snug ${highlight ? "font-medium text-cyan-100" : "text-white/90"}`}>
+                {value}
+            </dd>
+        </div>
+    );
 }
 
 export default function PlanesTaquillasClient({
@@ -310,7 +354,6 @@ export default function PlanesTaquillasClient({
 }) {
     const { flash } = usePage().props;
     const [planId, setPlanId] = useState("");
-    const [renewalRef, setRenewalRef] = useState("");
     const [toast, setToast] = useState(null);
     const [proofModalUrl, setProofModalUrl] = useState(null);
     const [payModal, setPayModal] = useState(null);
@@ -439,10 +482,7 @@ export default function PlanesTaquillasClient({
             }
             router.post(
                 route("taquillas.pago.client"),
-                {
-                    plan_id: planId,
-                    referencia_pago_externa: renewalRef.trim() || undefined,
-                },
+                { plan_id: planId },
                 {
                     preserveScroll: true,
                     onError: () => setPaymentSubmitting(false),
@@ -465,22 +505,43 @@ export default function PlanesTaquillasClient({
 
     const totalPrimaryLine = useMemo(() => {
         if (payModal?.kind === "renew" && selectedPlan) {
-            return `Total a pagar: ${formatEur(selectedPlan.precio_total)}`;
+            return formatEur(selectedPlan.precio_total);
         }
         if (
             payModal?.kind === "pending" &&
             pendingTarget?.monto_pagado != null &&
             Number(pendingTarget.monto_pagado) > 0
         ) {
-            return `Importe: ${formatEur(pendingTarget.monto_pagado)}`;
+            return formatEur(pendingTarget.monto_pagado);
         }
         return null;
     }, [payModal, selectedPlan, pendingTarget]);
 
+    const paymentConcept = useMemo(() => {
+        if (payModal?.kind === "renew" && selectedPlan) {
+            return buildPaymentConceptPreview({
+                memberName: userData?.nombre_completo,
+                planName: selectedPlan.nombre,
+                lockerNumber: userData?.numero_taquilla,
+            });
+        }
+        if (payModal?.kind === "pending" && pendingTarget) {
+            if (pendingTarget.referencia_pago_externa) {
+                return pendingTarget.referencia_pago_externa;
+            }
+            return buildPaymentConceptPreview({
+                memberName: userData?.nombre_completo,
+                planName: pendingTarget.plan?.nombre,
+                lockerNumber: userData?.numero_taquilla,
+            });
+        }
+        return null;
+    }, [payModal, selectedPlan, pendingTarget, userData]);
+
     const secondaryNote =
         payModal?.kind === "pending"
-            ? "Completa el pago pendiente con tarjeta. Se activará automáticamente al confirmarse."
-            : "Serás redirigido a Stripe. Tu plan se activará al confirmar el pago.";
+            ? "Al confirmar el pago en Stripe, tu cuota quedará activa de forma automática."
+            : "Al confirmar el pago en Stripe, tu plan se renovará de forma automática.";
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
@@ -764,44 +825,96 @@ export default function PlanesTaquillasClient({
             {payModal != null ? (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                     <div
-                        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
                         onClick={() => !paymentSubmitting && setPayModal(null)}
+                        aria-hidden="true"
                     />
-                    <div className="relative w-full max-w-sm rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900 to-slate-800 p-7 shadow-2xl text-white">
-                        <h2 className="text-xl font-bold">Confirmar pago</h2>
-                        {totalPrimaryLine ? (
-                            <p className="mt-3 text-lg font-bold text-emerald-400">{totalPrimaryLine}</p>
-                        ) : null}
-                        <p className="mt-2 text-sm text-white/70">{secondaryNote}</p>
-                        {payModal.kind === "renew" ? (
-                            <div className="mt-4">
-                                <label className="text-xs font-semibold uppercase tracking-wide text-white/70">
-                                    Referencia (opcional)
-                                </label>
-                                <input
-                                    value={renewalRef}
-                                    onChange={(e) => setRenewalRef(e.target.value)}
-                                    placeholder="Concepto o referencia"
-                                    className="mt-1 w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40"
-                                />
+                    <div
+                        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0f3d4a] shadow-2xl shadow-black/40"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="pay-modal-title"
+                    >
+                        <div className="h-1 bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400" />
+
+                        <div className="p-6 sm:p-7">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-500/15 ring-1 ring-violet-400/25">
+                                    <CreditCard className="h-5 w-5 text-violet-200" aria-hidden="true" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2 id="pay-modal-title" className="text-lg font-bold tracking-tight text-white">
+                                        Confirmar pago
+                                    </h2>
+                                    <p className="mt-0.5 text-xs text-white/55">Pasarela segura · Stripe</p>
+                                </div>
                             </div>
-                        ) : null}
-                        <div className="mt-5 flex gap-3">
-                            <button
-                                type="button"
-                                onClick={iniciarPagoTaquilla}
-                                disabled={paymentSubmitting}
-                                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-60"
-                            >
-                                {paymentSubmitting ? "Preparando…" : "Pagar con tarjeta"}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => !paymentSubmitting && setPayModal(null)}
-                                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/20"
-                            >
-                                Cancelar
-                            </button>
+
+                            {totalPrimaryLine ? (
+                                <p className="mt-5 text-3xl font-extrabold tabular-nums tracking-tight text-emerald-300">
+                                    {totalPrimaryLine}
+                                </p>
+                            ) : null}
+
+                            <dl className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                                {payModal.kind === "renew" && selectedPlan ? (
+                                    <>
+                                        <PaymentSummaryRow label="Plan" value={selectedPlan.nombre} />
+                                        <PaymentSummaryRow label="Socio" value={userData?.nombre_completo} />
+                                        {userData?.numero_taquilla ? (
+                                            <PaymentSummaryRow
+                                                label="Taquilla"
+                                                value={`#${userData.numero_taquilla}`}
+                                            />
+                                        ) : null}
+                                        <PaymentSummaryRow label="Concepto" value={paymentConcept} highlight />
+                                    </>
+                                ) : null}
+                                {payModal.kind === "pending" && pendingTarget ? (
+                                    <>
+                                        <PaymentSummaryRow
+                                            label="Plan"
+                                            value={pendingTarget.plan?.nombre || "Cuota pendiente"}
+                                        />
+                                        <PaymentSummaryRow label="Socio" value={userData?.nombre_completo} />
+                                        <PaymentSummaryRow label="Concepto" value={paymentConcept} highlight />
+                                    </>
+                                ) : null}
+                            </dl>
+
+                            <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-white/55">
+                                <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/80" aria-hidden="true" />
+                                <span>{secondaryNote}</span>
+                            </p>
+
+                            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !paymentSubmitting && setPayModal(null)}
+                                    disabled={paymentSubmitting}
+                                    className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 disabled:opacity-50 sm:flex-1"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={iniciarPagoTaquilla}
+                                    disabled={paymentSubmitting}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-950/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {paymentSubmitting ? (
+                                        <>
+                                            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                            Preparando…
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CreditCard className="h-4 w-4" aria-hidden="true" />
+                                            Pagar con tarjeta
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

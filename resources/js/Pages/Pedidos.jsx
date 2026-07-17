@@ -164,6 +164,11 @@ const MostrarPedidos = () => {
                                             inactiveLabel="Pendiente de envío"
                                             icon={Truck}
                                         />
+                                        {pedido.fiscal_invoice_url ? (
+                                            <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-200">
+                                                {pedido.fiscal_invoice_ready ? "Factura TBAI" : "Factura en trámite"}
+                                            </span>
+                                        ) : null}
                                         <span className="ml-auto text-xs font-semibold text-slate-400 transition-colors group-hover:text-slate-600">
                                             Ver detalles
                                         </span>

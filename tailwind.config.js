@@ -105,6 +105,7 @@ export default {
                 dropdown: "80",
                 modal: "90",
                 toast: "999",
+                chatbot: "850",
             },
             // Bordes: v0 usa --radius, tú usabas custom
             borderRadius: {

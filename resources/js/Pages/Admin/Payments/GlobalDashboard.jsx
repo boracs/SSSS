@@ -15,6 +15,17 @@ const STATUS_OPTIONS = [
 
 const LEGACY_MANUAL_METHODS = new Set(["bizum", "transferencia", "tienda"]);
 
+function openProofUrl(proofUrl, isStripeReceipt, setProofModal) {
+    if (!proofUrl) {
+        return;
+    }
+    if (isStripeReceipt) {
+        window.open(proofUrl, "_blank", "noopener,noreferrer");
+        return;
+    }
+    setProofModal(proofUrl);
+}
+
 function isStripeAutomatedFlow(row) {
     if (row?.is_stripe_automated === true || row?.payment_method === "card") {
         return true;
@@ -735,17 +746,27 @@ Por favor, ponte en contacto con nosotros lo antes posible para que podamos solu
                                         <td className="px-4 py-3 text-gray-200" onClick={(event) => event.stopPropagation()}>
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    if (row.proof_url) setProofModal(row.proof_url);
-                                                }}
+                                                onClick={() => openProofUrl(row.proof_url, row.proof_is_stripe_receipt, setProofModal)}
                                                 disabled={!row.proof_url}
                                                 className={`inline-flex h-7 w-7 items-center justify-center rounded-full ring-1 transition ${
                                                     row.proof_url
                                                         ? "bg-gray-700 text-sky-100 ring-gray-500/50 hover:bg-gray-600"
                                                         : "cursor-not-allowed bg-gray-800 text-gray-500 ring-gray-700/70"
                                                 }`}
-                                                title={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
-                                                aria-label={row.proof_url ? "Ver comprobante" : "Sin comprobante subido"}
+                                                title={
+                                                    row.proof_url
+                                                        ? row.proof_is_stripe_receipt
+                                                            ? "Ver recibo Stripe"
+                                                            : "Ver comprobante"
+                                                        : "Sin comprobante"
+                                                }
+                                                aria-label={
+                                                    row.proof_url
+                                                        ? row.proof_is_stripe_receipt
+                                                            ? "Ver recibo Stripe"
+                                                            : "Ver comprobante"
+                                                        : "Sin comprobante"
+                                                }
                                             >
                                                 {row.proof_url ? <FileText className="h-4 w-4" /> : <FileX className="h-4 w-4" />}
                                             </button>

@@ -36,6 +36,7 @@ const ProductoCreateModal = ({
 }) => {
     const [formData, setFormData] = useState(emptyCreateForm);
     const [initialSnapshot, setInitialSnapshot] = useState(snapshotCreate(emptyCreateForm));
+    const [validationError, setValidationError] = useState("");
 
     useEffect(() => {
         if (!open) return undefined;
@@ -60,6 +61,7 @@ const ProductoCreateModal = ({
         if (open) {
             setFormData(emptyCreateForm);
             setInitialSnapshot(snapshotCreate(emptyCreateForm));
+            setValidationError("");
         }
     }, [open]);
 
@@ -91,9 +93,10 @@ const ProductoCreateModal = ({
     const handleCreate = (event) => {
         event.preventDefault();
         if (!formData.nombre || formData.precio === "" || formData.unidades === "") {
-            alert("Completa nombre, precio y unidades.");
+            setValidationError("Completa nombre, precio y unidades.");
             return;
         }
+        setValidationError("");
         onSubmit(formData);
     };
 
@@ -146,6 +149,14 @@ const ProductoCreateModal = ({
                     onSubmit={handleCreate}
                     className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-2 sm:space-y-2.5 sm:px-4 sm:py-3"
                 >
+                    {validationError ? (
+                        <p
+                            role="alert"
+                            className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700"
+                        >
+                            {validationError}
+                        </p>
+                    ) : null}
                     <div>
                         <label htmlFor="create-nombre" className="block text-xs font-medium text-slate-700">
                             Nombre

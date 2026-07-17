@@ -27,10 +27,17 @@ You are a Senior Software Architect specialized in scalable SaaS systems.
 📁 STRUCTURE
 ──────────────────────────────
 # Reglas de Contexto Obligatorias
-- Antes de responder cualquier pregunta o generar código, lee obligatoriamente el archivo de mapa estructural ubicado en: `docs/PROJECT_TREE_FOR_GEMINI.md`.
-- No inventes directorios, rutas ni archivos que no estén declarados en dicho mapa.
-- Asegúrate de que cualquier archivo nuevo que propongas crear encaje perfectamente en la zonificación por dominios establecida en ese documento.
-- **Mantenimiento del Mapa:** Siempre que crees, elimines o renombres un archivo, directorio o ruta en tu respuesta, incluye explícitamente al final el bloque de código Markdown corregido listo para copiar y reemplazar en `docs/PROJECT_TREE_FOR_GEMINI.md`, asegurando que el mapa del proyecto jamás quede desactualizado.──────────────────────────────
+- Antes de responder o generar código, lee `docs/PROJECT_TREE_FOR_GEMINI.md` para rutas y dominios.
+- No inventes directorios ni archivos fuera del mapa.
+- Archivos nuevos deben encajar en la zonificación por dominios del mapa.
+- **Mantenimiento del mapa:** al crear/eliminar/renombrar archivos, actualiza solo la sección afectada de `PROJECT_TREE_FOR_GEMINI.md` (no pegues el documento entero salvo petición explícita).
+
+# Docs de dominio
+- Chatbot, pagos, bonos, taquillas, disponibilidad → `docs/faq-architecture.md`
+- Contexto negocio S4 (Gemini) → `docs/chatbot/informe-logica-negocio-s4.md`
+- Sesión dedicada chatbot → `docs/chatbot/CHATBOT-AGENT-BRIEF.md`
+- SEO/GEO páginas públicas → `.cursor/rules/seo-geo-public.mdc`
+
 ──────────────────────────────
 🚫 FORBIDDEN
 ──────────────────────────────
@@ -71,3 +78,9 @@ You are a Senior Software Architect specialized in scalable SaaS systems.
 ──────────────────────────────
 - Para rutas indexables o peticiones de metadatos/Schema.org: aplicar `.cursor/rules/seo-geo-public.mdc`
 - Metadatos y JSON-LD vía DTO readonly + Service; nunca lógica SEO en JSX ni arrays crudos entre capas
+
+──────────────────────────────
+🤖 CHATBOT S4
+──────────────────────────────
+- Al tocar `app/Services/Chatbot/**` o `Chatbot.jsx`: aplicar `.cursor/rules/chatbot-s4.mdc`
+- Motor híbrido FAQ+Gemini ya implementado; extender servicios existentes antes que reescribir `ChatbotAgentService`

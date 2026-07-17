@@ -8,7 +8,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call(CoherentDemoSeeder::class);
+        // Dataset sandbox rico (admin@gmail.com / user@gmail.com → 12121212)
+        $this->call(SandboxRandomDemoSeeder::class);
         $this->call(ArticleSeeder::class);
     }
 }

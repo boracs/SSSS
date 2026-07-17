@@ -4,7 +4,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAdmin; // Importar el nuevo middleware (¡CLAVE!)
-use App\Http\Middleware\VerificarTaquilla; 
+use App\Http\Middleware\VerificarTaquilla;
+use App\Http\Middleware\EnsureAuctionAccess;
 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => VerificarAdmin::class, // Usa el import de arriba
             'verificarTaquilla' => VerificarTaquilla::class, // <-- PASO 2: Registrar el alias de Taquilla (¡NUEVO!)
+            'auction.access' => EnsureAuctionAccess::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,
         ]);
     })

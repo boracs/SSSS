@@ -162,6 +162,17 @@ const ConfirmacionPedido = () => {
                                     inactiveLabel="Pendiente de envío"
                                     icon={Truck}
                                 />
+                                {pedido.fiscal_invoice_url ? (
+                                    <a
+                                        href={pedido.fiscal_invoice_url}
+                                        className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200 transition hover:bg-sky-100"
+                                    >
+                                        <FileCheck2 className="h-3.5 w-3.5" />
+                                        {pedido.fiscal_invoice_ready
+                                            ? "Ver factura TicketBAI"
+                                            : "Factura en trámite"}
+                                    </a>
+                                ) : null}
                             </div>
                         </div>
 

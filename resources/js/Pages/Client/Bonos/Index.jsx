@@ -579,6 +579,24 @@ export default function ClientBonosIndex({
                                             >
                                                 {usageLabel}
                                             </span>
+                                            {b.proof_url && b.status === "confirmed" ? (
+                                                <a
+                                                    href={b.proof_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                                                >
+                                                    Recibo
+                                                </a>
+                                            ) : null}
+                                            {b.fiscal_invoice_url && b.status === "confirmed" ? (
+                                                <a
+                                                    href={b.fiscal_invoice_url}
+                                                    className="inline-flex rounded-lg bg-sky-500/15 px-2.5 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-400/30 hover:bg-sky-500/25"
+                                                >
+                                                    {b.fiscal_invoice_ready ? "Factura TBAI" : "Factura…"}
+                                                </a>
+                                            ) : null}
                                             <button
                                                 type="button"
                                                 onClick={() => togglePurchaseDetails(b.id)}
