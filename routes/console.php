@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
+Schedule::command('surf:generate-daily-brief', ['--force' => true])->everySixHours();
 
 Artisan::command('attendance-notes:relink-orphans {--user= : ID de usuario (opcional)}', function () {
     $uid = $this->option('user');

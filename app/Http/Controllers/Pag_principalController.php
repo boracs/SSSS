@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Carrito;
 use App\Models\Producto;
+use App\Services\SurfConditions\SurfDailyBriefService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class Pag_principalController extends Controller
 {
-    public function index()
+    public function __construct(
+        private readonly SurfDailyBriefService $surfBriefService,
+    ) {}
+
+    public function index(Request $request)
     {
         // Obtener los 7 primeros productos con mayor descuentos
         $productos = Producto::query()
@@ -53,6 +58,7 @@ class Pag_principalController extends Controller
         return Inertia::render('Pag_principal', [
             'productos' => $productosPayload,
             'cantidadCarrito' => $cantidadCarrito, // Pasamos la cantidad al frontend
+            'surfBrief' => $this->surfBriefService->publicPayload($request),
         ]);
     }
 }

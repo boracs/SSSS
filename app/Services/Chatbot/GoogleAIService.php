@@ -55,6 +55,13 @@ final class GoogleAIService
                         // Temperatura baja: priorizamos certeza factual sobre creatividad (precios, políticas).
                         'temperature' => 0.2,
                         'maxOutputTokens' => 350,
+                        // gemini-2.5-flash consume "thinking tokens" del propio maxOutputTokens antes de
+                        // escribir la respuesta visible — con presupuestos bajos esto puede agotar casi
+                        // todo el budget en razonamiento interno y devolver texto cortado (finishReason
+                        // MAX_TOKENS con apenas unas palabras). thinkingBudget=0 lo desactiva: respuesta
+                        // completa, más rápida y más barata (verificado: sin esto, "candidatesTokenCount"
+                        // caía a ~13 con "thoughtsTokenCount" ~333 de 350).
+                        'thinkingConfig' => ['thinkingBudget' => 0],
                     ],
                 ]);
         } catch (Throwable $e) {

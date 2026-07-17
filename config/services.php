@@ -45,6 +45,72 @@ return [
         'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
     ],
 
+    /**
+     * Parte S4 de Zurriola (oleaje/viento/energía + resumen diario por IA).
+     *
+     * ⚠️ ENTORNO DE PRUEBA: coordenadas y umbrales son un borrador de partida,
+     * calibrado solo con 1 comprobación manual contra la webcam. Antes de
+     * tratar esto como criterio oficial de la escuela, validar con el equipo
+     * S4 al menos una semana de datos reales.
+     */
+    'zurriola_surf' => [
+        // Punto marino frente a Zurriola (ajustado para que Open-Meteo no devuelva ceros
+        // por precisión de coordenada — ver docs/surf-conditions/README.md si se recalibra).
+        'latitude' => env('ZURRIOLA_SURF_LAT', 43.325),
+        'longitude' => env('ZURRIOLA_SURF_LON', -1.975),
+        'timezone' => env('ZURRIOLA_SURF_TZ', 'Europe/Madrid'),
+
+        // Zurriola abre al N/NW: viento offshore (limpio) sopla aprox. desde el S.
+        'offshore_wind_center_deg' => env('ZURRIOLA_OFFSHORE_WIND_CENTER_DEG', 180),
+        'offshore_wind_arc_deg' => env('ZURRIOLA_OFFSHORE_WIND_ARC_DEG', 90),
+
+        'energy_bands' => [
+            ['max' => 3, 'label' => 'Suave'],
+            ['max' => 8, 'label' => 'Moderado'],
+            ['max' => 16, 'label' => 'Fuerte'],
+            ['max' => PHP_FLOAT_MAX, 'label' => 'Muy fuerte'],
+        ],
+
+        'level_thresholds' => [
+            'iniciacion' => ['max_wave_height_m' => 0.8, 'max_wind_kmh_onshore' => 15, 'max_wind_kmh_offshore' => 30],
+            'intermedio' => ['max_wave_height_m' => 1.6, 'max_wind_kmh_onshore' => 25, 'max_wind_kmh_offshore' => 40],
+            'avanzado' => ['max_wave_height_m' => 3.5, 'max_wind_kmh_onshore' => 35, 'max_wind_kmh_offshore' => 55],
+        ],
+
+        // Documento de verdad del spot (reglas de entrada, zonas, precauciones) que se
+        // inyecta a Gemini como systemInstruction. Editable sin tocar código/desplegar.
+        'guide_path' => env('ZURRIOLA_SURF_GUIDE_PATH', resource_path('surf-guide/zurriola-spot-guide.md')),
+
+        // Reglas técnicas estructuradas del spot (viento por componente, energía en kJ
+        // con zona/nivel recomendado, estrategia de marea, dirección de swell, periodo,
+        // seguridad de corrientes...). Se inyecta junto a la guía como contexto adicional.
+        'logistics_json_path' => env('ZURRIOLA_SURF_LOGISTICS_PATH', resource_path('surf-guide/zurriola-spot-logistics.json')),
+
+        'generation_hour' => env('ZURRIOLA_SURF_GENERATION_HOUR', '07:00'),
+
+        // Tabla de previsión multi-día (distinta del "parte de hoy" de arriba):
+        // franjas horarias visibles (antes de la primera / después de la última es de noche,
+        // no aporta para surfear) y días hacia adelante que soporta Open-Meteo con margen de fiabilidad.
+        'forecast_days' => env('ZURRIOLA_FORECAST_DAYS', 3),
+        'forecast_slot_hours' => [6, 9, 12, 15, 18, 21],
+
+        // Viento por debajo de este umbral se considera "glassy" (sin apenas efecto),
+        // sea cual sea su dirección.
+        'wind_glassy_max_kmh' => env('ZURRIOLA_WIND_GLASSY_MAX_KMH', 8),
+
+        // Rangos de color en la tabla de previsión (verde / amarillo / rojo).
+        // Viento alineado con wind_north_component del JSON de logística (nudos → km/h).
+        // Energía alineada con energy_kj del mismo JSON.
+        'forecast_wind_color_kmh' => [
+            'green_max' => 9,   // ≤ ~5 nudos
+            'yellow_max' => 19, // ≤ ~10 nudos
+        ],
+        'forecast_energy_color_kj' => [
+            'green_max' => 400,  // Pequeño a Medio e inferior
+            'yellow_max' => 800, // Medio a Considerable
+        ],
+    ],
+
     'academy' => [
         'bizum_number' => env('ACADEMY_BIZUM_NUMBER', '[BIZUM_NUMBER]'),
         'iban' => env('ACADEMY_IBAN', '[IBAN]'),

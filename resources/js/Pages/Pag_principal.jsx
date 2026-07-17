@@ -6,6 +6,7 @@ import { Head, Link } from "@inertiajs/react";
 import BrandLogo from "../components/BrandLogo";
 import SponsorsStrip from "../components/SponsorsStrip";
 import Por_que_escogernos_motivo from "../components/Por_que_escogernos_motivo";
+import SurfBriefMini from "../components/webcam/SurfBriefMini";
 import {
     ShieldCheck,
     Sparkles,
@@ -72,7 +73,7 @@ const testimonios = [
     },
 ];
 
-const Pag_principal = ({ productos = [] }) => (
+const Pag_principal = ({ productos = [], surfBrief }) => (
     <Layout1>
         <Head>
             <title>San Sebastian Surf School | S4</title>
@@ -194,6 +195,8 @@ const Pag_principal = ({ productos = [] }) => (
                         ))}
                     </div>
                 </section>
+
+                <SurfBriefMini brief={surfBrief} />
 
                 {/* ── Sobre nosotros teaser ── */}
                 <section className="mt-14 sm:mt-16" aria-labelledby="sobre-nosotros-heading">

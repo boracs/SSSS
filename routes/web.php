@@ -190,9 +190,19 @@ Route::get('/servicios/fotos', function () {
 Route::get('/servicios/videograbaciones', function () {
     return Inertia::render('Servicios_Videograbaciones');
 })->name('servicios.videograbaciones');
-Route::get('/servicios/webcams', function () {
-    return Inertia::render('Servicios_Webcams');
+Route::get('/servicios/webcams', function (
+    \Illuminate\Http\Request $request,
+    \App\Services\SurfConditions\SurfDailyBriefService $surfBriefService,
+    \App\Services\SurfConditions\SurfForecastTableService $surfForecastService,
+) {
+    return Inertia::render('Servicios_Webcams', [
+        'surfBrief' => $surfBriefService->publicPayload($request),
+        'surfForecast' => $surfForecastService->publicPayload(),
+    ]);
 })->name('servicios.webcams');
+Route::post('/servicios/webcams/parte/reaccion', [\App\Http\Controllers\SurfBriefReactionController::class, 'store'])
+    ->middleware('throttle:30,1')
+    ->name('servicios.webcams.parte.reaccion');
 Route::redirect('/webcams', '/servicios/webcams');
 // Enlaces legacy del carrusel home (OpcionesIntro)
 Route::redirect('/clases-de-surf', '/servicios/surf');
@@ -422,6 +432,8 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::patch('chatbot/{chatbotInteraction}/resolve', [\App\Http\Controllers\Admin\ChatbotInteractionController::class, 'resolve'])->name('chatbot.resolve');
         Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
         Route::get('payments/global-dashboard', [\App\Http\Controllers\Admin\AcademyController::class, 'globalPaymentsDashboard'])->name('payments.global');
+        Route::patch('surf-brief/override', [\App\Http\Controllers\Admin\SurfBriefController::class, 'override'])->name('surf-brief.override');
+        Route::post('surf-brief/regenerate', [\App\Http\Controllers\Admin\SurfBriefController::class, 'regenerate'])->name('surf-brief.regenerate');
         Route::get('payments/clients', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'index'])->name('payments.clients.index');
         Route::get('payments/clients/{user}/history', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'history'])->name('payments.clients.history');
         Route::patch('payments/reviewed', [\App\Http\Controllers\Admin\AcademyController::class, 'markPaymentReviewed'])->name('payments.reviewed');

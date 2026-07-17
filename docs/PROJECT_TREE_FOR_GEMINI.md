@@ -448,6 +448,7 @@ maider_0/
 │   ├── img/
 │   │   ├── brand/          — logos S4 WebP/PNG (nav, hero, mark, og-share)
 │   │   │   └── source/     — masters PNG IA (logo-s4-navy/white-master.png)
+│   │   ├── webcam/         — fallback offline Zurriola (`zurriola-offline.webp` + `.jpg`)
 │   │   └── sponsors/
 │   │       ├── bunker/     — logo The Bunker Surf Shop (nav, mark, hero WebP/PNG)
 │   │       │   └── source/ — masters PNG IA (bunker-navy/white-master.png)
@@ -502,7 +503,10 @@ maider_0/
 | `MyFiscalInvoicesController` / `ClientFiscalInvoiceListService` | Panel cliente | `/mis-facturas`; filtro por las 5 categorías (tienda, bonos_clases, alquileres, clases, bonos_taquilla). Las 5 ramas están implementadas en `FiscalInvoiceBuilderService`, pero `FiscalInvoiceCategory::isEnabled()` exige además `INVOICING_ENABLED=true`; con el flag en `false` (entorno de prueba actual) todas se muestran como "Próximamente". |
 | `AutoReleaseService`                               | Batch + lock              | `lockForUpdate` sobre pending sin `payment_proof_path`; grace 30min (<4h clase) o 120min.                                                                                                                                 |
 | `FirestoreService`                                 | Singleton REST            | Cliente inyectado; `transport => 'rest'` en `AppServiceProvider`. Legacy artifacts; **chatbot ya no usa Firestore** (MySQL + localStorage).                                                     |
-| `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`.                                                                                                                                         |
+| `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`. `generationConfig.thinkingConfig.thinkingBudget=0` (fix 2026-07-17: sin esto, el modelo consumía casi todo `maxOutputTokens` en "thinking" interno y devolvía texto cortado). |
+| `SurfDailyBriefService` (`Services/SurfConditions/`) | Cron cada 6 h + Gemini | "Parte S4 de Zurriola": Open-Meteo (oleaje+viento) → energía/nivel → resumen Gemini con systemInstruction = guía `zurriola-spot-guide.md` + reglas técnicas `zurriola-spot-logistics.json` (viento/energía-kJ/marea/swell/periodo/corrientes), usando el desglose mañana/tarde real vía `SurfForecastTableService::todayDay()` → 1 fila/día en `surf_daily_briefs`. Texto plano (sin markdown, sanitizado por `sanitizePlainText()`). Comando `surf:generate-daily-brief` (schedule con `--force` cada 6 h). Ver `docs/surf-conditions/README.md`. ENTORNO DE PRUEBA (umbrales sin validar con el equipo). |
+| `SurfBriefReactionService` (`Services/SurfConditions/`) | Voto sesión + throttle | 👍/👎 del parte del día (`surf_brief_votes` + contadores en `surf_daily_briefs`). Un voto/sesión, toggle y cambio de sentido. Ruta `POST servicios.webcams.parte.reaccion`. |
+| `SurfForecastTableService` (`Services/SurfConditions/`) | Cache::remember 1h, sin BD | Tabla previsión 3 días × franjas 06-21h/3h (`config('services.zurriola_surf.forecast_days\|forecast_slot_hours')`) usando `OpenMeteoMarineClient::hourlySeries()`; energía vía `SurfEnergyCalculator::indexForValues()`, viento vía `SurfWindStateClassifier` (glassy/off/cross-off/cross-on/on), marea vía `TideExtremaCalculator` (máx/mín locales de `sea_level_height_msl` — estimación horaria, no dato oficial de puerto). Distinto de `SurfDailyBriefService` (ese persiste+IA, este es solo vista cacheada). Se invalida junto al parte diario en `SurfBriefController::regenerate()`. |
 | `VipStudentPerformanceService`                     | Read-heavy agregador      | Consultas amplias por mes bono; usar con `loadHistory` consciente en admin.                                                                                                                                               |
 | `LessonProofStorageService`                        | Filesystem                | Privado; no exponer URL directa sin policy.                                                                                                                                                                               |
 | `AutoCoachUploadService`                           | Upload + cuotas IP/disco | Throttle + MIME; `config/autocoach.php`; uploads en `storage/app/public/autocoach/uploads` |
@@ -584,7 +588,11 @@ resources/
     │   ├── Chatbot.jsx                 ──► FAB chat; captura móvil al derivar a humano; POST contact-phone + wa.me escuela
     │   ├── OpcionesIntro.jsx         ──► Carrusel home (solo isHome en Header)
     │   ├── webcam/
-    │   │   └── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa)
+    │   │   ├── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa); fallback `/img/webcam/zurriola-offline.webp` si cae el stream
+    │   │   ├── SurfBriefCard.jsx ──► Controles admin del parte (override + regenerar) en `/servicios/webcams`
+    │   │   ├── SurfBriefMini.jsx ──► Mini-widget del parte de hoy en la home (`Pag_principal.jsx`)
+    │   │   ├── SurfBriefReactions.jsx ──► 👍/👎 + contadores bajo el texto del parte
+    │   │   └── SurfForecastTable.jsx ──► Tabla previsión 3 días × franjas 06-21h/3h + marea + bloque Parte S4, en `/servicios/webcams`. Datos de `SurfForecastTableService`
     │   ├── BookingCalendar.jsx
     │   ├── SurfboardBookingSection.jsx   ──► calendario + Collapsible + pago alquiler
     │   ├── PaymentModal.jsx
