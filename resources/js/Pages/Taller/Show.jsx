@@ -21,6 +21,9 @@ const ARTICLE_BODY_CLASS =
     "[&_ul]:my-5 [&_ul]:space-y-2.5 [&_ul]:rounded-2xl [&_ul]:border [&_ul]:border-cyan-500/15 [&_ul]:bg-cyan-50/40 [&_ul]:p-5 [&_ul]:pl-8 [&_ul]:list-disc " +
     "[&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 " +
     "[&_li]:leading-relaxed [&_li]:marker:text-cyan-600 " +
+    "[&_figure]:my-8 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200/80 [&_figure]:bg-slate-50 " +
+    "[&_figure_img]:block [&_figure_img]:h-auto [&_figure_img]:w-full [&_figure_img]:object-cover " +
+    "[&_a]:font-semibold [&_a]:text-[#0f5f74] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-cyan-700 " +
     "[&_table]:my-6 [&_table]:w-full [&_table]:overflow-hidden [&_table]:rounded-xl [&_table]:border [&_table]:border-slate-200 " +
     "[&_th]:border-b [&_th]:border-slate-200 [&_th]:bg-slate-50 [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:text-sm [&_th]:font-semibold " +
     "[&_td]:border-b [&_td]:border-slate-100 [&_td]:px-4 [&_td]:py-3 [&_td]:text-sm";
@@ -31,7 +34,7 @@ function estimateReadingMinutes(html) {
     return Math.max(3, Math.ceil(words / 200));
 }
 
-export default function Show({ article, relatedArticles = [], productos = [] }) {
+export default function Show({ article, relatedArticles = [], relatedMeta = null, productos = [] }) {
     const seoTitle = article.seo_title ?? article.meta_title ?? article.title;
     const seoDescription = article.seo_description ?? article.meta_description ?? article.excerpt;
     const readingMinutes = estimateReadingMinutes(article.content);
@@ -114,7 +117,11 @@ export default function Show({ article, relatedArticles = [], productos = [] }) 
                         </motion.div>
                     </motion.article>
 
-                    <TallerRelatedArticles articles={relatedArticles} />
+                    <TallerRelatedArticles
+                        articles={relatedArticles}
+                        articleSlug={article.slug}
+                        relatedMeta={relatedMeta}
+                    />
 
                     <motion.div
                         initial="hidden"
@@ -128,7 +135,6 @@ export default function Show({ article, relatedArticles = [], productos = [] }) 
                             eyebrow="Tienda S4"
                             title="Material relacionado"
                             description="Productos de nuestra tienda oficial que encajan con esta guía. Precios exclusivos para socios con taquilla activa."
-                            scrollHint="Desliza para ver más productos"
                             compact={false}
                         />
                     </motion.div>

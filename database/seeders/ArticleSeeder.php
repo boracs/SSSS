@@ -11,7 +11,7 @@ class ArticleSeeder extends Seeder
 {
     public function run(): void
     {
-        /** @var list<array{title: string, slug: string, excerpt: string, content: string, meta_title: string, meta_description: string, meta_keywords: string}> $articles */
+        /** @var list<array{title: string, slug: string, excerpt: string, content: string, meta_title: string, meta_description: string, meta_keywords: string, chatbot_summary?: string, chatbot_keywords?: string}> $articles */
         $articles = require database_path('seeders/data/taller_articles.php');
 
         foreach ($articles as $article) {
