@@ -230,6 +230,13 @@ Con estructura 1 + 2 + 3: **16/16 APROBADO** con jerarquía limpia. Pendientes s
 
 *Fecha:* 2026-07-25.
 
+### Paso 4 técnico — hecho
+
+Cableado SEO Taller: `PublicPageSeoService::tallerIndex()` / `tallerArticle()` → `SeoMetaDto` → `SeoHead` en Index/Show.  
+Canonical + og:image + JSON-LD Article. Sitemap verificado (18 slugs + índice). Detalle: `docs/taller-seo/SEO_DONE.md`.
+
+*Fecha:* 2026-07-25.
+
 ---
 
 ## 3) Gaps de imágenes

@@ -1,17 +1,18 @@
 import React from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
 import Contenedor_productos from "../../layouts/Contenedor_productos";
+import SeoHead from "../../components/seo/SeoHead";
 import { TallerPageShell, TallerHero, TallerBadge, fadeUp, motion } from "../../components/Taller/TallerShell";
 import { TallerArticleCard } from "../../components/Taller/TallerArticleCard";
 import { Compass, Sparkles, Waves } from "lucide-react";
 
-export default function Index({ articles = [], productos = [] }) {
+export default function Index({ articles = [], productos = [], seo = null }) {
     const [featured, ...rest] = articles;
 
     return (
         <Layout1>
-            <Head title="Taller de Surf · Guías y consejos" />
+            <SeoHead seo={seo} />
 
             <TallerPageShell>
                 <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -39,7 +40,7 @@ export default function Index({ articles = [], productos = [] }) {
                         </div>
                     </TallerHero>
 
-                    <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="mt-10 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         {featured ? (
                             <TallerArticleCard article={featured} index={0} featured />
                         ) : null}
@@ -60,7 +61,6 @@ export default function Index({ articles = [], productos = [] }) {
                             eyebrow="Material recomendado"
                             title="Equipamiento de la tienda S4"
                             description="Accesorios, trajes y material seleccionado por nuestro equipo — ideal para complementar lo que lees en el Taller."
-                            scrollHint="Desliza para ver productos de la tienda"
                         />
                     </motion.div>
                 </div>

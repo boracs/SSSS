@@ -5,61 +5,69 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Article;
-use App\Models\Producto;
+use App\Services\Seo\PublicPageSeoService;
+use App\Services\Taller\TallerArticleService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ArticleController extends Controller
 {
+    public function __construct(
+        private readonly TallerArticleService $tallerArticles,
+        private readonly PublicPageSeoService $pageSeo,
+    ) {}
+
     public function index(): Response
     {
-        $articles = Article::query()
-            ->select(['id', 'title', 'slug', 'excerpt'])
-            ->orderBy('id')
-            ->get();
-
         return Inertia::render('Taller/Index', [
-            'articles' => $articles,
-            'productos' => $this->featuredStoreProducts(),
+            'articles' => $this->tallerArticles->listCards(),
+            'productos' => $this->tallerArticles->featuredStoreProducts(),
+            'seo' => $this->pageSeo->tallerIndex()->toArray(),
         ]);
     }
 
     public function show(Article $article): Response
     {
-        $relatedArticles = Article::query()
-            ->select(['id', 'title', 'slug', 'excerpt'])
-            ->where('id', '!=', $article->id)
-            ->inRandomOrder()
-            ->limit(3)
-            ->get();
+        $related = $this->tallerArticles->relatedPage(
+            excludeArticleId: (int) $article->id,
+            offset: 0,
+            limit: TallerArticleService::RELATED_INITIAL_LIMIT,
+        );
 
         return Inertia::render('Taller/Show', [
             'article' => $article,
-            'relatedArticles' => $relatedArticles,
-            'productos' => $this->featuredStoreProducts(),
+            'relatedArticles' => array_map(
+                static fn ($item) => $item->toArray(),
+                $related->items,
+            ),
+            'relatedMeta' => [
+                'total' => $related->total,
+                'has_more' => $related->hasMore,
+                'next_offset' => $related->nextOffset,
+                'page_size' => TallerArticleService::RELATED_PAGE_LIMIT,
+            ],
+            'productos' => $this->tallerArticles->featuredStoreProducts(),
+            'seo' => $this->pageSeo->tallerArticle($article)->toArray(),
         ]);
     }
 
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function featuredStoreProducts(int $limit = 10): array
+    public function related(Request $request, Article $article): JsonResponse
     {
-        return Producto::query()
-            ->where('eliminado', 0)
-            ->with(['imagenPrincipal:id,producto_id,ruta,nombre,es_principal'])
-            ->orderByDesc('descuento')
-            ->orderBy('nombre')
-            ->limit($limit)
-            ->get()
-            ->map(static function (Producto $producto): array {
-                $ruta = $producto->imagenPrincipal?->ruta ?? $producto->imagenPrincipal?->nombre;
+        $validated = $request->validate([
+            'offset' => ['sometimes', 'integer', 'min:0'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:12'],
+        ]);
 
-                return $producto->toStorePayload(
-                    $ruta !== null && $ruta !== '' ? (string) $ruta : null
-                );
-            })
-            ->values()
-            ->all();
+        $page = $this->tallerArticles->relatedPage(
+            excludeArticleId: (int) $article->id,
+            offset: (int) ($validated['offset'] ?? 0),
+            limit: isset($validated['limit'])
+                ? (int) $validated['limit']
+                : TallerArticleService::RELATED_PAGE_LIMIT,
+        );
+
+        return response()->json($page->toArray());
     }
 }

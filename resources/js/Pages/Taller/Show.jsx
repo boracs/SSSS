@@ -1,7 +1,8 @@
 import React from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
 import Contenedor_productos from "../../layouts/Contenedor_productos";
+import SeoHead from "../../components/seo/SeoHead";
 import {
     TallerPageShell,
     TallerBadge,
@@ -34,24 +35,14 @@ function estimateReadingMinutes(html) {
     return Math.max(3, Math.ceil(words / 200));
 }
 
-export default function Show({ article, relatedArticles = [], relatedMeta = null, productos = [] }) {
-    const seoTitle = article.seo_title ?? article.meta_title ?? article.title;
-    const seoDescription = article.seo_description ?? article.meta_description ?? article.excerpt;
+export default function Show({ article, relatedArticles = [], relatedMeta = null, productos = [], seo = null }) {
     const readingMinutes = estimateReadingMinutes(article.content);
 
     return (
         <Layout1>
             <ReadingProgressBar />
 
-            <Head title={seoTitle}>
-                <meta head-key="description" name="description" content={seoDescription} />
-                {article.meta_keywords ? (
-                    <meta head-key="keywords" name="keywords" content={article.meta_keywords} />
-                ) : null}
-                <meta head-key="og:title" property="og:title" content={seoTitle} />
-                <meta head-key="og:description" property="og:description" content={seoDescription} />
-                <meta head-key="og:type" property="og:type" content="article" />
-            </Head>
+            <SeoHead seo={seo} />
 
             <TallerPageShell>
                 <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
