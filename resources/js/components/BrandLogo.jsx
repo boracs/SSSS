@@ -62,10 +62,10 @@ export default function BrandLogo({
                 aria-hidden={decorative ? true : undefined}
                 width={asset.width}
                 height={asset.height}
-                className="h-auto max-w-full object-contain"
+                className="h-full w-auto max-w-full object-contain"
                 decoding="async"
                 loading={priority ? "eager" : "lazy"}
-                fetchPriority={priority ? "high" : undefined}
+                fetchPriority={priority ? "low" : undefined}
             />
         </picture>
     );

@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
+import ContactChannelsModal from "../components/ContactChannelsModal";
 import {
     BarChart3,
     Camera,
@@ -63,9 +65,20 @@ const INCLUDES = [
     "Opción de análisis comparativo entre sesiones",
 ];
 
-export default function ServiciosVideograbaciones() {
+export default function ServiciosVideograbaciones({ seo = null }) {
+    const [contactOpen, setContactOpen] = useState(false);
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
+            <SeoHead seo={seo} />
+            {contactOpen ? (
+                <ContactChannelsModal
+                    topic="video"
+                    title="Reservar videograbación"
+                    subtitle="WhatsApp, Instagram, email o formulario: elige el canal que te venga mejor."
+                    onClose={() => setContactOpen(false)}
+                />
+            ) : null}
             <section className="relative overflow-hidden border-b border-cyan-950/60">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(15,95,116,0.45),_transparent_55%)]" />
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
@@ -218,17 +231,18 @@ export default function ServiciosVideograbaciones() {
                                 Complementa tu videograbación con clases en academía o reserva una sesión suelta. Nuestro
                                 equipo te asesora sobre el pack que mejor encaja con tu nivel.
                             </p>
-                            <div className="mt-6 flex flex-wrap gap-3">
-                                <Link
-                                    href={route("contacto")}
-                                    className="inline-flex items-center gap-2 rounded-full bg-[#0f5f74] px-5 py-2.5 text-sm font-bold text-white ring-1 ring-cyan-400/30 transition hover:bg-[#0d5163]"
+                            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setContactOpen(true)}
+                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f5f74] px-5 text-sm font-bold text-white ring-1 ring-cyan-400/30 transition hover:bg-[#0d5163] sm:w-auto"
                                 >
-                                    <Waves className="h-4 w-4" />
+                                    <Waves className="h-4 w-4 shrink-0" aria-hidden />
                                     Contactar ahora
-                                </Link>
+                                </button>
                                 <Link
                                     href={route("servicios.surf")}
-                                    className="text-sm font-semibold text-cyan-300 underline-offset-4 hover:underline"
+                                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/20 bg-white/5 px-5 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/40 hover:bg-white/10 hover:text-white sm:w-auto"
                                 >
                                     Ver clases de surf
                                 </Link>

@@ -4,21 +4,28 @@ declare(strict_types=1);
 
 namespace App\Services\Chatbot;
 
-use App\Support\AcademyContact;
 use App\Support\ChatbotQueryNormalizer;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Catálogo de páginas explicativas públicas (Nosotros, reparaciones, servicios…)
  * para FAQ local y contexto Gemini. Fuente: config/chatbot_pages.php.
+ * Respuestas largas de dominio (reparaciones, surfskate, fotos) salen del JSON
+ * vía {@see S4BusinessKnowledgeService}.
  */
 final class ChatbotPageCatalogService
 {
-    private const CACHE_KEY = 'chatbot:page-catalog:v2';
+    private const CACHE_KEY = 'chatbot:page-catalog:v5';
 
     private const CACHE_TTL_SECONDS = 300;
 
     private const MIN_TOKEN_SCORE = 3;
+
+    public function __construct(
+        private readonly S4BusinessKnowledgeService $knowledge,
+    ) {
+    }
 
     /**
      * FAQ con enlaces markdown a páginas relevantes; null si no aplica.
@@ -34,11 +41,35 @@ final class ChatbotPageCatalogService
         $top = $matches[0]['page'];
 
         if ($top['key'] === 'reparacion-tablas') {
-            return $this->repairBoardsFaqReply();
+            $fromJson = trim($this->knowledge->faqRepairTablesReply());
+            if ($fromJson !== '') {
+                return $fromJson;
+            }
+            Log::warning('ChatbotPageCatalogService: FAQ tablas sin datos en JSON knowledge.');
         }
 
         if ($top['key'] === 'reparacion-neoprenos') {
-            return $this->repairWetsuitFaqReply();
+            $fromJson = trim($this->knowledge->faqRepairWetsuitsReply());
+            if ($fromJson !== '') {
+                return $fromJson;
+            }
+            Log::warning('ChatbotPageCatalogService: FAQ neoprenos sin datos en JSON knowledge.');
+        }
+
+        if ($top['key'] === 'surf-skate-guia') {
+            $fromJson = trim($this->knowledge->faqSurfskateGuideReply());
+            if ($fromJson !== '') {
+                return $fromJson;
+            }
+            Log::warning('ChatbotPageCatalogService: FAQ surfskate sin datos en JSON knowledge.');
+        }
+
+        if ($top['key'] === 'fotografia') {
+            $fromJson = trim($this->knowledge->faqPhotographyReply());
+            if ($fromJson !== '') {
+                return $fromJson;
+            }
+            Log::warning('ChatbotPageCatalogService: FAQ fotografía sin datos en JSON knowledge.');
         }
 
         $lines = ['Estas páginas de la web te pueden ayudar:'];
@@ -112,18 +143,19 @@ final class ChatbotPageCatalogService
     {
         $normalized = $this->normalizeQuery($rawQuery);
         $matches = $this->rankPages($normalized);
+        $text = $this->linkifyInternalPaths($geminiText);
 
         if ($matches === []) {
-            return $geminiText;
+            return $text;
         }
 
         foreach (array_slice($matches, 0, 2) as $match) {
-            if (str_contains($geminiText, $match['page']['path'])) {
-                return $geminiText;
+            if (str_contains($text, $match['page']['path'])) {
+                return $this->linkifyInternalPaths($text);
             }
         }
 
-        $lines = [trim($geminiText), '', '**Más información en la web:**'];
+        $lines = [trim($text), '', '**Más información en la web:**'];
 
         foreach (array_slice($matches, 0, 2) as $match) {
             $page = $match['page'];
@@ -133,76 +165,39 @@ final class ChatbotPageCatalogService
         return implode("\n", $lines);
     }
 
+    /**
+     * Convierte rutas sueltas (/tablas-alquiler) en enlaces markdown [Título](/ruta).
+     * No toca las que ya van como ](/ruta).
+     */
+    public function linkifyInternalPaths(string $text): string
+    {
+        $map = [];
+        foreach ($this->pages() as $page) {
+            $path = trim((string) ($page['path'] ?? ''));
+            $title = trim((string) ($page['title'] ?? ''));
+            if ($path === '' || $path === '/' || $title === '') {
+                continue;
+            }
+            $map[$path] = $title;
+        }
+
+        uksort($map, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+
+        foreach ($map as $path => $title) {
+            $quoted = preg_quote($path, '/');
+            $text = preg_replace(
+                '/(?<!\]\()'.$quoted.'(?=[\s.,;:!?)]|$)/u',
+                '[**'.$title.'**]('.$path.')',
+                $text,
+            ) ?? $text;
+        }
+
+        return $text;
+    }
+
     public function normalizeQuery(string $query): string
     {
         return ChatbotQueryNormalizer::forMatching($query);
-    }
-
-    private function repairBoardsFaqReply(): string
-    {
-        $edy = config('services.repair.edy', []);
-        $name = trim((string) ($edy['name'] ?? 'Edy Mulder'));
-        $phone = $this->formatRepairContactPhone($edy);
-        $email = trim((string) ($edy['email'] ?? ''));
-
-        $lines = [
-            '**Reparación de tablas en el club** (servicio de **'.$name.'**):',
-            '',
-            '1. Anota tu **número de taquilla** en la **pizarra** del local.',
-            '2. Marca cada toque con **cinta azul** en la tabla.',
-            '3. '.$name.' recoge las tablas marcadas, repara en taller (~1 semana) y las devuelve al rack con **pegatina de precio**.',
-            '4. Revisas el arreglo y pagas por **Bizum** o en el **buzón** del local (sobre con nombre y nº de taquilla).',
-            '',
-            'Guía paso a paso: [**Reparación de tablas**](/servicios).',
-        ];
-
-        if ($phone !== '' || $email !== '') {
-            $lines[] = '';
-            $lines[] = '**Contacto '.$name.':**';
-            if ($phone !== '') {
-                $lines[] = '- Teléfono: '.$phone;
-            }
-            if ($email !== '') {
-                $lines[] = '- Email: '.$email;
-            }
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function repairWetsuitFaqReply(): string
-    {
-        $willy = config('services.repair.willy', []);
-        $name = trim((string) ($willy['name'] ?? 'Willy'));
-        $phone = $this->formatRepairContactPhone($willy);
-        $email = trim((string) ($willy['email'] ?? ''));
-
-        $lines = [
-            '**Reparación de neoprenos** (servicio de **'.$name.'** en el club):',
-            '',
-            'Deja el traje en la **percha** indicada en el local. '.$name.' lo recoge, repara y lo devuelve.',
-            'Si tienes dudas sobre si merece la pena reparar o quieres fijar un tope de precio, escríbele antes.',
-            '',
-            'Detalle del servicio: [**Reparación de neoprenos**](/servicios/reparacion-neoprenos).',
-        ];
-
-        if ($phone !== '' || $email !== '') {
-            $lines[] = '';
-            $lines[] = '**Contacto '.$name.':**';
-            if ($phone !== '') {
-                $lines[] = '- Teléfono: '.$phone;
-            }
-            if ($email !== '') {
-                $lines[] = '- Email: '.$email;
-            }
-        }
-
-        $whatsapp = AcademyContact::whatsappDisplay();
-        if ($whatsapp !== '') {
-            $lines[] = '- Escuela (WhatsApp general): '.$whatsapp;
-        }
-
-        return implode("\n", $lines);
     }
 
     /**
@@ -291,35 +286,6 @@ final class ChatbotPageCatalogService
         $pageTokens = $this->tokenize($page['title'].' '.$page['keywords'].' '.$page['summary']);
 
         return count(array_intersect($queryTokens, $pageTokens));
-    }
-
-  /**
-     * @param  array{phone?: string, phone_display?: string}  $contact
-     */
-    private function formatRepairContactPhone(array $contact): string
-    {
-        $display = trim((string) ($contact['phone_display'] ?? ''));
-        if ($display !== '') {
-            return $display;
-        }
-
-        $digits = preg_replace('/\D+/', '', (string) ($contact['phone'] ?? ''));
-        if ($digits === '') {
-            return '';
-        }
-
-        if (str_starts_with($digits, '34') && strlen($digits) >= 11) {
-            $local = substr($digits, 2, 9);
-
-            return sprintf(
-                '+34 %s %s %s',
-                substr($local, 0, 3),
-                substr($local, 3, 3),
-                substr($local, 6, 3),
-            );
-        }
-
-        return '+'.$digits;
     }
 
     private function shortSummary(string $summary): string

@@ -136,7 +136,13 @@ final class SurfDailyBriefService
         $brief = $this->today();
 
         if ($brief === null || $brief->summary_source === SurfDailyBrief::SOURCE_PENDING) {
-            return ['has_data' => false];
+            $this->ensureGenerationQueued();
+
+            return [
+                'has_data' => false,
+                'status' => 'generating',
+                'message' => 'Estamos generando el parte de hoy… Vuelve a cargar en unos segundos.',
+            ];
         }
 
         // Contadores frescos (el modelo en cache puede ir unos minutos atrasado).
@@ -153,6 +159,7 @@ final class SurfDailyBriefService
 
         return [
             'has_data' => true,
+            'status' => 'ready',
             'report_date' => $brief->report_date?->toDateString(),
             'wave' => [
                 'height_m' => $brief->wave_height_m,
@@ -183,12 +190,79 @@ final class SurfDailyBriefService
             'summary_source' => $brief->summary_source,
             'generated_at' => $brief->generated_at?->toIso8601String(),
             'generated_at_human' => $brief->generated_at?->locale('es')->translatedFormat('d/m/Y H:i'),
+            'signal' => $this->buildSignalPayload($brief),
             'override' => $brief->hasOverride() ? [
                 'status' => $brief->admin_override_status,
                 'note' => $brief->admin_override_note,
             ] : null,
             'reactions' => $this->reactions->stateForBrief($brief, $voterKey)->toArray(),
         ];
+    }
+
+    /**
+     * Badge único de 4 colores: automático por oleaje/viento, o el que fije el admin.
+     *
+     * @return array{status: string, auto_status: string, is_manual: bool, note: ?string}
+     */
+    private function buildSignalPayload(SurfDailyBrief $brief): array
+    {
+        $auto = $this->levelRecommender->autoSignalFromBrief($brief);
+        $isManual = $brief->hasOverride()
+            && in_array($brief->admin_override_status, SurfDailyBrief::OVERRIDE_STATUSES, true);
+
+        return [
+            'status' => $isManual ? (string) $brief->admin_override_status : $auto,
+            'auto_status' => $auto,
+            'is_manual' => $isManual,
+            'note' => $brief->admin_override_note,
+        ];
+    }
+
+    /**
+     * Si no hay parte de hoy (o está pending), programa UNA generación tras enviar
+     * la respuesta HTTP — no bloquea la request ni llama APIs en el ciclo Inertia.
+     * El cron cada 6 h sigue siendo la vía principal en producción.
+     */
+    private function ensureGenerationQueued(): void
+    {
+        $today = Carbon::today();
+        $date = $today->toDateString();
+        $lockKey = self::CACHE_PREFIX.'gen:'.$date;
+
+        $existing = SurfDailyBrief::query()->where('report_date', $date)->first();
+
+        // Si el pending lleva >5 min atascado, permitir otro intento.
+        if (
+            $existing !== null
+            && $existing->summary_source === SurfDailyBrief::SOURCE_PENDING
+            && $existing->updated_at !== null
+            && $existing->updated_at->lt(Carbon::now()->subMinutes(5))
+        ) {
+            Cache::forget($lockKey);
+        }
+
+        if (! Cache::add($lockKey, 1, 90)) {
+            return;
+        }
+
+        if ($existing === null) {
+            SurfDailyBrief::query()->create([
+                'report_date' => $date,
+                'summary_source' => SurfDailyBrief::SOURCE_PENDING,
+                'ai_summary' => null,
+            ]);
+            $this->forget($today);
+        }
+
+        dispatch(function (): void {
+            try {
+                app(self::class)->generateForToday(force: false);
+            } catch (Throwable $e) {
+                Log::error('SurfDailyBriefService: generación diferida falló.', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        })->afterResponse();
     }
 
     /** @return array{0: string, 1: string} [texto, fuente] */

@@ -5,16 +5,14 @@ declare(strict_types=1);
 namespace App\Services\SurfConditions;
 
 use App\DTOs\SurfConditions\SurfConditionsSnapshotDto;
+use App\Models\SurfDailyBrief;
 
 /**
- * Traduce el snapshot a una recomendación de nivel (iniciacion/intermedio/
- * avanzado/no_recomendado) usando umbrales 100% en config — es una señal
- * RÁPIDA para el badge de la UI; el matiz real lo da el texto de Gemini
- * (que usa la guía completa del spot, no solo estos umbrales).
+ * Traduce el snapshot a:
+ * - nivel Gemini (iniciacion/intermedio/avanzado/no_recomendado)
+ * - señal visual de 4 colores (good/espigon/caution/closed) para el badge UI
  *
- * ⚠️ Umbrales de `config('services.zurriola_surf.level_thresholds')` son un
- * borrador de partida (entorno de prueba) — pendientes de validar con el
- * equipo de la escuela antes de tratarlos como criterio oficial.
+ * ⚠️ Umbrales de config son borrador — pendientes de validar con la escuela.
  */
 final class SurfLevelRecommender
 {
@@ -26,28 +24,68 @@ final class SurfLevelRecommender
 
     public const LEVEL_NO_RECOMENDADO = 'no_recomendado';
 
-    private const ORDER = [self::LEVEL_INICIACION, self::LEVEL_INTERMEDIO, self::LEVEL_AVANZADO];
+    private const LEVEL_ORDER = [self::LEVEL_INICIACION, self::LEVEL_INTERMEDIO, self::LEVEL_AVANZADO];
+
+    private const SIGNAL_ORDER = [
+        SurfDailyBrief::OVERRIDE_GOOD,
+        SurfDailyBrief::OVERRIDE_ESPIGON,
+        SurfDailyBrief::OVERRIDE_CAUTION,
+    ];
 
     public function recommend(SurfConditionsSnapshotDto $snapshot): string
     {
-        $thresholds = (array) config('services.zurriola_surf.level_thresholds', []);
-        $isOffshore = $this->isOffshoreWind($snapshot->windDirectionDeg);
+        return $this->firstMatchingLevel(
+            $snapshot,
+            self::LEVEL_ORDER,
+            (array) config('services.zurriola_surf.level_thresholds', []),
+            self::LEVEL_NO_RECOMENDADO,
+        );
+    }
 
-        foreach (self::ORDER as $level) {
-            $rule = $thresholds[$level] ?? null;
-            if ($rule === null) {
-                continue;
-            }
+    /**
+     * Señal automática de 4 colores para el badge público.
+     * El admin puede sobrescribirla (admin_override_status).
+     */
+    public function recommendSignal(SurfConditionsSnapshotDto $snapshot): string
+    {
+        return $this->firstMatchingLevel(
+            $snapshot,
+            self::SIGNAL_ORDER,
+            (array) config('services.zurriola_surf.signal_thresholds', []),
+            SurfDailyBrief::OVERRIDE_CLOSED,
+        );
+    }
 
-            $maxWave = (float) ($rule['max_wave_height_m'] ?? PHP_FLOAT_MAX);
-            $maxWind = (float) ($isOffshore ? ($rule['max_wind_kmh_offshore'] ?? PHP_FLOAT_MAX) : ($rule['max_wind_kmh_onshore'] ?? PHP_FLOAT_MAX));
-
-            if ($snapshot->waveHeightM <= $maxWave && $snapshot->windSpeedKmh <= $maxWind) {
-                return $level;
-            }
+    public function autoSignalFromBrief(SurfDailyBrief $brief): string
+    {
+        if ($brief->wave_height_m === null || $brief->wind_speed_kmh === null) {
+            return $this->signalFromLegacyLevel($brief->level_recommendation);
         }
 
-        return self::LEVEL_NO_RECOMENDADO;
+        $snapshot = new SurfConditionsSnapshotDto(
+            waveHeightM: (float) $brief->wave_height_m,
+            wavePeriodS: (float) ($brief->wave_period_s ?? 0),
+            waveDirectionDeg: (int) ($brief->wave_direction_deg ?? 0),
+            swellHeightM: $brief->swell_height_m !== null ? (float) $brief->swell_height_m : null,
+            swellPeriodS: $brief->swell_period_s !== null ? (float) $brief->swell_period_s : null,
+            swellDirectionDeg: $brief->swell_direction_deg !== null ? (int) $brief->swell_direction_deg : null,
+            windSpeedKmh: (float) $brief->wind_speed_kmh,
+            windDirectionDeg: (int) ($brief->wind_direction_deg ?? 0),
+            fetchedAt: $brief->fetched_at ?? now(),
+        );
+
+        return $this->recommendSignal($snapshot);
+    }
+
+    /** Fallback si el brief aún no tiene olas/viento (p. ej. pending). */
+    public function signalFromLegacyLevel(?string $level): string
+    {
+        return match ($level) {
+            self::LEVEL_INICIACION => SurfDailyBrief::OVERRIDE_GOOD,
+            self::LEVEL_INTERMEDIO => SurfDailyBrief::OVERRIDE_CAUTION,
+            self::LEVEL_AVANZADO => SurfDailyBrief::OVERRIDE_CLOSED,
+            default => SurfDailyBrief::OVERRIDE_CLOSED,
+        };
     }
 
     public function isOffshoreWind(int $windDirectionDeg): bool
@@ -65,6 +103,35 @@ final class SurfLevelRecommender
         $diff = fmod(($a - $b + 180 + 360), 360) - 180;
 
         return $diff;
+    }
+
+    /**
+     * @param  list<string>  $order
+     * @param  array<string, array<string, mixed>>  $thresholds
+     */
+    private function firstMatchingLevel(
+        SurfConditionsSnapshotDto $snapshot,
+        array $order,
+        array $thresholds,
+        string $fallback,
+    ): string {
+        $isOffshore = $this->isOffshoreWind($snapshot->windDirectionDeg);
+
+        foreach ($order as $level) {
+            $rule = $thresholds[$level] ?? null;
+            if ($rule === null) {
+                continue;
+            }
+
+            $maxWave = (float) ($rule['max_wave_height_m'] ?? PHP_FLOAT_MAX);
+            $maxWind = (float) ($isOffshore ? ($rule['max_wind_kmh_offshore'] ?? PHP_FLOAT_MAX) : ($rule['max_wind_kmh_onshore'] ?? PHP_FLOAT_MAX));
+
+            if ($snapshot->waveHeightM <= $maxWave && $snapshot->windSpeedKmh <= $maxWind) {
+                return $level;
+            }
+        }
+
+        return $fallback;
     }
 
     public function label(string $level): string

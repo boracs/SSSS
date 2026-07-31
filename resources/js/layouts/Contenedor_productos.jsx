@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "@inertiajs/react";
-import ProductoOferta from "../components/ProductoOferta";
+import Producto from "../components/Producto";
 
 const Contenedor_productos = ({
     productos = [],
@@ -9,7 +9,6 @@ const Contenedor_productos = ({
     title = "Mejores ofertas del club",
     description = "Precios exclusivos para socios con taquilla activa. Material, accesorios y equipamiento con descuento directo en tu carrito.",
     showShopLink = true,
-    scrollHint = "Desliza para descubrir más ofertas exclusivas",
     compact = false,
 }) => {
     const scrollRef = useRef(null);
@@ -46,7 +45,7 @@ const Contenedor_productos = ({
 
     return (
         <section
-            className={`relative overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-cyan-50/40 shadow-[0_20px_60px_-24px_rgba(15,95,116,0.35)] ${compact ? "rounded-2xl p-3 sm:p-4" : "p-5 sm:p-8"}`}
+            className={`relative overflow-hidden rounded-3xl border border-slate-300/70 bg-gradient-to-br from-slate-200/90 via-slate-100 to-cyan-100/50 shadow-[0_20px_60px_-24px_rgba(15,95,116,0.4)] ${compact ? "rounded-2xl p-3 sm:p-4" : "p-5 sm:p-8"}`}
             aria-labelledby="ofertas-socios-heading"
         >
             <div
@@ -95,11 +94,11 @@ const Contenedor_productos = ({
 
             <div className="relative">
                 <div
-                    className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-white/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+                    className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-slate-100/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
                     aria-hidden
                 />
                 <div
-                    className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-cyan-50/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+                    className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-cyan-100/90 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollRight ? "opacity-100" : "opacity-0"}`}
                     aria-hidden
                 />
 
@@ -115,27 +114,29 @@ const Contenedor_productos = ({
 
                 <div
                     ref={scrollRef}
-                    className={`flex snap-x snap-mandatory overflow-x-auto pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${compact ? "gap-2.5 sm:gap-3" : "gap-4 sm:gap-5"}`}
+                    className={`flex items-stretch snap-x snap-mandatory overflow-x-auto pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${compact ? "gap-2.5 sm:gap-3" : "gap-4 sm:gap-5"}`}
                 >
                     {productos.map((producto, index) => (
                         <div
                             key={producto.id}
                             className={
                                 compact
-                                    ? "w-[min(58vw,168px)] shrink-0 snap-start sm:w-[168px]"
-                                    : "w-[min(88vw,280px)] shrink-0 snap-start sm:w-[272px]"
+                                    ? "flex w-[min(58vw,168px)] shrink-0 snap-start sm:w-[168px]"
+                                    : "flex w-[min(88vw,280px)] shrink-0 snap-start sm:w-[272px]"
                             }
                             style={{ animationDelay: `${index * 60}ms` }}
                         >
-                            <ProductoOferta
-                                nombre={producto.nombre}
-                                precio={producto.precio}
-                                imagen={producto.imagen}
-                                unidades={producto.unidades}
-                                descuento={producto.descuento}
-                                producto={producto}
-                                compact={compact}
-                            />
+                            <div className="flex w-full flex-col">
+                                <Producto
+                                    nombre={producto.nombre}
+                                    precio={producto.precio}
+                                    imagen={producto.imagen}
+                                    unidades={producto.unidades}
+                                    descuento={producto.descuento}
+                                    producto={producto}
+                                    density="compact"
+                                />
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -150,13 +151,6 @@ const Contenedor_productos = ({
                     <ChevronRight className={compact ? "h-4 w-4" : "h-5 w-5"} />
                 </button>
             </div>
-
-            {scrollHint ? (
-                <p className="relative mt-5 flex items-center justify-center gap-2 text-xs text-slate-500">
-                    <span className="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-cyan-500" />
-                    {scrollHint}
-                </p>
-            ) : null}
         </section>
     );
 };

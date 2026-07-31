@@ -11,6 +11,7 @@ Artisan::command('inspire', function () {
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
+// Parte Zurriola: cada 6 h. Requiere crontab `* * * * * php artisan schedule:run` en servidor.
 Schedule::command('surf:generate-daily-brief', ['--force' => true])->everySixHours();
 
 Artisan::command('attendance-notes:relink-orphans {--user= : ID de usuario (opcional)}', function () {

@@ -1,0 +1,577 @@
+{
+  "meta": {
+    "version": "1.3.0",
+    "locale": "es",
+    "status": "draft_unconfirmed",
+    "disclaimer": "ENTORNO DE PRUEBA. Precios y políticas marcados como unconfirmed no son oficiales hasta confirmación de San Sebastián Surf School. Los packs VIP y planes de taquilla se leen en vivo de la BD; este JSON no los hardcodea."
+  },
+  "contact": {
+    "location_source": "config:services.academy.location_label",
+    "email_source": "AcademyContact::contactEmail",
+    "whatsapp_source": "AcademyContact::whatsappDisplay",
+    "instagram_source": "config:services.academy.instagram_handle",
+    "maps_source": "config:services.academy.maps_url",
+    "notes": [
+      "WhatsApp se ofrece solo con el botón del chat; nunca citar el número ni wa.me en texto del bot.",
+      "Email de marketing habitual: info@sansebastiansurfschool.com (vía config academy.contact_email)."
+    ]
+  },
+  "academy": {
+    "page_path": "/servicios/surf",
+    "modalities": ["iniciacion", "intermedio", "avanzado", "grupal", "particular", "semanal", "vip"],
+    "duration_hours_marketing": 1.5,
+    "includes": ["tabla", "neopreno"],
+    "meeting_point": "Playa de Zurriola, junto al club (llegar 10–15 min antes).",
+    "capacity_per_monitor": 6,
+    "capacity_note": "Grupos de 7 o más requieren segundo monitor / cupo extra aprobado por la escuela.",
+    "online_deposit_eur_source": "config:services.academy.class_reservation_deposit_eur",
+    "enroll_cutoff_minutes_source": "config:services.academy.enroll_cutoff_minutes",
+    "cancel_cutoff_hours_source": "config:services.academy.cancel_cutoff_hours",
+    "pricing_status": "unconfirmed",
+    "private_lessons": [
+      { "people": 1, "price_eur_per_person": 80, "note": "total" },
+      { "people": 2, "price_eur_per_person": 55 },
+      { "people": 3, "price_eur_per_person": 40 },
+      { "people": 4, "price_eur_per_person": 30 },
+      { "people": 5, "price_eur_per_person": 30 },
+      { "people": 6, "price_eur_per_person": 30 }
+    ],
+    "group_bonos": [
+      { "name": "Bono 5 clases", "classes": 5, "price_eur": 150, "approx_per_class_eur": 30 },
+      { "name": "Bono 10 clases", "classes": 10, "price_eur": 250, "approx_per_class_eur": 25, "best_value": true },
+      { "name": "Bono 10 clases particulares", "classes": 10, "price_eur": 600, "kind": "private_pack" }
+    ],
+    "optional_menus": [
+      { "name": "Menú del día", "price_eur": 30 },
+      { "name": "Menú sidrería", "price_eur": 50 }
+    ],
+    "online_payment_note": "En la web, la reserva de clase suelta suele cobrar solo la señal (máximo según config, por defecto 30€). El resto se abona en la escuela. No confundir la señal online con el precio total de la clase.",
+    "mal_mar_policy": "Si la escuela cancela por mal mar, temporal o seguridad: siempre se reprograma o se devuelve el importe / clase del bono. Nunca se penaliza al alumno.",
+    "cancel_student_policy": "Cancelación online con devolución de clase/bono solo si avisas con al menos cancel_cutoff_hours de antelación (por defecto 4h). Con menos tiempo la cancelación online puede no estar disponible; contactar por WhatsApp.",
+    "bono_credit_rules": [
+      { "case": "particular", "units": 2, "text": "Clase particular consume 2 clases del bono." },
+      { "case": "group_solo", "units": 2, "text": "Grupal/semanal con una sola persona apuntada consume 2 clases del bono (equivalente a particular)." },
+      { "case": "group_multi", "units": 1, "text": "Grupal/semanal con varias personas: 1 clase del bono por plaza." }
+    ]
+  },
+  "vip": {
+    "flag": "user.is_vip",
+    "can_buy_packs_online": true,
+    "can_enroll_with_bono": true,
+    "sees_vip_calendar": true,
+    "non_vip_note": "Sin VIP no se pueden comprar packs de bono en la web. Se puede solicitar acceso VIP por WhatsApp. Las clases grupales/semanal/particular con pago de señal sí están disponibles sin ser VIP.",
+    "packs_source": "database:pack_bonos (activo=true)",
+    "balance_never_expires_by_date": true,
+    "shared_locker_numbers_source": "config:vip.shared_locker_numbers (default 500,600)"
+  },
+  "lockers": {
+    "page_path": "/taquillas",
+    "plans_source": "database:planes_taquilla (activo=true)",
+    "stacking_note": "Al renovar, los días del nuevo plan se apilan al final del periodo vigente.",
+    "physical_required_for_plan": "Para contratar/renovar un plan de taquilla hace falta casillero físico asignado (no basta la taquilla virtual VIP 500/600).",
+    "vip_virtual_lockers": {
+      "numbers": [500, 600],
+      "effects": [
+        "Permiten comprar en tienda y acceder a subastas sin casillero físico.",
+        "No dan derecho a llave de emergencia ni a plan de taquilla física."
+      ]
+    },
+    "emergency_key": {
+      "requires_physical_locker": true,
+      "requires_payment_up_to_date": true,
+      "one_shot": true,
+      "note": "Al revelar el código de emergencia el candado queda inactivo hasta que admin reactive uno nuevo."
+    },
+    "payment_queue_note": "La cola de taquillas en admin es de pagos pendientes de revisar (Bizum/transferencia), no una lista de espera de casilleros libres."
+  },
+  "rentals": {
+    "page_path": "/tablas-alquiler",
+    "deposit_percent": 30,
+    "pending_expires_days": 7,
+    "remainder_at_pickup": true,
+    "handoff_hour_source": "config:services.academy.rental_handoff_hour",
+    "pricing_note": "El precio depende del modelo y la duración (1 hora a 1 semana); se calcula en la web al elegir fechas. No inventar tarifas concretas."
+  },
+  "store": {
+    "requires_active_locker": true,
+    "note": "Solo usuarios con taquilla activa (física o VIP 500/600) pueden comprar productos físicos en la tienda online."
+  },
+  "repairs": {
+    "shared": {
+      "outside_stripe": true,
+      "no_online_booking": true,
+      "audience_base": "Servicios pensados para socios del club S4 (material en el local a pie de Zurriola).",
+      "bot_guidance": "Explica el flujo paso a paso y enlaza la guía. No inventes precios de reparación. Si hay duda de importe, tope o si merece la pena arreglar, ofrece contactar al reparador (email/teléfono de config) o WhatsApp escuela. Pago siempre fuera de Stripe, tras validar el trabajo."
+    },
+    "tables": {
+      "provider_source": "config:services.repair.edy",
+      "provider_name_fallback": "Edy Mulder",
+      "provider_role": "Reparador de tablas (taller externo). Contacto y cobro directos a Edy.",
+      "page_path": "/servicios",
+      "audience": "Socios con taquilla física que guardan tablas en el rack del club.",
+      "summary": "Sistema sin desplazamientos: el cliente anota la taquilla y marca toques con cinta azul; Edy recoge, repara en taller, devuelve al rack con pegatina de precio; el cliente valida y paga por Bizum o buzón.",
+      "steps": [
+        {
+          "n": 1,
+          "actor": "client",
+          "title": "Anotar taquilla en la pizarra",
+          "detail": "Escribe el número de taquilla asignado en la pizarra física del local (mismo sitio del rack)."
+        },
+        {
+          "n": 2,
+          "actor": "client",
+          "title": "Marcar toques con cinta azul",
+          "detail": "Pon cinta azul en cada golpe o zona a reparar. Puedes marcar una o varias tablas; solo se recogen las que lleven cinta."
+        },
+        {
+          "n": 3,
+          "actor": "provider",
+          "title": "Edy consulta pizarra y recoge",
+          "detail": "Cuando pasa por el local, mira la pizarra, va a cada taquilla señalada y recoge solo las tablas con cinta azul."
+        },
+        {
+          "n": 4,
+          "actor": "provider",
+          "title": "Reparación en taller",
+          "detail": "Trabaja la tabla en su taller. Plazo habitual ~1 semana; si puede antes, la devuelve antes."
+        },
+        {
+          "n": 5,
+          "actor": "provider",
+          "title": "Devolución con pegatina de precio",
+          "detail": "La tabla vuelve al rack del cliente con una pegatina donde figura el importe."
+        },
+        {
+          "n": 6,
+          "actor": "client",
+          "title": "Validar y pagar",
+          "detail": "Revisa el arreglo en el local. Si está conforme, paga a Edy (Bizum o buzón)."
+        }
+      ],
+      "client_does": [
+        "Escribir el número de taquilla en la pizarra del local",
+        "Poner cinta azul en los toques a reparar",
+        "Dejar la tabla en el rack/taquilla como siempre (no moverla fuera del club)",
+        "Revisar la tabla al volver con la pegatina de precio",
+        "Pagar por Bizum a Edy o en su buzón del local"
+      ],
+      "provider_does": [
+        "Consultar la pizarra de reparaciones",
+        "Recoger solo las tablas con cinta azul",
+        "Reparar en taller y devolver al rack",
+        "Colocar pegatina con el precio de la reparación"
+      ],
+      "payment": {
+        "methods": [
+          "Bizum directamente a Edy",
+          "Efectivo en buzón exclusivo de Edy: sobre con nombre, nº de taquilla e importe"
+        ],
+        "when": "Tras revisar la pegatina y validar el arreglo",
+        "note": "Fuera de Stripe; el cliente valida antes de abonar."
+      },
+      "sla_note": "Plazo habitual aproximado de 1 semana.",
+      "signals": {
+        "board_marker": "Cinta azul = señal de recogida para Edy",
+        "price_marker": "Pegatina con importe en la tabla al devolverla"
+      }
+    },
+    "wetsuits": {
+      "provider_source": "config:services.repair.willy",
+      "provider_name_fallback": "Willy",
+      "provider_role": "Administrador y socio de S4; repara neoprenos. Suele desplazarse a Zarautz 2–3 veces al mes para recoger y devolver trajes.",
+      "page_path": "/servicios/reparacion-neoprenos",
+      "audience": "Socios del club con trajes en el local (secadero / zona de perchas).",
+      "summary": "El cliente cuelga el neopreno en percha exclusiva de reparación, anota el número en la pizarra de trajes, marca zonas (hoja/dibujo con X) y puede fijar tope de precio; Willy recoge en sus viajes a Zarautz, repara, devuelve con importe visible; el cliente paga en metálico en el buzón de Willy.",
+      "steps": [
+        {
+          "n": 1,
+          "actor": "client",
+          "title": "Usar percha exclusiva de reparación",
+          "detail": "Colgar el traje solo en perchas de reparación (color/formato distintos del secadero habitual). No usar perchas normales."
+        },
+        {
+          "n": 2,
+          "actor": "client",
+          "title": "Anotar número de percha en la pizarra",
+          "detail": "Escribir el número de la percha en la pizarra de trajes del local."
+        },
+        {
+          "n": 3,
+          "actor": "client",
+          "title": "Marcar zonas a reparar",
+          "detail": "Dejar en el traje una hoja descriptiva o dibujo sencillo con X en cada zona (costuras, desgarros, cremalleras, etc.)."
+        },
+        {
+          "n": 4,
+          "actor": "client",
+          "title": "Aclarar dudas y tope de precio (opcional)",
+          "detail": "Antes de que Willy recoja: indicar por escrito tope de importe o condiciones, o contactarle (WhatsApp/email de config) para evitar sorpresas."
+        },
+        {
+          "n": 5,
+          "actor": "provider",
+          "title": "Willy recoge en viajes a Zarautz",
+          "detail": "Revisa la pizarra, recoge solo perchas de reparación señaladas y se lleva los trajes (2–3 veces al mes aprox.). El cliente no saca el neopreno del club."
+        },
+        {
+          "n": 6,
+          "actor": "provider",
+          "title": "Reparar y devolver con precio",
+          "detail": "Repara respetando indicaciones y límites; trae el traje de vuelta a su zona con el importe visible."
+        },
+        {
+          "n": 7,
+          "actor": "client",
+          "title": "Validar y pagar en metálico",
+          "detail": "Revisa el arreglo; si está conforme, deja el efectivo en el buzón de pagos de Willy en el local."
+        }
+      ],
+      "client_does": [
+        "Colgar el traje en una percha exclusiva de reparación",
+        "Anotar el número de percha en la pizarra de trajes",
+        "Dejar hoja o dibujo con X en las zonas a reparar",
+        "Indicar tope de precio o condiciones especiales si aplica",
+        "Revisar el traje al volver y pagar en el buzón de Willy"
+      ],
+      "provider_does": [
+        "Consultar la pizarra de trajes pendientes",
+        "Recoger solo perchas de reparación señaladas",
+        "Reparar respetando indicaciones y límites de precio",
+        "Devolver el traje a su zona con el importe visible"
+      ],
+      "payment": {
+        "methods": [
+          "Efectivo (metálico) en el buzón exclusivo de Willy"
+        ],
+        "when": "Tras revisar el traje reparado y el importe indicado",
+        "note": "Fuera de Stripe; no hay Bizum descrito en la página de neoprenos (solo metálico en buzón)."
+      },
+      "sla_note": "Recogida ligada a los viajes de Willy a Zarautz (unas 2–3 veces al mes); no hay plazo fijo de 1 semana como en tablas.",
+      "signals": {
+        "hanger": "Perchas exclusivas de reparación (no las del secadero)",
+        "board": "Pizarra de trajes con número de percha",
+        "damage_marker": "Hoja/dibujo con X en zonas a reparar",
+        "price_marker": "Importe visible en el traje al devolverlo"
+      }
+    }
+  },
+  "surfskate_guide": {
+    "page_path": "/servicios/surf-skate/guia-equipamiento",
+    "classes_page_path": "/servicios/surf-skate",
+    "brand_reference": "YOW Meraki S5 (equipamiento de referencia en clase S4)",
+    "summary": "Guía de S4 para elegir surfskate según postura, altura/complexión y peso. La medida clave es la distancia entre ejes (wheelbase), no solo la longitud total. Medidas orientativas: confirmar en clase.",
+    "before_choosing": [
+      {
+        "title": "Postura sobre la tabla",
+        "detail": "La distancia entre pies al surfear debe encajar en la tabla; pies muy juntos o muy separados restan fluidez al girar."
+      },
+      {
+        "title": "Altura y complexión",
+        "detail": "Alto o corpulento → tabla más larga y ancha. Bajo o ligero → tabla compacta, giros más rápidos."
+      },
+      {
+        "title": "Peso",
+        "detail": "Ejes YOW Meraki pensados para >~50 kg. Niños o pesos muy ligeros: gama Grom (más suave, menos exigente al empujar)."
+      }
+    ],
+    "board_factors": [
+      {
+        "key": "wheelbase",
+        "title": "Distancia entre ejes (lo más importante)",
+        "detail": "Hueco entre eje delantero y trasero (tornillo interior a interior); ahí caben los pies.",
+        "notes": [
+          "Corta 16,5″–17,5″: giros cerrados y reactivos; pide más equilibrio",
+          "Larga 18,5″–20″+: giros amplios, más estable a velocidad, bombeo más suave"
+        ]
+      },
+      {
+        "key": "concave",
+        "title": "Concavidad",
+        "detail": "YOW: Low / Medium / High. Más curva = pies más sujetos sin lija muy agresiva.",
+        "notes": [
+          "Alta (Snappers, Hole Shot): cantear fuerte / giros agresivos",
+          "Baja-media (Chiba, Malibú): más plana y cómoda; paseo o longboard"
+        ]
+      },
+      {
+        "key": "width",
+        "title": "Ancho (width)",
+        "detail": "Influye en la palanca talón/punta al girar.",
+        "notes": [
+          "10″ o más: más apoyo; útil con pie grande (~42–43 EU+) o estabilidad al inclinarte"
+        ]
+      },
+      {
+        "key": "tail_rocker",
+        "title": "Forma de cola y rocker",
+        "detail": "Elevación/forma de la trasera; cambia cómo clavas el pie de atrás y el giro.",
+        "notes": [
+          "Cola elevada/ancha (squash o kicktail): marcar giro / top turn",
+          "Swallow o pin: sensación más retro o deslizamiento suave"
+        ]
+      }
+    ],
+    "profiles": [
+      {
+        "label": "Compacto y ágil",
+        "height": "Menos de 1,60 m",
+        "weight": "Menos de 55 kg",
+        "wheelbase": "16,5″ – 17″",
+        "models": "Mundaka 32″, Grom (Hossegor, Huntington)",
+        "style": "Giros rápidos; empezar o estilo radical"
+      },
+      {
+        "label": "Equilibrado",
+        "height": "1,60 m – 1,75 m",
+        "weight": "55 kg – 75 kg",
+        "wheelbase": "17″ – 18″",
+        "models": "Pipe 32″ (polivalente), Chiba 30″",
+        "style": "Más versátil: clase, paseo y maniobras",
+        "most_common": true
+      },
+      {
+        "label": "Técnico avanzado",
+        "height": "1,75 m – 1,85 m",
+        "weight": "70 kg – 90 kg",
+        "wheelbase": "17″ – 19″",
+        "models": "Snappers 32,5″, Hole Shot 33,85″",
+        "style": "Cantear fuerte o simular shortboard"
+      },
+      {
+        "label": "Cruising y estabilidad",
+        "height": "Más de 1,85 m",
+        "weight": "Más de 85 kg",
+        "wheelbase": "19″ – 23″ o más",
+        "models": "Teahupoo 34″, Malibú 36″, Waikiki",
+        "style": "Velocidad cómoda; similar a longboard / single fin"
+      }
+    ],
+    "selection_table": [
+      {
+        "height": "Menos de 1,60 m",
+        "weight": "Menos de 55 kg",
+        "length": "29″ – 31″",
+        "examples": "Grom Series",
+        "wheelbase": "17″ o menos"
+      },
+      {
+        "height": "1,60 m – 1,75 m",
+        "weight": "55 kg – 75 kg",
+        "length": "31″ – 33″",
+        "examples": "Chiba, Pipe, Hole Shot",
+        "wheelbase": "17″ – 18″"
+      },
+      {
+        "height": "1,75 m – 1,85 m",
+        "weight": "70 kg – 90 kg",
+        "length": "33″ – 34″",
+        "examples": "Snappers, Teahupoo",
+        "wheelbase": "18″ – 19″"
+      },
+      {
+        "height": "Más de 1,85 m",
+        "weight": "Más de 85 kg",
+        "length": "34″ – 36″ o más",
+        "examples": "Waikiki, Malibú",
+        "wheelbase": "19″ – 20″ o más"
+      }
+    ],
+    "common_mistake": {
+      "title": "No mirar solo la longitud total",
+      "detail": "Dos tablas de longitud parecida pueden comportarse muy distinto; cuenta la combinación longitud + wheelbase.",
+      "examples": [
+        {
+          "model": "Snappers 32,5″",
+          "length": "32,5″",
+          "wheelbase": "17″",
+          "for_whom": "Media con ejes cortos: espacio de pies y giros cerrados; simula shortboard técnico"
+        },
+        {
+          "model": "Chiba 30″",
+          "length": "30″",
+          "wheelbase": "18″",
+          "for_whom": "Corta con ejes más separados: estable y predecible; ciudad / asfalto abierto"
+        }
+      ]
+    },
+    "protection": {
+      "available_in_class": true,
+      "mandatory": false,
+      "items": [
+        { "name": "Rodilleras", "note": "Muy recomendables al empezar" },
+        { "name": "Coderas", "note": "Golpes al caer de lado" },
+        { "name": "Muñequeras", "note": "Si apoyas las manos al perder equilibrio" },
+        { "name": "Casco", "note": "Opcional; aconsejable con maniobras exigentes", "optional": true }
+      ],
+      "tip": "Preguntar al monitor antes de la sesión por talla o complemento."
+    },
+    "client_should": [
+      "Mirar primero altura, peso y postura (distancia entre pies), no solo el look de la tabla",
+      "Priorizar wheelbase sobre longitud total",
+      "Usar la tabla de selección / perfiles de la guía como orientación",
+      "Confirmar medida en clase o con el monitor antes de comprar",
+      "Traer su propia tabla a clase si ya la tiene; si no, probar equipo YOW de referencia",
+      "Pedir protección (rodilleras, coderas, muñequeras, casco) si la necesita"
+    ],
+    "school_does": [
+      "Orientar la medida en clase con equipo YOW Meraki de referencia",
+      "Dejar probar el material antes de decidir compra",
+      "Ofrecer protección opcional en sesión",
+      "Cubrir niveles de principiante a avanzado en clases de surfskate"
+    ],
+    "bot_guidance": "Si preguntan qué surfskate elegir: usa perfiles/tabla de selección del contexto, explica que wheelbase manda sobre longitud, marca medidas como orientativas y enlaza la guía. No inventes precios de tablas ni stock. Clases y tarifas de surfskate → página de clases. Duda fina de medida → clase, contacto o WhatsApp."
+  },
+  "photography": {
+    "page_path": "/servicios/fotos",
+    "related_video_path": "/servicios/videograbaciones",
+    "location": "Playa de Zurriola (sesión en el agua)",
+    "summary": "Bonos de clase/sesión de surf en Zurriola con reportaje fotográfico incluido. Reserva por contacto (no hay checkout online de fotos). Las fotos se hacen en condiciones reales de mar: no hay garantía de aparecer en todas las tomas; se seleccionan las mejores de cada participante.",
+    "pricing_status": "unconfirmed",
+    "booking": {
+      "online_checkout": false,
+      "how": "Reservar vía formulario de contacto o WhatsApp escuela",
+      "cta_path": "/contacto"
+    },
+    "coverage_note": "Fotos durante la sesión en condiciones reales de mar. Sin garantía de aparecer en todas las tomas; la escuela selecciona las mejores imágenes de cada participante.",
+    "packages": [
+      {
+        "name": "Bono Básico",
+        "price_eur": 5,
+        "per": "persona",
+        "details": ["1 clase", "Fotos incluidas (sin garantía en todas)"],
+        "description": "Iniciarse: fotos de la primera experiencia sobre la tabla."
+      },
+      {
+        "name": "Bono de 1 hora",
+        "price_eur": 10,
+        "per": "persona",
+        "details": ["Duración: 1 hora", "Fotos incluidas (sin garantía en todas)"],
+        "description": "Una hora en el agua con recuerdo fotográfico."
+      },
+      {
+        "name": "Bono de 1,5 horas",
+        "price_eur": 15,
+        "per": "persona",
+        "recommended": true,
+        "details": ["Duración: 1,5 horas", "Fotos incluidas (sin garantía en todas)"],
+        "description": "Más tiempo para técnica y disfrute con cobertura fotográfica."
+      },
+      {
+        "name": "Bono Grupal",
+        "price_eur": 80,
+        "per": "grupo",
+        "details": [
+          "Duración: 2 horas",
+          "Máximo 5 personas",
+          "Fotos incluidas (sin garantía en todas)"
+        ],
+        "description": "Grupo con reportaje incluido; aprender juntos."
+      },
+      {
+        "name": "Bono Semanal",
+        "price_eur": 50,
+        "per": "persona",
+        "details": [
+          "5 días (lunes a viernes)",
+          "Fotos incluidas (sin garantía en todas)"
+        ],
+        "description": "Semana de surf con cobertura fotográfica."
+      }
+    ],
+    "client_should": [
+      "Elegir el bono que encaje (básico, 1 h, 1,5 h, grupal o semanal)",
+      "Reservar por contacto / WhatsApp (no hay compra online de este servicio en la web)",
+      "Entender que las fotos dependen del mar y la sesión: no se garantiza salir en todas las tomas",
+      "Si quiere vídeo en lugar de (o además de) foto, mirar videograbaciones"
+    ],
+    "school_does": [
+      "Fotografiar durante la sesión en la Zurriola",
+      "Seleccionar las mejores imágenes de cada participante",
+      "Incluir el reportaje en los bonos publicados de la página de fotos"
+    ],
+    "bot_guidance": "Resume bonos y precios del JSON marcando pricing_status unconfirmed si aplica. Aclara siempre: fotos incluidas pero sin garantía de aparecer en todas las tomas. Reserva por contacto, no Stripe/checkout de fotos. Enlaza /servicios/fotos; si piden vídeo, /servicios/videograbaciones. No inventes packs ni precios fuera del listado."
+  },
+  "second_hand": {
+    "page_path": "/segunda-mano",
+    "checkout": false,
+    "contact": "whatsapp",
+    "note": "Consulta e interés por WhatsApp; no hay reserva/pago online de segunda mano."
+  },
+  "auctions": {
+    "page_path": "/subastas",
+    "access": "VIP o taquilla activa",
+    "payment": "Stripe al ganar la subasta (si se cumple reserve y hay pujas)"
+  },
+  "whatsapp_playbook": {
+    "when_to_offer": [
+      "El usuario pide explícitamente hablar con una persona",
+      "Tras escalación del chatbot (caso S4-XXXXXX)",
+      "Walk-in / amigo sin cuenta que hay que apuntar en el club",
+      "Dudas de nivel que requieren criterio del monitor",
+      "Fallos de pago / plaza pendiente sin confirmar",
+      "Segunda mano, reparaciones con duda de precio, VIP solicitud"
+    ],
+    "when_not_to_offer_first": [
+      "Preguntas con respuesta clara en tarifas, políticas o páginas del contexto",
+      "Saludos o FAQs de cuenta (saldo bono / taquilla) resolubles en web"
+    ],
+    "escalation_note": "Si el sistema deriva a humano, el usuario verá un botón de WhatsApp con la referencia del caso. No inventar números de caso ni citar el teléfono de la escuela."
+  },
+  "edge_cases": [
+    {
+      "id": "level_mismatch",
+      "title": "Alumno con nivel distinto al de la clase",
+      "system_behavior": "La app NO valida el nivel del alumno frente al nivel de la sesión. El nivel es metadato de la clase.",
+      "human_process": "En VIP, el monitor valida el nivel antes de confirmar en la práctica.",
+      "bot_guidance": "Explica que puede reservar la clase publicada; si duda de su nivel, que pregunte al monitor o por WhatsApp antes. El monitor puede reubicar. NUNCA digas que el sistema bloquea por nivel (no es cierto)."
+    },
+    {
+      "id": "friend_without_account",
+      "title": "Viene un amigo sin cuenta",
+      "options": [
+        "El titular reserva una plaza grupal e incluye participantes en la misma solicitud (paga el logueado; hasta 6 nombres).",
+        "El amigo se registra y se apunta con su propia cuenta (y VIP/bono si aplica).",
+        "Walk-in en el club: solo lo apunta el personal admin (sin cuenta); pago manual en escuela; no consume bono del titular.",
+        "Sin cuenta en web: puede apuntarse a clase grupal abierta o solicitar particular (contacto + señal). No VIP ni semanal sin login."
+      ],
+      "bot_guidance": "Grupal abierta y particular: self-service guest en /academia. Semanal y VIP: hace falta cuenta. Walk-in admin sigue disponible en club."
+    },
+    {
+      "id": "solo_in_group",
+      "title": "Queda solo en clase grupal",
+      "system_behavior": "Consume 2 unidades del bono (como particular).",
+      "bot_guidance": "Avisa con claridad: si en grupal/semanal quedas como única persona, se descuentan 2 clases del bono."
+    },
+    {
+      "id": "late_cancel",
+      "title": "Cancelar con menos de 4 horas",
+      "system_behavior": "La cancelación online con devolución no está disponible bajo el cutoff; contactar escuela.",
+      "bot_guidance": "Indica el cutoff de config (por defecto 4h). Si es urgente, WhatsApp. No prometas reembolso automático fuera de plazo."
+    },
+    {
+      "id": "stripe_pending",
+      "title": "Pago Stripe fallido o pendiente tras reservar",
+      "system_behavior": "Puede quedar una plaza/pedido en estado pendiente.",
+      "bot_guidance": "Pide que contacten por WhatsApp con nombre, servicio y hora; no inventes estado del pago."
+    },
+    {
+      "id": "need_vip_for_bono",
+      "title": "Quiere bono sin ser VIP",
+      "bot_guidance": "Explica que los packs VIP online requieren ser VIP; puede solicitarlo por WhatsApp. Mientras, puede reservar clases con señal."
+    },
+    {
+      "id": "vip_virtual_vs_physical",
+      "title": "Taquilla VIP 500/600 vs física",
+      "bot_guidance": "500/600 son compartidas virtuales: tienda y subastas sí; casillero físico, plan de taquilla y llave emergencia no."
+    }
+  ],
+  "escalation": {
+    "never_guess": [
+      "Precios no presentes en contexto ni en packs/planes live",
+      "Asuntos legales o médicos",
+      "Estado concreto de un pago sin datos de cuenta",
+      "Dirección postal exacta si no está en config"
+    ],
+    "trigger_token": "[TRIGGER_FALLBACK]"
+  }
+}

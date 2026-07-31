@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\Producto;
 use App\Models\Imagen;
 use App\Enums\ProductTag;
+use App\Services\Store\ProductDetailPageService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -253,82 +254,15 @@ public function store(Request $request)
     /**
      * Ver un producto en detalle
      */
-public function ver($id)
+public function ver($id, ProductDetailPageService $pageService)
 {
     $producto = Producto::with('imagenes')->findOrFail($id);
-    $usuario = auth()->user();
-
-    $imagenes = $producto->imagenes->map(fn ($img) => [
-        'id' => $img->id,
-        'ruta' => asset('storage/'.$img->ruta),
-        'es_principal' => (bool) $img->es_principal,
-    ])->sortByDesc('es_principal')->values();
-
-    $productoParaFrontend = [
-        'id' => $producto->id,
-        'nombre' => $producto->nombre,
-        'precio' => $producto->precio,
-        'unidades' => $producto->unidades,
-        'descuento' => $producto->descuento,
-        'tags' => $producto->normalizedTags(),
-        'tag_labels' => ProductTag::labelsFor($producto->normalizedTags()),
-        'imagenes' => $imagenes,
-        'imagen_principal' => $imagenes->first()['ruta'] ?? asset('img/placeholder.jpg'),
-    ];
-
-    $currentTags = $producto->normalizedTags();
-
-    $productosRelacionados = Producto::query()
-        ->where('eliminado', 0)
-        ->where('id', '!=', $producto->id)
-        ->with(['imagenPrincipal:id,producto_id,ruta,nombre,es_principal'])
-        ->get()
-        ->map(static function (Producto $p): array {
-            $ruta = $p->imagenPrincipal?->ruta ?? $p->imagenPrincipal?->nombre;
-
-            return [
-                'id' => $p->id,
-                'nombre' => (string) $p->nombre,
-                'precio' => $p->precio,
-                'unidades' => (int) $p->unidades,
-                'descuento' => $p->descuento,
-                'tags' => $p->normalizedTags(),
-                'imagen' => $ruta !== null && $ruta !== '' ? (string) $ruta : null,
-                '_tag_score' => 0,
-            ];
-        })
-        ->map(static function (array $row) use ($currentTags): array {
-            if ($currentTags === []) {
-                $row['_tag_score'] = 0;
-
-                return $row;
-            }
-
-            $row['_tag_score'] = count(array_intersect($row['tags'], $currentTags));
-
-            return $row;
-        })
-        ->sort(static function (array $a, array $b): int {
-            if ($a['_tag_score'] !== $b['_tag_score']) {
-                return $b['_tag_score'] <=> $a['_tag_score'];
-            }
-
-            return ((float) ($b['descuento'] ?? 0)) <=> ((float) ($a['descuento'] ?? 0));
-        })
-        ->take(12)
-        ->map(static function (array $row): array {
-            unset($row['_tag_score'], $row['tags']);
-
-            return $row;
-        })
-        ->values()
-        ->all();
+    $page = $pageService->forInertia($producto);
 
     return Inertia::render('ProductoVer', [
-        'producto' => $productoParaFrontend,
-        'usuario' => $usuario,
-        'productosRelacionados' => $productosRelacionados,
-        'productTagOptions' => $this->productTagOptions(),
+        'producto' => $page['producto'],
+        'productosRelacionados' => $page['productosRelacionados'],
+        'seo' => $page['seo'],
     ]);
 }
 

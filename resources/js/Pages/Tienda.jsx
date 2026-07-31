@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from "react";
-import { Head, usePage } from "@inertiajs/react";
-import { ArrowDown, ArrowUpDown } from "lucide-react";
+import { usePage } from "@inertiajs/react";
+import { ArrowDown, ArrowUpDown, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import Producto from "../components/Producto";
 import Layout1 from "../layouts/Layout1";
+import SeoHead from "../components/seo/SeoHead";
+import ContactChannelsModal from "../components/ContactChannelsModal";
+import { hasStoreAccess } from "@/utils/hasStoreAccess";
 
 const SORT_OPTIONS = [
     { value: "nombre", label: "Nombre (A–Z)" },
@@ -10,9 +13,12 @@ const SORT_OPTIONS = [
     { value: "descuento_asc", label: "Menor descuento" },
 ];
 
-const Tienda = ({ productos, productTagOptions = [] }) => {
+const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
     const { props } = usePage();
-    const { flash } = props;
+    const { flash, auth } = props;
+    const user = auth?.user || null;
+    const puedeComprar = hasStoreAccess(user);
+    const [contactOpen, setContactOpen] = useState(false);
 
     const productosPorPagina = 18;
     const [paginaActual, setPaginaActual] = useState(1);
@@ -86,7 +92,7 @@ const Tienda = ({ productos, productTagOptions = [] }) => {
 
     return (
         <Layout1>
-            <Head title="Tienda oficial S4" />
+            <SeoHead seo={seo} />
             {mensajeToast && (
                 <div
                     className={`fixed top-5 right-5 px-4 py-3 rounded-lg shadow-lg animate-fade-in-down ${toastClasses} z-50`}
@@ -97,9 +103,9 @@ const Tienda = ({ productos, productTagOptions = [] }) => {
             )}
             <div className="mx-auto w-full max-w-[96rem] px-2 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
-                    <h2 className="text-xl font-extrabold tracking-tight text-slate-100 sm:text-2xl lg:text-3xl">
+                    <h1 className="text-xl font-extrabold tracking-tight text-slate-100 sm:text-2xl lg:text-3xl">
                         Tienda oficial S4
-                    </h2>
+                    </h1>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <label className="flex items-center gap-1.5 text-slate-400">
                             <span className="sr-only">Ordenar productos</span>
@@ -126,6 +132,58 @@ const Tienda = ({ productos, productTagOptions = [] }) => {
                         </p>
                     </div>
                 </div>
+
+                <aside
+                    className={`mb-5 rounded-2xl border px-4 py-3 sm:mb-6 sm:px-5 ${
+                        puedeComprar
+                            ? "border-emerald-500/25 bg-emerald-500/10"
+                            : "border-cyan-500/25 bg-cyan-500/[0.08]"
+                    }`}
+                    aria-label="Información de acceso a la tienda"
+                >
+                    <div className="flex items-start gap-3">
+                        <span
+                            className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                                puedeComprar
+                                    ? "bg-emerald-500/20 text-emerald-300"
+                                    : "bg-cyan-500/20 text-cyan-300"
+                            }`}
+                        >
+                            {puedeComprar ? (
+                                <ShieldCheck className="h-4 w-4" aria-hidden />
+                            ) : (
+                                <Lock className="h-4 w-4" aria-hidden />
+                            )}
+                        </span>
+                        <div className="min-w-0">
+                            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300/90">
+                                <Sparkles className="h-3 w-3" aria-hidden />
+                                Tienda exclusiva de socios
+                            </p>
+                            {puedeComprar ? (
+                                <p className="mt-1 text-sm leading-relaxed text-slate-200">
+                                    Precios de club activos con tu cuenta y taquilla.
+                                </p>
+                            ) : (
+                                <p className="mt-1 text-sm leading-relaxed text-slate-300">
+                                    Compra online para socios con{" "}
+                                    <strong className="font-semibold text-white">
+                                        cuenta y taquilla activa
+                                    </strong>
+                                    . Si eres cliente recurrente y conoces al personal,{" "}
+                                    <button
+                                        type="button"
+                                        onClick={() => setContactOpen(true)}
+                                        className="font-semibold text-cyan-300 underline-offset-2 hover:underline"
+                                    >
+                                        contacta con nosotros
+                                    </button>{" "}
+                                    y vemos cómo ayudarte.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </aside>
 
                 {productTagOptions.length > 0 ? (
                     <div
@@ -163,7 +221,7 @@ const Tienda = ({ productos, productTagOptions = [] }) => {
                     </div>
                 ) : null}
 
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(6.75rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] sm:gap-2.5 md:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] md:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(11.5rem,1fr))] lg:gap-4 xl:grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] 2xl:grid-cols-[repeat(auto-fill,minmax(13.5rem,1fr))]">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
                     {obtenerProductosDePagina().map((producto) => (
                         <Producto
                             key={producto.id}
@@ -204,6 +262,16 @@ const Tienda = ({ productos, productTagOptions = [] }) => {
                     </button>
                 </div>
             </div>
+
+            {contactOpen ? (
+                <ContactChannelsModal
+                    topic="store"
+                    title="Hablemos de tu caso"
+                    subtitle="Cuéntanos tu situación y te ayudamos a resolver cualquier duda sobre tu acceso, material o taquilla."
+                    footerNote="Si eres cliente habitual, contáctanos y buscamos juntos una solución que te encaje."
+                    onClose={() => setContactOpen(false)}
+                />
+            ) : null}
         </Layout1>
     );
 };

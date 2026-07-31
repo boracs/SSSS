@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { AlertCircle, Loader2, Minus, Plus, Radio, RotateCcw } from "lucide-react";
+import { AlertCircle, Loader2, Maximize2, Minimize2, Minus, Plus, Radio, RotateCcw } from "lucide-react";
 
 const HLS_SRC =
     "https://58f14c0895a20.streamlock.net/camaramar/GIP_zurriola_169.stream/playlist.m3u8";
@@ -55,6 +55,7 @@ function isZoomUiTarget(target) {
 }
 
 export default function ZurriolaWebcamPlayer() {
+    const playerRef = useRef(null);
     const videoRef = useRef(null);
     const viewportRef = useRef(null);
     const hlsRef = useRef(null);
@@ -75,6 +76,7 @@ export default function ZurriolaWebcamPlayer() {
     const [zoom, setZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [animate, setAnimate] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
 
     const commitView = useCallback((nextZoom, nextPan = null, withAnimation = false) => {
         const viewport = viewportRef.current;
@@ -108,6 +110,43 @@ export default function ZurriolaWebcamPlayer() {
         event?.stopPropagation?.();
         commitView(1, { x: 0, y: 0 }, true);
     };
+
+    const toggleFullscreen = async (event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        const el = playerRef.current;
+        if (!el) return;
+
+        try {
+            if (document.fullscreenElement === el) {
+                await document.exitFullscreen?.();
+                return;
+            }
+            if (el.requestFullscreen) {
+                await el.requestFullscreen();
+            } else if (el.webkitRequestFullscreen) {
+                el.webkitRequestFullscreen();
+            }
+        } catch {
+            // Algunos navegadores bloquean fullscreen sin gesto válido.
+        }
+    };
+
+    useEffect(() => {
+        const onFullscreenChange = () => {
+            const active = document.fullscreenElement === playerRef.current;
+            setIsFullscreen(active);
+            // Recalcular pan cuando cambia el tamaño del viewport.
+            commitView(zoomRef.current, panRef.current, false);
+        };
+
+        document.addEventListener("fullscreenchange", onFullscreenChange);
+        document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+        return () => {
+            document.removeEventListener("fullscreenchange", onFullscreenChange);
+            document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+        };
+    }, [commitView]);
 
     useEffect(() => {
         let cancelled = false;
@@ -328,7 +367,12 @@ export default function ZurriolaWebcamPlayer() {
     }, [commitView]);
 
     return (
-        <div className="relative overflow-hidden rounded-2xl border border-cyan-500/20 bg-slate-950 shadow-2xl shadow-cyan-950/40">
+        <div
+            ref={playerRef}
+            className={`relative overflow-hidden border border-cyan-500/20 bg-slate-950 shadow-2xl shadow-cyan-950/40 ${
+                isFullscreen ? "flex h-full w-full flex-col rounded-none" : "rounded-2xl"
+            }`}
+        >
             <div className="flex items-center justify-between border-b border-white/10 bg-slate-900/80 px-4 py-3">
                 <div className="flex items-center gap-2">
                     <span
@@ -345,50 +389,63 @@ export default function ZurriolaWebcamPlayer() {
                     ) : null}
                 </div>
 
-                {status !== "error" ? (
-                    <div data-zoom-ui className="flex items-center gap-1">
-                        <button
-                            type="button"
-                            onClick={zoomOut}
-                            disabled={zoom <= MIN_ZOOM}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Alejar"
-                            title="Alejar"
-                        >
-                            <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="min-w-[2.5rem] text-center text-[11px] font-semibold tabular-nums text-cyan-200">
-                            {zoom.toFixed(1)}×
-                        </span>
-                        <button
-                            type="button"
-                            onClick={zoomIn}
-                            disabled={zoom >= MAX_ZOOM}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Acercar"
-                            title="Acercar"
-                        >
-                            <Plus className="h-4 w-4" />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={zoomReset}
-                            disabled={zoom <= MIN_ZOOM}
-                            className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="Restablecer zoom"
-                            title="Restablecer"
-                        >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                        </button>
-                    </div>
-                ) : (
-                    <Radio className="h-4 w-4 text-cyan-400" aria-hidden />
-                )}
+                <div data-zoom-ui className="flex items-center gap-1">
+                    {status !== "error" ? (
+                        <>
+                            <button
+                                type="button"
+                                onClick={zoomOut}
+                                disabled={zoom <= MIN_ZOOM}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Alejar"
+                                title="Alejar"
+                            >
+                                <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="min-w-[2.5rem] text-center text-[11px] font-semibold tabular-nums text-cyan-200">
+                                {zoom.toFixed(1)}×
+                            </span>
+                            <button
+                                type="button"
+                                onClick={zoomIn}
+                                disabled={zoom >= MAX_ZOOM}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Acercar"
+                                title="Acercar"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </button>
+                            <button
+                                type="button"
+                                onClick={zoomReset}
+                                disabled={zoom <= MIN_ZOOM}
+                                className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
+                                aria-label="Restablecer zoom"
+                                title="Restablecer"
+                            >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                            </button>
+                        </>
+                    ) : (
+                        <Radio className="mr-1 h-4 w-4 text-cyan-400" aria-hidden />
+                    )}
+                    <button
+                        type="button"
+                        onClick={toggleFullscreen}
+                        className="ml-1 flex h-8 w-8 items-center justify-center rounded-lg border border-white/15 text-white transition hover:bg-white/10"
+                        aria-label={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+                        title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+                    >
+                        {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                    </button>
+                </div>
             </div>
 
             <div
                 ref={viewportRef}
-                className={`relative aspect-video overflow-hidden bg-black ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+                className={`relative overflow-hidden bg-black ${
+                    isFullscreen ? "min-h-0 flex-1" : "aspect-video"
+                } ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                 style={{ touchAction: "none" }}
             >
                 <div

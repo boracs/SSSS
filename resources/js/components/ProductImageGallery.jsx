@@ -9,6 +9,7 @@ const ProductImageGallery = ({
     images = [],
     productName = "Producto",
     compact = true,
+    tone = "dark",
 }) => {
     const baseId = useId();
     const thumbListRef = useRef(null);
@@ -16,6 +17,23 @@ const ProductImageGallery = ({
     const [activeIndex, setActiveIndex] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
+    const isLight = tone === "light";
+
+    const shellBorder = isLight ? "border-slate-200/80" : "border-white/10";
+    const shellBg = isLight ? "bg-white" : "bg-slate-950/50";
+    const panelBg = isLight
+        ? "bg-gradient-to-br from-slate-50 to-slate-100/80"
+        : "bg-gradient-to-br from-slate-900 to-slate-950";
+    const fadeFrom = isLight ? "from-white" : "from-slate-950/90";
+    const counterClass = isLight
+        ? "bg-white/90 text-slate-600"
+        : "bg-slate-900/80 text-slate-300";
+    const expandClass = isLight
+        ? "border-slate-200 bg-white/90 text-slate-600 hover:border-cyan-400/50 hover:text-s4"
+        : "border-white/15 bg-slate-900/75 text-slate-200 hover:border-cyan-400/40 hover:text-white";
+    const thumbIdle = isLight
+        ? "border-slate-200 opacity-70 hover:opacity-100"
+        : "border-white/10 opacity-65 hover:opacity-100";
 
     const total = images.length;
     const safeIndex = total > 0 ? Math.min(activeIndex, total - 1) : 0;
@@ -104,9 +122,9 @@ const ProductImageGallery = ({
 
     if (total === 0) {
         return (
-            <figure className="overflow-hidden rounded-xl border border-white/10 bg-slate-950/50">
+            <figure className={`overflow-hidden rounded-xl border ${shellBorder} ${shellBg}`}>
                 <div
-                    className={`flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 p-1.5 ${compact ? "aspect-square max-h-32 sm:max-h-36" : "aspect-square max-h-64"}`}
+                    className={`flex items-center justify-center p-1.5 ${panelBg} ${compact ? "aspect-square max-h-32 sm:max-h-36" : "aspect-[4/5] min-h-[16rem] max-h-[28rem]"}`}
                 >
                     <img
                         src="/img/placeholder.svg"
@@ -121,7 +139,7 @@ const ProductImageGallery = ({
     const panelId = `${baseId}-panel`;
     const mainHeight = compact
         ? "aspect-square max-h-32 sm:max-h-36 md:max-h-40"
-        : "aspect-square max-h-72 sm:max-h-80";
+        : "aspect-[4/5] min-h-[16rem] max-h-[28rem] sm:min-h-[20rem] sm:max-h-[32rem]";
 
     return (
         <>
@@ -130,10 +148,10 @@ const ProductImageGallery = ({
                     id={panelId}
                     role="tabpanel"
                     aria-labelledby={total > 1 ? `${baseId}-tab-${safeIndex}` : undefined}
-                    className="group/main relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50"
+                    className={`group/main relative overflow-hidden rounded-xl border ${shellBorder} ${shellBg}`}
                 >
                     <div
-                        className={`relative flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 p-1.5 ${mainHeight}`}
+                        className={`relative flex items-center justify-center p-3 sm:p-4 ${panelBg} ${mainHeight}`}
                     >
                         <img
                             key={activeSrc}
@@ -150,7 +168,7 @@ const ProductImageGallery = ({
 
                         {total > 1 ? (
                             <span
-                                className="pointer-events-none absolute bottom-1.5 right-1.5 rounded-md bg-slate-900/80 px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-slate-300 backdrop-blur-sm"
+                                className={`pointer-events-none absolute bottom-2 right-2 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums backdrop-blur-sm ${counterClass}`}
                                 aria-hidden
                             >
                                 {safeIndex + 1}/{total}
@@ -161,7 +179,7 @@ const ProductImageGallery = ({
                             type="button"
                             onClick={() => setLightboxOpen(true)}
                             aria-label={`Ampliar ${altForIndex(safeIndex)}`}
-                            className="absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-lg border border-white/15 bg-slate-900/75 text-slate-200 opacity-0 backdrop-blur-sm transition hover:border-cyan-400/40 hover:text-white group-hover/main:opacity-100 focus:opacity-100"
+                            className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-lg border opacity-0 backdrop-blur-sm transition group-hover/main:opacity-100 focus:opacity-100 ${expandClass}`}
                         >
                             <Expand className="h-3.5 w-3.5" />
                         </button>
@@ -169,13 +187,13 @@ const ProductImageGallery = ({
                 </div>
 
                 {total > 1 ? (
-                    <div className="relative mt-1.5 sm:mt-2">
+                    <div className="relative mt-2 sm:mt-3">
                         <div
-                            className="pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r from-slate-950/90 to-transparent"
+                            className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-4 bg-gradient-to-r ${fadeFrom} to-transparent`}
                             aria-hidden
                         />
                         <div
-                            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l from-slate-950/90 to-transparent"
+                            className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-4 bg-gradient-to-l ${fadeFrom} to-transparent`}
                             aria-hidden
                         />
 
@@ -183,7 +201,7 @@ const ProductImageGallery = ({
                             ref={thumbListRef}
                             role="tablist"
                             aria-label={`Galería de ${productName}`}
-                            className="flex snap-x snap-mandatory gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                         >
                             {images.map((src, index) => {
                                 const selected = index === safeIndex;
@@ -207,7 +225,7 @@ const ProductImageGallery = ({
                                         className={`relative shrink-0 snap-center overflow-hidden rounded-lg border transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/70 ${
                                             selected
                                                 ? "border-cyan-400 ring-1 ring-cyan-400/35"
-                                                : "border-white/10 opacity-65 hover:opacity-100"
+                                                : thumbIdle
                                         }`}
                                     >
                                         <img
@@ -216,7 +234,7 @@ const ProductImageGallery = ({
                                             aria-hidden
                                             loading="lazy"
                                             decoding="async"
-                                            className={`object-cover ${compact ? "h-9 w-9 sm:h-10 sm:w-10" : "h-14 w-14"}`}
+                                            className={`object-cover ${compact ? "h-9 w-9 sm:h-10 sm:w-10" : "h-14 w-14 sm:h-16 sm:w-16"}`}
                                         />
                                     </button>
                                 );

@@ -10,7 +10,7 @@ class RequestLessonRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null;
+        return true;
     }
 
     /**
@@ -18,15 +18,22 @@ class RequestLessonRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'quantity'              => ['nullable', 'integer', 'min:1', 'max:6'],
-            'party_size'            => ['nullable', 'integer', 'min:1', 'max:12'],
+        $guestRules = $this->user()
+            ? []
+            : [
+                'guest_email' => ['required', 'email', 'max:120'],
+                'guest_phone' => ['required', 'string', 'max:40'],
+            ];
+
+        return array_merge([
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:6'],
+            'party_size' => ['nullable', 'integer', 'min:1', 'max:12'],
             'request_extra_monitor' => ['nullable', 'boolean'],
-            'age_bracket'           => ['nullable', 'in:children,adult,family'],
-            'participants'          => ['nullable', 'array', 'min:1', 'max:6'],
+            'age_bracket' => ['nullable', 'in:children,adult,family'],
+            'participants' => ['nullable', 'array', 'min:1', 'max:6'],
             'participants.*.first_name' => ['required_with:participants', 'string', 'max:80'],
-            'participants.*.last_name'  => ['required_with:participants', 'string', 'max:80'],
-        ];
+            'participants.*.last_name' => ['required_with:participants', 'string', 'max:80'],
+        ], $guestRules);
     }
 
     public function partySize(): int
@@ -55,7 +62,7 @@ class RequestLessonRequest extends FormRequest
                 continue;
             }
             $first = trim((string) ($row['first_name'] ?? ''));
-            $last  = trim((string) ($row['last_name'] ?? ''));
+            $last = trim((string) ($row['last_name'] ?? ''));
             if ($first === '' || $last === '') {
                 continue;
             }
@@ -75,5 +82,19 @@ class RequestLessonRequest extends FormRequest
         $value = $this->validated('age_bracket');
 
         return is_string($value) ? $value : null;
+    }
+
+    public function guestEmail(): ?string
+    {
+        $value = trim((string) ($this->validated('guest_email') ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    public function guestPhone(): ?string
+    {
+        $value = trim((string) ($this->validated('guest_phone') ?? ''));
+
+        return $value !== '' ? $value : null;
     }
 }

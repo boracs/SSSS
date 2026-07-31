@@ -24,6 +24,16 @@ final class SurfDailyBrief extends Model
 
     public const OVERRIDE_GOOD = 'good';
 
+    /** Ideal para iniciación en el espigón (menos oleaje). */
+    public const OVERRIDE_ESPIGON = 'espigon';
+
+    public const OVERRIDE_STATUSES = [
+        self::OVERRIDE_CLOSED,
+        self::OVERRIDE_CAUTION,
+        self::OVERRIDE_GOOD,
+        self::OVERRIDE_ESPIGON,
+    ];
+
     public const SOURCE_GEMINI = 'gemini';
 
     public const SOURCE_FALLBACK = 'fallback_template';

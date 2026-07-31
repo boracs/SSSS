@@ -4,19 +4,23 @@ import {
     Bath,
     CheckCircle2,
     ExternalLink,
-    KeyRound,
     Lock,
     Mail,
     MessageCircle,
     Percent,
     CreditCard,
     Shirt,
+    TriangleAlert,
     Waves,
     Wrench,
 } from "lucide-react";
 import { formatEur } from "@/utils/money";
 
 const MICRO_SERVICIOS_URL = "/nosotros#micro-servicios-club";
+
+/** Misma rejilla en cabecera y filas: Plan | Importe | Periodo | Estado */
+const PLAN_TIMELINE_GRID =
+    "sm:grid-cols-[minmax(0,1.15fr)_6.75rem_10.5rem_minmax(5.5rem,auto)] sm:gap-x-3";
 
 const CLUB_AMENITIES = [
     { icon: Lock, label: "1 taquilla privada", detail: "Espacio seguro a pie de playa" },
@@ -182,13 +186,13 @@ function PlanTimelineRow({ row, kind, onProofClick, compact = false }) {
 
     return (
         <div
-            className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b border-white/5 px-2 py-1.5 text-[11px] last:border-0 sm:grid-cols-[minmax(0,1.2fr)_4.5rem_9rem_auto] sm:gap-2 sm:px-2.5 sm:py-1.5 sm:text-xs ${rowTint} ${compact ? "py-1" : ""}`}
+            className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 border-b border-white/5 px-2 py-1.5 text-[11px] last:border-0 ${PLAN_TIMELINE_GRID} sm:px-2.5 sm:py-1.5 sm:text-xs ${rowTint} ${compact ? "py-1" : ""}`}
         >
-            <p className="truncate font-medium text-white">{row.plan?.nombre || "Plan"}</p>
-            <p className="text-right font-medium tabular-nums text-slate-300">
+            <p className="min-w-0 truncate font-medium text-white">{row.plan?.nombre || "Plan"}</p>
+            <p className="text-right font-semibold tabular-nums tracking-tight text-white whitespace-nowrap">
                 {row.monto_pagado != null ? formatEur(row.monto_pagado) : "—"}
             </p>
-            <p className="hidden tabular-nums text-slate-400 sm:block">
+            <p className="hidden tabular-nums text-slate-400 whitespace-nowrap sm:block">
                 {fmtPeriod(row.periodo_inicio, row.periodo_fin)}
             </p>
             <div className="flex items-center justify-end gap-1.5">
@@ -269,7 +273,9 @@ function PlanTimelineSection({
             ) : null}
 
             <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-950/40">
-                <div className="hidden border-b border-white/5 bg-white/[0.03] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:grid sm:grid-cols-[minmax(0,1.2fr)_4.5rem_9rem_auto] sm:gap-2">
+                <div
+                    className={`hidden border-b border-white/5 bg-white/[0.03] px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 sm:grid ${PLAN_TIMELINE_GRID}`}
+                >
                     <span>Plan</span>
                     <span className="text-right">Importe</span>
                     <span>Periodo</span>
@@ -358,6 +364,8 @@ export default function PlanesTaquillasClient({
     const [proofModalUrl, setProofModalUrl] = useState(null);
     const [payModal, setPayModal] = useState(null);
     const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+    const [bajaModalOpen, setBajaModalOpen] = useState(false);
+    const [bajaSubmitting, setBajaSubmitting] = useState(false);
 
     useEffect(() => {
         if (!flash?.success) return;
@@ -456,6 +464,23 @@ export default function PlanesTaquillasClient({
 
     const selectedPlan = useMemo(() => planes.find((p) => String(p.id) === String(planId)), [planes, planId]);
     const hasLocker = Boolean(userData?.numero_taquilla);
+    const bajaSolicitadaAt = userData?.baja_solicitada_at || null;
+
+    const confirmarComunicarBaja = () => {
+        if (bajaSubmitting) return;
+        setBajaSubmitting(true);
+        router.post(
+            route("taquillas.comunicar-baja"),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setBajaSubmitting(false);
+                    setBajaModalOpen(false);
+                },
+            },
+        );
+    };
 
     const whatsappLockerUrl = useMemo(() => {
         if (!whatsappHelpUrl) return null;
@@ -596,48 +621,38 @@ export default function PlanesTaquillasClient({
                             daysDebt={daysDebt}
                             onProofClick={setProofModalUrl}
                         />
+                        <div className="mt-3 border-t border-white/5 pt-3">
+                            {bajaSolicitadaAt ? (
+                                <p className="text-xs leading-relaxed text-slate-400">
+                                    Baja comunicada el {fmt(bajaSolicitadaAt)}. El equipo del club se
+                                    pondrá en contacto contigo.
+                                </p>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setBajaModalOpen(true)}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-100 transition hover:border-rose-400/50"
+                                >
+                                    <TriangleAlert className="h-3.5 w-3.5 shrink-0" />
+                                    Comunicar baja
+                                </button>
+                            )}
+                        </div>
                     </section>
-                ) : null}
-
-                {/* Estado taquilla */}
-                <section className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm sm:p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Tu membresía</p>
-                    {hasLocker ? (
-                        <>
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-300">
-                                <span>Vence: {fmt(dueDateRaw)}</span>
-                                {daysDebt > 0 ? (
-                                    <span className="font-semibold text-rose-400">Debe {daysDebt} días</span>
-                                ) : null}
-                                {userData?.plan_vigente?.nombre ? (
-                                    <span className="text-cyan-200/90">
-                                        Plan: <strong className="text-white">{userData.plan_vigente.nombre}</strong>
-                                    </span>
-                                ) : null}
-                            </div>
-                            <Link
-                                href={route("emergency-key.show")}
-                                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-100 transition hover:border-orange-400/50"
-                            >
-                                <KeyRound className="h-3.5 w-3.5 shrink-0" />
-                                Me quedé sin llave
-                            </Link>
-                        </>
-                    ) : (
-                        <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
-                            <div className="flex items-start gap-3">
-                                <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
-                                <div>
-                                    <p className="text-sm font-semibold text-amber-100">Sin taquilla asignada</p>
-                                    <p className="mt-1 text-sm leading-relaxed text-amber-200/85">
-                                        Registrarte no implica tener taquilla. El equipo debe asignártela desde el gestor
-                                        interno antes de que puedas contratar o renovar un plan.
-                                    </p>
-                                </div>
+                ) : (
+                    <section className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+                        <div className="flex items-start gap-3">
+                            <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+                            <div>
+                                <p className="text-sm font-semibold text-amber-100">Sin taquilla asignada</p>
+                                <p className="mt-1 text-sm leading-relaxed text-amber-200/85">
+                                    Registrarte no implica tener taquilla. El equipo debe asignártela desde el gestor
+                                    interno antes de que puedas contratar o renovar un plan.
+                                </p>
                             </div>
                         </div>
-                    )}
-                </section>
+                    </section>
+                )}
 
                 {/* Qué incluye todos los planes */}
                 <section>
@@ -659,10 +674,10 @@ export default function PlanesTaquillasClient({
                             </div>
                         ))}
                     </div>
-                    <div className="mt-4 text-center">
+                    <div className="mt-5 flex justify-center">
                         <Link
                             href={MICRO_SERVICIOS_URL}
-                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-300 underline-offset-4 hover:underline"
+                            className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-cyan-950/40 transition hover:bg-cyan-500"
                         >
                             Ver más sobre instalaciones y micro-servicios
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -778,12 +793,12 @@ export default function PlanesTaquillasClient({
                                         </p>
                                     )}
 
-                                    <div className="mt-2 flex flex-row gap-2 sm:mt-4 sm:flex-col">
-                                        {hasLocker ? (
+                                    {hasLocker ? (
+                                        <div className="mt-2 sm:mt-4">
                                             <button
                                                 type="button"
                                                 onClick={() => setPlanId(String(p.id))}
-                                                className={`min-w-0 flex-1 rounded-lg px-3 py-2 text-xs font-bold transition sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm ${
+                                                className={`w-full rounded-lg px-3 py-2 text-xs font-bold transition sm:rounded-xl sm:px-4 sm:py-2.5 sm:text-sm ${
                                                     selected
                                                         ? "bg-cyan-500 text-white"
                                                         : "bg-white/10 text-white hover:bg-white/15"
@@ -791,15 +806,8 @@ export default function PlanesTaquillasClient({
                                             >
                                                 {selected ? "Seleccionado" : "Renovar"}
                                             </button>
-                                        ) : null}
-                                        <Link
-                                            href={MICRO_SERVICIOS_URL}
-                                            className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg border border-white/10 px-2.5 py-2 text-[11px] font-semibold text-cyan-200/90 transition hover:bg-white/5 sm:rounded-xl sm:px-3 sm:text-xs"
-                                        >
-                                            Ver más
-                                            <ExternalLink className="h-3 w-3" />
-                                        </Link>
-                                    </div>
+                                        </div>
+                                    ) : null}
                                 </article>
                             );
                         })}
@@ -913,6 +921,64 @@ export default function PlanesTaquillasClient({
                                             Pagar con tarjeta
                                         </>
                                     )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {bajaModalOpen ? (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+                        onClick={() => !bajaSubmitting && setBajaModalOpen(false)}
+                        aria-hidden="true"
+                    />
+                    <div
+                        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-slate-900 via-slate-900 to-[#0f3d4a] shadow-2xl shadow-black/40"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="baja-modal-title"
+                    >
+                        <div className="h-1 bg-gradient-to-r from-rose-500 via-orange-400 to-amber-300" />
+                        <div className="p-6 sm:p-7">
+                            <div className="flex items-start gap-3">
+                                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-rose-500/15 ring-1 ring-rose-400/25">
+                                    <TriangleAlert className="h-5 w-5 text-rose-200" aria-hidden="true" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h2
+                                        id="baja-modal-title"
+                                        className="text-lg font-bold tracking-tight text-white"
+                                    >
+                                        Comunicar baja de tu taquilla
+                                    </h2>
+                                    <p className="mt-0.5 text-xs text-white/55">Aviso al club · sin cancelación automática</p>
+                                </div>
+                            </div>
+                            <p className="mt-5 text-sm leading-relaxed text-slate-300">
+                                Vamos a avisar al equipo del club de que quieres dejar tu taquilla #
+                                {userData?.numero_taquilla ?? "—"}. Tu taquilla seguirá activa con
+                                normalidad hasta que el club gestione la baja contigo; no se cancela
+                                nada automáticamente al confirmar esto.
+                            </p>
+                            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => !bajaSubmitting && setBajaModalOpen(false)}
+                                    disabled={bajaSubmitting}
+                                    className="rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 disabled:opacity-50 sm:flex-1"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={confirmarComunicarBaja}
+                                    disabled={bajaSubmitting}
+                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-rose-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-rose-950/40 transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {bajaSubmitting ? "Enviando…" : "Sí, comunicar baja"}
                                 </button>
                             </div>
                         </div>

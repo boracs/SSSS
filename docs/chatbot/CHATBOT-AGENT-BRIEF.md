@@ -66,7 +66,7 @@ Empieza por Fase 1.1 y dime qué vas a cambiar antes de editar muchos archivos.
 |-------|---------|--------|
 | Orquestador | `app/Services/Chatbot/ChatbotAgentService.php` | ✅ FAQ → Gemini → escalación |
 | FAQ local | `app/Services/Chatbot/ChatbotService.php` | ✅ email, precios clases/bonos/taquillas, logística |
-| Contexto Gemini | `app/Services/Chatbot/S4BusinessContextService.php` | ✅ BD live + config; caché 5 min; `forget()` |
+| Contexto Gemini | `S4BusinessContextService` + `S4BusinessKnowledgeService` | ✅ JSON knowledge + BD live; caché 5 min; `forget()` |
 | Gemini HTTP | `app/Services/Chatbot/GoogleAIService.php` | ✅ |
 | Guard | `app/Services/Chatbot/ChatbotPromptGuard.php` | ✅ |
 | API | `app/Http/Controllers/ChatbotController.php` | ✅ |

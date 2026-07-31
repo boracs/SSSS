@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Override manual del "Parte S4 de Zurriola": la escuela puede marcar el día
- * como cerrado/precaución/bien por encima del cálculo automático, y forzar
+ * como cerrado/precaución/bien/espigón por encima del cálculo automático, y forzar
  * una regeneración sin esperar al cron. Sin página propia — se controla desde
  * la propia página pública `Servicios_Webcams` (bloque visible solo a admin).
  */
@@ -28,7 +28,7 @@ final class SurfBriefController extends Controller
     public function override(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['nullable', Rule::in([SurfDailyBrief::OVERRIDE_CLOSED, SurfDailyBrief::OVERRIDE_CAUTION, SurfDailyBrief::OVERRIDE_GOOD])],
+            'status' => ['nullable', Rule::in(SurfDailyBrief::OVERRIDE_STATUSES)],
             'note' => ['nullable', 'string', 'max:280'],
         ]);
 

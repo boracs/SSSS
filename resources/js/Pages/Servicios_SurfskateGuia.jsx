@@ -1,9 +1,13 @@
 import React from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
 import {
     Activity,
     ArrowRight,
+    ArrowUpFromLine,
     Footprints,
+    Maximize2,
+    MoveHorizontal,
     Ruler,
     Scale,
     Sparkles,
@@ -11,6 +15,7 @@ import {
     Info,
     CheckCircle2,
     ShieldCheck,
+    Waves,
 } from "lucide-react";
 import YowLogo from "../components/YowLogo";
 
@@ -32,6 +37,53 @@ const PILARES = [
         titulo: "Tu peso",
         texto:
             "El sistema de ejes YOW Meraki está pensado para quienes superan unos 50 kg. Para niños o pesos muy ligeros, la gama Grom ofrece tablas más suaves de manejar y menos exigentes al empujar.",
+    },
+];
+
+/** Factores de la tabla, explicados para quien empieza (sin jerga). */
+const FACTORES_TABLA = [
+    {
+        icon: MoveHorizontal,
+        clave: "Lo más importante",
+        titulo: "Distancia entre ejes (wheelbase)",
+        queEs:
+            "Es el hueco entre el eje delantero y el trasero, medido por debajo de la tabla (de tornillo interior a tornillo interior). Ahí es donde caben tus pies.",
+        puntos: [
+            "Corta (16,5″ – 17,5″): giros muy cerrados y reactivos; pide más equilibrio.",
+            "Larga (18,5″ – 20″+): giros más amplios, más estable a velocidad y bombeo más suave.",
+        ],
+    },
+    {
+        icon: Waves,
+        clave: "Agarre de los pies",
+        titulo: "Concavidad (concave)",
+        queEs:
+            "Es cómo de «hundida» está la tabla de lado a lado. YOW la clasifica en Low, Medium y High. Cuanta más curva, más «sujetos» quedan los pies sin depender de una lija muy agresiva.",
+        puntos: [
+            "Alta (p. ej. Snappers, Hole Shot): ideal para cantear fuerte o giros agresivos.",
+            "Baja / media (p. ej. Chiba, Malibú): más plana y cómoda para pasear o si vienes del longboard.",
+        ],
+    },
+    {
+        icon: Maximize2,
+        clave: "Apoyo al inclinarte",
+        titulo: "Ancho de la tabla (width)",
+        queEs:
+            "Es lo ancha que es la tabla en su punto más ancho. Influye en la palanca que haces con talón y punta del pie al girar.",
+        puntos: [
+            "10″ o más: más superficie de apoyo; útil con pie grande (aprox. 42–43 EU o más) o si buscas estabilidad al inclinarte.",
+        ],
+    },
+    {
+        icon: ArrowUpFromLine,
+        clave: "Sensación al girar",
+        titulo: "Forma de la cola (tail) y rocker",
+        queEs:
+            "Es la elevación y la forma de la parte trasera (y a veces de la nariz). Cambia cómo «clavas» el pie de atrás y el tipo de giro que sientes.",
+        puntos: [
+            "Cola elevada y ancha (squash o kicktail): ayuda a marcar el giro y a simular maniobras tipo top turn.",
+            "Cola en pez (swallow) o redonda (pin): sensación más retro o de deslizamiento suave.",
+        ],
     },
 ];
 
@@ -172,16 +224,10 @@ function PerfilCard({ perfil }) {
     );
 }
 
-export default function ServiciosSurfskateGuia() {
+export default function ServiciosSurfskateGuia({ seo = null }) {
     return (
         <>
-            <Head>
-                <title>Guía para elegir tu surfskate · altura y peso</title>
-                <meta
-                    name="description"
-                    content="Guía práctica de San Sebastian Surf School para elegir surfskate YOW según tu altura, peso y estilo. Tabla de medidas, modelos y consejos sin tecnicismos."
-                />
-            </Head>
+            <SeoHead seo={seo} />
 
             <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#241405] to-slate-950 text-white">
                 {/* Hero */}
@@ -264,6 +310,62 @@ export default function ServiciosSurfskateGuia() {
                                     <h3 className="text-lg font-bold text-white">{p.titulo}</h3>
                                     <p className="mt-2 text-sm leading-relaxed text-slate-400">{p.texto}</p>
                                 </div>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                {/* Factores de la tabla (principiantes) */}
+                <section
+                    className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+                    aria-labelledby="factores-titulo"
+                >
+                    <div className="mb-8 max-w-2xl">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
+                            Guía para principiantes
+                        </p>
+                        <h2 id="factores-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                            Qué mirar al elegir un surfskate
+                        </h2>
+                        <p className="mt-3 text-slate-400">
+                            Cuatro cosas de la propia tabla, explicadas sin tecnicismos. Empieza por la
+                            distancia entre ejes: es lo que más cambia cómo se siente al girar.
+                        </p>
+                    </div>
+                    <div className="grid gap-5 sm:grid-cols-2">
+                        {FACTORES_TABLA.map((f) => {
+                            const Icon = f.icon;
+                            return (
+                                <article
+                                    key={f.titulo}
+                                    className="flex flex-col rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
+                                >
+                                    <div className="mb-4 flex items-start gap-3">
+                                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
+                                            <Icon className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-orange-300">
+                                                {f.clave}
+                                            </p>
+                                            <h3 className="mt-1 text-lg font-bold text-white">
+                                                {f.titulo}
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm leading-relaxed text-slate-400">{f.queEs}</p>
+                                    <ul className="mt-4 space-y-2 border-t border-white/10 pt-4">
+                                        {f.puntos.map((punto) => (
+                                            <li
+                                                key={punto}
+                                                className="flex items-start gap-2 text-sm leading-relaxed text-slate-300"
+                                            >
+                                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+                                                {punto}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </article>
                             );
                         })}
                     </div>

@@ -77,6 +77,15 @@ export default {
                     DEFAULT: "oklch(var(--card) / <alpha-value>)",
                     foreground: "oklch(var(--card-foreground) / <alpha-value>)",
                 },
+                // --- Marca S4 (fuente de verdad visual marketing) ---
+                s4: {
+                    DEFAULT: "#0f5f74",
+                    hover: "#0d4f60",
+                    cyan: "#06b6d4",
+                    deep: "#0a1f2e",
+                    surface: "#f8fafc",
+                    ink: "#0f172a",
+                },
                 // --- Tus colores originales de Surf Premium ---
                 brand: {
                     deep: "#0d234d",

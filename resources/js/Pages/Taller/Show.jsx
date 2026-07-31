@@ -35,7 +35,13 @@ function estimateReadingMinutes(html) {
     return Math.max(3, Math.ceil(words / 200));
 }
 
-export default function Show({ article, relatedArticles = [], relatedMeta = null, productos = [], seo = null }) {
+export default function Show({
+    article,
+    relatedArticles = [],
+    relatedMeta = null,
+    productos = [],
+    seo = null,
+}) {
     const readingMinutes = estimateReadingMinutes(article.content);
 
     return (
@@ -46,7 +52,11 @@ export default function Show({ article, relatedArticles = [], relatedMeta = null
 
             <TallerPageShell>
                 <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-                    <motion.div initial="hidden" animate="visible" variants={fadeUp}>
+                    <motion.div
+                        initial="hidden"
+                        animate="visible"
+                        variants={fadeUp}
+                    >
                         <Link
                             href={route("taller.index")}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:border-cyan-300 hover:text-[#0f5f74]"
@@ -79,7 +89,11 @@ export default function Show({ article, relatedArticles = [], relatedMeta = null
                             />
 
                             <div className="relative">
-                                <TallerBadge icon={BookOpen} label="Taller de Surf" variant="light" />
+                                <TallerBadge
+                                    icon={BookOpen}
+                                    label="Taller de Surf"
+                                    variant="light"
+                                />
                                 <h1 className="mt-5 font-heading text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.65rem]">
                                     {article.title}
                                 </h1>
@@ -89,7 +103,10 @@ export default function Show({ article, relatedArticles = [], relatedMeta = null
                                     </p>
                                 ) : null}
                                 <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/90 backdrop-blur-sm">
-                                    <Clock3 className="h-3.5 w-3.5" aria-hidden="true" />
+                                    <Clock3
+                                        className="h-3.5 w-3.5"
+                                        aria-hidden="true"
+                                    />
                                     Lectura estimada · {readingMinutes} min
                                 </div>
                             </div>
@@ -98,12 +115,18 @@ export default function Show({ article, relatedArticles = [], relatedMeta = null
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.15, duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                            transition={{
+                                delay: 0.15,
+                                duration: 0.55,
+                                ease: [0.22, 1, 0.36, 1],
+                            }}
                             className="px-6 py-8 sm:px-10 sm:py-12"
                         >
                             <div
                                 className={ARTICLE_BODY_CLASS}
-                                dangerouslySetInnerHTML={{ __html: article.content }}
+                                dangerouslySetInnerHTML={{
+                                    __html: article.content,
+                                }}
                             />
                         </motion.div>
                     </motion.article>

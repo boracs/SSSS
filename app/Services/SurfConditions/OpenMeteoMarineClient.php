@@ -18,12 +18,18 @@ use Throwable;
  *
  * Dos llamadas porque Open-Meteo separa oleaje (`marine-api`) de viento
  * (`api` estándar); ambas gratuitas y sin API key.
+ *
+ * Tope `forecast_days`: 16 en marine-api y api/forecast (OpenAPI / docs oficiales;
+ * request con 17 → HTTP 400 "Allowed range 0 to 16"). Ver docs/surf-conditions/README.md.
  */
 final class OpenMeteoMarineClient
 {
     private const MARINE_ENDPOINT = 'https://marine-api.open-meteo.com/v1/marine';
 
     private const WEATHER_ENDPOINT = 'https://api.open-meteo.com/v1/forecast';
+
+    /** Máximo oficial compartido por marine + weather (ambos endpoints del client). */
+    public const MAX_FORECAST_DAYS = 16;
 
     private const TIMEOUT_SECONDS = 10;
 
@@ -82,6 +88,8 @@ final class OpenMeteoMarineClient
      */
     public function hourlySeries(int $days): SurfHourlySeriesDto
     {
+        $days = max(1, min($days, self::MAX_FORECAST_DAYS));
+
         $latitude = (float) config('services.zurriola_surf.latitude');
         $longitude = (float) config('services.zurriola_surf.longitude');
         $timezone = (string) config('services.zurriola_surf.timezone', 'Europe/Madrid');

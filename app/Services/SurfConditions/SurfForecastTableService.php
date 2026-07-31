@@ -25,7 +25,8 @@ use Throwable;
  */
 final class SurfForecastTableService
 {
-    private const CACHE_KEY = 'surf_conditions.forecast_table';
+    /** Incluye versión para invalidar cachés antiguas al cambiar forecast_days / shape. */
+    private const CACHE_KEY = 'surf_conditions.forecast_table.v5';
 
     private const CACHE_TTL_SECONDS = 3600;
 
@@ -65,7 +66,7 @@ final class SurfForecastTableService
 
     /**
      * Franjas horarias de HOY (mismo cálculo que la tabla pública: energía,
-     * estado del viento, marea) sin pasar por la caché de la tabla de 3 días.
+     * estado del viento, marea) sin pasar por la caché de la tabla multi-día.
      * Usado por {@see \App\Services\SurfConditions\SurfDailyBriefService} para
      * dar a Gemini el desglose mañana/tarde real, sin duplicar esta lógica.
      */
@@ -77,7 +78,8 @@ final class SurfForecastTableService
     /** @return list<SurfForecastDayDto> */
     private function build(?int $daysAhead = null): array
     {
-        $daysAhead ??= (int) config('services.zurriola_surf.forecast_days', 3);
+        $daysAhead ??= (int) config('services.zurriola_surf.forecast_days', OpenMeteoMarineClient::MAX_FORECAST_DAYS);
+        $daysAhead = max(1, min($daysAhead, OpenMeteoMarineClient::MAX_FORECAST_DAYS));
         $slotHours = (array) config('services.zurriola_surf.forecast_slot_hours', [6, 9, 12, 15, 18, 21]);
         $timezone = (string) config('services.zurriola_surf.timezone', 'Europe/Madrid');
 
@@ -88,7 +90,35 @@ final class SurfForecastTableService
             $dates[] = Carbon::now($timezone)->addDays($i)->format('Y-m-d');
         }
 
-        return array_map(fn (string $date) => $this->buildDay($series, $date, $slotHours), $dates);
+        $days = array_map(fn (string $date) => $this->buildDay($series, $date, $slotHours), $dates);
+
+        // Open-Meteo a menudo rellena días lejanos con null (aquí → 0): sin ola/periodo
+        // la "fuerza" no es fiable. No mostrar esos días en la tabla pública.
+        // todayDay() pide 1 día y no filtra (el brief necesita la franja de hoy).
+        if ($daysAhead <= 1) {
+            return $days;
+        }
+
+        return array_values(array_filter(
+            $days,
+            fn (SurfForecastDayDto $day) => $this->dayHasUsableForceData($day)
+        ));
+    }
+
+    /**
+     * Día usable si alguna franja diurna tiene altura y periodo de ola > 0.
+     * (null de API se serializa como 0; un día real "plano" en Zurriola suele
+     * seguir trayendo Hs ~0.4–0.6 m, no todo a cero.)
+     */
+    private function dayHasUsableForceData(SurfForecastDayDto $day): bool
+    {
+        foreach ($day->slots as $slot) {
+            if ($slot->waveHeightM > 0.0 && $slot->wavePeriodS > 0.0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param  list<int>  $slotHours */
@@ -128,8 +158,12 @@ final class SurfForecastTableService
         $windSpeed = $series->windSpeed[$index];
         $windDirection = $series->windDirection[$index];
 
-        $energyHeight = $series->swellHeight[$index] ?? $waveHeight;
-        $energyPeriod = $series->swellPeriod[$index] ?? $wavePeriod;
+        [$energyHeight, $energyPeriod] = $this->energy->resolveHeightPeriod(
+            $waveHeight,
+            $wavePeriod,
+            $series->swellHeight[$index],
+            $series->swellPeriod[$index],
+        );
         $energyIndex = $this->energy->indexForValues($energyHeight, $energyPeriod);
 
         return new SurfForecastSlotDto(
@@ -204,14 +238,36 @@ final class SurfForecastTableService
 
     private function energyTone(int $energyKj): string
     {
-        $bands = (array) config('services.zurriola_surf.forecast_energy_color_kj', []);
-        $greenMax = (int) ($bands['green_max'] ?? 400);
-        $yellowMax = (int) ($bands['yellow_max'] ?? 800);
+        $kj = max(0, $energyKj);
+        $config = (array) config('services.zurriola_surf.forecast_energy_color_kj', []);
+        $bands = $config['bands'] ?? null;
+
+        if (is_array($bands) && $bands !== []) {
+            foreach ($bands as $band) {
+                if (! is_array($band)) {
+                    continue;
+                }
+                $max = (int) ($band['max'] ?? PHP_INT_MAX);
+                $tone = (string) ($band['tone'] ?? '');
+                if ($tone !== '' && $kj <= $max) {
+                    return $tone;
+                }
+            }
+
+            $last = end($bands);
+            if (is_array($last) && isset($last['tone']) && is_string($last['tone']) && $last['tone'] !== '') {
+                return $last['tone'];
+            }
+        }
+
+        // Fallback legacy (green_max / yellow_max) por si un entorno aún no tiene bands.
+        $greenMax = (int) ($config['green_max'] ?? 400);
+        $yellowMax = (int) ($config['yellow_max'] ?? 800);
 
         return match (true) {
-            $energyKj <= $greenMax => 'green',
-            $energyKj <= $yellowMax => 'yellow',
-            default => 'red',
+            $kj <= $greenMax => 'e6',
+            $kj <= $yellowMax => 'e8',
+            default => 'e13',
         };
     }
 

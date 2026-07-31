@@ -1,26 +1,20 @@
-import React, { useMemo } from "react";
-import { Head } from "@inertiajs/react";
+import { useCallback, useMemo, useState } from "react";
 import BackButton from "../../../components/BackButton";
 import Breadcrumbs from "../../../components/Breadcrumbs";
-import SurfboardBookingSection from "../../../components/SurfboardBookingSection";
+import ImageLightbox from "../../../components/ImageLightbox";
+import SurfboardPublicDetail from "../../../components/Rentals/SurfboardPublicDetail";
+import SeoHead from "../../../components/seo/SeoHead";
 import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
-
-/** Imagen demo temporal — misma que en Index.jsx */
-const DEMO_BOARD_IMAGE = "/img/tabla-demo.png";
-
-function imageSrc(pathOrUrl) {
-    if (!pathOrUrl) return "/img/placeholder.svg";
-    if (String(pathOrUrl).startsWith("http")) return pathOrUrl;
-    return `/storage/${String(pathOrUrl).replace(/^\/+/, "")}`;
-}
 
 export default function Show({
     surfboard,
     paymentIban = "[IBAN]",
     paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
+    seo = null,
 }) {
-    const first = DEMO_BOARD_IMAGE;
+    const [lightbox, setLightbox] = useState(null);
+    const closeLightbox = useCallback(() => setLightbox(null), []);
 
     const initialDates = useMemo(() => {
         if (typeof window === "undefined") return { start: null, end: null };
@@ -44,57 +38,40 @@ export default function Show({
 
     return (
         <>
-            <Head title={surfboard?.name ? `${surfboard.name} · Alquiler` : "Tabla · Alquiler"} />
-            <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <BackButton href={route("rentals.surfboards.index")}>
-                        Volver a tablas
-                    </BackButton>
-                    <Breadcrumbs items={breadcrumbs} />
-                </div>
-
-                <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-12">
-                    <div className="lg:col-span-5">
-                        <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
-                            <div className="aspect-[4/3] bg-slate-100">
-                                <img
-                                    src={imageSrc(first)}
-                                    alt={surfboard?.image_alt || surfboard?.name || `Tabla ${surfboard.id}`}
-                                    className="h-full w-full object-cover"
-                                    onError={(e) => {
-                                        e.currentTarget.src = "/img/placeholder.svg";
-                                    }}
-                                />
-                            </div>
-                            <div className="p-5">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                    {surfboard.category === "soft" ? "Softboard" : "Hardboard"}
-                                </div>
-                                <div className="mt-1 font-heading text-2xl font-extrabold tracking-tight text-slate-800">
-                                    {displayName}
-                                </div>
-                                {surfboard.description ? (
-                                    <p className="mt-3 text-sm text-slate-700">
-                                        {surfboard.description}
-                                    </p>
-                                ) : null}
-                            </div>
-                        </div>
+            <SeoHead seo={seo} />
+            <div className="min-h-[70vh] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+                <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                        <BackButton
+                            href={route("rentals.surfboards.index")}
+                            className="!text-slate-200 hover:!bg-slate-800 hover:!text-cyan-300"
+                        >
+                            Volver a tablas
+                        </BackButton>
+                        <Breadcrumbs items={breadcrumbs} variant="dark" />
                     </div>
 
-                    <div className="lg:col-span-7">
-                        <SurfboardBookingSection
-                            surfboard={surfboard}
+                    <article className="mt-6 rounded-3xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm backdrop-blur sm:mt-8 sm:p-6 lg:p-7">
+                        <SurfboardPublicDetail
+                            board={surfboard}
+                            onImageClick={setLightbox}
                             paymentIban={paymentIban}
                             paymentBizumNumber={paymentBizumNumber}
                             whatsappHelpUrl={whatsappHelpUrl}
                             initialStart={initialDates.start}
                             initialEnd={initialDates.end}
-                            showSchemaBadge
+                            titleAs="h1"
                         />
-                    </div>
+                    </article>
                 </div>
             </div>
+
+            <ImageLightbox
+                open={Boolean(lightbox?.src)}
+                src={lightbox?.src}
+                alt={lightbox?.alt}
+                onClose={closeLightbox}
+            />
         </>
     );
 }

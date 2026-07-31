@@ -20,7 +20,7 @@ class UploadVideosRequest extends FormRequest
      */
     public function rules(): array
     {
-        $maxBatch = (int) config('autocoach.max_files_per_batch', 10);
+        $maxBatch = (int) config('autocoach.max_files_per_batch', 7);
         $maxKb = (int) ceil(config('autocoach.max_file_bytes') / 1024);
 
         return [
@@ -34,11 +34,15 @@ class UploadVideosRequest extends FormRequest
      */
     public function messages(): array
     {
+        $maxBatch = (int) config('autocoach.max_files_per_batch', 7);
+        $maxMb = (int) ceil(config('autocoach.max_file_bytes') / (1024 * 1024));
+        $maxDuration = (int) config('autocoach.max_duration_seconds', 30);
+
         return [
             'videos.required' => 'No se recibieron vídeos.',
-            'videos.max' => 'Has superado el número máximo de vídeos por subida.',
+            'videos.max' => "Máximo {$maxBatch} vídeos por subida.",
             'videos.*.mimes' => 'Formato no permitido. Usa MP4, MOV o WebM.',
-            'videos.*.max' => 'Algún clip supera el tamaño máximo permitido.',
+            'videos.*.max' => "Cada clip puede pesar como máximo {$maxMb} MB (y durar hasta {$maxDuration} s).",
         ];
     }
 

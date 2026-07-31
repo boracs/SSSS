@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { router, usePage, Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
+import SeoHead from "../../components/seo/SeoHead";
 import {
     Ruler,
     Droplets,
@@ -422,7 +423,7 @@ function BoardInlineNavigation({ previousBoard, nextBoard }) {
 // ── Página ─────────────────────────────────────────────────────────────────────
 
 export default function SecondHandShow(props) {
-    const { board, navigation = {} } = props;
+    const { board, navigation = {}, seo = null } = props;
     const { props: pageProps } = usePage();
     const academyWhatsapp = pageProps?.academyWhatsappDisplay ?? "";
 
@@ -442,6 +443,7 @@ export default function SecondHandShow(props) {
 
     return (
         <Layout1>
+            <SeoHead seo={seo} />
             <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
 
                 {/* Breadcrumb */}

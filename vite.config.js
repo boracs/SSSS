@@ -56,7 +56,13 @@ export default defineConfig({
           if (!id.includes("node_modules")) {
             return undefined;
           }
-          if (id.includes("lucide-react")) {
+          // Iconos en chunk propio; NO separar framer-motion ni radix de React (rompe createContext).
+          if (
+            id.includes("lucide-react") ||
+            id.includes("@fortawesome") ||
+            id.includes("@heroicons") ||
+            id.includes("react-icons")
+          ) {
             return "vendor-icons";
           }
           // Solo librerías sin runtime React (framer-motion, inertia, radix, etc. → vendor-react).

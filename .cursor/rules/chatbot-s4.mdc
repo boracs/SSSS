@@ -18,14 +18,17 @@ Extender `ChatbotService` / `S4BusinessContextService`; no reescribir `ChatbotAg
 
 | Dato | Fuente |
 |------|--------|
+| Políticas, edge cases, tarifario comercial, playbook WA | `resources/chatbot/s4-business-knowledge.json` vía `S4BusinessKnowledgeService` (**draft_unconfirmed** hasta cliente) |
 | Bonos VIP | `pack_bonos` activos (live en `S4BusinessContextService`) — valores actuales = **demo hasta confirmación cliente** |
 | Taquillas | `planes_taquilla` activos (live) — idem **demo** |
 | Artículos Taller | `articles` + `ChatbotArticleCatalogService` |
 | Páginas web (Nosotros, reparaciones…) | `config/chatbot_pages.php` + `ChatbotPageCatalogService` |
 | Reparaciones Edy/Willy | `config/services.php` → `repair.*` |
-| Señal/cierre/cancelación clase | `config/services.php` → `academy.*` |
-| Alquiler 30 % señal, 7 días caducidad | `S4BusinessContextService` (alineado con `BookingService`) |
+| Señal/cierre/cancelación clase | `config/services.php` → `academy.*` (inyectado al compilar el JSON) |
+| Alquiler 30 % señal, 7 días caducidad | JSON knowledge (alineado con `BookingService`) |
 | WhatsApp | `AcademyContact` / `.env` |
+
+No enviar el JSON crudo entero a Gemini: se compila a markdown acotado. Tras editar el JSON o bonos/planes: `S4BusinessContextService::forget()`.
 
 ## Reglas clave
 

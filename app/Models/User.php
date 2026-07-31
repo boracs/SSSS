@@ -30,6 +30,7 @@ class User extends Authenticatable
         'google_id',
         'telefono',
         'numeroTaquilla',
+        'taquilla_baja_solicitada_at',
         'password',
         'fecha_vencimiento_cuota',
         'id_plan_vigente',
@@ -55,6 +56,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'is_vip' => 'boolean',
         'fecha_vencimiento_cuota' => 'datetime',
+        'taquilla_baja_solicitada_at' => 'datetime',
     ];
 
     // ===================================

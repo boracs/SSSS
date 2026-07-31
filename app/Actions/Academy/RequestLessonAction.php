@@ -23,50 +23,105 @@ final class RequestLessonAction
      * Crea la inscripción en estado pending y devuelve el enrollment para que
      * el controlador pueda iniciar la sesión de Stripe Checkout.
      *
+     * Guest (sin cuenta): solo modalidad grupal abierta — nunca VIP ni semanal.
+     *
+     * @param  list<array{first_name: string, last_name: string}>  $participants
      * @return array{ok: bool, message: string, extra_monitor_offer?: bool, enrollment?: LessonUser, pending_admin?: bool}
      */
     public function execute(
-        User $user,
+        ?User $user,
         Lesson $lesson,
         int $partySize,
         bool $requestExtraMonitor,
         ?string $ageBracket,
         array $participants = [],
+        ?string $guestEmail = null,
+        ?string $guestPhone = null,
     ): array {
         if ($lesson->status !== Lesson::STATUS_SCHEDULED) {
             return ['ok' => false, 'message' => 'Esta clase no admite nuevas solicitudes.'];
+        }
+
+        $modality = (string) ($lesson->modality ?: ((bool) ($lesson->is_private ?? false)
+            ? Lesson::MODALITY_PARTICULAR
+            : (($lesson->type ?? '') === 'weekly' ? Lesson::MODALITY_SEMANAL : Lesson::MODALITY_GRUPAL)));
+
+        if ($user === null) {
+            if ($modality !== Lesson::MODALITY_GRUPAL) {
+                return [
+                    'ok' => false,
+                    'message' => 'Sin cuenta solo puedes apuntarte a clases grupales abiertas. Inicia sesión para semanal o VIP.',
+                ];
+            }
+            if ($guestEmail === null || $guestPhone === null) {
+                return ['ok' => false, 'message' => 'Indica email y teléfono para reservar sin cuenta.'];
+            }
         }
 
         if (! AcademyEnrollmentPolicy::canEnrollByTime($lesson)) {
             return ['ok' => false, 'message' => AcademyEnrollmentPolicy::enrollBlockedMessage()];
         }
 
-        if (LessonUser::query()
+        $activeStatuses = [
+            LessonUser::STATUS_PENDING,
+            LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+            LessonUser::STATUS_CONFIRMED,
+            LessonUser::STATUS_ENROLLED,
+            LessonUser::STATUS_ATTENDED,
+        ];
+
+        if ($user !== null) {
+            if (LessonUser::query()
+                ->where('lesson_id', $lesson->id)
+                ->where('user_id', $user->id)
+                ->whereIn('status', $activeStatuses)
+                ->exists()) {
+                return ['ok' => false, 'message' => 'Ya tienes una solicitud o plaza activa en esta clase.'];
+            }
+        } elseif (LessonUser::query()
             ->where('lesson_id', $lesson->id)
-            ->where('user_id', $user->id)
-            ->whereIn('status', [
-                LessonUser::STATUS_PENDING,
-                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                LessonUser::STATUS_CONFIRMED,
-                LessonUser::STATUS_ENROLLED,
-                LessonUser::STATUS_ATTENDED,
-            ])
+            ->whereNull('user_id')
+            ->where('guest_email', $guestEmail)
+            ->whereIn('status', $activeStatuses)
             ->exists()) {
-            return ['ok' => false, 'message' => 'Ya tienes una solicitud o plaza activa en esta clase.'];
+            return ['ok' => false, 'message' => 'Ya hay una solicitud activa con ese email en esta clase.'];
         }
 
         $partySize = max(1, $partySize);
+        $guestFirst = $participants[0]['first_name'] ?? null;
+        $guestLast = $participants[0]['last_name'] ?? null;
 
-        $result = DB::transaction(function () use ($user, $lesson, $partySize, $requestExtraMonitor, $ageBracket, $participants) {
+        $result = DB::transaction(function () use (
+            $user,
+            $lesson,
+            $partySize,
+            $requestExtraMonitor,
+            $ageBracket,
+            $participants,
+            $guestEmail,
+            $guestPhone,
+            $guestFirst,
+            $guestLast,
+        ) {
             return $this->availabilityService->withLockedLesson(
                 (int) $lesson->id,
-                function (Lesson $locked) use ($user, $partySize, $requestExtraMonitor, $ageBracket, $participants) {
+                function (Lesson $locked) use (
+                    $user,
+                    $partySize,
+                    $requestExtraMonitor,
+                    $ageBracket,
+                    $participants,
+                    $guestEmail,
+                    $guestPhone,
+                    $guestFirst,
+                    $guestLast,
+                ) {
                     if (! $locked->starts_at || ! $locked->ends_at) {
                         return ['ok' => false, 'message' => 'La clase no tiene horario válido.'];
                     }
 
                     $blockingStatuses = $this->availabilityService->occupancyStatuses();
-                    $blockingParty    = (int) LessonUser::query()
+                    $blockingParty = (int) LessonUser::query()
                         ->where('lesson_id', $locked->id)
                         ->whereIn('status', $blockingStatuses)
                         ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
@@ -95,33 +150,41 @@ final class RequestLessonAction
                         )
                         : null;
 
+                    $baseEnrollment = [
+                        'lesson_id' => $locked->id,
+                        'user_id' => $user?->id,
+                        'guest_first_name' => $user ? null : $guestFirst,
+                        'guest_last_name' => $user ? null : $guestLast,
+                        'guest_email' => $user ? null : $guestEmail,
+                        'guest_phone' => $user ? null : $guestPhone,
+                        'is_admin_guest' => false,
+                        'party_size' => $partySize,
+                        'quantity' => $partySize,
+                        'age_bracket' => $ageBracket,
+                        'credits_locked' => 0,
+                        'payment_status' => PaymentStatus::Pending->value,
+                        'payment_method' => 'card',
+                        'admin_notes' => $participantNotes,
+                    ];
+
                     // Necesita aprobación de admin por cupo extra
                     if (AcademyEnrollmentPolicy::requiresAdminQuotaApproval($seatsTaken, $partySize)) {
-                        $enrollment = LessonUser::query()->create([
-                            'lesson_id'      => $locked->id,
-                            'user_id'        => $user->id,
-                            'party_size'     => $partySize,
-                            'quantity'       => $partySize,
-                            'age_bracket'    => $ageBracket,
-                            'credits_locked' => 0,
-                            'status'         => LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                            'payment_status' => PaymentStatus::Pending->value,
-                            'payment_method' => 'card',
-                            'admin_notes'    => $participantNotes,
-                        ]);
+                        $enrollment = LessonUser::query()->create(array_merge($baseEnrollment, [
+                            'status' => LessonUser::STATUS_PENDING_EXTRA_MONITOR,
+                        ]));
 
                         LessonRequestedEvent::dispatch($enrollment->fresh());
 
                         return [
-                            'ok'            => true,
+                            'ok' => true,
                             'pending_admin' => true,
-                            'enrollment'    => $enrollment,
-                            'message'       => AcademyEnrollmentPolicy::quotaPendingMessage(),
+                            'enrollment' => $enrollment,
+                            'message' => AcademyEnrollmentPolicy::quotaPendingMessage(),
                         ];
                     }
 
                     $participantTotalAfter = $blockingParty + $partySize;
-                    $evaluation            = $this->availabilityService->evaluate(
+                    $evaluation = $this->availabilityService->evaluate(
                         $locked->starts_at,
                         $locked->ends_at,
                         $participantTotalAfter,
@@ -130,7 +193,7 @@ final class RequestLessonAction
 
                     if (! $evaluation['allowed']) {
                         $payload = [
-                            'ok'      => false,
+                            'ok' => false,
                             'message' => $this->availabilityService->buildConflictMessage($evaluation),
                         ];
                         if (! $requestExtraMonitor) {
@@ -144,25 +207,16 @@ final class RequestLessonAction
                         ? LessonUser::STATUS_PENDING_EXTRA_MONITOR
                         : LessonUser::STATUS_PENDING;
 
-                    $enrollment = LessonUser::query()->create([
-                        'lesson_id'      => $locked->id,
-                        'user_id'        => $user->id,
-                        'party_size'     => $partySize,
-                        'quantity'       => $partySize,
-                        'age_bracket'    => $ageBracket,
-                        'credits_locked' => 0,
-                        'status'         => $status,
-                        'payment_status' => PaymentStatus::Pending->value,
-                        'payment_method' => 'card',
-                        'admin_notes'    => $participantNotes,
-                    ]);
+                    $enrollment = LessonUser::query()->create(array_merge($baseEnrollment, [
+                        'status' => $status,
+                    ]));
 
                     LessonRequestedEvent::dispatch($enrollment->fresh());
 
                     return [
-                        'ok'         => true,
+                        'ok' => true,
                         'enrollment' => $enrollment,
-                        'message'    => 'Plaza reservada. Completando pago…',
+                        'message' => 'Plaza reservada. Completando pago…',
                     ];
                 }
             );

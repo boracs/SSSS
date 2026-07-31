@@ -40,8 +40,8 @@ export default function SurfBriefReactions({ initial = null }) {
                     aria-label={`Me gusta${likes ? `, ${likes}` : ""}`}
                     className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition disabled:opacity-50 ${
                         mine === "up"
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-100 text-slate-600 ring-1 ring-slate-200 hover:bg-emerald-50 hover:text-emerald-800"
+                            ? "bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-600/30"
+                            : "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-200"
                     }`}
                 >
                     <ThumbsUp className="h-3 w-3" aria-hidden />

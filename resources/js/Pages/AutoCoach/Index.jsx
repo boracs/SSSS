@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getCsrfFetchHeaders, syncCsrfMeta } from "@/lib/csrf.js";
-import { Head, usePage } from "@inertiajs/react";
+import { Head, Link, usePage } from "@inertiajs/react";
 import { toast } from "react-toastify";
 import Modal from "@/components/Modal";
 import {
@@ -16,6 +16,7 @@ import {
     Trash2,
     ShieldAlert,
     Check,
+    ChevronRight,
 } from "lucide-react";
 
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1];
@@ -619,6 +620,28 @@ export default function AutoCoachIndex({ limits }) {
 
     const formatMb = (bytes) => (bytes / (1024 * 1024)).toFixed(1);
 
+    const readVideoDuration = (file) =>
+        new Promise((resolve) => {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement("video");
+            video.preload = "metadata";
+            const cleanup = () => {
+                URL.revokeObjectURL(url);
+                video.removeAttribute("src");
+                video.load();
+            };
+            video.onloadedmetadata = () => {
+                const duration = Number(video.duration);
+                cleanup();
+                resolve(Number.isFinite(duration) ? duration : null);
+            };
+            video.onerror = () => {
+                cleanup();
+                resolve(null);
+            };
+            video.src = url;
+        });
+
     const handleUpload = async (e) => {
         const files = Array.from(e.target.files ?? []);
         e.target.value = "";
@@ -631,6 +654,7 @@ export default function AutoCoachIndex({ limits }) {
 
         const maxFileBytes = limits.maxFileMb * 1024 * 1024;
         const maxBatchBytes = (limits.maxBatchMb ?? limits.maxFileMb * limits.maxBatch) * 1024 * 1024;
+        const maxDuration = limits.maxDurationSeconds ?? 30;
         const oversized = files.filter((f) => f.size > maxFileBytes);
         if (oversized.length) {
             setError(
@@ -643,6 +667,18 @@ export default function AutoCoachIndex({ limits }) {
         if (totalBytes > maxBatchBytes) {
             setError(
                 `La tanda pesa ${formatMb(totalBytes)} MB y el máximo es ${limits.maxBatchMb ?? limits.maxFileMb * limits.maxBatch} MB. Sube menos vídeos o archivos más pequeños.`,
+            );
+            return;
+        }
+
+        const durations = await Promise.all(files.map((f) => readVideoDuration(f)));
+        const tooLong = files.filter((_, i) => {
+            const d = durations[i];
+            return d !== null && d > maxDuration + 0.5;
+        });
+        if (tooLong.length) {
+            setError(
+                `${tooLong.length === 1 ? "Un vídeo supera" : "Varios vídeos superan"} los ${maxDuration} s de duración.`,
             );
             return;
         }
@@ -759,20 +795,24 @@ export default function AutoCoachIndex({ limits }) {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2230] to-slate-950 text-white">
+        <div className="flex flex-1 flex-col justify-center bg-gradient-to-b from-slate-950 via-[#0a2230] to-slate-950 text-white">
             <Head title="Comparador de maniobras | S4 AutoCoach" />
 
-            <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+            <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
                 <header className="mb-8 text-center">
                     <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
                         S4 AutoCoach
+                    </p>
+                    <p className="mt-1.5 text-[11px] leading-snug text-slate-500 sm:text-xs">
+                        Herramienta gratuita de San Sebastián Surf School · Zurriola
                     </p>
                     <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">
                         Compara tu maniobra con un pro
                     </h1>
                     <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-400">
                         Elige deporte, postura y maniobra. Sincroniza la reproducción a cámara lenta,
-                        sube tus clips (máx. {limits.maxBatch} por tanda) y compáralos lado a lado.
+                        sube tus clips (máx. {limits.maxBatch} por tanda, {limits.maxDurationSeconds ?? 30} s c/u)
+                        y compáralos lado a lado.
                         Tus vídeos se borran solos tras {limits.ttlMinutes} minutos.
                     </p>
                 </header>
@@ -892,7 +932,8 @@ export default function AutoCoachIndex({ limits }) {
                                 Sube tus clips
                             </h2>
                             <p className="mt-1 text-xs text-slate-400">
-                                Hasta {limits.maxBatch} vídeos por tanda · máx. {limits.maxFileMb} MB c/u · tanda ≤{" "}
+                                Hasta {limits.maxBatch} vídeos por tanda · máx. {limits.maxFileMb} MB y{" "}
+                                {limits.maxDurationSeconds ?? 30} s c/u · tanda ≤{" "}
                                 {limits.maxBatchMb ?? limits.maxFileMb * limits.maxBatch} MB · MP4/MOV/WebM
                             </p>
                         </div>
@@ -944,6 +985,68 @@ export default function AutoCoachIndex({ limits }) {
                     </div>
                 </section>
 
+                <aside
+                    className="mt-6 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-slate-900/90 via-slate-950/80 to-teal-950/40 px-5 py-5 sm:px-6"
+                    aria-labelledby="autocoach-next-step"
+                >
+                    <div className="grid gap-6 lg:grid-cols-2 lg:items-center lg:gap-8">
+                        <div>
+                            <p
+                                id="autocoach-next-step"
+                                className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-300/90"
+                            >
+                                Siguiente paso
+                            </p>
+                            <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-[15px]">
+                                Comparar con un pro está bien. Un coach S4 te dice exactamente qué
+                                cambiar.
+                            </p>
+                            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+                                <Link
+                                    href={route("servicios.videograbaciones")}
+                                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-cyan-500"
+                                >
+                                    Videocorrecciones
+                                </Link>
+                                <Link
+                                    href={route("servicios.surf")}
+                                    className="inline-flex min-h-10 items-center justify-center rounded-xl border border-white/15 bg-transparent px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-cyan-400/40 hover:bg-white/5 hover:text-white"
+                                >
+                                    Clases en Zurriola
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 sm:gap-4 lg:border-l lg:border-white/10 lg:pl-8">
+                            <img
+                                src="/img/nosotros/galeria/instalaciones-01.png"
+                                alt="Instalaciones de San Sebastián Surf School en Zurriola"
+                                loading="lazy"
+                                decoding="async"
+                                className="h-24 w-24 shrink-0 rounded-lg object-cover sm:h-28 sm:w-28"
+                            />
+                            <div className="flex min-w-0 flex-1 flex-col justify-center">
+                                <p className="text-sm font-bold leading-snug text-white sm:text-[15px]">
+                                    San Sebastián Surf School
+                                </p>
+                                <p className="mt-0.5 text-xs leading-snug text-slate-400">
+                                    Escuela y club a pie de Zurriola · Donostia
+                                </p>
+                                <p className="mt-2 text-[11px] leading-snug text-slate-500 sm:text-xs">
+                                    Clases, análisis y club a pie de playa.
+                                </p>
+                                <Link
+                                    href={route("nosotros")}
+                                    className="mt-3 inline-flex items-center gap-1 self-start text-xs font-semibold text-cyan-300/90 transition hover:text-cyan-200"
+                                >
+                                    Conoce la escuela
+                                    <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                                </Link>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+
                 <div className="mt-6 flex items-start gap-2 rounded-xl border border-cyan-500/20 bg-cyan-950/30 px-4 py-3 text-xs text-slate-300">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
                     <p>
@@ -953,9 +1056,14 @@ export default function AutoCoachIndex({ limits }) {
                     </p>
                 </div>
 
-                <p className="mt-8 flex items-center justify-center gap-1.5 text-center text-xs text-slate-500">
-                    <Waves className="h-3.5 w-3.5" />
-                    San Sebastian Surf School · Herramienta de análisis visual
+                <p className="mt-8 text-center text-xs leading-relaxed text-slate-500">
+                    <span className="inline-flex items-center justify-center gap-1.5">
+                        <Waves className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        ¿Eres coach? Comparte esta herramienta con tus alumnos
+                    </span>
+                    <span className="mt-1 block text-[11px] text-slate-600">
+                        Powered by San Sebastián Surf School · S4
+                    </span>
                 </p>
             </div>
 

@@ -89,6 +89,30 @@ export function formatLongDateLabelMadrid(dateYmd) {
 }
 
 /**
+ * Día de la semana + día + mes (sin año), para cabeceras compactas del feed.
+ * @param {string} dateYmd
+ * @returns {{ weekday: string, dateLine: string }}
+ */
+export function formatCompactDayPartsMadrid(dateYmd) {
+    if (!dateYmd || !/^\d{4}-\d{2}-\d{2}$/.test(dateYmd)) {
+        return { weekday: "", dateLine: dateYmd || "" };
+    }
+    const [y, mo, day] = dateYmd.split("-").map(Number);
+    const inst = new Date(Date.UTC(y, mo - 1, day, 12, 0, 0));
+    return {
+        weekday: inst.toLocaleDateString("es-ES", {
+            timeZone: BUSINESS_TIMEZONE,
+            weekday: "long",
+        }),
+        dateLine: inst.toLocaleDateString("es-ES", {
+            timeZone: BUSINESS_TIMEZONE,
+            day: "numeric",
+            month: "long",
+        }),
+    };
+}
+
+/**
  * @param {number} year
  * @param {number} month1to12
  */

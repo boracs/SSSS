@@ -1,0 +1,40 @@
+---
+description: Layout de lectura del Taller (ancho tipográfico, zoom 100%, sin compactar UI)
+globs: resources/js/Pages/Taller/**/*.{jsx,tsx,js}, resources/js/components/Taller/**/*.{jsx,tsx,js}
+alwaysApply: false
+---
+
+# Layout de lectura — Taller / artículos S4
+
+Al diseñar o modificar páginas de artículo (Taller Show y similares).
+
+## Alcance
+- Aplica SOLO a Taller Show / body del artículo y componentes Taller relacionados.
+- No cambies GlobalNav, Layout1 ni tipografía global del site.
+- No toques metas SEO ni el HTML de articles salvo clases de layout del contenedor/tipografía de lectura.
+
+## Criterio de diseño
+- Diseñar y revisar SIEMPRE a zoom del navegador 100%. No usar zoom 80%/90% como referencia de layout.
+- No “encoger” la UI globalmente (ni zoom CSS, ni transform: scale, ni reducir tipografía base de toda la página para que “quepa más”).
+
+## Ancho
+- Usar contenedor centrado con max-width en px/rem (p. ej. max-w-4xl / max-w-5xl), NO porcentajes altos del viewport (85–100%) en desktop.
+- En monitores anchos está BIEN que haya márgenes laterales; priorizar medida de lectura (~60–75 caracteres por línea) sobre “llenar la pantalla”.
+- Si en portátil se siente estrecho: subir un poco el max-width del contenedor, no reducir el tamaño del texto.
+
+## Tipografía y accesibilidad
+- Mantener cuerpo legible (~16–18px / text-base o editorial equivalente). No bajar a tamaños pequeños “para compactar”.
+- Contraste alto cuerpo/fondo. Interlineado cómodo para lectura larga.
+
+## SEO
+- No ocultar contenido relevante. No depender de zoom del usuario.
+- El zoom del navegador no afecta SEO; sí afecta una tipografía ilegible o un layout roto en móvil.
+- Mobile-first: el artículo debe leerse bien en viewport estrecho sin zoom forzado.
+
+## Qué evitar
+- html { zoom: 0.8 } o hacks similares.
+- Columnas a width: 85vw / 90% sin tope en pantallas XL.
+- Compactar el artículo para que se vea “como al 80%”.
+
+## Éxito
+En 100% zoom, portátil y desktop: columna de lectura cómoda, tipografía clara, márgenes laterales aceptables, sin sensación de “web miniaturizada”.

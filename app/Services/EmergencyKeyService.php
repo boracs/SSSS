@@ -80,6 +80,19 @@ class EmergencyKeyService
         });
     }
 
+    /** Pone el candado en OFF (no disponible para nuevas solicitudes). */
+    public function deactivateLock(): void
+    {
+        DB::transaction(function (): void {
+            $settings = EmergencyLockSetting::query()
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $settings->update(['is_active' => false]);
+        });
+    }
+
     public function markKeyDeactivated(EmergencyKeyRequest $request, User $admin): void
     {
         if ($request->isResolved()) {

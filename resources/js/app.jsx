@@ -19,6 +19,9 @@ const GUEST_SHELL_PAGES = new Set([
     "Auth/VerifyEmail",
 ]);
 
+// Glob diferido: cada página entra en su propio chunk (no en el bundle inicial).
+const pages = import.meta.glob("./Pages/**/*.jsx");
+
 // Obtenemos el nombre de la app desde las variables de entorno
 const appName = import.meta.env.VITE_APP_NAME || "Laravel";
 
@@ -26,15 +29,14 @@ const appName = import.meta.env.VITE_APP_NAME || "Laravel";
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
 
-    resolve: (name) => {
-        const pages = import.meta.glob("./Pages/**/*.jsx", { eager: true });
+    resolve: async (name) => {
+        const importer = pages[`./Pages/${name}.jsx`];
 
-        // Obtenemos el módulo
-        const module = pages[`./Pages/${name}.jsx`];
-
-        if (!module) {
+        if (!importer) {
             throw new Error(`No se encontró la página: ${name}`);
         }
+
+        const module = await importer();
 
         if (typeof document !== "undefined") {
             // Excepciones cliente solicitadas en modo claro (body blanco).
@@ -44,6 +46,7 @@ createInertiaApp({
                 "Taller/Index",
                 "Taller/Show",
                 "Productos",
+                "ProductoVer",
                 "Academy/Index",
                 "Rentals/Surfboards/Index",
                 "Rentals/Surfboards/Show",

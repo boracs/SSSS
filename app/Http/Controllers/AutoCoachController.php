@@ -29,7 +29,8 @@ class AutoCoachController extends Controller
         $this->sessions->queueSessionCookie($sessionId);
 
         $maxFileBytes = (int) config('autocoach.max_file_bytes');
-        $maxBatch = (int) config('autocoach.max_files_per_batch', 10);
+        $maxBatch = (int) config('autocoach.max_files_per_batch', 7);
+        $maxDurationSeconds = (int) config('autocoach.max_duration_seconds', 30);
         $maxBatchBytes = min(
             $maxBatch * $maxFileBytes,
             (int) config('autocoach.max_session_bytes'),
@@ -42,6 +43,7 @@ class AutoCoachController extends Controller
                 'maxBatch' => $maxBatch,
                 'maxFileMb' => (int) ($maxFileBytes / 1024 / 1024),
                 'maxBatchMb' => max(1, (int) floor($maxBatchBytes / 1024 / 1024)),
+                'maxDurationSeconds' => $maxDurationSeconds,
                 'serverPostLimitMb' => max(1, $serverPostLimitMb),
                 'ttlMinutes' => (int) config('autocoach.upload_ttl_minutes', 30),
                 'ipQuotaWindow' => (int) config('autocoach.ip_quota_window_minutes', 5),

@@ -69,12 +69,15 @@ final class PaymentSuccessController extends Controller
         $payableId   = (int) ($intent?->payable_id ?? 0);
 
         $redirectRoute = match (true) {
-            str_ends_with($payableType, 'Pedido')     => route('pedidos'),
-            str_ends_with($payableType, 'Booking')    => route('rentals.surfboards.index'),
-            str_ends_with($payableType, 'LessonUser') => route('my-reservations.index'),
-            str_ends_with($payableType, 'UserBono')   => route('bonos.index'),
-            str_ends_with($payableType, 'PagoCuota')  => route('taquillas.index.client'),
-            default                                   => route('Pag_principal'),
+            str_ends_with($payableType, 'Pedido') => route('pedidos'),
+            str_ends_with($payableType, 'Booking') => route('rentals.surfboards.index'),
+            // Guest particular: sin cuenta → academia; alumno logueado → mis reservas
+            str_ends_with($payableType, 'LessonUser') => auth()->check()
+                ? route('my-reservations.index')
+                : route('academy.lessons.index'),
+            str_ends_with($payableType, 'UserBono') => route('bonos.index'),
+            str_ends_with($payableType, 'PagoCuota') => route('taquillas.index.client'),
+            default => route('Pag_principal'),
         };
 
         $fiscal = ($payableType !== '' && $payableId > 0)

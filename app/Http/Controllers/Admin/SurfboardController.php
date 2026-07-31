@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreSurfboardRequest;
 use App\Http\Requests\Admin\UpdateSurfboardRequest;
 use App\Models\PriceSchema;
 use App\Models\Surfboard;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -18,12 +19,48 @@ class SurfboardController extends Controller
     public function index(Request $request): Response
     {
         $surfboards = Surfboard::query()
-            ->with('priceSchema')
+            ->select([
+                'id',
+                'name',
+                'category',
+                'is_active',
+                'price_schema_id',
+                'image_url',
+                'image_alt',
+            ])
+            ->with(['priceSchema:id,name,price_24h'])
             ->orderBy('name')
             ->get();
 
         return Inertia::render('Admin/Surfboards/Index', [
             'surfboards' => $surfboards,
+        ]);
+    }
+
+    /**
+     * Detalle ligero para edición inline en el listado (JSON, carga perezosa).
+     */
+    public function detalle(Surfboard $surfboard): JsonResponse
+    {
+        return response()->json([
+            'surfboard' => [
+                'id' => $surfboard->id,
+                'name' => $surfboard->name,
+                'category' => $surfboard->category,
+                'is_active' => (bool) $surfboard->is_active,
+                'price_schema_id' => $surfboard->price_schema_id,
+                'description' => $surfboard->description,
+                'altura' => $surfboard->altura,
+                'ancho' => $surfboard->ancho,
+                'grosor' => $surfboard->grosor,
+                'volumen' => $surfboard->volumen,
+                'image_url' => $surfboard->image_url,
+                'image_alt' => $surfboard->image_alt,
+                'first_image_url' => $surfboard->first_image_url,
+            ],
+            'priceSchemas' => PriceSchema::query()
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ]);
     }
 
@@ -48,17 +85,6 @@ class SurfboardController extends Controller
         Surfboard::create($data);
 
         return redirect()->route('admin.surfboards.index')->with('success', 'Tabla creada correctamente.');
-    }
-
-    public function edit(Surfboard $surfboard): Response
-    {
-        $surfboard->load('priceSchema');
-        $priceSchemas = PriceSchema::query()->orderBy('name')->get();
-
-        return Inertia::render('Admin/Surfboards/Edit', [
-            'surfboard' => $surfboard,
-            'priceSchemas' => $priceSchemas,
-        ]);
     }
 
     public function update(UpdateSurfboardRequest $request, Surfboard $surfboard): RedirectResponse

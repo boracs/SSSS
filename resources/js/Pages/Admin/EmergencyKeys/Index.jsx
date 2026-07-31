@@ -9,12 +9,13 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { KeyRound, Power, ShieldCheck, History, KeySquare, RotateCcw } from "lucide-react";
+import { KeyRound, Power, PowerOff, ShieldCheck, History, KeySquare, RotateCcw } from "lucide-react";
 
 export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
     const { flash } = usePage().props;
     const [code, setCode] = useState(lock.current_code ?? "");
     const [saving, setSaving] = useState(false);
+    const [deactivating, setDeactivating] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -25,6 +26,15 @@ export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
         router.post(route("admin.emergency-keys.update-code"), { current_code: code }, {
             preserveScroll: true,
             onFinish: () => setSaving(false),
+        });
+    };
+
+    const deactivateLock = () => {
+        if (deactivating || !lock.is_active) return;
+        setDeactivating(true);
+        router.post(route("admin.emergency-keys.deactivate"), {}, {
+            preserveScroll: true,
+            onFinish: () => setDeactivating(false),
         });
     };
 
@@ -94,7 +104,7 @@ export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
                         <p className="mt-1 text-xs text-slate-400">
                             Tras guardar, el candado pasa automáticamente a ON.
                         </p>
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-3 flex flex-wrap gap-2">
                             <input
                                 type="text"
                                 inputMode="numeric"
@@ -113,6 +123,16 @@ export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
                             >
                                 <Power className="h-4 w-4" />
                                 {saving ? "Guardando…" : "Activar candado"}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={deactivateLock}
+                                disabled={deactivating || !lock.is_active}
+                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-bold text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                title={lock.is_active ? "Desactivar candado (OFF)" : "Ya está en OFF"}
+                            >
+                                <PowerOff className="h-4 w-4" />
+                                {deactivating ? "…" : "OFF"}
                             </button>
                         </div>
                     </form>

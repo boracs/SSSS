@@ -41,19 +41,24 @@ class BonoController extends Controller
             return redirect()->route('login');
         }
 
-        if (! (bool) ($user->is_vip ?? false)) {
-            return Inertia::render('Client/Bonos/VipRequired', [
-                'packs' => $this->activePacks(),
-                'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
-                'contactUrl' => route('contacto'),
-            ]);
+        $vipActive = (bool) ($user->is_vip ?? false);
+
+        if (! $vipActive) {
+            $hadBonos = UserBono::query()->where('user_id', $user->id)->exists();
+            if (! $hadBonos) {
+                return Inertia::render('Client/Bonos/VipRequired', [
+                    'packs' => $this->activePacks(),
+                    'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
+                    'contactUrl' => route('contacto'),
+                ]);
+            }
         }
 
-        $packs = $this->activePacks();
+        $packs = $vipActive ? $this->activePacks() : [];
 
         $userBonos = UserBono::query()
             ->with('pack:id,nombre,num_clases,precio')
-            ->where('user_id', $user?->id)
+            ->where('user_id', $user->id)
             ->orderByDesc('id')
             ->limit(30)
             ->get();
@@ -155,6 +160,7 @@ class BonoController extends Controller
             'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
+            'vipActive' => $vipActive,
         ]);
     }
 

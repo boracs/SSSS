@@ -65,6 +65,7 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'academyClassReservationDepositEur' => (float) config('services.academy.class_reservation_deposit_eur', 30),
+            'academyPrivateLessonDepositEur' => (float) config('services.academy.private_lesson_deposit_eur', 7),
 
             'sponsors' => collect(config('services.sponsors', []))
                 ->map(function (array $sponsor, string $id) {

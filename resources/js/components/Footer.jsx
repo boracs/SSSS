@@ -6,12 +6,12 @@ import SponsorsStrip from "./SponsorsStrip";
 const year = new Date().getFullYear();
 
 const footerLinkClass =
-    "inline-block text-sm font-medium text-slate-300 transition-colors duration-200 hover:text-cyan-300";
+    "inline-block text-sm font-medium text-slate-300 transition-colors duration-200 hover:text-s4-cyan";
 
 function FooterSection({ title, children, className = "" }) {
     return (
         <div className={className}>
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300/90">
+            <h3 className="font-heading text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300/90">
                 {title}
             </h3>
             <div className="mt-3">{children}</div>
@@ -40,7 +40,7 @@ function SocialButton({ href, label, children }) {
         <a
             href={href}
             aria-label={label}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-cyan-400/35 hover:bg-cyan-500/10 hover:text-cyan-200"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-s4-cyan/40 hover:bg-s4/20 hover:text-cyan-200"
         >
             {children}
         </a>
@@ -49,7 +49,7 @@ function SocialButton({ href, label, children }) {
 
 export default function Footer() {
     return (
-        <footer className="mt-16 border-t border-teal-500/20 bg-gradient-to-b from-brand-deep via-slate-900 to-slate-950 text-white">
+        <footer className="border-t border-s4/30 bg-gradient-to-b from-s4-deep via-slate-900 to-slate-950 text-white">
             <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-10">
                 {/* Marca — destacada en móvil */}
                 <div className="border-b border-white/10 pb-6 lg:hidden">
@@ -125,24 +125,16 @@ export default function Footer() {
                     </FooterSection>
                 </div>
 
-                <div className="mt-10 border-t border-white/10 pt-8">
+                <div className="mt-6 border-t border-white/10 pt-5 sm:mt-10 sm:pt-8">
                     <SponsorsStrip variant="dark" />
                 </div>
             </div>
 
             <div className="border-t border-white/10 bg-slate-950/50">
-                <div className="mx-auto flex max-w-7xl flex-col items-center gap-3 px-4 py-4 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left">
+                <div className="mx-auto max-w-7xl px-4 py-4 text-center sm:px-6 sm:text-left">
                     <p className="text-[11px] leading-relaxed text-slate-500 sm:text-xs">
                         © {year} San Sebastian Surf School · S4. Todos los derechos reservados.
                     </p>
-                    <div className="flex flex-wrap items-center justify-center gap-2 text-[10px] font-medium uppercase tracking-wide text-slate-500 sm:justify-end">
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
-                            Pagos seguros
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
-                            Bizum · IBAN
-                        </span>
-                    </div>
                 </div>
             </div>
         </footer>

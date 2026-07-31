@@ -10,8 +10,6 @@ use Illuminate\Support\Facades\DB;
 
 class TaquillaController extends Controller
 {
-
-
     public function showForm($success = null)
     {
         $usuarios = User::query()
@@ -24,6 +22,7 @@ class TaquillaController extends Controller
                 'email',
                 'telefono',
                 'numeroTaquilla',
+                'is_vip',
             ]);
 
         return Inertia::render('AsignarTaquilla', [
@@ -40,9 +39,10 @@ class TaquillaController extends Controller
             'numero_taquilla' => 'required|integer|min:1|max:9999',
         ]);
 
-        DB::transaction(function () use ($request) {
-            $numero = (int) $request->numero_taquilla;
+        $numero = (int) $request->numero_taquilla;
+        $newUserName = null;
 
+        DB::transaction(function () use ($request, $numero, &$newUserName) {
             if (VipVirtualLocker::allowsMultipleAssignments($numero)) {
                 $usuario = User::query()
                     ->whereKey((int) $request->usuario_id)
@@ -50,6 +50,7 @@ class TaquillaController extends Controller
                     ->firstOrFail();
                 $usuario->numeroTaquilla = $numero;
                 $usuario->save();
+                $newUserName = trim(($usuario->nombre ?? '').' '.($usuario->apellido ?? ''));
 
                 return;
             }
@@ -58,6 +59,9 @@ class TaquillaController extends Controller
                 ->where('numeroTaquilla', $numero)
                 ->lockForUpdate()
                 ->first();
+
+            // Solo se permite si está libre o ya es del mismo usuario (cambio a otra libre se hace
+            // actualizando su numeroTaquilla; la anterior queda libre al dejar de referenciarse).
             if ($ocupante && (int) $ocupante->id !== (int) $request->usuario_id) {
                 abort(422, 'Esa taquilla ya está asignada a otro usuario.');
             }
@@ -68,20 +72,43 @@ class TaquillaController extends Controller
                 ->firstOrFail();
             $usuario->numeroTaquilla = $numero;
             $usuario->save();
+            $newUserName = trim(($usuario->nombre ?? '').' '.($usuario->apellido ?? ''));
         });
 
-        return back()->with('success', 'Taquilla asignada correctamente.');
+        $newLabel = $newUserName !== null && $newUserName !== '' ? $newUserName : 'el nuevo socio';
+
+        return back()->with(
+            'success',
+            "Taquilla #{$numero} asignada correctamente a {$newLabel}."
+        );
     }
 
-    public function liberarTaquilla(User $user)
+    public function liberarTaquilla(Request $request, User $user)
     {
-        DB::transaction(function () use ($user) {
+        $request->validate([
+            'desasignar_vip' => 'sometimes|boolean',
+        ]);
+
+        $desasignarVip = $request->boolean('desasignar_vip');
+        $vipRemoved = false;
+
+        DB::transaction(function () use ($user, $desasignarVip, &$vipRemoved) {
             $target = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $target->numeroTaquilla = null;
+
+            if ($desasignarVip && (bool) $target->is_vip) {
+                $target->is_vip = false;
+                $vipRemoved = true;
+            }
+
             $target->save();
         });
 
-        return back()->with('success', 'Taquilla liberada correctamente.');
+        $message = $vipRemoved
+            ? 'Taquilla liberada y VIP desactivado correctamente.'
+            : 'Taquilla liberada correctamente.';
+
+        return back()->with('success', $message);
     }
 
     public function listaUsuarios()

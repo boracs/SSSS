@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "description": "Hechos públicos GEO sobre Zurriola y la logística de clases S4. Orientativos; no sustituyen el criterio del monitor ni el parte del día.",
+  "place": {
+    "beach_name": "Playa de la Zurriola",
+    "locality": "Donostia / San Sebastián",
+    "orientation": "NW",
+    "orientation_label": "Noroeste (NW)",
+    "break_type": "Beach break de arena",
+    "break_note": "Los fondos de arena cambian con temporales y corrientes. Este modelo es orientación empírica; la certeza absoluta no existe."
+  },
+  "school_to_beach": {
+    "meters": 20,
+    "label": "A pie de playa, a unos 20 metros de la Zurriola."
+  },
+  "consistency_note": "Es una playa que casi siempre tiene ola; rara vez está completamente plana.",
+  "seasons": [
+    {
+      "id": "winter",
+      "title": "Invierno (diciembre–marzo)",
+      "body": "Predominan vientos del noroeste. Al soplar de mar a tierra (onshore), el mar suele ir picado y revuelto: olas más grandes, pero a menudo de peor calidad. En esta época es habitual surfear en Zurriola."
+    },
+    {
+      "id": "shoulder",
+      "title": "Primavera y otoño (abril–mayo, parte de junio; finales de septiembre–noviembre)",
+      "body": "Suele haber más viento del sur (terral / offshore), el mar va más ordenado y las olas suelen tener mejor forma y fuerza. Buena ventana para quien quiere progresar de nivel."
+    },
+    {
+      "id": "summer",
+      "title": "Verano (junio–agosto)",
+      "body": "En general hay menos oleaje, más adecuado para principiantes, y vientos más suaves que suelen reforzarse a mediodía."
+    },
+    {
+      "id": "heavy_swell",
+      "title": "Mucho maretón / swell fuerte (fuera de verano)",
+      "body": "A veces se puede ir a La Concha (Donostia / San Sebastián), que normalmente está más plana y, con swell fuerte, puede coger ola. En invierno lo habitual es surfear en Zurriola."
+    }
+  ],
+  "summer_windows": [
+    {
+      "label": "Mañana",
+      "range": "Aprox. 6:30–10:00/11:00"
+    },
+    {
+      "label": "Tarde–noche",
+      "range": "Aprox. 19:00–22:00"
+    }
+  ],
+  "levels_intro": "Los niveles (iniciación / intermedio / avanzado) se orientan con bandas de energía en kJ del modelo operativo S4. Son orientación empírica, no una certeza absoluta.",
+  "energy_bands": [
+    {
+      "range_label": "< 50 kJ",
+      "iniciacion": "Sí — fuerza mínima / primer contacto",
+      "intermedio": "Escaso",
+      "avanzado": "No suele merecer la pena"
+    },
+    {
+      "range_label": "50–69 kJ",
+      "iniciacion": "Sí — espumas y ponerse de pie",
+      "intermedio": "Escaso",
+      "avanzado": "Aún no, en general"
+    },
+    {
+      "range_label": "70–99 kJ",
+      "iniciacion": "Sí",
+      "intermedio": "Todavía corto de fuerza",
+      "avanzado": "Escaso pero ya posible (~70–80 kJ)"
+    },
+    {
+      "range_label": "≥ 100 kJ",
+      "iniciacion": "Sí — pueden surfear todos",
+      "intermedio": "Sí — olas nobles para progresar",
+      "avanzado": "Sí — ola pequeña y técnica"
+    }
+  ],
+  "operations": {
+    "arrive_minutes_before": 15,
+    "text": "Recomendamos llegar a la escuela 15 minutos antes del horario de la clase, para estar ya con el neopreno puesto cuando empiece la sesión."
+  },
+  "material": {
+    "included": ["Neopreno", "Tabla"],
+    "bring": ["Toalla", "Chancletas", "Jabón"],
+    "text": "No hace falta traer material de surf: la clase incluye neopreno y tabla, que se entregan en la escuela. Trae solo lo personal: toalla, chancletas, jabón y poco más."
+  },
+  "cancellation_policy": null,
+  "faqs": [
+    {
+      "question": "¿Dónde está San Sebastian Surf School respecto a Zurriola?",
+      "answer": "En la playa de la Zurriola (Donostia / San Sebastián), a pie de playa, a unos 20 metros de la arena. Orientación NW; beach break de arena."
+    },
+    {
+      "question": "¿Cuándo suele haber mejores condiciones en Zurriola?",
+      "answer": "En primavera y otoño suele haber más viento del sur y el mar más ordenado. En verano hay menos oleaje (ideal para principiantes), con mejores franjas orientativas por la mañana temprano y al final del día. En invierno el onshore del NW pica el mar con más frecuencia."
+    },
+    {
+      "question": "¿Hay que llevar tabla o neopreno a la clase?",
+      "answer": "No. La clase incluye neopreno y tabla, que se entregan en la escuela. Trae toalla, chancletas, jabón y poco más. Llega unos 15 minutos antes para estar listo a la hora."
+    },
+    {
+      "question": "¿Zurriola se queda a menudo plana?",
+      "answer": "Rara vez. Es una playa que casi siempre tiene ola. Con swell muy fuerte fuera de verano, a veces La Concha puede coger ola; en invierno lo habitual es surfear en Zurriola."
+    }
+  ],
+  "disclaimer": "Orientación general de San Sebastian Surf School (S4). Condiciones reales según el parte del día, el monitor y el mar. Fondos de arena variables."
+}

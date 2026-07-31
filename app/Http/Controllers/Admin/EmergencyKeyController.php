@@ -51,6 +51,15 @@ class EmergencyKeyController extends Controller
             ->with('success', 'Codigo del candado actualizado. El candado vuelve a estar disponible (ON).');
     }
 
+    public function deactivateLock(): RedirectResponse
+    {
+        $this->emergencyKeyService->deactivateLock();
+
+        return redirect()
+            ->route('admin.emergency-keys.index')
+            ->with('success', 'Candado desactivado (OFF). No se pueden solicitar códigos hasta reactivarlo.');
+    }
+
     public function markKeyDeactivated(Request $request, EmergencyKeyRequest $emergencyKeyRequest): RedirectResponse
     {
         /** @var User $admin */

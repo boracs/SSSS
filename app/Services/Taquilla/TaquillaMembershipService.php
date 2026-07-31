@@ -16,7 +16,7 @@ use App\Http\Requests\Taquilla\SubirJustificanteTaquillaRequest;
 use App\Http\Requests\Taquilla\UpdatePagoTaquillaCheckedStateRequest;
 use App\Http\Requests\Taquilla\UpdatePagoTaquillaPaymentStateRequest;
 use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
-use App\Http\Resources\PagoCuotaQueueResource;
+use App\Http\Resources\PagoCuotaRegistryResource;
 use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
 use App\Models\User;
@@ -42,83 +42,188 @@ class TaquillaMembershipService
     ) {}
 
     /**
-     * @return array{planes: Collection<int, PlanTaquilla>, usuarios: Collection<int, array<string, mixed>>}
+     * @return list<array{id: int, nombre: string, precio_total: float, duracion_dias: int, activo: bool}>
+     */
+    public function buildAdminPlansPayload(): array
+    {
+        return PlanTaquilla::query()
+            ->orderByDesc('activo')
+            ->orderBy('precio_total_cents')
+            ->get(['id', 'nombre', 'precio_total_cents', 'duracion_dias', 'activo'])
+            ->map(fn (PlanTaquilla $plan): array => [
+                'id' => (int) $plan->id,
+                'nombre' => (string) $plan->nombre,
+                'precio_total' => MoneyCents::centsToEuros((int) $plan->precio_total_cents),
+                'duracion_dias' => (int) $plan->duracion_dias,
+                'activo' => (bool) $plan->activo,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Socios con taquilla: vigencia de cuota (sin historial de pagos; se carga bajo demanda).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function buildVigenciaPayload(): array
+    {
+        $today = now()->startOfDay();
+
+        return User::query()
+            ->whereNotNull('numeroTaquilla')
+            ->with([
+                'planVigente:id,nombre,duracion_dias,activo',
+                'pagosCuotas' => function ($q): void {
+                    $q->where('status', PagoCuota::STATUS_CONFIRMED)
+                        ->select('id', 'user_id', 'id_plan_pagado', 'periodo_inicio', 'periodo_fin', 'status')
+                        ->orderBy('periodo_inicio');
+                },
+            ])
+            ->orderBy('numeroTaquilla')
+            ->get()
+            ->map(function (User $u) use ($today): array {
+                $confirmedRows = $u->pagosCuotas;
+                $activeRow = $confirmedRows->first(function ($p) use ($today): bool {
+                    return $p->periodo_inicio && $p->periodo_fin
+                        && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today)
+                        && Carbon::parse($p->periodo_fin)->startOfDay()->gte($today);
+                });
+
+                $diasRestantes = null;
+                $estado = 'sin plan';
+                $ultimoPagoStr = null;
+                $fechaFinStr = null;
+                $prepaidExtraDays = 0;
+
+                if ($activeRow && $activeRow->periodo_fin) {
+                    $fechaFin = Carbon::parse($activeRow->periodo_fin);
+                    $diasRestantes = $today->diffInDays($fechaFin, false);
+                    $estado = 'activo';
+                    $ultimoPagoStr = optional($activeRow->periodo_inicio)->toDateString();
+                    $fechaFinStr = optional($activeRow->periodo_fin)->toDateString();
+                    $prepaidExtraDays = (int) $confirmedRows
+                        ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($fechaFin->copy()->startOfDay()))
+                        ->sum(function ($p): int {
+                            if (! $p->periodo_inicio || ! $p->periodo_fin) {
+                                return 0;
+                            }
+                            $start = Carbon::parse($p->periodo_inicio)->startOfDay();
+                            $end = Carbon::parse($p->periodo_fin)->startOfDay();
+
+                            return (int) ($start->diffInDays($end) + 1);
+                        });
+                } else {
+                    $estado = 'vencido';
+                    $lastRow = $confirmedRows
+                        ->filter(fn ($p) => $p->periodo_fin !== null)
+                        ->sortByDesc(fn ($p) => Carbon::parse($p->periodo_fin)->timestamp)
+                        ->first();
+                    if ($lastRow) {
+                        $fechaFin = Carbon::parse($lastRow->periodo_fin);
+                        $diasRestantes = $today->diffInDays($fechaFin, false);
+                        $ultimoPagoStr = optional($lastRow->periodo_inicio)->toDateString();
+                        $fechaFinStr = optional($lastRow->periodo_fin)->toDateString();
+                    }
+                }
+
+                return [
+                    'id' => $u->id,
+                    'nombre' => $u->nombre,
+                    'apellido' => $u->apellido,
+                    'email' => $u->email,
+                    'telefono' => $u->telefono,
+                    'numeroTaquilla' => $u->numeroTaquilla,
+                    'plan_vigente' => $u->planVigente
+                        ? [
+                            'id' => $u->planVigente->id,
+                            'nombre' => $u->planVigente->nombre,
+                            'duracion_dias' => $u->planVigente->duracion_dias,
+                            'activo' => (bool) $u->planVigente->activo,
+                        ]
+                        : null,
+                    'ultimo_pago' => $ultimoPagoStr,
+                    'fecha_fin' => $fechaFinStr,
+                    'dias_restantes' => $diasRestantes,
+                    'estado' => $estado,
+                    'prepaid_extra_days' => $prepaidExtraDays,
+                    'payment_status' => $activeRow?->status ?? PagoCuota::STATUS_PENDING,
+                    'baja_solicitada_at' => optional($u->taquilla_baja_solicitada_at)->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    public function toggleBajaSolicitada(User $user): User
+    {
+        return DB::transaction(function () use ($user): User {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $locked->taquilla_baja_solicitada_at = $locked->taquilla_baja_solicitada_at ? null : now();
+            $locked->save();
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * Baja efectiva: libera la taquilla y limpia el aviso de baja.
+     * No toca is_vip (eso sigue en el asignador / flujo VIP).
+     */
+    public function confirmarBajaTaquilla(User $user): User
+    {
+        return DB::transaction(function () use ($user): User {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->taquilla_baja_solicitada_at === null) {
+                throw ValidationException::withMessages([
+                    'user' => ['Este socio no tiene un aviso de baja marcado.'],
+                ]);
+            }
+
+            if ($locked->numeroTaquilla === null) {
+                throw ValidationException::withMessages([
+                    'user' => ['Este socio ya no tiene taquilla asignada.'],
+                ]);
+            }
+
+            $locked->numeroTaquilla = null;
+            $locked->taquilla_baja_solicitada_at = null;
+            $locked->save();
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * El socio comunica desde la web que quiere darse de baja.
+     * Solo marca la fecha del primer aviso (idempotente si ya existía).
+     */
+    public function marcarBajaSolicitadaPorCliente(User $user): User
+    {
+        return DB::transaction(function () use ($user): User {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->taquilla_baja_solicitada_at === null) {
+                $locked->taquilla_baja_solicitada_at = now();
+                $locked->save();
+            }
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * @deprecated Prefer buildAdminPlansPayload / buildVigenciaPayload.
+     *
+     * @return array{planes: list<array<string, mixed>>, usuarios: list<array<string, mixed>>}
      */
     public function buildAdminDashboard(): array
     {
-        $planes = PlanTaquilla::query()
-            ->orderByDesc('activo')
-            ->orderBy('precio_total_cents')
-            ->get();
-
-        $today = now()->startOfDay();
-        $usuarios = User::with([
-            'planVigente',
-            'pagosCuotas' => function ($q): void {
-                $q->where('status', PagoCuota::STATUS_CONFIRMED)
-                    ->select('id', 'user_id', 'id_plan_pagado', 'periodo_inicio', 'periodo_fin', 'status')
-                    ->orderBy('periodo_inicio');
-            },
-        ])->get()->map(function (User $u) use ($today): array {
-            $confirmedRows = $u->pagosCuotas;
-            $activeRow = $confirmedRows->first(function ($p) use ($today): bool {
-                return $p->periodo_inicio && $p->periodo_fin
-                    && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today)
-                    && Carbon::parse($p->periodo_fin)->startOfDay()->gte($today);
-            });
-
-            $diasRestantes = null;
-            $estado = 'sin plan';
-            $ultimoPagoStr = null;
-            $fechaFinStr = null;
-            $prepaidExtraDays = 0;
-
-            if ($activeRow && $activeRow->periodo_fin) {
-                $fechaFin = Carbon::parse($activeRow->periodo_fin);
-                $diasRestantes = $today->diffInDays($fechaFin, false);
-                $estado = 'activo';
-                $ultimoPagoStr = optional($activeRow->periodo_inicio)->toDateString();
-                $fechaFinStr = optional($activeRow->periodo_fin)->toDateString();
-                $prepaidExtraDays = (int) $confirmedRows
-                    ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($fechaFin->startOfDay()))
-                    ->sum(function ($p): int {
-                        if (! $p->periodo_inicio || ! $p->periodo_fin) {
-                            return 0;
-                        }
-                        $start = Carbon::parse($p->periodo_inicio)->startOfDay();
-                        $end = Carbon::parse($p->periodo_fin)->startOfDay();
-
-                        return (int) ($start->diffInDays($end) + 1);
-                    });
-            } elseif ($u->hasPhysicalLocker()) {
-                $estado = 'vencido';
-            }
-
-            return [
-                'id' => $u->id,
-                'nombre' => $u->nombre,
-                'apellido' => $u->apellido,
-                'email' => $u->email,
-                'telefono' => $u->telefono,
-                'numeroTaquilla' => $u->numeroTaquilla,
-                'plan_vigente' => $u->planVigente
-                    ? [
-                        'id' => $u->planVigente->id,
-                        'nombre' => $u->planVigente->nombre,
-                        'duracion_dias' => $u->planVigente->duracion_dias,
-                        'activo' => (bool) $u->planVigente->activo,
-                    ]
-                    : null,
-                'ultimo_pago' => $ultimoPagoStr,
-                'fecha_fin' => $fechaFinStr,
-                'dias_restantes' => $diasRestantes,
-                'estado' => $estado,
-                'prepaid_extra_days' => $prepaidExtraDays,
-                'payment_status' => $activeRow?->status ?? PagoCuota::STATUS_PENDING,
-            ];
-        });
-
-        return ['planes' => $planes, 'usuarios' => $usuarios];
+        return [
+            'planes' => $this->buildAdminPlansPayload(),
+            'usuarios' => $this->buildVigenciaPayload(),
+        ];
     }
 
     /**
@@ -203,6 +308,7 @@ class TaquillaMembershipService
                 ] : null,
                 'ultimo_plan_fin' => optional($ultimoPago)->periodo_fin,
                 'historial_pagos' => $historialPagos,
+                'baja_solicitada_at' => optional($user->taquilla_baja_solicitada_at)->toIso8601String(),
             ],
             'planes' => $planes,
         ];
@@ -513,9 +619,11 @@ class TaquillaMembershipService
     }
 
     /**
+     * Historial de pagos de cuota de taquilla + datos de vigencia/socios.
+     *
      * @return array<string, mixed>
      */
-    public function buildPaymentQueuePayload(string $status, string $search, bool $pendingOnly): array
+    public function buildPaymentLogPayload(string $status, string $search): array
     {
         $rows = PagoCuota::query()
             ->with([
@@ -523,7 +631,6 @@ class TaquillaMembershipService
                 'plan:id,nombre,duracion_dias,precio_total_cents',
             ])
             ->when($status !== 'all', fn ($q) => $q->where('status', $status))
-            ->when($pendingOnly, fn ($q) => $q->whereNull('reviewed_at'))
             ->when($search !== '', function ($q) use ($search): void {
                 $q->where(function ($outer) use ($search): void {
                     $outer->whereHas('user', function ($u) use ($search): void {
@@ -543,14 +650,9 @@ class TaquillaMembershipService
                     }
                 });
             })
+            ->orderByDesc('fecha_pago')
             ->orderByDesc('created_at')
             ->limit(300)
-            ->get();
-
-        $userOptionsSource = User::query()
-            ->select('id', 'nombre', 'apellido', 'email', 'telefono', 'numeroTaquilla', 'fecha_vencimiento_cuota')
-            ->orderBy('nombre')
-            ->orderBy('apellido')
             ->get();
 
         $lockerUsersSource = User::query()
@@ -559,7 +661,7 @@ class TaquillaMembershipService
             ->get(['id', 'nombre', 'apellido', 'email', 'telefono', 'numeroTaquilla', 'fecha_vencimiento_cuota']);
 
         $index = $this->lockerPaymentIndex->build(
-            $userOptionsSource->pluck('id')->merge($lockerUsersSource->pluck('id'))->unique(),
+            $lockerUsersSource->pluck('id')->unique(),
         );
 
         $availabilityUserIds = $rows->pluck('user_id')
@@ -569,30 +671,18 @@ class TaquillaMembershipService
         $availabilityMap = $this->lockerPaymentIndex->computeAvailabilityMap($availabilityUserIds);
 
         return [
-            'rows' => $this->enrichQueueRowsWithReceipts($rows, $availabilityMap),
+            'rows' => $this->enrichRegistryRowsWithReceipts($rows, $availabilityMap),
             'activePlanSummary' => $this->buildActivePlanSummaryToday(),
             'counts' => [
                 'all' => (int) PagoCuota::query()->count(),
                 'pending' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_PENDING)->count(),
                 'confirmed' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_CONFIRMED)->count(),
                 'rejected' => (int) PagoCuota::query()->where('status', PagoCuota::STATUS_REJECTED)->count(),
-                'unreviewed' => (int) PagoCuota::query()->whereNull('reviewed_at')->count(),
             ],
             'filters' => [
                 'status' => $status,
                 'search' => $search,
-                'pending_review' => $pendingOnly,
             ],
-            'userOptions' => $userOptionsSource
-                ->map(fn (User $u) => [
-                    'id' => $u->id,
-                    'name' => trim(($u->nombre ?? '').' '.($u->apellido ?? '')),
-                    'email' => $u->email,
-                    'phone' => $u->telefono,
-                    'locker' => $u->numeroTaquilla,
-                    'plan_status' => $this->lockerPaymentIndex->resolvePlanStatus($u, $index),
-                ])
-                ->values(),
             'lockerUsers' => $lockerUsersSource
                 ->map(function (User $u) use ($index, $availabilityMap): array {
                     $row = $this->lockerPaymentIndex->mapLockerUserRow($u, $index);
@@ -986,10 +1076,10 @@ class TaquillaMembershipService
      * @param  \Illuminate\Support\Collection<int, PagoCuota>  $rows
      * @return list<array<string, mixed>>
      */
-    private function enrichQueueRowsWithReceipts(Collection $rows, array $availabilityMap = []): array
+    private function enrichRegistryRowsWithReceipts(Collection $rows, array $availabilityMap = []): array
     {
         $rowsList = $rows->values();
-        $resolved = PagoCuotaQueueResource::collection($rowsList)->resolve();
+        $resolved = PagoCuotaRegistryResource::collection($rowsList)->resolve();
         $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
             $rowsList->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])->all(),
         );

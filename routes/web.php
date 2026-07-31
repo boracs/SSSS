@@ -29,14 +29,20 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Rentals\BookingController as RentalsBookingController;
 use App\Http\Controllers\Rentals\SurfboardController as RentalsSurfboardController;
 use App\Http\Controllers\SecondHandBoardController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\User\MyProfileController;
 use App\Http\Controllers\User\MyReservationsController;
 use App\Http\Middleware\VerificarAdmin;
 use App\Http\Middleware\VerificarTaquilla;
+use App\Services\Seo\PublicPageSeoService;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// SEO: robots + sitemap (sin Inertia; sustituyen public/robots.txt estático)
+Route::get('/robots.txt', [SitemapController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [SitemapController::class, 'sitemap'])->name('seo.sitemap');
 
 // Rutas PUBLICAS DE TODOS LSO USUARIOS (incluso NO REGISTRADOS)
 // tema de cuentas login  y registro
@@ -47,8 +53,10 @@ Route::post('/register', [RegisteredUserController::class, 'store']);
 // PAGINA PRINCIPAL (ruta pública, sin middleware auth)
 Route::get('/', [Pag_principalController::class, 'index'])->name('Pag_principal');
 // NOSOTROS
-Route::get('/nosotros', function () {
-    return Inertia::render('Nosotros');
+Route::get('/nosotros', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Nosotros', [
+        'seo' => $pageSeo->nosotros()->toArray(),
+    ]);
 })->name('nosotros');
 // TIENDA — tienda única oficial S4
 Route::get('/tienda', [TiendaController::class, 'index'])->name('tienda');
@@ -69,11 +77,17 @@ Route::middleware(['auth', 'auction.access'])->group(function () {
 
 // TALLER DE SURF — Blog / guías SEO
 Route::get('/taller', [ArticleController::class, 'index'])->name('taller.index');
+Route::get('/taller/{article:slug}/related', [ArticleController::class, 'related'])
+    ->middleware('throttle:30,1')
+    ->name('taller.related');
 Route::get('/taller/{article:slug}', [ArticleController::class, 'show'])->name('taller.show');
 
+
 // CONTACTO
-Route::get('/contacto', function () {
-    return Inertia::render('Contacto');
+Route::get('/contacto', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Contacto', [
+        'seo' => $pageSeo->contacto()->toArray(),
+    ]);
 })->name('contacto');
 Route::post('/contacto', [ContactMessageController::class, 'store'])
     ->middleware('throttle:3,1')
@@ -83,7 +97,13 @@ Route::post('/contacto', [ContactMessageController::class, 'store'])
 Route::post('/webhooks/stripe', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.stripe');
 
-// ── Retorno desde Stripe Checkout ──
+// ── Retorno desde Stripe Checkout (público: alquiler/particular guest no tienen sesión) ──
+Route::get('/pago/exito', [PaymentSuccessController::class, 'show'])
+    ->name('payment.success');
+Route::get('/pago/cancelado', function () {
+    return redirect()->back()->with('info', 'Has cancelado el proceso de pago. Puedes intentarlo de nuevo cuando quieras.');
+})->name('payment.cancelled');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/pagos/recibos/{paymentReceipt}', [\App\Http\Controllers\Payments\PaymentReceiptController::class, 'show'])
         ->name('payments.receipts.show');
@@ -91,16 +111,11 @@ Route::middleware(['auth'])->group(function () {
         ->name('payments.fiscal-invoices.show');
     Route::get('/pagos/facturas/{fiscalInvoice}/pdf', [\App\Http\Controllers\Payments\FiscalInvoiceController::class, 'pdf'])
         ->name('payments.fiscal-invoices.pdf');
-    Route::get('/pago/exito', [PaymentSuccessController::class, 'show'])
-        ->name('payment.success');
-    Route::get('/pago/cancelado', function () {
-        return redirect()->back()->with('info', 'Has cancelado el proceso de pago. Puedes intentarlo de nuevo cuando quieras.');
-    })->name('payment.cancelled');
 });
 // PRODUCTO INDIV
 Route::get('/producto-ver/{productoId}', [ProductoController::class, 'ver'])->name('producto.ver');
 // SERVICIOS
-Route::get('/servicios', function () {
+Route::get('/servicios', function (PublicPageSeoService $pageSeo) {
     $edy = config('services.repair.edy', []);
     $edyPhoneDigits = preg_replace('/\D+/', '', (string) ($edy['phone'] ?? ''));
     $edyPhoneDisplay = trim((string) ($edy['phone_display'] ?? ''));
@@ -134,9 +149,10 @@ Route::get('/servicios', function () {
             'email' => $edyEmail !== '' ? $edyEmail : null,
             'whatsappUrl' => $edyWhatsappUrl,
         ],
+        'seo' => $pageSeo->servicios()->toArray(),
     ]);
 })->name('servicios');
-Route::get('/servicios/reparacion-neoprenos', function () {
+Route::get('/servicios/reparacion-neoprenos', function (PublicPageSeoService $pageSeo) {
     $willy = config('services.repair.willy', []);
     $willyPhoneDigits = preg_replace('/\D+/', '', (string) ($willy['phone'] ?? ''));
     $willyPhoneDisplay = trim((string) ($willy['phone_display'] ?? ''));
@@ -170,34 +186,51 @@ Route::get('/servicios/reparacion-neoprenos', function () {
             'email' => $willyEmail !== '' ? $willyEmail : null,
             'whatsappUrl' => $willyWhatsappUrl,
         ],
+        'seo' => $pageSeo->serviciosReparacionNeoprenos()->toArray(),
     ]);
 })->name('servicios.reparacionNeoprenos');
-Route::get('/servicios/surf', function () {
-    return Inertia::render('Servicios_ClasesDeSurf');
+Route::get('/servicios/surf', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_ClasesDeSurf', [
+        'seo' => $pageSeo->serviciosSurf()->toArray(),
+    ]);
 })->name('servicios.surf');
-Route::get('/servicios/surf-skate', function () {
-    return Inertia::render('Servicios_SurfSkate');
+Route::get('/servicios/surf-skate', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_SurfSkate', [
+        'seo' => $pageSeo->serviciosSurfSkate()->toArray(),
+    ]);
 })->name('servicios.surfSkate');
-Route::get('/servicios/surf-skate/guia-equipamiento', function () {
-    return Inertia::render('Servicios_SurfskateGuia');
+Route::get('/servicios/surf-skate/guia-equipamiento', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_SurfskateGuia', [
+        'seo' => $pageSeo->serviciosSurfSkateGuia()->toArray(),
+    ]);
 })->name('servicios.surfSkate.guia');
-Route::get('/servicios/surf-trips', function () {
-    return Inertia::render('Servicios_SurfTrips');
+Route::get('/servicios/surf-trips', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_SurfTrips', [
+        'seo' => $pageSeo->serviciosSurfTrips()->toArray(),
+    ]);
 })->name('servicios.surfTrips');
-Route::get('/servicios/fotos', function () {
-    return Inertia::render('Servicios_Fotos');
+Route::get('/servicios/fotos', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_Fotos', [
+        'seo' => $pageSeo->serviciosFotos()->toArray(),
+    ]);
 })->name('servicios.fotografia');
-Route::get('/servicios/videograbaciones', function () {
-    return Inertia::render('Servicios_Videograbaciones');
+Route::get('/servicios/videograbaciones', function (PublicPageSeoService $pageSeo) {
+    return Inertia::render('Servicios_Videograbaciones', [
+        'seo' => $pageSeo->serviciosVideograbaciones()->toArray(),
+    ]);
 })->name('servicios.videograbaciones');
 Route::get('/servicios/webcams', function (
     \Illuminate\Http\Request $request,
     \App\Services\SurfConditions\SurfDailyBriefService $surfBriefService,
     \App\Services\SurfConditions\SurfForecastTableService $surfForecastService,
+    \App\Services\SurfConditions\ZurriolaGeoFactsService $zurriolaGeoFacts,
+    PublicPageSeoService $pageSeo,
 ) {
     return Inertia::render('Servicios_Webcams', [
         'surfBrief' => $surfBriefService->publicPayload($request),
         'surfForecast' => $surfForecastService->publicPayload(),
+        'zurriolaGeo' => $zurriolaGeoFacts->publicPayload(),
+        'seo' => $pageSeo->webcams()->toArray(),
     ]);
 })->name('servicios.webcams');
 Route::post('/servicios/webcams/parte/reaccion', [\App\Http\Controllers\SurfBriefReactionController::class, 'store'])
@@ -244,14 +277,25 @@ Route::get('/taquillas/planes-y-cuotas', [PlanesTaquillasController::class, 'pub
     ->name('taquillas.planes');
 
 // ==========================
-// ACADEMIA (clases con créditos)
+// ACADEMIA
 // ==========================
-Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
+// Catálogo público + particular/grupal guest (señal). VIP y semanal enrollment siguen autenticados.
+Route::prefix('academia')->name('academy.')->group(function () {
     Route::get('/', [\App\Http\Controllers\Academy\LessonController::class, 'index'])->name('lessons.index');
-    Route::post('/lessons/{lesson}/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestLesson'])->name('lessons.request');
+    Route::get('/particular/availability', [\App\Http\Controllers\Academy\LessonController::class, 'privateAvailability'])
+        ->middleware('throttle:60,1')
+        ->name('private.availability');
+    Route::post('/particular/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestPrivateLesson'])
+        ->middleware('throttle:10,1')
+        ->name('private.request');
+    Route::post('/lessons/{lesson}/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestLesson'])
+        ->middleware('throttle:10,1')
+        ->name('lessons.request');
+});
+
+// Acciones de alumno autenticado (VIP, pagar pendiente, cancelar, justificantes…)
+Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
     Route::post('/lessons/{lesson}/pay', [\App\Http\Controllers\Academy\LessonController::class, 'payPendingEnrollment'])->name('lessons.pay');
-    Route::get('/particular/availability', [\App\Http\Controllers\Academy\LessonController::class, 'privateAvailability'])->name('private.availability');
-    Route::post('/particular/request', [\App\Http\Controllers\Academy\LessonController::class, 'requestPrivateLesson'])->name('private.request');
     Route::post('/lessons/{lesson}/upload-proof', [\App\Http\Controllers\Academy\LessonController::class, 'uploadProof'])->name('lessons.upload-proof');
     Route::post('/lessons/{lesson}/manual-confirm-payment', [\App\Http\Controllers\Academy\LessonController::class, 'confirmManualPayment'])->name('lessons.manual-confirm-payment');
     Route::post('/lessons/{lesson}/enroll', [\App\Http\Controllers\Academy\LessonController::class, 'enroll'])->name('lessons.enroll');
@@ -329,6 +373,9 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     Route::post('/taquilla/registrar-pago', [PlanesTaquillasController::class, 'registrarPago'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.client');
+    Route::post('/taquilla/comunicar-baja', [PlanesTaquillasController::class, 'comunicarBaja'])
+        ->middleware('throttle:5,1')
+        ->name('taquillas.comunicar-baja');
     Route::post('/taquilla/pagos/{pago}/pagar', [PlanesTaquillasController::class, 'payPendingPago'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.pay');
@@ -387,10 +434,16 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
     // ADMINPANEL  DE TAQUILLAS Y PLANES
     // 1. Ruta principaPLANES TAQUILLASl: Muestra la lista de planes y el estado de lso usuarios si estana ctivo ....m uestra el panel de admin
     Route::get('/taquilla/admin/index', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
+    Route::get('/taquilla/admin/vigencia', [PlanesTaquillasController::class, 'vigenciaIndex'])->name('taquilla.vigencia');
+    Route::patch('/taquilla/admin/usuarios/{user}/baja-solicitada', [PlanesTaquillasController::class, 'toggleBajaSolicitada'])
+        ->name('taquilla.usuarios.baja-solicitada');
+    Route::patch('/taquilla/admin/usuarios/{user}/confirmar-baja', [PlanesTaquillasController::class, 'confirmarBaja'])
+        ->name('taquilla.usuarios.confirmar-baja');
     Route::post('/taquilla/admin/planes', [PlanesTaquillasController::class, 'storePlan'])->name('taquilla.planes.store');
     Route::put('/taquilla/admin/planes/{plan}', [PlanesTaquillasController::class, 'updatePlan'])->name('taquilla.planes.update');
     Route::patch('/taquilla/admin/planes/{plan}/toggle-active', [PlanesTaquillasController::class, 'togglePlanActive'])->name('taquilla.planes.toggle-active');
-    Route::get('/taquilla/admin/pagos/cola', [PlanesTaquillasController::class, 'colaPagos'])->name('taquilla.pagos.queue');
+    Route::get('/taquilla/admin/pagos/registro', [PlanesTaquillasController::class, 'registroPagos'])->name('taquilla.pagos.registro');
+    Route::redirect('/taquilla/admin/pagos/cola', '/taquilla/admin/pagos/registro');
     Route::patch('/taquilla/admin/pagos/{pago}/reviewed', [PlanesTaquillasController::class, 'markPagoTaquillaReviewed'])->name('taquilla.pagos.reviewed');
     Route::patch('/taquilla/admin/pagos/{pago}/payment-state', [PlanesTaquillasController::class, 'updatePagoTaquillaPaymentState'])->name('taquilla.pagos.payment-state');
     Route::patch('/taquilla/admin/pagos/{pago}/checked-state', [PlanesTaquillasController::class, 'updatePagoTaquillaCheckedState'])->name('taquilla.pagos.checked-state');
@@ -404,7 +457,9 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
 
     // Surfboards y reservas (prefijo /admin)
     Route::prefix('admin')->name('admin.')->group(function () {
-        Route::resource('surfboards', AdminSurfboardController::class)->except(['show']);
+        Route::resource('surfboards', AdminSurfboardController::class)->except(['show', 'edit']);
+        Route::get('surfboards/{surfboard}/detalle', [AdminSurfboardController::class, 'detalle'])
+            ->name('surfboards.detalle');
 
         // Segunda Mano — gestión admin completa
         Route::resource('second-hand', AdminSecondHandBoardController::class)
@@ -496,6 +551,7 @@ Route::middleware(['auth', 'verified', 'role:admin'])
     ->group(function () {
         Route::get('emergency-keys', [AdminEmergencyKeyController::class, 'index'])->name('emergency-keys.index');
         Route::post('emergency-keys/lock-code', [AdminEmergencyKeyController::class, 'updateCode'])->name('emergency-keys.update-code');
+        Route::post('emergency-keys/deactivate', [AdminEmergencyKeyController::class, 'deactivateLock'])->name('emergency-keys.deactivate');
         Route::patch('emergency-keys/requests/{emergencyKeyRequest}/deactivate', [AdminEmergencyKeyController::class, 'markKeyDeactivated'])
             ->name('emergency-keys.mark-deactivated');
         Route::patch('emergency-keys/requests/{emergencyKeyRequest}/resolve', [AdminEmergencyKeyController::class, 'resolveKeyRequest'])

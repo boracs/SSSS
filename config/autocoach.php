@@ -5,10 +5,13 @@ return [
     'upload_ttl_minutes' => (int) env('AUTOCOACH_UPLOAD_TTL_MINUTES', 30),
 
     /** Máximo de archivos por petición de subida. */
-    'max_files_per_batch' => (int) env('AUTOCOACH_MAX_FILES_PER_BATCH', 10),
+    'max_files_per_batch' => (int) env('AUTOCOACH_MAX_FILES_PER_BATCH', 7),
 
     /** Tamaño máximo por clip (bytes) — clips cortos de ola. */
     'max_file_bytes' => (int) env('AUTOCOACH_MAX_FILE_BYTES', 25 * 1024 * 1024),
+
+    /** Duración máxima por clip (segundos). */
+    'max_duration_seconds' => (int) env('AUTOCOACH_MAX_DURATION_SECONDS', 30),
 
     /** Cuota de almacenamiento por sesión de visitante (bytes). */
     'max_session_bytes' => (int) env('AUTOCOACH_MAX_SESSION_BYTES', 120 * 1024 * 1024),

@@ -1,43 +1,61 @@
-import { usePage, router } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 import React, { useState } from "react";
 import { toast } from "react-toastify";
-import { Boxes, ShoppingCart, Lock } from "lucide-react";
 import { formatEur } from "@/utils/money";
+import { hasStoreAccess } from "@/utils/hasStoreAccess";
+import { demoCatalogImage, resolveCatalogImage } from "@/utils/demoCatalogImages";
+import StoreAccessPopover from "./StoreAccessPopover";
+import StoreAddToCartButton, {
+    StoreAddToCartLabel,
+    storeAddToCartClassName,
+} from "./StoreAddToCartButton";
 
-const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) => {
+/**
+ * Card de producto tienda S4 (superficie navy única).
+ * @param {"full"|"compact"} [density]
+ * @param {boolean} [compact] alias de density="compact" (slider ofertas / relacionados)
+ */
+const Producto = ({
+    nombre,
+    precio,
+    imagenes,
+    imagen,
+    unidades,
+    descuento,
+    producto,
+    density = "full",
+    compact = false,
+}) => {
+    const isCompact = compact || density === "compact";
     const { auth } = usePage().props;
     const user = auth?.user;
+    const puedeComprar = hasStoreAccess(user);
 
-    const tieneTaquilla =
-        user &&
-        (user.has_store_discount_access === true ||
-            String(user.has_store_discount_access) === "1" ||
-            (user.numeroTaquilla &&
-                user.numeroTaquilla !== 0 &&
-                user.numeroTaquilla !== "0" &&
-                user.numeroTaquilla !== null));
-
-    const raw = producto.imagenPrincipal ?? producto.imagen_principal;
-    const imageSource =
-        raw && typeof raw === "string" && !raw.includes("undefined")
-            ? raw.startsWith("http")
-                ? raw
-                : raw.startsWith("/")
-                  ? raw
-                  : `/storage/${raw.replace(/^\/+/, "")}`
-            : null;
+    const raw =
+        imagen ??
+        producto?.imagen ??
+        producto?.imagenPrincipal ??
+        producto?.imagen_principal ??
+        imagenes?.[0];
+    const [imageSrc, setImageSrc] = useState(() =>
+        resolveCatalogImage(raw, { id: producto?.id, nombre }),
+    );
 
     const precioNum = Number(precio || 0);
     const descuentoNum = Number(descuento || 0);
     const precioFinal =
         descuentoNum > 0 ? precioNum - (precioNum * descuentoNum) / 100 : precioNum;
-    const agotado = Number(unidades) === 0;
-    const stockBajo = Number(unidades) > 0 && Number(unidades) <= 3;
-    const [imageFailed, setImageFailed] = useState(false);
+    const ahorro = Math.max(0, precioNum - precioFinal);
+    const stock = Number(unidades);
+    const agotado = stock === 0;
+    const stockBajo = stock > 0 && stock <= 3;
     const [addingToCart, setAddingToCart] = useState(false);
-    const showImage = Boolean(imageSource) && !imageFailed;
+    const needsAccess = !puedeComprar;
+    const productHref = route("producto.ver", { productoId: producto.id });
 
-    const handleAgregarAlCarrito = (productoId) => {
+    const handleAgregarAlCarrito = (productoId, e) => {
+        e?.stopPropagation?.();
+        e?.preventDefault?.();
         if (addingToCart) return;
         setAddingToCart(true);
         router.post(
@@ -53,168 +71,182 @@ const Producto = ({ nombre, precio, imagenes, unidades, descuento, producto }) =
         );
     };
 
-    const handleVerProducto = (productoId) => {
-        router.get(
-            route("producto.ver", { productoId }),
-            {},
-            { preserveState: false, preserveScroll: true },
-        );
-    };
+    const padX = isCompact ? "px-2" : "px-3 sm:px-3.5";
 
     return (
-        <div
-            className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm cursor-pointer transition-all duration-300 hover:border-orange-400/40 hover:bg-white/10 hover:shadow-[0_8px_32px_rgba(251,146,60,0.15)] sm:rounded-2xl"
-            onClick={() => handleVerProducto(producto.id)}
+        <article
+            className={[
+                "group relative flex h-full min-w-0 flex-col overflow-visible border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-slate-500/60 hover:bg-white/[0.07] hover:shadow-[0_12px_36px_rgba(15,23,42,0.45)]",
+                isCompact ? "rounded-xl" : "rounded-2xl",
+            ].join(" ")}
         >
-            <div className="relative aspect-square overflow-hidden bg-slate-800/60 sm:aspect-[4/3]">
-                {showImage ? (
+            <Link
+                href={productHref}
+                preserveState={false}
+                preserveScroll
+                className="flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            >
+                <div
+                    className={[
+                        "relative overflow-hidden rounded-t-[inherit] bg-slate-800/70",
+                        isCompact ? "aspect-[5/4]" : "aspect-[4/3]",
+                    ].join(" ")}
+                >
                     <img
-                        src={imageSource}
-                        alt=""
-                        onError={() => setImageFailed(true)}
-                        className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-                            agotado ? "opacity-50 grayscale" : ""
-                        }`}
+                        src={imageSrc}
+                        alt={nombre}
+                        loading="lazy"
+                        decoding="async"
+                        onError={() => setImageSrc(demoCatalogImage(producto?.id, nombre))}
+                        className={[
+                            "h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]",
+                            agotado ? "opacity-40 grayscale" : "",
+                        ].join(" ")}
                     />
-                ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-2 text-center">
-                        <svg
-                            className="h-7 w-7 text-slate-600 sm:h-10 sm:w-10"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1}
-                            aria-hidden="true"
+
+                    {descuentoNum > 0 && !agotado ? (
+                        <span
+                            className={[
+                                "absolute left-2 top-2 rounded-md bg-rose-600 font-extrabold tabular-nums text-white shadow-md shadow-rose-900/35 ring-1 ring-white/25",
+                                isCompact
+                                    ? "px-1.5 py-0.5 text-[10px]"
+                                    : "px-1.5 py-0.5 text-[10px] sm:left-2.5 sm:top-2.5 sm:px-2 sm:text-[11px]",
+                            ].join(" ")}
                         >
-                            <rect x="3" y="3" width="18" height="18" rx="2" />
-                            <circle cx="8.5" cy="8.5" r="1.5" />
-                            <path d="M21 15l-5-5L5 21" />
-                        </svg>
-                        <span className="text-[8px] font-medium uppercase tracking-wide text-slate-500 sm:text-[10px]">
-                            Sin imagen
+                            -{parseInt(descuentoNum, 10)}%
                         </span>
-                    </div>
-                )}
+                    ) : null}
 
-                {descuentoNum > 0 && !agotado ? (
-                    <span className="absolute left-1 top-1 rounded-md bg-orange-500/90 px-1 py-0.5 text-[8px] font-bold text-white sm:left-2 sm:top-2 sm:rounded-lg sm:px-1.5 sm:text-[10px]">
-                        -{parseInt(descuentoNum, 10)}%
-                    </span>
-                ) : null}
-
-                {agotado && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50">
-                        <span className="rounded-lg border border-slate-400/30 bg-slate-900/80 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-300 sm:px-3 sm:py-1 sm:text-xs">
-                            Agotado
-                        </span>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex min-w-0 flex-1 flex-col p-2 sm:p-3 lg:p-4">
-                <div className="mb-1 flex items-start justify-between gap-1 sm:mb-2 sm:gap-2">
-                    <h2 className="min-w-0 flex-1 text-[11px] font-bold leading-tight text-white line-clamp-2 sm:text-sm lg:text-base">
-                        {nombre}
-                    </h2>
-                    {!agotado ? (
-                        <span className="inline-flex shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1 py-0.5 text-[7px] font-semibold text-emerald-400 sm:px-2 sm:text-[11px]">
-                            <span className="sm:hidden">●</span>
-                            <span className="hidden sm:inline">OK</span>
-                        </span>
+                    {agotado ? (
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45">
+                            <span
+                                className={[
+                                    "rounded-lg border border-white/15 bg-slate-950/80 font-bold uppercase tracking-wider text-slate-200",
+                                    isCompact
+                                        ? "px-2 py-0.5 text-[10px]"
+                                        : "px-2.5 py-1 text-[10px] sm:text-xs",
+                                ].join(" ")}
+                            >
+                                Agotado
+                            </span>
+                        </div>
                     ) : null}
                 </div>
 
-                <div className="mb-1.5 flex items-center gap-1 text-[9px] text-slate-500 sm:mb-2 sm:gap-1.5 sm:text-[11px]">
-                    <Boxes className="h-2.5 w-2.5 shrink-0 sm:h-3 sm:w-3" />
-                    {agotado ? (
-                        <span>Sin stock</span>
-                    ) : stockBajo ? (
-                        <span className="text-amber-400">
-                            <span className="sm:hidden">Quedan {unidades}</span>
-                            <span className="hidden sm:inline">
-                                Ultimas {unidades} unidad{Number(unidades) > 1 ? "es" : ""}
-                            </span>
-                        </span>
-                    ) : (
-                        <span className="truncate">
-                            <span className="sm:hidden">{unidades} uds</span>
-                            <span className="hidden sm:inline">{unidades} unidades disponibles</span>
-                        </span>
-                    )}
-                </div>
+                <div
+                    className={[
+                        "flex min-h-0 flex-1 flex-col",
+                        isCompact ? `gap-1.5 ${padX} pt-2` : `gap-2 ${padX} pt-3 sm:pt-3.5`,
+                    ].join(" ")}
+                >
+                    <h3
+                        className={[
+                            "line-clamp-2 font-bold leading-snug text-white",
+                            isCompact
+                                ? "min-h-[2.25rem] text-xs"
+                                : "min-h-[2.5rem] text-sm sm:min-h-[2.75rem] sm:text-[15px]",
+                        ].join(" ")}
+                    >
+                        {nombre}
+                    </h3>
 
-                <div className="mt-auto">
-                    {descuentoNum > 0 ? (
-                        <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5 sm:gap-x-2">
-                            <span className="text-sm font-extrabold tabular-nums text-orange-400 sm:text-lg">
-                                {formatEur(precioFinal)}
-                            </span>
-                            <span className="text-[9px] text-slate-500 line-through sm:text-xs">
+                    {!isCompact ? (
+                        <div className="text-xs text-slate-400">
+                            {agotado ? (
+                                <span className="font-medium text-slate-500">Agotado</span>
+                            ) : stockBajo ? (
+                                <span className="font-medium text-amber-400">
+                                    Últimas {stock} unidad{stock > 1 ? "es" : ""}
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400/90">
+                                    <span
+                                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
+                                        aria-hidden
+                                    />
+                                    En stock
+                                </span>
+                            )}
+                        </div>
+                    ) : null}
+
+                    <div
+                        className={`mt-auto flex flex-wrap items-baseline gap-1.5 sm:gap-2 ${isCompact ? "pt-0.5" : "pt-1"}`}
+                    >
+                        {descuentoNum > 0 ? (
+                            <>
+                                <span
+                                    className={[
+                                        "font-extrabold leading-none tracking-tight text-white tabular-nums",
+                                        isCompact ? "text-sm" : "text-lg sm:text-xl",
+                                    ].join(" ")}
+                                >
+                                    {formatEur(precioFinal)}
+                                </span>
+                                <span
+                                    className={[
+                                        "leading-none text-slate-400 line-through decoration-slate-400/80",
+                                        isCompact ? "text-[11px]" : "text-xs",
+                                    ].join(" ")}
+                                >
+                                    {formatEur(precioNum)}
+                                </span>
+                                {isCompact && ahorro > 0 ? (
+                                    <span className="rounded bg-rose-600/90 px-1 py-px text-[10px] font-bold tabular-nums text-white">
+                                        −{formatEur(ahorro)}
+                                    </span>
+                                ) : null}
+                            </>
+                        ) : (
+                            <span
+                                className={[
+                                    "font-extrabold leading-none tracking-tight text-white tabular-nums",
+                                    isCompact ? "text-sm" : "text-lg sm:text-xl",
+                                ].join(" ")}
+                            >
                                 {formatEur(precioNum)}
                             </span>
-                        </div>
-                    ) : (
-                        <span className="text-sm font-extrabold tabular-nums text-cyan-300 sm:text-lg">
-                            {formatEur(precioNum)}
-                        </span>
-                    )}
+                        )}
+                    </div>
                 </div>
+            </Link>
 
-                <div className="mt-1.5 sm:mt-3">
-                    {user ? (
-                        tieneTaquilla ? (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAgregarAlCarrito(producto.id);
-                                }}
-                                disabled={agotado || addingToCart}
-                                className={`flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[10px] font-bold tracking-wide text-white transition-all duration-200 sm:gap-1.5 sm:rounded-xl sm:py-2.5 sm:text-sm ${
-                                    agotado || addingToCart
-                                        ? "cursor-not-allowed bg-slate-700/60 text-slate-500"
-                                        : "bg-gradient-to-r from-emerald-500 to-teal-500 shadow-md shadow-emerald-500/25 hover:from-emerald-600 hover:to-teal-600 active:scale-[0.98]"
-                                }`}
-                            >
-                                {agotado ? (
-                                    "Agotado"
-                                ) : addingToCart ? (
-                                    "..."
-                                ) : (
-                                    <>
-                                        <ShoppingCart className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                        <span className="sm:hidden">Carrito</span>
-                                        <span className="hidden sm:inline">Anadir al carrito</span>
-                                    </>
-                                )}
-                            </button>
+            <div
+                className={[
+                    "mt-auto",
+                    isCompact ? `${padX} pb-2 pt-1.5` : `${padX} pb-3 pt-2.5 sm:pb-3.5`,
+                ].join(" ")}
+            >
+                {!needsAccess ? (
+                    <StoreAddToCartButton
+                        surface="dark"
+                        compact={isCompact}
+                        shortLabel={isCompact}
+                        disabled={agotado}
+                        loading={addingToCart}
+                        onClick={(e) => handleAgregarAlCarrito(producto.id, e)}
+                    >
+                        {agotado ? "Agotado" : undefined}
+                    </StoreAddToCartButton>
+                ) : (
+                    <StoreAccessPopover
+                        disabled={agotado}
+                        portal={isCompact}
+                        triggerClassName={storeAddToCartClassName({
+                            disabled: agotado,
+                            surface: "dark",
+                            compact: isCompact,
+                        })}
+                    >
+                        {agotado ? (
+                            "Agotado"
                         ) : (
-                            <button
-                                type="button"
-                                onClick={(e) => e.stopPropagation()}
-                                className="group/btn relative flex w-full cursor-not-allowed items-center justify-center gap-1 rounded-lg bg-amber-600/80 py-1.5 text-[10px] font-bold text-white opacity-80 sm:gap-1.5 sm:rounded-xl sm:py-2.5 sm:text-sm"
-                                disabled
-                            >
-                                <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                                <span className="sm:hidden">Taquilla</span>
-                                <span className="hidden sm:inline">Taquilla requerida</span>
-                            </button>
-                        )
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={(e) => e.stopPropagation()}
-                            className="group/btn relative flex w-full cursor-not-allowed items-center justify-center gap-1 rounded-lg bg-slate-700/60 py-1.5 text-[10px] font-bold text-slate-300 sm:gap-1.5 sm:rounded-xl sm:py-2.5 sm:text-sm"
-                            disabled
-                        >
-                            <Lock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
-                            <span className="sm:hidden">Entrar</span>
-                            <span className="hidden sm:inline">Iniciar sesion</span>
-                        </button>
-                    )}
-                </div>
+                            <StoreAddToCartLabel compact={isCompact} shortLabel={isCompact} />
+                        )}
+                    </StoreAccessPopover>
+                )}
             </div>
-        </div>
+        </article>
     );
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
+import SeoHead from "../../components/seo/SeoHead";
 import { Ruler, Droplets, Tag, Search, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 
 const EUR = new Intl.NumberFormat("es-ES", {
@@ -133,7 +134,7 @@ const selectClass =
 const sortButtonClass =
     "inline-flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 py-2.5 pl-3 pr-3 text-sm text-slate-200 outline-none transition hover:border-orange-400/40 hover:bg-white/10 focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 sm:w-auto sm:min-w-[180px]";
 
-export default function SecondHandIndex({ boards }) {
+export default function SecondHandIndex({ boards, seo = null }) {
     const [search, setSearch] = useState("");
     const [heightFilter, setHeightFilter] = useState("all");
     const [volumeFilter, setVolumeFilter] = useState("all");
@@ -194,6 +195,7 @@ export default function SecondHandIndex({ boards }) {
 
     return (
         <Layout1>
+            <SeoHead seo={seo} />
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-400">

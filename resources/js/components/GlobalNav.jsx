@@ -35,16 +35,24 @@ function AccountMenuIdentity({ user }) {
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
 function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
+    const forecastLink = {
+        type: "link",
+        id: "forecast",
+        label: "Parte",
+        href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+    };
     const publicTopLinks = [
         { type: "link", id: "autocoach", label: "Comparador de maniobras", href: safeRoute("autocoach.index") },
         { type: "link", id: "taller", label: "Taller de Surf", href: safeRoute("taller.index") },
         { type: "link", id: "nosotros", label: "Sobre nosotros", href: safeRoute("nosotros") },
+        forecastLink,
     ];
     const contactoLink = { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") };
 
     if (isAdmin) {
         return [
             { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
+            forecastLink,
             {
                 type: "flyout",
                 id: "admin-gestion",
@@ -53,10 +61,11 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
                     {
                         title: "Taquillas",
                         links: [
-                            { label: "Planes y Vigencia", href: safeRoute("taquilla.index.admin"), featured: true },
-                            { label: "Verificar Pagos", href: safeRoute("taquilla.pagos.queue") },
-                            { label: "Mapa de Taquillas", href: safeRoute("asignar.taquilla.mostrar") },
-                            { label: "Candado emergencia", href: safeRoute("admin.emergency-keys.index") },
+                            { label: "Planes", href: safeRoute("taquilla.index.admin"), featured: true },
+                            { label: "Vigencia", href: safeRoute("taquilla.vigencia") },
+                            { label: "Registro de Pagos", href: safeRoute("taquilla.pagos.registro") },
+                            { label: "Asignador de Taquillas", href: safeRoute("asignar.taquilla.mostrar") },
+                            { label: "Candado de emergencia", href: safeRoute("admin.emergency-keys.index") },
                         ],
                     },
                     {
@@ -116,6 +125,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
                         links: [
                             { label: "Comparador de maniobras", href: safeRoute("autocoach.index"), featured: true },
                             { label: "Webcams", href: safeRoute("servicios.webcams") },
+                            {
+                                label: "Parte / Forecast",
+                                href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+                            },
                         ],
                     },
                 ],
@@ -124,19 +137,23 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
         ];
     }
 
-    // Clases (zona dentro de Servicios)
+    // Clases: reserva (transacción) arriba; landings informativas debajo. No fusionar rutas.
     const clasesLinks = [];
+    clasesLinks.push({
+        label: "Reservar clases",
+        href: safeRoute("academy.lessons.index"),
+        featured: true,
+    });
     if (isAuth) {
-        clasesLinks.push({ label: "Reservar Clases", href: safeRoute("academy.lessons.index"), featured: true });
         clasesLinks.push({
             label: "Mis clases reservadas",
             href: `${safeRoute("my-reservations.index")}?tab=classes`,
         });
     }
     clasesLinks.push(
-        { label: "Surf", href: safeRoute("servicios.surf"), featured: !isAuth },
-        { label: "Surfskate", href: safeRoute("servicios.surfSkate") },
-        { label: "Guía de equipamiento", href: safeRoute("servicios.surfSkate.guia") },
+        { label: "Info · Clases de surf", href: safeRoute("servicios.surf") },
+        { label: "Info · Clases surfskate", href: safeRoute("servicios.surfSkate") },
+        { label: "Guía surfskate", href: safeRoute("servicios.surfSkate.guia") },
         { label: "Surftrips", href: safeRoute("servicios.surfTrips") },
     );
 
@@ -153,7 +170,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
         clasesLinks.push({ label: "Bonos VIP (solicitar acceso)", href: safeRoute("bonos.index") });
     }
     if (isVip) {
-        clasesLinks.push({ label: "Mis Bonos VIP", href: safeRoute("bonos.index"), featured: !hasLocker });
+        clasesLinks.push({ label: "Mis Bonos VIP · Recargar", href: safeRoute("bonos.index"), featured: !hasLocker });
     }
     taquillasLinks.push({
         label: "Planes y Cuotas",
@@ -224,6 +241,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
                     { label: "Fotografia", href: safeRoute("servicios.fotografia") },
                     { label: "Videograbaciones", href: safeRoute("servicios.videograbaciones") },
                     { label: "Webcams", href: safeRoute("servicios.webcams") },
+                    {
+                        label: "Parte / Forecast",
+                        href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+                    },
                 ],
             });
 
@@ -244,6 +265,19 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     ];
 }
 
+function scrollToHrefHash(href) {
+    const hash = typeof href === "string" && href.includes("#") ? href.split("#")[1] : "";
+    if (!hash) {
+        return;
+    }
+    window.setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+        });
+    }, 120);
+}
+
 function FlyoutGroup({ group }) {
     return (
         <div className="min-w-[170px] max-w-[230px] flex-1">
@@ -253,6 +287,7 @@ function FlyoutGroup({ group }) {
                     <li key={link.label}>
                         <Link
                             href={link.href}
+                            onClick={() => scrollToHrefHash(link.href)}
                             className="block text-sm text-slate-200 transition-colors hover:text-cyan-300"
                         >
                             {link.label}
@@ -360,6 +395,7 @@ export default function GlobalNav() {
                                 <li key={menu.id} className="list-none" onMouseEnter={closePanel}>
                                     <Link
                                         href={menu.href}
+                                        onClick={() => scrollToHrefHash(menu.href)}
                                         className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white"
                                     >
                                         {menu.label}
@@ -489,7 +525,10 @@ export default function GlobalNav() {
                                     <Link
                                         key={menu.id}
                                         href={menu.href}
-                                        onClick={() => setMobileOpen(false)}
+                                        onClick={() => {
+                                            setMobileOpen(false);
+                                            scrollToHrefHash(menu.href);
+                                        }}
                                         className="block border-b border-white/5 py-3 text-sm font-semibold text-slate-100 last:border-0"
                                     >
                                         {menu.label}
@@ -516,7 +555,10 @@ export default function GlobalNav() {
                                                         <Link
                                                             key={link.label}
                                                             href={link.href}
-                                                            onClick={() => setMobileOpen(false)}
+                                                            onClick={() => {
+                                                                setMobileOpen(false);
+                                                                scrollToHrefHash(link.href);
+                                                            }}
                                                             className="block rounded-lg px-2 py-2 text-sm text-slate-200 hover:bg-white/10 hover:text-cyan-300"
                                                         >
                                                             {link.label}

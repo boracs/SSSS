@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
 import {
     Camera,
     CheckCircle2,
@@ -108,9 +109,10 @@ const BonoCard = ({ bono }) => (
     </div>
 );
 
-export default function ServiciosFotos() {
+export default function ServiciosFotos({ seo = null }) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#1a0a24] to-slate-950 text-white">
+            <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-fuchsia-950/60">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(112,26,117,0.4),_transparent_55%)]" />

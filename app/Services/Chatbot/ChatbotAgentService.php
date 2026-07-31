@@ -30,12 +30,11 @@ use Illuminate\Support\Facades\Log;
  * preguntas más comunes) y porque ya se dispone del matcher determinista —
  * "preferir reutilización sobre creación".
  *
- * El "guardrail de certeza" del enunciado se traduce en dos señales
- * equivalentes de incertidumbre, ambas tratadas igual por el contador de
- * fallos consecutivos:
- *   - FAQ local: contexto `fallback` (no hay patrón que matchee).
- *   - Gemini: la respuesta contiene literalmente `[TRIGGER_FALLBACK]`
- *     (instruido vía systemInstruction) o la llamada falla/no está configurada.
+ * Escalación a WhatsApp (requires_human) cuando:
+ *   - 2 fallos de certeza consecutivos (FAQ fallback / Gemini [TRIGGER_FALLBACK])
+ *   - La respuesta que íbamos a dar es sustancialmente la misma que el turno anterior
+ *     (bucle inútil: el usuario insiste y el bot no aporta nada nuevo)
+ *   - El prompt guard detecta abuso / inyección
  */
 final class ChatbotAgentService
 {
@@ -59,6 +58,11 @@ final class ChatbotAgentService
 
     private const HUMAN_HANDOFF_MESSAGE = 'He avisado a **una persona del equipo** para que te ayude directamente. '
         .'Pulsa el botón de WhatsApp para continuar la conversación con tu **número de caso** ya incluido.';
+
+    /** Contextos que no deben disparar escalación por “respuesta repetida”. */
+    private const REPEAT_ESCALATION_SKIP_CONTEXTS = [
+        'general.greeting',
+    ];
 
     public function __construct(
         private readonly ChatbotService $chatbotService,
@@ -141,20 +145,42 @@ final class ChatbotAgentService
             }
 
             if (! ($resolved['geminiUnavailable'] ?? false)) {
-                $interaction = $this->escalate($query, 'uncertain_response');
+                return $this->handoffToHuman($query, 'uncertain_response');
+            }
+        }
+
+        // Misma respuesta otra vez (p. ej. ficha de páginas genérica) → derivar.
+        if ($this->isRepeatedAnswer($query->history, $resolved['text'], $resolved['context'])) {
+            $articleRescue = $this->tryArticleRescueReply($query);
+            if ($articleRescue !== null
+                && ! $this->repliesAreEquivalent($articleRescue['text'], $resolved['text'])) {
+                $this->persistSuccessfulTurn($query, $articleRescue['text']);
 
                 return new ChatbotAgentReplyDto(
-                    self::HUMAN_HANDOFF_MESSAGE,
-                    'requires_human',
-                    requiresHuman: true,
-                    caseReference: $interaction->case_reference,
+                    $articleRescue['text'],
+                    $articleRescue['context'],
+                    requiresHuman: false,
                 );
             }
+
+            return $this->handoffToHuman($query, 'repeated_answer');
         }
 
         $this->persistSuccessfulTurn($query, $resolved['text']);
 
         return new ChatbotAgentReplyDto($resolved['text'], $resolved['context'], requiresHuman: false);
+    }
+
+    private function handoffToHuman(ChatbotInteractionQueryDto $query, string $reason): ChatbotAgentReplyDto
+    {
+        $interaction = $this->escalate($query, $reason);
+
+        return new ChatbotAgentReplyDto(
+            self::HUMAN_HANDOFF_MESSAGE,
+            'requires_human',
+            requiresHuman: true,
+            caseReference: $interaction->case_reference,
+        );
     }
 
     /**
@@ -298,13 +324,60 @@ final class ChatbotAgentService
      */
     private function isConsecutiveFallback(array $history): bool
     {
+        $lastModel = $this->lastModelText($history);
+
+        return $lastModel !== null && $lastModel === self::SOFT_UNCERTAIN_MESSAGE;
+    }
+
+    /**
+     * El usuario insiste y el bot volvería a decir lo mismo → no aporta valor.
+     *
+     * @param  list<array{role: string, text: string}>  $history
+     */
+    private function isRepeatedAnswer(array $history, string $newText, string $newContext): bool
+    {
+        if (in_array($newContext, self::REPEAT_ESCALATION_SKIP_CONTEXTS, true)) {
+            return false;
+        }
+
+        $lastModel = $this->lastModelText($history);
+        if ($lastModel === null || $lastModel === '') {
+            return false;
+        }
+
+        return $this->repliesAreEquivalent($lastModel, $newText);
+    }
+
+    /**
+     * @param  list<array{role: string, text: string}>  $history
+     */
+    private function lastModelText(array $history): ?string
+    {
         for ($i = count($history) - 1; $i >= 0; $i--) {
             if (($history[$i]['role'] ?? null) === 'model') {
-                return trim((string) ($history[$i]['text'] ?? '')) === self::SOFT_UNCERTAIN_MESSAGE;
+                $text = trim((string) ($history[$i]['text'] ?? ''));
+
+                return $text !== '' ? $text : null;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    private function repliesAreEquivalent(string $a, string $b): bool
+    {
+        return $this->normalizeReplyForCompare($a) === $this->normalizeReplyForCompare($b);
+    }
+
+    /** Quita markdown/ruido para comparar si dos respuestas son la misma ficha. */
+    private function normalizeReplyForCompare(string $text): string
+    {
+        $normalized = mb_strtolower(trim($text), 'UTF-8');
+        $normalized = preg_replace('/\[([^\]]+)\]\([^)]+\)/u', '$1', $normalized) ?? $normalized;
+        $normalized = str_replace(['*', '_', '`'], '', $normalized);
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 
     private function findOpenInteraction(?int $userId, ?string $sessionToken): ?ChatbotInteraction

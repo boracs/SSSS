@@ -71,10 +71,24 @@ return [
             ['max' => PHP_FLOAT_MAX, 'label' => 'Muy fuerte'],
         ],
 
+        // Índice UI "kJ": 0.5 × H_ft² × T × factor (ver SURFFORECAST_CALIBRATION_DIAG.md).
+        // factor 2.4 ≈ alineación periodo corto con convención tipo Surf-Forecast cuando H/T coinciden.
+        'energy_kj_calibration_factor' => (float) env('ZURRIOLA_ENERGY_KJ_FACTOR', 2.4),
+        // Qué altura/periodo alimentar el kJ: wave (combinada), swell, o max_energy (el par con más punch).
+        'energy_kj_height_source' => env('ZURRIOLA_ENERGY_HEIGHT_SOURCE', 'wave'),
+
         'level_thresholds' => [
             'iniciacion' => ['max_wave_height_m' => 0.8, 'max_wind_kmh_onshore' => 15, 'max_wind_kmh_offshore' => 30],
             'intermedio' => ['max_wave_height_m' => 1.6, 'max_wind_kmh_onshore' => 25, 'max_wind_kmh_offshore' => 40],
             'avanzado' => ['max_wave_height_m' => 3.5, 'max_wind_kmh_onshore' => 35, 'max_wind_kmh_offshore' => 55],
+        ],
+
+        // Badge público de 4 colores (good/espigon/caution/closed). Independiente
+        // del nivel Gemini (iniciacion/…). El admin puede sobrescribirlo.
+        'signal_thresholds' => [
+            'good' => ['max_wave_height_m' => 0.5, 'max_wind_kmh_onshore' => 12, 'max_wind_kmh_offshore' => 25],
+            'espigon' => ['max_wave_height_m' => 0.9, 'max_wind_kmh_onshore' => 18, 'max_wind_kmh_offshore' => 32],
+            'caution' => ['max_wave_height_m' => 1.8, 'max_wind_kmh_onshore' => 28, 'max_wind_kmh_offshore' => 45],
         ],
 
         // Documento de verdad del spot (reglas de entrada, zonas, precauciones) que se
@@ -86,28 +100,46 @@ return [
         // seguridad de corrientes...). Se inyecta junto a la guía como contexto adicional.
         'logistics_json_path' => env('ZURRIOLA_SURF_LOGISTICS_PATH', resource_path('surf-guide/zurriola-spot-logistics.json')),
 
+        // Hechos GEO públicos (ubicación, temporada, material, FAQs citables). Editable sin deploy de lógica.
+        'geo_facts_json_path' => env('ZURRIOLA_GEO_FACTS_PATH', resource_path('surf-guide/zurriola-geo-facts.json')),
+
         'generation_hour' => env('ZURRIOLA_SURF_GENERATION_HOUR', '07:00'),
 
-        // Tabla de previsión multi-día (distinta del "parte de hoy" de arriba):
-        // franjas horarias visibles (antes de la primera / después de la última es de noche,
-        // no aporta para surfear) y días hacia adelante que soporta Open-Meteo con margen de fiabilidad.
-        'forecast_days' => env('ZURRIOLA_FORECAST_DAYS', 3),
+        // Tabla de previsión multi-día (distinta del "parte de hoy" de arriba).
+        // Open-Meteo marine + weather: forecast_days máximo documentado = 16 (probado 16 OK, 17 → 400).
+        // Default de producto = tope API; UI horizontal/scroll ya soporta N días. Override con ZURRIOLA_FORECAST_DAYS.
+        'forecast_days' => (int) env('ZURRIOLA_FORECAST_DAYS', 16),
         'forecast_slot_hours' => [6, 9, 12, 15, 18, 21],
 
         // Viento por debajo de este umbral se considera "glassy" (sin apenas efecto),
         // sea cual sea su dirección.
         'wind_glassy_max_kmh' => env('ZURRIOLA_WIND_GLASSY_MAX_KMH', 8),
 
-        // Rangos de color en la tabla de previsión (verde / amarillo / rojo).
-        // Viento alineado con wind_north_component del JSON de logística (nudos → km/h).
-        // Energía alineada con energy_kj del mismo JSON.
+        // Rangos de color en la tabla de previsión.
+        // Viento: 3 tonos (green/yellow/red) alineados con wind_north_component (nudos → km/h).
         'forecast_wind_color_kmh' => [
             'green_max' => 9,   // ≤ ~5 nudos
             'yellow_max' => 19, // ≤ ~10 nudos
         ],
+        // Energía/kJ: escala granular (primera banda con max >= kJ gana). UI mapea tone → Tailwind.
         'forecast_energy_color_kj' => [
-            'green_max' => 400,  // Pequeño a Medio e inferior
-            'yellow_max' => 800, // Medio a Considerable
+            'bands' => [
+                ['max' => 0, 'tone' => 'e0'],       // transparente
+                ['max' => 9, 'tone' => 'e1'],       // 1–9
+                ['max' => 19, 'tone' => 'e2'],      // 10–19
+                ['max' => 49, 'tone' => 'e3'],      // 20–49
+                ['max' => 99, 'tone' => 'e4'],      // 50–99
+                ['max' => 199, 'tone' => 'e5'],     // 100–199
+                ['max' => 399, 'tone' => 'e6'],     // 200–399
+                ['max' => 699, 'tone' => 'e7'],     // 400–699
+                ['max' => 999, 'tone' => 'e8'],     // 700–999
+                ['max' => 1299, 'tone' => 'e9'],    // 1000–1299 verde→ámbar
+                ['max' => 1499, 'tone' => 'e10'],   // 1300–1499
+                ['max' => 1999, 'tone' => 'e11'],   // 1500–1999
+                ['max' => 2499, 'tone' => 'e12'],   // 2000–2499
+                ['max' => 4999, 'tone' => 'e13'],   // 2500–4999
+                ['max' => PHP_INT_MAX, 'tone' => 'e14'], // ≥5000
+            ],
         ],
     ],
 
@@ -124,6 +156,8 @@ return [
         'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
         /** Señal máxima para formalizar reserva de clase (el resto puede pagarse en escuela). */
         'class_reservation_deposit_eur' => (float) env('ACADEMY_CLASS_RESERVATION_DEPOSIT_EUR', 30),
+        /** Señal online de clase particular (compromiso; el resto se abona después). */
+        'private_lesson_deposit_eur' => (float) env('ACADEMY_PRIVATE_LESSON_DEPOSIT_EUR', 7),
         /** Hora de recogida/devolución por defecto en alquileres (reloj de pared Madrid) cuando solo llega Y-m-d. */
         'rental_handoff_hour' => (int) env('ACADEMY_RENTAL_HANDOFF_HOUR', 10),
         /** Cierre de inscripciones (minutos antes del inicio). */
@@ -140,6 +174,17 @@ return [
         'getting_here' => env('ACADEMY_GETTING_HERE', 'Llega 10–15 minutos antes de tu clase. Punto de encuentro en Zurriola, junto a las instalaciones del club.'),
         /** Instagram público (opcional). */
         'instagram_handle' => env('ACADEMY_INSTAGRAM_HANDLE', '@sansebastiansurfschool'),
+    ],
+
+    /**
+     * Conocimiento de negocio editable para Gemini (políticas, edge cases, tarifario comercial).
+     * Packs VIP / planes taquilla siguen en BD; este JSON no los sustituye.
+     */
+    'chatbot' => [
+        'knowledge_json_path' => env(
+            'CHATBOT_KNOWLEDGE_JSON',
+            resource_path('chatbot/s4-business-knowledge.json'),
+        ),
     ],
 
     'contact_form' => [
@@ -173,9 +218,27 @@ return [
     'sponsors' => [
         'bunker' => [
             'name' => 'The Bunker Surf Shop',
-            'url' => env('SPONSOR_BUNKER_URL'),
+            'url' => env('SPONSOR_BUNKER_URL', 'https://elbunkerbasquesurfing.com/'),
             'tagline' => 'Equipamiento y surf shop',
             'active' => env('SPONSOR_BUNKER_ACTIVE', true),
+        ],
+        'yow' => [
+            'name' => 'YOW Surfskate',
+            'url' => env('SPONSOR_YOW_URL', 'https://yowsurf.com'),
+            'tagline' => 'Surfskate oficial',
+            'active' => env('SPONSOR_YOW_ACTIVE', true),
+        ],
+        'gipuzkoa' => [
+            'name' => 'Diputación Foral de Gipuzkoa',
+            'url' => env('SPONSOR_GIPUZKOA_URL', 'https://www.gipuzkoa.eus/es/web/hondartzak/webcams/zurriola'),
+            'tagline' => 'Webcam Zurriola',
+            'active' => env('SPONSOR_GIPUZKOA_ACTIVE', true),
+        ],
+        'open_meteo' => [
+            'name' => 'Open-Meteo',
+            'url' => env('SPONSOR_OPEN_METEO_URL', 'https://open-meteo.com'),
+            'tagline' => 'Datos de oleaje y viento',
+            'active' => env('SPONSOR_OPEN_METEO_ACTIVE', true),
         ],
     ],
 ];

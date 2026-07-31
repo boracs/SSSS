@@ -55,7 +55,7 @@ final class ChatbotService
             'context' => 'general.capabilities',
             'response' => 'Puedo contarte **cómo apuntarte a una clase**, **cómo funciona el bono**, **qué pasa si cancelas**, '
                 .'**cómo alquilar una tabla** o **dónde ver tus reservas**. '
-                .'Si tu duda es muy concreta (tu nombre, tu hora exacta), escríbenos por **WhatsApp** (botón verde) o entra en la web con tu usuario.',
+                .'Si tu duda es muy concreta (tu nombre, tu hora exacta), entra en la web con tu usuario o usa **Contacto**.',
         ],
 
         // ── Reservar clase ──────────────────────────────────────────────────
@@ -192,11 +192,11 @@ final class ChatbotService
 
         // ── Alquiler tablas ─────────────────────────────────────────────────
         [
-            'pattern' => '/\b(alquil|tabla|tablas)\b.*\b(precio|precios|cuesta|cuanto|€|euros|tarifa)\b|\b(cuanto\s+cuesta)\b.*\b(alquil|tabla)\b|\b(donde)\b.*\b(alquil\w*|tabla|tablas)\b/u',
+            'pattern' => '/\b(precio|precios|cuesta|cuestan|cuant\w*|coste|tarifa|tarifas|euros?|€)\b.*\b(alquil\w*|tabla|tablas)\b|\b(alquil\w*|tabla|tablas)\b.*\b(precio|precios|cuesta|cuestan|cuant\w*|coste|tarifa|tarifas|euros?|€)\b|\b(donde)\b.*\b(alquil\w*|tabla|tablas)\b/u',
             'context' => 'rental.pricing',
-            'response' => 'El precio del alquiler depende de **cuánto tiempo** (horas, día, varios días…) y del **tipo de tabla**. '
-                .'En [**Alquiler de tablas**](/tablas-alquiler), al elegir fechas ves el **precio total** y la **señal (30%)** antes de pagar — **sin sorpresas**.'."\n\n"
-                .'**Dónde alquilar:** menú **Alquiler de tablas** en la web → eliges modelo y fechas → **recoges y devuelves en el club** (Zurriola, Donostia).',
+            'response' => 'El precio del alquiler depende de **cuánto tiempo** (1 h, medio día, día, varios días…) y del **tipo de tabla**. '
+                .'No hay una tarifa fija única: en [**Alquiler de tablas**](/tablas-alquiler), al elegir **modelo y fechas**, ves el **precio total** y la **señal (30%)** antes de pagar.'."\n\n"
+                .'Si necesitas el importe exacto de **una hora** o de un modelo concreto y no te cuadra lo de la web, reformula con el **modelo** o te derivo con el equipo.',
         ],
         [
             'pattern' => '/\b(alquil|rent)\w*\b.*\b(tabla|tablas|surfboard)\b|\b(tabla|tablas)\b.*\b(alquil|como\s+alquilo)\w*\b|\b(quiero\s+una\s+tabla)\b/u',
@@ -256,11 +256,11 @@ final class ChatbotService
                 .'Muchos socios combinan **taquilla + bono** para surfear a menudo. ¿Dudas? **WhatsApp**.',
         ],
         [
-            'pattern' => '/\b(horario|telefono|contacto|whatsapp|hablar\s+con|persona\s+real)\b/u',
+            'pattern' => '/\b(horario|telefono|contacto|whatsapp|watsapp|washapp|washup|washtup|hablar\s+con|persona\s+real)\b/u',
             'context' => 'contact.general',
-            'response' => 'Para hablar con el **equipo humano**, usa el botón **WhatsApp** (verde, abajo a la izquierda) o la página **Contacto**. '
-                .'Estamos en **Donostia**, junto a **Zurriola**. '
-                .'Te resolvemos dudas de **clases, alquileres, bonos y taquillas**.',
+            'response' => 'Puedes escribirnos desde la página **Contacto** de la web. '
+                .'Si yo no tengo una respuesta clara a tu duda, te derivaré con el equipo y entonces aparecerá el botón de **WhatsApp**. '
+                .'Estamos en **Donostia**, junto a **Zurriola**.',
         ],
 
         // ── Nivel / edad ────────────────────────────────────────────────────
@@ -416,13 +416,13 @@ final class ChatbotService
 
         if ($email === '') {
             return new ChatbotReplyDto(
-                'Lo más rápido es escribirnos por **WhatsApp** (botón verde) — ahí te atiende el equipo directamente.',
+                'Lo más rápido es escribirnos desde **Contacto** en la web. Si no puedo resolver tu duda con certeza, te derivaré y aparecerá el botón de **WhatsApp**.',
                 'contact.email',
             );
         }
 
         return new ChatbotReplyDto(
-            sprintf('Puedes escribirnos a **%s**. También respondemos rápido por **WhatsApp** si lo prefieres.', $email),
+            sprintf('Puedes escribirnos a **%s**. Si necesitas hablar con alguien y yo no tengo una respuesta clara, te derivaré a **WhatsApp**.', $email),
             'contact.email',
         );
     }

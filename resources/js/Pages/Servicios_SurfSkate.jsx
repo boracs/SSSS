@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
 import {
     Activity,
     CheckCircle2,
@@ -132,9 +133,10 @@ const ClaseCard = ({ clase }) => {
     );
 };
 
-export default function ServiciosSurfSkate() {
+export default function ServiciosSurfSkate({ seo = null }) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#241405] to-slate-950 text-white">
+            <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-orange-950/60">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(120,53,15,0.4),_transparent_55%)]" />

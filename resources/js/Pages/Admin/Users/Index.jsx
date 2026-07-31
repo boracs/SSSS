@@ -6,7 +6,7 @@ import {
     StarIcon,
 } from "@heroicons/react/24/solid";
 import { StarIcon as StarIconOutline } from "@heroicons/react/24/outline";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 
 function UserRowActionsMenu({ user, onOpenVipConfirm }) {
@@ -100,10 +100,24 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
     const [vip, setVip] = useState(filters.vip || "all");
     const [vipConfirmUser, setVipConfirmUser] = useState(null);
     const [vipToggleBusy, setVipToggleBusy] = useState(false);
+    const skipFilterRequest = useRef(true);
 
-    const applyFilters = () => {
-        router.get(route("admin.users.index"), { search, vip }, { preserveState: true, preserveScroll: true });
-    };
+    useEffect(() => {
+        if (skipFilterRequest.current) {
+            skipFilterRequest.current = false;
+            return;
+        }
+
+        const timer = window.setTimeout(() => {
+            router.get(
+                route("admin.users.index"),
+                { search: search.trim(), vip },
+                { preserveState: true, preserveScroll: true, replace: true },
+            );
+        }, 250);
+
+        return () => window.clearTimeout(timer);
+    }, [search, vip]);
 
     const closeVipConfirm = () => {
         if (!vipToggleBusy) setVipConfirmUser(null);
@@ -177,29 +191,24 @@ export default function AdminUsersIndex({ users = [], filters = {} }) {
                     </div>
                 ) : null}
 
-                <div className="grid gap-3 rounded-xl border border-gray-700 bg-gray-900 p-4 shadow-sm sm:grid-cols-[1fr_1fr_minmax(8rem,auto)_auto]">
+                <div className="grid gap-3 rounded-xl border border-gray-700 bg-gray-900 p-4 shadow-sm sm:grid-cols-[1fr_minmax(10rem,12rem)]">
                     <input
-                        className="rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:col-span-2"
+                        className="rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white placeholder:text-gray-400 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                         placeholder="Buscar por nombre o email"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        aria-label="Buscar por nombre o email"
                     />
                     <select
                         className="rounded-lg border border-gray-600 bg-gray-950 px-3 py-2 text-sm text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                         value={vip}
                         onChange={(e) => setVip(e.target.value)}
+                        aria-label="Filtrar por VIP"
                     >
                         <option value="all" className="bg-gray-900 text-white">Todos</option>
                         <option value="vip" className="bg-gray-900 text-white">Solo VIP</option>
                         <option value="non_vip" className="bg-gray-900 text-white">Solo No VIP</option>
                     </select>
-                    <button
-                        type="button"
-                        onClick={applyFilters}
-                        className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500"
-                    >
-                        Filtrar
-                    </button>
                 </div>
 
                 <div className="overflow-hidden rounded-xl border border-gray-700 bg-gray-900 shadow-sm">

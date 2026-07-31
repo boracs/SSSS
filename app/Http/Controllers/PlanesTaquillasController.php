@@ -54,11 +54,32 @@ class PlanesTaquillasController extends Controller
                 ->with('error', 'No tienes permisos para acceder al panel de administracion.');
         }
 
-        $dashboard = $this->taquillaService->buildAdminDashboard();
+        $dashboard = $this->taquillaService->buildAdminPlansPayload();
 
         return Inertia::render('PlanesTaquillasAdmin', [
-            'planes' => $dashboard['planes'],
-            'usuarios' => $dashboard['usuarios'],
+            'planes' => $dashboard,
+            'flash' => [
+                'success' => session('success'),
+                'error' => session('error'),
+            ],
+        ]);
+    }
+
+    public function vigenciaIndex(): Response|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesion para acceder al panel de administracion.');
+        }
+
+        $user = Auth::user();
+        if (($user->role ?? null) !== 'admin') {
+            return redirect()->route('taquillas.index.client')
+                ->with('error', 'No tienes permisos para acceder al panel de administracion.');
+        }
+
+        return Inertia::render('Admin/Taquillas/Vigencia', [
+            'usuarios' => $this->taquillaService->buildVigenciaPayload(),
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
@@ -76,6 +97,79 @@ class PlanesTaquillasController extends Controller
         return response()->json([
             'rows' => $this->taquillaService->userPaymentHistory($user),
         ]);
+    }
+
+    public function toggleBajaSolicitada(User $user): RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesion para acceder al panel de administracion.');
+        }
+
+        $admin = Auth::user();
+        if (($admin->role ?? null) !== 'admin') {
+            return redirect()->route('taquillas.index.client')
+                ->with('error', 'No tienes permisos para acceder al panel de administracion.');
+        }
+
+        try {
+            $updated = $this->taquillaService->toggleBajaSolicitada($user);
+            $name = trim(($updated->nombre ?? '').' '.($updated->apellido ?? ''));
+            $label = $name !== '' ? $name : $updated->email;
+
+            if ($updated->taquilla_baja_solicitada_at) {
+                return back()->with('success', "Aviso de baja marcado para {$label}.");
+            }
+
+            return back()->with('success', "Aviso de baja retirado para {$label}.");
+        } catch (Throwable $e) {
+            Log::error('taquilla.toggle_baja_solicitada_failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo actualizar el aviso de baja.');
+        }
+    }
+
+    public function confirmarBaja(User $user): RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesion para acceder al panel de administracion.');
+        }
+
+        $admin = Auth::user();
+        if (($admin->role ?? null) !== 'admin') {
+            return redirect()->route('taquillas.index.client')
+                ->with('error', 'No tienes permisos para acceder al panel de administracion.');
+        }
+
+        try {
+            $locker = $user->numeroTaquilla;
+            $name = trim(($user->nombre ?? '').' '.($user->apellido ?? ''));
+            $label = $name !== '' ? $name : (string) $user->email;
+
+            $this->taquillaService->confirmarBajaTaquilla($user);
+
+            $lockerLabel = $locker !== null ? "#{$locker}" : 'su taquilla';
+
+            return back()->with(
+                'success',
+                "Baja confirmada: {$label} ya no tiene {$lockerLabel}. Plaza libre para reasignar.",
+            );
+        } catch (ValidationException $e) {
+            $msg = collect($e->errors())->flatten()->first() ?: 'No se pudo confirmar la baja.';
+
+            return back()->with('error', $msg);
+        } catch (Throwable $e) {
+            Log::error('taquilla.confirmar_baja_failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo confirmar la baja de taquilla.');
+        }
     }
 
     public function obtenerContactoUsuario(int $id): JsonResponse
@@ -113,6 +207,36 @@ class PlanesTaquillasController extends Controller
             'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
+    }
+
+    public function comunicarBaja(): RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesión para comunicar la baja.');
+        }
+
+        $user = Auth::user();
+
+        if (! $user->hasPhysicalLocker()) {
+            return back()->with('error', 'Necesitas una taquilla física asignada para comunicar la baja.');
+        }
+
+        try {
+            $this->taquillaService->marcarBajaSolicitadaPorCliente($user);
+        } catch (Throwable $e) {
+            Log::error('taquilla.comunicar_baja_failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo registrar tu aviso de baja. Inténtalo de nuevo.');
+        }
+
+        return back()->with(
+            'success',
+            'Hemos recibido tu aviso de baja. El equipo del club se pondrá en contacto contigo.',
+        );
     }
 
     public function registrarPago(RegistrarPagoTaquillaRequest $request): RedirectResponse|HttpFoundationResponse
@@ -236,23 +360,21 @@ class PlanesTaquillasController extends Controller
         return back()->with('success', 'Justificante subido. Pendiente de validacion.');
     }
 
-    public function colaPagos(Request $request): Response|JsonResponse
+    public function registroPagos(Request $request): Response|JsonResponse
     {
         $status = (string) $request->query('status', 'all');
         $search = trim((string) $request->query('search', ''));
-        $pendingOnly = $request->boolean('pending_review', false);
 
-        $payload = $this->taquillaService->buildPaymentQueuePayload(
+        $payload = $this->taquillaService->buildPaymentLogPayload(
             status: $status,
             search: $search,
-            pendingOnly: $pendingOnly,
         );
 
         if ($request->wantsJson()) {
             return response()->json($payload);
         }
 
-        return Inertia::render('Admin/Taquillas/Queue', [
+        return Inertia::render('Admin/Taquillas/Registry', [
             'pagos' => $payload,
         ]);
     }

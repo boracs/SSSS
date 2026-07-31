@@ -9,6 +9,7 @@ use App\Support\AcademyContact;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use App\Models\Producto;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -72,12 +73,13 @@ class CarritoController extends Controller
         ], $paymentProps));
     }
 
-    public function agregarAlCarrito(int $productoId): \Illuminate\Http\RedirectResponse
+    public function agregarAlCarrito(Request $request, int $productoId): \Illuminate\Http\RedirectResponse
     {
         $user = auth()->user();
+        $cantidadAAgregar = max(1, (int) $request->input('cantidad', 1));
 
         try {
-            return DB::transaction(function () use ($user, $productoId) {
+            return DB::transaction(function () use ($user, $productoId, $cantidadAAgregar) {
                 $producto = Producto::query()
                     ->whereKey($productoId)
                     ->lockForUpdate()
@@ -87,9 +89,12 @@ class CarritoController extends Controller
                     return back()->with('error', 'El producto solicitado ya no está disponible.');
                 }
 
-                if ((int) $producto->unidades <= 0) {
+                $stock = (int) $producto->unidades;
+                if ($stock <= 0) {
                     return back()->with('error', '¡Agotado! No queda stock disponible de '.$producto->nombre.'.');
                 }
+
+                $cantidadAAgregar = min($cantidadAAgregar, $stock);
 
                 $carrito = Carrito::query()
                     ->where('user_id', $user->id)
@@ -102,20 +107,18 @@ class CarritoController extends Controller
 
                 $productoEnCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
 
-                $cantidadAAgregar = 1;
-
                 if ($productoEnCarrito) {
                     $nuevaCantidad = (int) $productoEnCarrito->pivot->cantidad + $cantidadAAgregar;
 
-                    if ($nuevaCantidad > (int) $producto->unidades) {
+                    if ($nuevaCantidad > $stock) {
                         return back()->with(
                             'error',
-                            'Ya tienes la cantidad máxima ('.$producto->unidades.') de '.$producto->nombre.' del stock que nos queda.'
+                            'Ya tienes la cantidad máxima ('.$stock.') de '.$producto->nombre.' del stock que nos queda.'
                         );
                     }
 
                     $carrito->productos()->updateExistingPivot($productoId, [
-                        'cantidad' => DB::raw('cantidad + 1'),
+                        'cantidad' => $nuevaCantidad,
                     ]);
                 } else {
                     $carrito->productos()->attach($productoId, ['cantidad' => $cantidadAAgregar]);

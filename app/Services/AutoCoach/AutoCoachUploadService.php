@@ -2,6 +2,7 @@
 
 namespace App\Services\AutoCoach;
 
+use App\Support\AutoCoach\VideoDurationProbe;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -12,6 +13,7 @@ class AutoCoachUploadService
 {
     public function __construct(
         private readonly AutoCoachSessionService $sessions,
+        private readonly VideoDurationProbe $durationProbe,
     ) {}
 
     /**
@@ -24,9 +26,10 @@ class AutoCoachUploadService
             throw new RuntimeException('Sesión no válida.');
         }
 
-        $maxBatch = (int) config('autocoach.max_files_per_batch', 10);
+        $maxBatch = (int) config('autocoach.max_files_per_batch', 7);
         $maxFile = (int) config('autocoach.max_file_bytes');
         $maxSession = (int) config('autocoach.max_session_bytes');
+        $maxDuration = (int) config('autocoach.max_duration_seconds', 30);
 
         if (count($files) > $maxBatch) {
             throw new RuntimeException("Solo puedes subir {$maxBatch} vídeos a la vez.");
@@ -59,7 +62,7 @@ class AutoCoachUploadService
                     continue;
                 }
 
-                $formatError = $this->validateVideoFile($file);
+                $formatError = $this->validateVideoFile($file, $maxDuration);
                 if ($formatError !== null) {
                     $errors[] = "{$file->getClientOriginalName()}: {$formatError}";
                     continue;
@@ -122,7 +125,7 @@ class AutoCoachUploadService
         return $count;
     }
 
-    private function validateVideoFile(UploadedFile $file): ?string
+    private function validateVideoFile(UploadedFile $file, int $maxDurationSeconds): ?string
     {
         $ext = strtolower($file->getClientOriginalExtension());
         $allowedExtensions = config('autocoach.allowed_extensions', []);
@@ -140,6 +143,21 @@ class AutoCoachUploadService
         $detectedMime = mime_content_type($realPath) ?: '';
         if (! in_array($detectedMime, $allowedMimes, true)) {
             return 'formato no permitido (MP4, MOV, WebM).';
+        }
+
+        $duration = $this->durationProbe->seconds($realPath);
+        if ($duration === null) {
+            // WebM sin ffprobe: no hay metadatos fiables en PHP puro; el FE ya filtra duración.
+            if (in_array($ext, ['mp4', 'mov'], true)) {
+                return 'no se pudo verificar la duración (usa MP4/MOV de hasta '.$maxDurationSeconds.' s).';
+            }
+
+            return null;
+        }
+
+        // Margen pequeño por metadatos imprecisos.
+        if ($duration > ($maxDurationSeconds + 0.5)) {
+            return 'supera los '.$maxDurationSeconds.' s de duración (tiene ~'.(int) ceil($duration).' s).';
         }
 
         return null;

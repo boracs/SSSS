@@ -11,7 +11,8 @@ export const WHATSAPP_TOPICS = {
     rental: "Hola, tengo una consulta sobre alquiler de tablas.",
     locker: "Hola, me interesa información sobre las taquillas del club.",
     bono: "Hola, me gustaría información sobre bonos y membresía VIP.",
-    store: "Hola, tengo una consulta sobre la tienda.",
+    store: "Hola, soy cliente recurrente y me gustaría consultar con el equipo sobre la tienda / acceso de socios.",
+    video: "Hola, me interesa el servicio de videograbación / videocorrección de la escuela.",
 };
 
 /** Normaliza teléfono español a dígitos E.164 sin '+'. */

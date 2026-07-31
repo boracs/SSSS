@@ -1,16 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Head, Link } from "@inertiajs/react";
-import { ChevronDown, Plus, RotateCcw } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "@inertiajs/react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import EmptyState from "../../../components/EmptyState";
 import ImageLightbox from "../../../components/ImageLightbox";
 import SafeImage from "../../../components/SafeImage";
-import SurfboardBookingSection from "../../../components/SurfboardBookingSection";
+import SurfboardPublicDetail from "../../../components/Rentals/SurfboardPublicDetail";
+import SeoHead from "../../../components/seo/SeoHead";
 import {
     boardMatchesMeasureFilters,
     buildSurfHeightOptions,
     buildVolumeOptions,
     formatSurfHeight,
 } from "../../../lib/surfboardMeasures";
+import { imageUrlFor } from "../../../lib/surfboardPublicDisplay";
 
 const HEIGHT_OPTIONS = buildSurfHeightOptions(3, 5, 11, 0);
 const VOLUME_OPTIONS = buildVolumeOptions(15, 100, 1);
@@ -18,131 +20,13 @@ const VOLUME_OPTIONS = buildVolumeOptions(15, 100, 1);
 const selectClass =
     "w-full rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-sm font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30";
 
-/** Imagen demo temporal — sustituir cuando cada tabla tenga foto real */
-const DEMO_BOARD_IMAGE = "/img/tabla-demo.png";
-
-function imageUrlFor(_surfboard) {
-    return DEMO_BOARD_IMAGE;
-}
-
-function imageListFor(_surfboard) {
-    return [DEMO_BOARD_IMAGE];
-}
-
-/** Bloque de detalle reutilizado tanto en el acordeón móvil como en el panel lateral de escritorio. */
-function BoardDetail({
-    board,
-    onImageClick,
-    paymentIban,
-    paymentBizumNumber,
-    whatsappHelpUrl,
-}) {
-    const images = useMemo(() => imageListFor(board), [board]);
-    const name = board.name || `Tabla #${board.id}`;
-
-    const displayImages = useMemo(() => {
-        const list = images.length ? images : [imageUrlFor(board)].filter(Boolean);
-        return list;
-    }, [images, board]);
-
-    const openImage = useCallback(
-        (src) => {
-            if (!src) return;
-            onImageClick({ src, alt: board.image_alt || name });
-        },
-        [board.image_alt, name, onImageClick],
-    );
-
-    return (
-        <>
-            {/* Imagen principal — doble tamaño; + abre visor ampliado */}
-            <div className="flex flex-wrap gap-3">
-                {displayImages.length > 0 ? (
-                    displayImages.map((img, i) => (
-                        <button
-                            key={img || i}
-                            type="button"
-                            onClick={() => openImage(img)}
-                            aria-label="Ampliar imagen"
-                            className="group relative h-32 w-48 shrink-0 cursor-zoom-in overflow-hidden rounded-2xl border border-slate-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-cyan-400 hover:shadow-md"
-                        >
-                            <SafeImage
-                                src={img}
-                                alt={board.image_alt || name}
-                                className="pointer-events-none h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                                placeholderClassName="rounded-none"
-                            />
-                            <span
-                                className="pointer-events-none absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/70 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm transition group-hover:bg-cyan-600/90"
-                                aria-hidden="true"
-                            >
-                                <Plus className="h-5 w-5" strokeWidth={2.5} />
-                            </span>
-                        </button>
-                    ))
-                ) : (
-                    <div
-                        className="flex h-32 w-48 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-100 text-xs text-slate-500"
-                        aria-hidden="true"
-                    >
-                        Sin imagen
-                    </div>
-                )}
-            </div>
-
-            <h2 className="mt-5 text-2xl font-bold tracking-tight text-slate-100">
-                {name}
-            </h2>
-
-            {/* Especificaciones técnicas */}
-            <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-900/80 p-4 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    Especificaciones técnicas
-                </p>
-                <dl className="mt-3 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                    {[
-                        { label: "Altura",  value: formatSurfHeight(board.altura) },
-                        { label: "Anchura", value: board.ancho },
-                        { label: "Grosor",  value: board.grosor },
-                        {
-                            label: "Volumen",
-                            value: board.volumen ? `${board.volumen} L` : null,
-                        },
-                    ].map(({ label, value }) => (
-                        <div key={label} className="rounded-lg bg-slate-800/80 p-3">
-                            <dt className="text-xs text-slate-400">{label}</dt>
-                            <dd className="mt-1 text-[15px] font-semibold text-slate-100">
-                                {value || "—"}
-                            </dd>
-                        </div>
-                    ))}
-                </dl>
-            </div>
-
-            {/* Descripción */}
-            <p className="mt-4 text-sm leading-relaxed text-slate-300">
-                {board.description ||
-                    "Tabla premium optimizada para rendimiento, estabilidad y control en distintas condiciones de mar."}
-            </p>
-
-            <SurfboardBookingSection
-                key={board.id}
-                surfboard={board}
-                paymentIban={paymentIban}
-                paymentBizumNumber={paymentBizumNumber}
-                whatsappHelpUrl={whatsappHelpUrl}
-                embedded
-            />
-        </>
-    );
-}
-
 export default function Index({
     surfboards,
     category,
     paymentIban = "[IBAN]",
     paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
+    seo = null,
 }) {
     const allBoards = (surfboards || []).filter((s) => {
         const active = s.is_active ?? s.isActive;
@@ -156,6 +40,21 @@ export default function Index({
     const [volumeMax, setVolumeMax]           = useState("");
     const [heightMin, setHeightMin]           = useState("");
     const [heightMax, setHeightMax]           = useState("");
+    /** true = panel lateral (≥1024px); false = acordeón bajo la tarjeta (móvil/tablet) */
+    const [isLgUp, setIsLgUp] = useState(() =>
+        typeof window !== "undefined" && window.matchMedia
+            ? window.matchMedia("(min-width: 1024px)").matches
+            : false,
+    );
+
+    useEffect(() => {
+        if (typeof window === "undefined" || !window.matchMedia) return undefined;
+        const mq = window.matchMedia("(min-width: 1024px)");
+        const sync = () => setIsLgUp(mq.matches);
+        sync();
+        mq.addEventListener("change", sync);
+        return () => mq.removeEventListener("change", sync);
+    }, []);
 
     const closeLightbox = useCallback(() => setLightbox(null), []);
 
@@ -242,7 +141,7 @@ export default function Index({
 
     return (
         <>
-            <Head title="Tablas de alquiler" />
+            <SeoHead seo={seo} />
             <div className="min-h-screen bg-black py-6 sm:py-8">
                 <div
                     className="mx-auto w-full max-w-7xl rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 px-4 py-6 shadow-sm sm:px-6 lg:px-7"
@@ -414,8 +313,8 @@ export default function Index({
                                         const imgUrl   = imageUrlFor(s);
                                         const selected = selectedId === s.id;
                                         return (
-                                            /* Cada tarjeta + su acordeón móvil envueltos en un fragment */
-                                            <React.Fragment key={s.id}>
+                                            /* Tarjeta + acordeón en el mismo celda: en <lg el detalle cae justo debajo */
+                                            <div key={s.id} className="flex flex-col gap-2.5">
                                                 <button
                                                     type="button"
                                                     onClick={() => handleCardClick(s.id)}
@@ -450,34 +349,37 @@ export default function Index({
                                                             ) : null}
                                                         </p>
                                                     </div>
-                                                    <span
-                                                        className={`md:hidden inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
-                                                            selected
-                                                                ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
-                                                                : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
-                                                        }`}
-                                                        aria-hidden="true"
-                                                    >
-                                                        <ChevronDown
-                                                            className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
-                                                            strokeWidth={2.5}
-                                                        />
-                                                    </span>
+                                                    {!isLgUp ? (
+                                                        <span
+                                                            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+                                                                selected
+                                                                    ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
+                                                                    : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
+                                                            }`}
+                                                            aria-hidden="true"
+                                                        >
+                                                            <ChevronDown
+                                                                className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
+                                                                strokeWidth={2.5}
+                                                            />
+                                                        </span>
+                                                    ) : null}
                                                 </button>
 
-                                                {/* ── Acordeón móvil: solo < md ── */}
-                                                {selected && (
-                                                    <div className="md:hidden col-span-1 overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 ease-in-out">
-                                                        <BoardDetail
+                                                {/* Acordeón: solo en <lg, montado justo debajo de ESTA tarjeta */}
+                                                {selected && !isLgUp ? (
+                                                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5">
+                                                        <SurfboardPublicDetail
                                                             board={s}
                                                             onImageClick={setLightbox}
                                                             paymentIban={paymentIban}
                                                             paymentBizumNumber={paymentBizumNumber}
                                                             whatsappHelpUrl={whatsappHelpUrl}
+                                                            titleAs="h2"
                                                         />
                                                     </div>
-                                                )}
-                                            </React.Fragment>
+                                                ) : null}
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -485,8 +387,9 @@ export default function Index({
                         </div>
                     </section>
 
-                    {/* ── Panel lateral — solo >= md ── */}
-                    <section className="hidden md:block rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
+                    {/* Panel lateral: solo montado en ≥lg (nunca debajo de la lista en tablet) */}
+                    {isLgUp ? (
+                    <section className="rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
                         <div className="p-6">
                             {!selectedBoard ? (
                                 <div className="grid place-items-center rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
@@ -500,16 +403,18 @@ export default function Index({
                                     </div>
                                 </div>
                             ) : (
-                                <BoardDetail
+                                <SurfboardPublicDetail
                                     board={selectedBoard}
                                     onImageClick={setLightbox}
                                     paymentIban={paymentIban}
                                     paymentBizumNumber={paymentBizumNumber}
                                     whatsappHelpUrl={whatsappHelpUrl}
+                                    titleAs="h2"
                                 />
                             )}
                         </div>
                     </section>
+                    ) : null}
                 </div>
 
                     {allBoards.length === 0 && (

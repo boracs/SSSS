@@ -38,6 +38,12 @@ export const BUNKER_LOGO = {
         width: 180,
         height: 120,
     },
+    sponsorStrip: {
+        webp: "/img/sponsors/bunker/bunker-sponsor-strip.webp",
+        png: "/img/sponsors/bunker/bunker-sponsor-strip.png",
+        width: 360,
+        height: 176,
+    },
 };
 
 const ALT = "The Bunker Surf Shop · Patrocinador oficial S4";

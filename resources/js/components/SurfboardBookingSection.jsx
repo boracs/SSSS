@@ -3,10 +3,7 @@ import { router, useForm, usePage } from "@inertiajs/react";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import BookingCalendar from "./BookingCalendar";
-import {
-    Collapsible,
-    CollapsibleContent,
-} from "./ui/collapsible";
+import { Collapsible, CollapsibleContent } from "./ui/collapsible";
 
 function isoDate(d) {
     if (!d) return null;
@@ -32,9 +29,6 @@ function buildPricesByDuration(priceSchema) {
     };
 }
 
-const fieldClass =
-    "input-focus-ring mt-1 w-full px-4 py-2.5 text-sm placeholder:text-gray-500";
-
 /**
  * Calendario + botón Reservar + formulario de contacto con revelación progresiva.
  */
@@ -45,10 +39,12 @@ export default function SurfboardBookingSection({
     whatsappHelpUrl = null,
     initialStart = null,
     initialEnd = null,
-    showSchemaBadge = false,
+    showSchemaBadge = false, // reserved; never shown on public UI
     embedded = false,
 }) {
     const user = usePage().props.auth?.user || null;
+    const tone = embedded ? "dark" : "light";
+
     const pricesByDuration = useMemo(
         () => buildPricesByDuration(surfboard?.price_schema),
         [surfboard?.price_schema],
@@ -106,9 +102,7 @@ export default function SurfboardBookingSection({
         setData("end_date", isoDate(selected.endDate) || "");
     }, [selected.startDate, selected.endDate, setData]);
 
-    const hasValidDates = Boolean(
-        selected.startDate && selected.endDate && !isChecking,
-    );
+    const hasValidDates = Boolean(selected.startDate && selected.endDate && !isChecking);
 
     useEffect(() => {
         if (!hasValidDates) setFormOpen(false);
@@ -155,159 +149,150 @@ export default function SurfboardBookingSection({
         );
     };
 
+    const fieldClass = embedded
+        ? "mt-1 w-full rounded-xl border border-white/10 bg-slate-950/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+        : "input-focus-ring mt-1 w-full px-4 py-2.5 text-sm placeholder:text-gray-500";
+
+    const labelText = embedded ? "text-sm font-semibold text-slate-300" : "text-sm font-semibold text-slate-700";
+
+    const primaryBtn =
+        "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50";
+
+    const payBtn =
+        "inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60";
+
     const wrapperClass = embedded
-        ? "mt-6 rounded-xl border border-slate-200 bg-slate-50/60 p-4"
+        ? "mt-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-xl shadow-black/20 sm:p-5"
         : "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
 
     return (
-        <>
-            <div className={wrapperClass}>
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p
-                            className={
-                                embedded
-                                    ? "text-xs font-bold uppercase tracking-wide text-slate-500"
-                                    : "text-lg font-bold text-slate-900"
-                            }
-                        >
-                            {embedded ? "Disponibilidad" : "Disponibilidad y reserva"}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-600 sm:text-sm">
-                            {embedded
-                                ? "Consulta fechas libres. Las reservas pendientes también bloquean."
-                                : "Selecciona un rango libre. Las reservas pendientes también bloquean."}
-                        </p>
-                    </div>
-                    {showSchemaBadge ? (
-                        <div className="shrink-0 rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700 ring-1 ring-inset ring-slate-200">
-                            Esquema: {surfboard.price_schema?.name || "—"}
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className="board-availability-calendar mt-4 [&_.react-datepicker]:w-full [&_.react-datepicker__month-container]:float-none [&_.react-datepicker__month-container]:w-full">
-                    <BookingCalendar
-                        blockedRanges={blockedRanges}
-                        pricesByDuration={pricesByDuration}
-                        isChecking={isChecking}
-                        onRangeChange={handleRangeChange}
-                        initialStart={initialStart}
-                        initialEnd={initialEnd}
-                    />
-                </div>
-
-                <Collapsible open={formOpen} onOpenChange={setFormOpen}>
-                    {!formOpen ? (
-                        <button
-                            type="button"
-                            disabled={!hasValidDates}
-                            onClick={() => setFormOpen(true)}
-                            className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-sky-600 px-6 py-3 text-base font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            Reservar
-                        </button>
-                    ) : null}
-
-                    <CollapsibleContent className="grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-in-out data-[state=closed]:grid-rows-[0fr] data-[state=closed]:opacity-0 data-[state=open]:grid-rows-[1fr] data-[state=open]:opacity-100">
-                        <div className="min-h-0 overflow-hidden">
-                            <div className="mt-6 space-y-4 border-t border-slate-200 pt-6">
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                    <label className="block">
-                                        <span className="text-sm font-semibold text-slate-700">
-                                            Nombre
-                                        </span>
-                                        <input
-                                            value={data.client_name}
-                                            onChange={(e) =>
-                                                setData("client_name", e.target.value)
-                                            }
-                                            className={fieldClass}
-                                            placeholder="Tu nombre"
-                                            autoComplete="name"
-                                        />
-                                        {errors.client_name ? (
-                                            <p className="mt-1 text-xs text-rose-600">
-                                                {errors.client_name}
-                                            </p>
-                                        ) : null}
-                                    </label>
-
-                                    <label className="block">
-                                        <span className="text-sm font-semibold text-slate-700">
-                                            Email (opcional)
-                                        </span>
-                                        <input
-                                            type="email"
-                                            value={data.client_email}
-                                            onChange={(e) =>
-                                                setData("client_email", e.target.value)
-                                            }
-                                            className={fieldClass}
-                                            placeholder="correo@ejemplo.com"
-                                            autoComplete="email"
-                                        />
-                                        {errors.client_email ? (
-                                            <p className="mt-1 text-xs text-rose-600">
-                                                {errors.client_email}
-                                            </p>
-                                        ) : null}
-                                    </label>
-
-                                    <label className="block md:col-span-2">
-                                        <span className="text-sm font-semibold text-slate-700">
-                                            Teléfono (opcional)
-                                        </span>
-                                        <input
-                                            type="tel"
-                                            value={data.client_phone}
-                                            onChange={(e) =>
-                                                setData("client_phone", e.target.value)
-                                            }
-                                            className={fieldClass}
-                                            placeholder="600 000 000"
-                                            autoComplete="tel"
-                                        />
-                                        {errors.client_phone ? (
-                                            <p className="mt-1 text-xs text-rose-600">
-                                                {errors.client_phone}
-                                            </p>
-                                        ) : null}
-                                    </label>
-                                </div>
-
-                                {(errors.start_date || errors.end_date) && (
-                                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-                                        {errors.start_date || errors.end_date}
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                    <p className="text-xs text-slate-500">
-                                        Serás redirigido a la pasarela de pago segura (Stripe).
-                                    </p>
-                                    <button
-                                        type="button"
-                                        disabled={!canContinueToPay || paying}
-                                        onClick={iniciarPagoAlquiler}
-                                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                    >
-                                        {paying || processing ? (
-                                            <>
-                                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                                                Preparando pago…
-                                            </>
-                                        ) : (
-                                            "Pagar con tarjeta"
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </CollapsibleContent>
-                </Collapsible>
+        <div className={wrapperClass}>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                <p
+                    className={
+                        embedded
+                            ? "font-heading text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-400"
+                            : "font-heading text-lg font-bold text-slate-900"
+                    }
+                >
+                    {embedded ? "Disponibilidad" : "Disponibilidad y reserva"}
+                </p>
+                <p className="text-xs text-slate-500 sm:text-sm">Selecciona días</p>
             </div>
 
-        </>
+            <div className="board-availability-calendar mt-4 w-full">
+                <BookingCalendar
+                    blockedRanges={blockedRanges}
+                    pricesByDuration={pricesByDuration}
+                    isChecking={isChecking}
+                    onRangeChange={handleRangeChange}
+                    initialStart={initialStart}
+                    initialEnd={initialEnd}
+                    tone={tone}
+                />
+            </div>
+
+            <Collapsible open={formOpen} onOpenChange={setFormOpen}>
+                {!formOpen ? (
+                    <button
+                        type="button"
+                        disabled={!hasValidDates}
+                        onClick={() => setFormOpen(true)}
+                        className={`mt-5 ${primaryBtn}`}
+                    >
+                        Reservar
+                    </button>
+                ) : null}
+
+                <CollapsibleContent className="grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-in-out data-[state=closed]:grid-rows-[0fr] data-[state=closed]:opacity-0 data-[state=open]:grid-rows-[1fr] data-[state=open]:opacity-100">
+                    <div className="min-h-0 overflow-hidden">
+                        <div
+                            className={`mt-5 space-y-4 border-t pt-5 ${
+                                embedded ? "border-white/10" : "border-slate-200"
+                            }`}
+                        >
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <label className="block">
+                                    <span className={labelText}>Nombre</span>
+                                    <input
+                                        value={data.client_name}
+                                        onChange={(e) => setData("client_name", e.target.value)}
+                                        className={fieldClass}
+                                        placeholder="Tu nombre"
+                                        autoComplete="name"
+                                    />
+                                    {errors.client_name ? (
+                                        <p className="mt-1 text-xs text-rose-400">{errors.client_name}</p>
+                                    ) : null}
+                                </label>
+
+                                <label className="block">
+                                    <span className={labelText}>Email (opcional)</span>
+                                    <input
+                                        type="email"
+                                        value={data.client_email}
+                                        onChange={(e) => setData("client_email", e.target.value)}
+                                        className={fieldClass}
+                                        placeholder="correo@ejemplo.com"
+                                        autoComplete="email"
+                                    />
+                                    {errors.client_email ? (
+                                        <p className="mt-1 text-xs text-rose-400">{errors.client_email}</p>
+                                    ) : null}
+                                </label>
+
+                                <label className="block md:col-span-2">
+                                    <span className={labelText}>Teléfono (opcional)</span>
+                                    <input
+                                        type="tel"
+                                        value={data.client_phone}
+                                        onChange={(e) => setData("client_phone", e.target.value)}
+                                        className={fieldClass}
+                                        placeholder="600 000 000"
+                                        autoComplete="tel"
+                                    />
+                                    {errors.client_phone ? (
+                                        <p className="mt-1 text-xs text-rose-400">{errors.client_phone}</p>
+                                    ) : null}
+                                </label>
+                            </div>
+
+                            {(errors.start_date || errors.end_date) && (
+                                <div
+                                    className={`rounded-xl px-4 py-3 text-sm ${
+                                        embedded
+                                            ? "border border-rose-500/30 bg-rose-500/10 text-rose-200"
+                                            : "border border-rose-200 bg-rose-50 text-rose-800"
+                                    }`}
+                                >
+                                    {errors.start_date || errors.end_date}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <p className={`text-xs ${embedded ? "text-slate-500" : "text-slate-500"}`}>
+                                    Pago seguro con Stripe
+                                </p>
+                                <button
+                                    type="button"
+                                    disabled={!canContinueToPay || paying}
+                                    onClick={iniciarPagoAlquiler}
+                                    className={payBtn}
+                                >
+                                    {paying || processing ? (
+                                        <>
+                                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                            Preparando pago…
+                                        </>
+                                    ) : (
+                                        "Pagar con tarjeta"
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </CollapsibleContent>
+            </Collapsible>
+        </div>
     );
 }

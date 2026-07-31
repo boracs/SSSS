@@ -1,6 +1,6 @@
 ---
 description: SEO técnico y GEO en páginas públicas indexables (Laravel + Inertia + React)
-globs: resources/js/Pages/**/*.jsx, app/Http/Controllers/**/*.php, app/DTOs/**/*.php, app/Services/**/*Seo*.php
+globs: resources/js/Pages/**/*.jsx, resources/js/components/seo/**/*.{jsx,js,tsx}, resources/js/components/webcam/ZurriolaGeoGuide.jsx, resources/surf-guide/zurriola-geo-facts.json, app/Http/Controllers/**/*.php, app/DTOs/Seo/**/*.php, app/DTOs/SurfConditions/ZurriolaGeoFactsDto.php, app/Services/**/*Seo*.php, app/Services/SurfConditions/ZurriolaGeoFactsService.php
 alwaysApply: false
 ---
 
@@ -13,7 +13,17 @@ Aplica al tocar rutas/componentes **públicos e indexables**. Mapa de dominios y
 - Páginas marketing, CMS, catálogo tienda/alquiler/segunda mano, landings de servicios.
 - Cuando el usuario pida **análisis SEO/GEO**, metadatos, Schema.org, sitemap o indexación.
 
-**No aplica** a refactors internos de admin, auth o flujos de pago sin impacto público.
+**No aplica** a refactors internos de admin, auth o flujos de pago sin impacto público (salvo añadir `noindex`).
+
+---
+
+## Fases (prioridad S4)
+
+1. **Cimientos (ahora):** `SeoMetaDto` + `PublicPageSeoService` + `SeoHead`; canonical; `og:locale=es_ES`; JSON-LD LocalBusiness en home/webcams; `noindex` en Auth y áreas privadas.
+2. **Contenido GEO:** FAQs citables + `zurriola-geo-facts.json` (piloto en webcams). Expandir a surf/taller cuando el copy esté estable.
+3. **Escalado:** Search Console, más Product schema si faltan fichas.
+
+No crear reglas Cursor nuevas por cada página: extender esta y el mapa.
 
 ---
 
@@ -24,9 +34,24 @@ Aplica al tocar rutas/componentes **públicos e indexables**. Mapa de dominios y
 | `/`, `/nosotros`, `/contacto`, `/servicios*` | `/admin/*`, `/login`, `/register`, Auth/* |
 | `/tienda`, `/producto-ver/*` | Carrito, checkout, pedidos, perfil, dashboard |
 | `/segunda-mano`, `/segunda-mano/{id}` | Taquillas, llaves emergencia, AutoCoach (uploads) |
-| `/tablas-alquiler/*` (catálogo/show público) | Áreas con `current_code`, DTOs sensibles |
+| `/tablas-alquiler/*` (catálogo/show público) | Academia autenticada / flujos con sesión sensible |
 
-En páginas noindex: `<Head><meta name="robots" content="noindex, nofollow" /></Head>`.
+En páginas noindex: `SeoHead` con `robots: noindex, nofollow` o `<meta name="robots" content="noindex, nofollow" />` vía AuthShell.
+
+---
+
+## Checklist páginas prioritarias S4
+
+Al tocar estas rutas, asegurar `seo` desde backend + `<SeoHead seo={seo} />` (no metas sueltas en JSX salvo legacy pendiente de migrar):
+
+| Ruta | Schema mínimo | Notas |
+|------|---------------|--------|
+| `/` (home) | `LocalBusiness` + `Organization` | Marca S4, Zurriola, Donostia |
+| `/servicios/webcams` | `LocalBusiness` o `WebPage` + lugar | Parte/webcam; hechos locales |
+| `/nosotros`, `/contacto` | `LocalBusiness` / `ContactPage` | Ubicación y canales públicos |
+| `/servicios` (reparación tablas) | `Service` | Edy Mulder; no inventar precios |
+| `/servicios/*` (clases, trips…) | `Service` / `Course` | Precios públicos solo si son oficiales |
+| `/tienda`, producto, 2ª mano, alquiler | `Product` + `Offer` | Céntimos → € formateado; sin márgenes internos |
 
 ---
 
@@ -34,57 +59,58 @@ En páginas noindex: `<Head><meta name="robots" content="noindex, nofollow" /></
 
 - **Cero datos financieros internos:** nunca `purchase_price`, márgenes ni auditoría en metadatos, JSON-LD ni HTML público. Segunda mano: solo `SecondHandBoard::toPublicArray()`.
 - **Cero datos sensibles:** códigos de taquilla, `EmergencyKeyRevealDto`, tokens, IDs internos de admin.
-- **Sin lógica SEO en JSX:** el backend prepara un DTO readonly; React solo renderiza.
+- **Sin lógica SEO en JSX:** el backend prepara un DTO readonly; React solo renderiza `SeoHead`.
 - **Sin keyword stuffing** ni texto oculto. GEO = hechos verificables, listas, tablas, datos locales (Zurriola, Donostia, servicios reales).
 - **Dinero en JSON-LD:** precios en euros formateados desde céntimos (int), nunca float.
+- **Un H1** por página; `lang="es"`; `og:locale` = `es_ES`.
 
 ---
 
 ## Patrón de implementación
 
 ```
-Controller → SeoMetaDto (readonly) + JsonLd via *SeoService
-          → Inertia::render(..., ['seo' => $dto])
-          → Page.jsx: <SeoHead seo={seo} />  (usa <Head> de @inertiajs/react)
+Controller / closure → PublicPageSeoService (o *SeoService de dominio)
+                    → SeoMetaDto (readonly) + jsonLd sanitizado
+                    → Inertia::render(..., ['seo' => $dto->toArray()])
+                    → Page.jsx: <SeoHead seo={seo} />
 ```
 
-**SeoMetaDto mínimo:** `title`, `description`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `ogType`, `robots`, `jsonLd` (array Schema.org ya sanitizado).
+**SeoMetaDto mínimo:** `title`, `description`, `canonical`, `ogTitle`, `ogDescription`, `ogImage`, `ogType`, `ogLocale`, `robots`, `jsonLd` (list de nodos Schema.org).
 
-**Frontend:** si existe `resources/js/components/seo/SeoHead.jsx`, usarlo; si no, `<Head>` de `@inertiajs/react` con props del DTO `seo` (no crear SeoHead salvo petición explícita). `@inertiaHead` en `app.blade.php` debe recibir tags de la primera carga.
+**Frontend:** `resources/js/components/seo/SeoHead.jsx` (obligatorio en páginas nuevas/migradas). `@inertiaHead` en `app.blade.php` recibe tags de la primera carga.
 
-**Schemas por tipo de página:**
-
-| Página | Schema.org |
-|--------|------------|
-| Home, Nosotros, Contacto | `LocalBusiness`, `Organization` |
-| Producto / Tienda | `Product`, `Offer` |
-| Clases / Servicios | `Course`, `Service` |
-| Segunda mano | `Product` (solo datos de `toPublicArray()`) |
-| Alquiler tabla | `Product` + `Offer` (precio público) |
+**Canonical:** URL absoluta coherente con `config('app.url')` (sin barra final duplicada).
 
 ---
 
-## GEO (Optimización para motores generativos)
+## GEO (motores generativos)
 
-- Priorizar **respuestas citables:** definiciones claras, horarios, ubicación, precios públicos, FAQs en viñetas.
-- Un **H1 único** por página; jerarquía H2/H3 semántica (`aria-labelledby` donde aplique).
-- Tablas HTML para comparativas (medidas tabla, planes, precios).
-- Contenido en **español** (`lang="es"` ya en blade); `og:locale` = `es_ES`.
+- Respuestas citables: definición, horarios, ubicación, precios públicos, FAQs en viñetas.
+- Tablas HTML para comparativas (medidas, planes, precios, bandas kJ).
+- Métricas Zurriola: fuente única `resources/surf-guide/zurriola-geo-facts.json` → `ZurriolaGeoFactsService` → props + FAQPage JSON-LD. No inventar umbrales; cancelación solo si está en el JSON (hoy `null`).
+- Piloto UI: `/servicios/webcams` (`ZurriolaGeoGuide.jsx`). Escuelas/clases pueden reutilizar el mismo payload más adelante.
 
 ---
 
-## Roadmap técnico (escalabilidad)
+## Roadmap técnico
 
-1. `SeoHead` + `noindex` en privadas + canonical por ruta.
-2. DTOs + JSON-LD por dominio (`ProductSeoService`, etc.).
-3. `robots.txt` + `sitemap.xml` dinámico (rutas Laravel, no hardcode masivo).
-4. Core Web Vitals: LCP, lazy images, payload Inertia < 5MB.
+1. ✅ Cimientos: DTO + SeoHead + home/webcams + noindex Auth.
+2. ✅ Migrar landings indexables (nosotros, contacto, servicios*) a `SeoHead`.
+3. ✅ `robots.txt` + `sitemap.xml` dinámico (`PublicSitemapService` + `SitemapController`).
+4. ✅ Catálogo Product/Offer: tienda, producto, 2ª mano, alquiler (`PublicPageSeoService`).
+5. ✅ Core Web Vitals base: LCP preload+srcset hero home, fuentes sin `@import`, lazy productos, payload home ≤6 items.
+6. ✅ Contenido GEO piloto Zurriola en webcams (`zurriola-geo-facts.json` + FAQPage).
+7. Pendiente: política de cancelación en el JSON; reutilizar GEO en `/servicios/surf` / taller si hace falta.
+
+**Sitemap:** landings + `/taller/{slug}` + `/producto-ver/{id}` + `/segunda-mano/{id}` (available) + `/tablas-alquiler/*` activos. Cache 1h (`seo.sitemap.xml.v1`). Invalidar con `PublicSitemapService::forgetCache()` tras cambios masivos de catálogo si hace falta.
+
+**Catálogo JSON-LD:** precios públicos en EUR string; 2ª mano solo `toPublicArray()` / `effective_price` (céntimos→EUR); alquiler Offer con `businessFunction=LeaseOut` y precio 24 h.
+
+**CWV home:** `SeoMetaDto.preloadImages` → `<link rel=preload as=image imagesrcset>`; hero `zurriola-surf-sunset-{960,1280,1920}.webp`; un solo `fetchpriority=high` (hero, no logo).
 
 ---
 
 ## Plantilla de respuesta (solo si piden análisis SEO/GEO)
-
-Usar estos bloques XML; en cambios de código normales **no** obligatorio:
 
 ```xml
 <analisis_contextual>
@@ -111,4 +137,5 @@ Usar estos bloques XML; en cambios de código normales **no** obligatorio:
 - HTML carga `/build/assets/*` (no Vite dev en producción).
 - Canonical = URL absoluta coherente con `APP_URL`.
 - JSON-LD válido en [Rich Results Test](https://search.google.com/test/rich-results).
-- Privadas devuelven `noindex`.
+- Privadas / Auth devuelven `noindex`.
+- `/robots.txt` apunta a `Sitemap: {APP_URL}/sitemap.xml`; `/sitemap.xml` lista solo URLs indexables.

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
 import {
     ArrowRight,
     Banknote,
@@ -107,7 +108,7 @@ function StepCard({ step, icon: Icon, title, body, highlight, isLast }) {
     );
 }
 
-export default function Servicios({ whatsappHelpUrl = null, edyContact = null }) {
+export default function Servicios({ whatsappHelpUrl = null, edyContact = null, seo = null }) {
     const [edyContactOpen, setEdyContactOpen] = useState(false);
 
     const edy = edyContact ?? {};
@@ -121,6 +122,7 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null })
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950 text-white">
+            <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-cyan-950/50">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(15,95,116,0.35),_transparent_55%)]" />

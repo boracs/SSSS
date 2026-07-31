@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
+import ContactChannelsModal from "../components/ContactChannelsModal";
 import {
     Waves,
     CheckCircle2,
@@ -23,14 +25,9 @@ import {
     Flame,
 } from "lucide-react";
 
-const PARTICULARES = [
-    { pax: "1 persona", precio: "80 €", nota: "total" },
-    { pax: "2 personas", precio: "55 €", nota: "por persona" },
-    { pax: "3 personas", precio: "40 €", nota: "por persona" },
-    { pax: "4 personas", precio: "30 €", nota: "por persona" },
-    { pax: "5 personas", precio: "30 €", nota: "por persona" },
-    { pax: "6 personas", precio: "30 €", nota: "por persona" },
-];
+import { privateLessonPriceRows } from "../lib/privateLessonPricing";
+
+const PARTICULARES = privateLessonPriceRows();
 
 const BONOS = [
     {
@@ -308,7 +305,7 @@ function ModalidadPickerCard({ href, number, icon: Icon, title, subtitle, hint, 
     );
 }
 
-const BonoCard = ({ bono }) => {
+const BonoCard = ({ bono, onContact }) => {
     const Icon = bono.icon;
     const isParticularPack = bono.titulo.toLowerCase().includes("particulares");
 
@@ -363,13 +360,14 @@ const BonoCard = ({ bono }) => {
                     </p>
                     <p className="text-xs text-slate-500">{bono.nota}</p>
                 </div>
-                <Link
-                    href={route("contacto")}
+                <button
+                    type="button"
+                    onClick={() => onContact?.(isParticularPack ? "academy" : "bono")}
                     className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-500/25"
                 >
                     Reservar
                     <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                </button>
             </div>
         </div>
     );
@@ -480,9 +478,26 @@ const InvitadoAmigoCard = () => {
     );
 };
 
-export default function ServiciosClasesDeSurf() {
+export default function ServiciosClasesDeSurf({ seo = null }) {
+    const [contactOpen, setContactOpen] = useState(false);
+    const [contactTopic, setContactTopic] = useState("academy");
+
+    const openContact = (topic = "academy") => {
+        setContactTopic(topic);
+        setContactOpen(true);
+    };
+
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
+            <SeoHead seo={seo} />
+            {contactOpen ? (
+                <ContactChannelsModal
+                    topic={contactTopic}
+                    title="Contacta con la academia"
+                    subtitle="WhatsApp, Instagram, email o formulario: elige el canal que te venga mejor."
+                    onClose={() => setContactOpen(false)}
+                />
+            ) : null}
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-cyan-950/60">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(15,95,116,0.45),_transparent_55%)]" />
@@ -492,18 +507,24 @@ export default function ServiciosClasesDeSurf() {
                         Academia de surf S4
                     </div>
                     <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
-                        Clases particulares y bonos de surf en la{" "}
+                        Clases de surf en la{" "}
                         <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
                             Zurriola
                         </span>
                     </h1>
                     <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-                        Elige la atención total de una clase particular o la
-                        libertad de nuestros bonos: surfeas cuando mejor están las
-                        condiciones, con monitor certificado y todo el equipo
-                        incluido.
+                        Particulares, grupales y bonos en la playa de Zurriola
+                        (Donostia): surfeas con monitor certificado y equipo
+                        incluido, cuando mejor estén las condiciones.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
+                        <Link
+                            href={route("academy.lessons.index")}
+                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                        >
+                            <Waves className="h-4 w-4" />
+                            Reservar clase
+                        </Link>
                         <a
                             href="#particulares"
                             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
@@ -518,13 +539,14 @@ export default function ServiciosClasesDeSurf() {
                             <Ticket className="h-4 w-4" />
                             Ver bonos
                         </a>
-                        <Link
-                            href={route("contacto")}
+                        <button
+                            type="button"
+                            onClick={() => openContact("academy")}
                             className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
                         >
                             <MessageCircle className="h-4 w-4" />
                             Contactar
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -606,7 +628,7 @@ export default function ServiciosClasesDeSurf() {
                                 </li>
                             </ul>
                             <Link
-                                href={route("contacto")}
+                                href={`${route("academy.lessons.index")}?particular=1`}
                                 className="mt-8 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
                             >
                                 Reservar particular
@@ -690,7 +712,11 @@ export default function ServiciosClasesDeSurf() {
                     </p>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         {BONOS.map((bono) => (
-                            <BonoCard key={bono.titulo} bono={bono} />
+                            <BonoCard
+                                key={bono.titulo}
+                                bono={bono}
+                                onContact={openContact}
+                            />
                         ))}
                     </div>
 
@@ -941,7 +967,7 @@ export default function ServiciosClasesDeSurf() {
                                 ))}
                             </ul>
                             <Link
-                                href={route("contacto")}
+                                href={route("academy.lessons.index")}
                                 className="mt-5 inline-flex items-center gap-2 rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-amber-300"
                             >
                                 Reservar clase de primer día
@@ -1126,7 +1152,7 @@ export default function ServiciosClasesDeSurf() {
                                 </p>
 
                                 <Link
-                                    href={route("contacto")}
+                                    href={route("academy.lessons.index")}
                                     className="mt-5 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-5 py-2.5 text-sm font-semibold text-emerald-200 ring-1 ring-emerald-400/30 transition hover:bg-emerald-500/25"
                                 >
                                     Reservar primera clase o tutorial

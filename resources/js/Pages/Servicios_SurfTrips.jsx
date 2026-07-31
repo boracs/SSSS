@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import SeoHead from "../components/seo/SeoHead";
 import {
     MapPin,
     Clock,
@@ -182,9 +183,10 @@ const PackCard = ({ pack }) => (
     </div>
 );
 
-export default function ServiciosSurfTrips() {
+export default function ServiciosSurfTrips({ seo = null }) {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#072a2a] to-slate-950 text-white">
+            <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-teal-950/60">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(13,148,136,0.35),_transparent_55%)]" />

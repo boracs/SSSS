@@ -1,12 +1,14 @@
 import React from "react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../layouts/Layout1";
 import "../../css/pagina_principal.css";
 import Contenedor_productos from "../layouts/Contenedor_productos";
-import { Head, Link } from "@inertiajs/react";
 import BrandLogo from "../components/BrandLogo";
-import SponsorsStrip from "../components/SponsorsStrip";
+import S4Button from "../components/S4Button";
+import SeoHead from "../components/seo/SeoHead";
 import Por_que_escogernos_motivo from "../components/Por_que_escogernos_motivo";
 import SurfBriefMini from "../components/webcam/SurfBriefMini";
+import OpcionesIntro from "../components/OpcionesIntro";
 import {
     ShieldCheck,
     Sparkles,
@@ -18,6 +20,13 @@ import {
     Compass,
     Quote,
     Star,
+    Wrench,
+    Shirt,
+    Gavel,
+    GitCompareArrows,
+    Video,
+    Clapperboard,
+    GraduationCap,
 } from "lucide-react";
 
 const motivos = [
@@ -48,8 +57,14 @@ const seccionesRapidas = [
     { label: "Surfskate", href: route("servicios.surfSkate"), icon: Sparkles },
     { label: "Tienda S4", href: route("tienda"), icon: Star },
     { label: "Taquillas", href: route("taquillas.planes"), icon: ShieldCheck },
-    { label: "Webcam", href: route("servicios.webcams"), icon: Camera },
+    { label: "Webcam", href: route("servicios.webcams"), icon: Video },
     { label: "Fotografía", href: route("servicios.fotografia"), icon: Camera },
+    { label: "Reparación de tablas", href: route("servicios"), icon: Wrench },
+    { label: "Reparación de neoprenos", href: route("servicios.reparacionNeoprenos"), icon: Shirt },
+    { label: "Subastas", href: route("auctions.index"), icon: Gavel },
+    { label: "Comparador de maniobras", href: route("autocoach.index"), icon: GitCompareArrows },
+    { label: "Videocorrecciones", href: route("servicios.videograbaciones"), icon: Clapperboard },
+    { label: "Taller de Surf", href: route("taller.index"), icon: GraduationCap },
 ];
 
 const testimonios = [
@@ -73,134 +88,112 @@ const testimonios = [
     },
 ];
 
-const Pag_principal = ({ productos = [], surfBrief }) => (
+const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
     <Layout1>
-        <Head>
-            <title>San Sebastian Surf School | S4</title>
-            <meta
-                name="description"
-                content="Domina el Cantábrico con San Sebastian Surf School (S4). Clases de surf, club de socios e instalaciones premium en Zurriola, Donostia."
-            />
-            <meta property="og:title" content="San Sebastián Surf School · S4" />
-            <meta property="og:description" content="Escuela de surf premium en Zurriola, Donostia." />
-            <meta property="og:image" content="/img/brand/og-share.jpg" />
-            <meta property="og:type" content="website" />
-        </Head>
+        <SeoHead seo={seo} />
 
-        <div className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50">
-            {/* Decoración de fondo */}
-            <div aria-hidden className="pointer-events-none absolute inset-0">
-                <div className="absolute -left-32 top-0 h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl" />
-                <div className="absolute -right-32 top-1/3 h-80 w-80 rounded-full bg-[#0f5f74]/10 blur-3xl" />
-            </div>
+        <div className="relative overflow-hidden s4-surface-light">
+            {/* ── HERO (primer viewport: marca + titular + frase + CTA + imagen) ── */}
+            <section
+                className="home-hero relative isolate min-h-[calc(100svh-4.5rem)] w-full"
+                aria-labelledby="hero-heading"
+            >
+                <picture>
+                    <source
+                        type="image/webp"
+                        srcSet="/img/zurriola-surf-sunset-960.webp 960w, /img/zurriola-surf-sunset-1280.webp 1280w, /img/zurriola-surf-sunset-1920.webp 1920w"
+                        sizes="100vw"
+                    />
+                    <img
+                        src="/img/zurriola-surf-sunset-1280.jpg"
+                        srcSet="/img/zurriola-surf-sunset-960.jpg 960w, /img/zurriola-surf-sunset-1280.jpg 1280w, /img/zurriola-surf-sunset-1920.jpg 1920w"
+                        sizes="100vw"
+                        width={1920}
+                        height={1847}
+                        alt="Surfista al atardecer en la playa de Zurriola, San Sebastián, con el Urgull al fondo"
+                        className="home-hero__media absolute inset-0 h-full w-full object-cover object-[68%_42%]"
+                        loading="eager"
+                        fetchPriority="high"
+                        decoding="async"
+                    />
+                </picture>
+                <div
+                    aria-hidden
+                    className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/45 to-slate-950/20"
+                />
 
-            <main className="relative mx-auto max-w-6xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12 lg:px-8">
-                {/* ── HERO ── */}
-                <section
-                    className="overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/50"
-                    aria-labelledby="hero-heading"
-                >
-                    <div className="grid lg:grid-cols-2">
-                        <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
-                            <BrandLogo variant="navyHero" className="h-24 w-24 sm:h-28 sm:w-28" priority />
+                <div className="relative mx-auto flex min-h-[calc(100svh-4.5rem)] max-w-6xl flex-col justify-center gap-4 px-4 py-10 sm:gap-5 sm:px-6 sm:py-16 lg:px-8">
+                    <BrandLogo
+                        variant="whiteHero"
+                        className="home-hero__brand h-20 w-auto sm:h-32 lg:h-40"
+                        priority
+                    />
 
-                            <h1
-                                id="hero-heading"
-                                className="mt-5 font-heading text-4xl font-extrabold leading-[1.08] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.25rem]"
-                            >
-                                Domina el{" "}
-                                <span className="bg-gradient-to-r from-[#0f5f74] to-cyan-500 bg-clip-text text-transparent">
-                                    Cantábrico
-                                </span>{" "}
-                                con S4
-                            </h1>
+                    <h1
+                        id="hero-heading"
+                        className="home-hero__title max-w-2xl font-heading text-3xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                    >
+                        Domina el Cantábrico
+                        <span className="mt-1 block text-[0.78em] font-bold leading-snug sm:mt-2 sm:text-[0.85em]">
+                            con San Sebastián Surf School
+                        </span>
+                    </h1>
 
-                            <p className="mt-4 max-w-lg text-base leading-relaxed text-slate-600">
-                                Tu seguridad, nuestra técnica. Clases, alquiler de material, bonos VIP y un club de
-                                socios con instalaciones premium a pie de{" "}
-                                <strong className="font-semibold text-slate-800">Zurriola</strong>, en el corazón de
-                                Donostia.
-                            </p>
+                    <p className="home-hero__copy max-w-md text-base leading-relaxed text-white/85 sm:text-lg">
+                        Tu seguridad, nuestra técnica. Escuela de surf en Zurriola, Donostia.
+                    </p>
 
-                            <div className="mt-7 flex flex-wrap gap-3">
-                                <Link
-                                    href={route("servicios.surf")}
-                                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#0f5f74] to-cyan-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-cyan-900/20 transition hover:brightness-110"
-                                >
-                                    <Waves className="h-4 w-4" />
-                                    Reserva tu clase
-                                </Link>
-                                <Link
-                                    href={route("nosotros")}
-                                    className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-cyan-300 hover:text-[#0f5f74]"
-                                >
-                                    Conocer S4
-                                    <ArrowRight className="h-4 w-4" />
-                                </Link>
-                            </div>
-
-                            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                                {[
-                                    { icon: ShieldCheck, t: "Instructores federados", s: "Formación y rescate" },
-                                    { icon: Sparkles, t: "Equipo premium", s: "Tablas y neoprenos top" },
-                                    { icon: Users, t: "+5.000 alumnos", s: "Todos los niveles" },
-                                ].map(({ icon: Icon, t, s }) => (
-                                    <div
-                                        key={t}
-                                        className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-3"
-                                    >
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#0f5f74]/10 text-[#0f5f74]">
-                                            <Icon className="h-4 w-4" />
-                                        </div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-800">{t}</p>
-                                            <p className="text-[10px] text-slate-500">{s}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="relative min-h-[280px] lg:min-h-full">
-                            <img
-                                src="/img/fotografo-playa-sunset.png"
-                                alt="Sesión de surf al atardecer en la playa de Zurriola, San Sebastián"
-                                className="absolute inset-0 h-full w-full object-cover"
-                                loading="eager"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#0f5f74]/80 via-[#0f5f74]/20 to-transparent lg:bg-gradient-to-r lg:from-white/20 lg:via-transparent lg:to-transparent" />
-                            <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white sm:bottom-6 sm:left-6 sm:right-6">
-                                <BrandLogo variant="whiteMark" className="h-16 w-16 drop-shadow-lg sm:h-20 sm:w-20" decorative />
-                                <div className="rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-right backdrop-blur-sm">
-                                    <p className="text-[10px] uppercase tracking-wide text-cyan-200">Cantábrico</p>
-                                    <p className="text-xs font-semibold">Seguridad & técnica</p>
-                                </div>
-                            </div>
-                        </div>
+                    <div className="home-hero__cta mt-2 sm:mt-3">
+                        <S4Button href={route("servicios.surf")} variant="onMedia" size="lg">
+                            <Waves className="h-4 w-4" />
+                            Reserva tu clase
+                        </S4Button>
                     </div>
+                </div>
+            </section>
+
+            <main className="relative mx-auto max-w-6xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:px-8">
+                {/* ── Parte S4 (USP: resumen de expertos, justo bajo el hero) ── */}
+                <SurfBriefMini brief={surfBrief} />
+
+                {/* ── Beneficios (bajo el fold) ── */}
+                <section className="mt-10 grid grid-cols-1 gap-3 sm:mt-12 sm:grid-cols-3" aria-label="Ventajas S4">
+                    {[
+                        { icon: ShieldCheck, t: "Instructores federados", s: "Formación y rescate" },
+                        { icon: Sparkles, t: "Equipo premium", s: "Tablas y neoprenos top" },
+                        { icon: Users, t: "+5.000 alumnos", s: "Todos los niveles" },
+                    ].map(({ icon: Icon, t, s }) => (
+                        <div key={t} className="flex items-center gap-3 px-1 py-2">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center text-s4">
+                                <Icon className="h-5 w-5" aria-hidden />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-slate-800">{t}</p>
+                                <p className="text-xs text-slate-500">{s}</p>
+                            </div>
+                        </div>
+                    ))}
                 </section>
 
                 {/* ── Accesos rápidos ── */}
                 <section className="mt-10" aria-label="Accesos rápidos">
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-nowrap gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
                         {seccionesRapidas.map(({ label, href, icon: Icon }) => (
                             <Link
                                 key={label}
                                 href={href}
-                                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-cyan-400/40 hover:bg-cyan-50 hover:text-[#0f5f74]"
+                                className="group inline-flex flex-shrink-0 items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/90 px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 hover:border-cyan-500/50 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                             >
-                                <Icon className="h-3.5 w-3.5 text-cyan-600" />
-                                {label}
+                                <Icon className="h-4 w-4 flex-shrink-0 text-s4-cyan" aria-hidden />
+                                <span className="whitespace-nowrap text-slate-200 group-hover:text-white">{label}</span>
                             </Link>
                         ))}
                     </div>
                 </section>
 
-                <SurfBriefMini brief={surfBrief} />
-
                 {/* ── Sobre nosotros teaser ── */}
                 <section className="mt-14 sm:mt-16" aria-labelledby="sobre-nosotros-heading">
-                    <div className="grid overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-[#0f5f74] to-slate-900 shadow-xl lg:grid-cols-5">
+                    <div className="grid overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-s4 to-slate-900 shadow-xl lg:grid-cols-5">
                         <div className="relative hidden lg:col-span-2 lg:block">
                             <img
                                 src="/img/nosotros/galeria/instalaciones-01.png"
@@ -208,7 +201,7 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                                 className="h-full w-full object-cover opacity-90"
                                 loading="lazy"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#0f5f74]/90" />
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent to-s4/90" />
                         </div>
                         <div className="p-6 sm:p-8 lg:col-span-3">
                             <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-300">
@@ -246,13 +239,10 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                                 ))}
                             </div>
 
-                            <Link
-                                href={route("nosotros")}
-                                className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-bold text-[#0f5f74] transition hover:bg-cyan-50"
-                            >
+                            <S4Button href={route("nosotros")} variant="onMedia" className="mt-6">
                                 Ver instalaciones y club
                                 <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            </S4Button>
                         </div>
                     </div>
                 </section>
@@ -260,7 +250,7 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                 {/* ── Por qué elegir S4 ── */}
                 <section className="mt-16 sm:mt-20" aria-labelledby="por-que-heading">
                     <div className="mb-8 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-600">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-s4">
                             Experiencia S4
                         </p>
                         <h2
@@ -284,7 +274,7 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                 {/* ── Testimonios ── */}
                 <section className="mt-16 sm:mt-20" aria-labelledby="testimonios-heading">
                     <div className="mb-8 text-center">
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-600">
+                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-s4">
                             Comunidad
                         </p>
                         <h2
@@ -317,7 +307,7 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                                 </div>
                                 <p className="text-sm leading-relaxed text-slate-700">&ldquo;{t.quote}&rdquo;</p>
                                 <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0f5f74] text-xs font-bold text-white">
+                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-s4 text-xs font-bold text-white">
                                         {t.author[0]}
                                     </div>
                                     <div>
@@ -362,18 +352,11 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                                         loading="lazy"
                                     />
                                 </div>
-                                <figcaption className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-[#0f5f74]">
+                                <figcaption className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-s4">
                                     {img.caption}
                                 </figcaption>
                             </figure>
                         ))}
-                    </div>
-                </section>
-
-                {/* ── Patrocinadores ── */}
-                <section className="mt-16 sm:mt-20">
-                    <div className="rounded-2xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:p-8">
-                        <SponsorsStrip variant="light" logoVariant="navyMark" />
                     </div>
                 </section>
 
@@ -384,6 +367,13 @@ const Pag_principal = ({ productos = [], surfBrief }) => (
                     </div>
                 ) : null}
             </main>
+
+            {/* ── Exploración visual (antes del footer) ── */}
+            {/* ── Exploración visual (fusionada con el footer) ── */}
+            <OpcionesIntro
+                variant="dark"
+                className="mt-10 sm:mt-14"
+            />
         </div>
     </Layout1>
 );

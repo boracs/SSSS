@@ -55,7 +55,7 @@
 | Segunda Mano | `SecondHandBoardController` (público + Admin) | `SecondHand/`, `Admin/SecondHand/` |
 | Academia | `Academy/LessonController`, `Actions/Academy/*` | `Academy/`, `Admin/Academy/Commander` |
 | Alquileres | `Rentals/*`, `BookingService` | `Rentals/Surfboards/`, `Admin/Surfboards/` |
-| Taquillas | `PlanesTaquillas`, `Taquilla`, `PagoCuota`, `Services/Taquilla/*` | `PlanesTaquillas*`, `AsignarTaquilla`, `Admin/Taquillas/Queue` |
+| Taquillas | `PlanesTaquillas`, `Taquilla`, `PagoCuota`, `Services/Taquilla/*` | `PlanesTaquillas*`, `AsignarTaquilla`, `Admin/Taquillas/{Registry,Vigencia}` |
 | Llave de emergencia | `EmergencyKeyController` (socio + Admin), `EmergencyKeyService` | `Profile/MeQuedeSinLlave`, `Admin/EmergencyKeys/` |
 | VIP / Bonos | `Client/BonoController`, `Admin/*`, `BonoService` | `Client/Bonos/`, `Admin/Bonos/`, `Admin/Vips/` |
 | Pagos (admin) | `Admin/PaymentValidationController` | `Admin/Payments/`, `Admin/CheckManager` |
@@ -166,7 +166,7 @@ app/
 │   │   ├── StoreSecondHandBoardRequest.php / UpdateSecondHandBoardRequest.php
 │   │
 │   └── Resources/
-│       └── PagoCuotaQueueResource.php
+│       └── PagoCuotaRegistryResource.php
 │
 ├── Jobs/
 │   └── SendContactMessageJob.php          ── ShouldQueue; delega a ContactMessageService; 3 reintentos
@@ -298,7 +298,7 @@ resources/
         ├── [Auth] Login, Register, ForgotPassword, ResetPassword, VerifyEmail, ConfirmPassword
         └── [Admin] Academy/Commander, Bonos/Index, Bookings/Index, SecondHand/(Index,Create,Edit),
             CheckManager, EmergencyKeys/Index, Payments/(Dashboard,GlobalDashboard),
-            Surfboards/(Index,Create,Edit), Taquillas/Queue, Users/Index, Vips/Index, VipManager
+            Surfboards/(Index,Create,Edit), Taquillas/{Registry,Vigencia}, Users/Index, Vips/Index, VipManager
 ```
 
 ---

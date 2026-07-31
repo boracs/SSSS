@@ -387,9 +387,6 @@ class LessonController extends Controller
     public function requestPrivateLesson(RequestPrivateLessonRequest $request)
     {
         $user = $request->user();
-        if (! $user) {
-            return back()->with('error', 'Debes iniciar sesión.');
-        }
 
         $result = $this->requestPrivateLessonAction->execute($user, $request);
 
@@ -402,9 +399,10 @@ class LessonController extends Controller
         /** @var \App\Models\Lesson $lesson */
         $lesson = $result['lesson'];
 
-        $depositEur   = (float) config('services.academy.class_reservation_deposit_eur', 30);
+        $depositEur   = (float) config('services.academy.private_lesson_deposit_eur', 7);
         $priceCents   = (int) round($depositEur * 100);
         $dateLabel    = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+        $customerEmail = $user?->email ?: $request->guestEmail();
 
         $dto = new InitiatePaymentDto(
             payableType:   LessonUser::class,
@@ -419,11 +417,12 @@ class LessonController extends Controller
             ],
             successPath:   '/pago/exito',
             cancelPath:    '/academia',
-            customerEmail: $user->email,
+            customerEmail: $customerEmail,
             metadata:      [
                 'lesson_id'     => (string) $lesson->id,
                 'enrollment_id' => (string) $enrollment->id,
                 'modality'      => 'particular',
+                'guest'         => $user ? '0' : '1',
             ],
         );
 
@@ -450,9 +449,6 @@ class LessonController extends Controller
     public function requestLesson(RequestLessonRequest $request, Lesson $lesson)
     {
         $user = $request->user();
-        if (! $user) {
-            return back()->with('error', 'Debes iniciar sesión.');
-        }
 
         $result = $this->requestLessonAction->execute(
             $user,
@@ -461,6 +457,8 @@ class LessonController extends Controller
             $request->requestExtraMonitor(),
             $request->ageBracket(),
             $request->participants(),
+            $request->guestEmail(),
+            $request->guestPhone(),
         );
 
         if (! $result['ok']) {
@@ -483,6 +481,7 @@ class LessonController extends Controller
         $partyLabel   = $request->partySize() > 1 ? " × {$request->partySize()} personas" : '';
         $lessonTitle  = $lesson->title ?: 'Clase de surf';
         $dateLabel    = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
+        $customerEmail = $user?->email ?: $request->guestEmail();
 
         $dto = new InitiatePaymentDto(
             payableType:   \App\Models\LessonUser::class,
@@ -497,10 +496,11 @@ class LessonController extends Controller
             ],
             successPath:   '/pago/exito',
             cancelPath:    '/academia',
-            customerEmail: $user->email,
+            customerEmail: $customerEmail,
             metadata:      [
                 'lesson_id'     => (string) $lesson->id,
                 'enrollment_id' => (string) $enrollment->id,
+                'guest'         => $user ? '0' : '1',
             ],
         );
 

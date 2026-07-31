@@ -17,7 +17,9 @@ export default function ForgotPassword({ status }) {
 
     return (
         <GuestLayout>
-            <Head title="Forgot Password" />
+            <Head title="Forgot Password">
+                <meta head-key="robots" name="robots" content="noindex, nofollow" />
+            </Head>
 
             <div className="mb-4 text-sm text-gray-600">
                 Forgot your password? No problem. Just let us know your email

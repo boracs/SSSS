@@ -1,6 +1,8 @@
 import { Head, router, usePage } from "@inertiajs/react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatEur } from "@/utils/money";
+import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import { whatsappUrlWithMessage } from "@/lib/whatsapp";
 
 function ConsumptionDetailsPanel({ details }) {
     if (!details) {
@@ -126,6 +128,7 @@ export default function ClientBonosIndex({
     paymentIban,
     paymentBizumNumber,
     whatsappHelpUrl = null,
+    vipActive = true,
 }) {
     const { flash } = usePage().props;
     const [selectedPack, setSelectedPack] = useState(null);
@@ -138,6 +141,11 @@ export default function ClientBonosIndex({
     const [showMyBonos, setShowMyBonos] = useState(false);
     const myBonosSectionRef = useRef(null);
     const toast = flash?.success || flash?.error;
+
+    const whatsappReactivateUrl = whatsappUrlWithMessage(
+        whatsappHelpUrl,
+        "Hola, fui VIP y me gustaría reactivar mi perfil VIP para volver a comprar bonos y reservar clases grupales.",
+    );
 
     const creditsSummary = useMemo(() => {
         const confirmed = myBonos.filter((b) => String(b.status) === "confirmed");
@@ -228,7 +236,14 @@ export default function ClientBonosIndex({
             <Head title="Bonos VIP" />
             <div className="mx-auto max-w-6xl space-y-6 p-6 text-gray-200">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Bonos VIP</h1>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <h1 className="text-2xl font-bold text-white">Bonos VIP</h1>
+                        {!vipActive ? (
+                            <span className="inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/30">
+                                Perfil inactivo — modo consulta
+                            </span>
+                        ) : null}
+                    </div>
                     <p className="mt-1 max-w-3xl text-sm text-gray-400">
                         Créditos para clases grupales de surf. Tu nivel debe estar validado por el monitor antes de
                         reservar. Si también tienes taquilla física en el club, los bonos son independientes de tu cuota
@@ -241,28 +256,49 @@ export default function ClientBonosIndex({
                     </div>
                 ) : null}
 
-                <section className="space-y-3">
-                    <div>
-                        <h2 className="text-lg font-bold text-white">Comprar bonos</h2>
-                        <p className="mt-1 text-sm text-gray-400">
-                            Bonos para <strong className="text-gray-200">clases grupales</strong> según el nivel que el
-                            monitor haya validado contigo. Los créditos se consumen al reservar sesiones compatibles con
-                            tu perfil.
+                {vipActive ? (
+                    <section className="space-y-3">
+                        <div>
+                            <h2 className="text-lg font-bold text-white">Comprar bonos</h2>
+                            <p className="mt-1 text-sm text-gray-400">
+                                Bonos para <strong className="text-gray-200">clases grupales</strong> según el nivel que el
+                                monitor haya validado contigo. Los créditos se consumen al reservar sesiones compatibles con
+                                tu perfil.
+                            </p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            {packs.map((pack) => (
+                                <div key={pack.id} className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
+                                    <p className="text-lg font-semibold text-gray-100">{pack.nombre}</p>
+                                    <p className="text-gray-300">{pack.num_clases} clases</p>
+                                    <p className="mt-2 text-2xl font-bold text-sky-300">{Number(pack.precio).toFixed(2)} €</p>
+                                    <button type="button" onClick={() => setSelectedPack(pack)} className="mt-3 rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">
+                                        Comprar
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                ) : (
+                    <section className="rounded-2xl border border-amber-500/25 bg-amber-950/20 p-4 sm:p-5">
+                        <p className="text-sm leading-relaxed text-amber-50/90">
+                            Tu perfil VIP no está activo actualmente. Aquí puedes consultar tu historial de bonos y
+                            clases, pero no puedes comprar bonos nuevos ni reservar clases VIP hasta reactivar tu
+                            perfil.
                         </p>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {packs.map((pack) => (
-                            <div key={pack.id} className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
-                                <p className="text-lg font-semibold text-gray-100">{pack.nombre}</p>
-                                <p className="text-gray-300">{pack.num_clases} clases</p>
-                                <p className="mt-2 text-2xl font-bold text-sky-300">{Number(pack.precio).toFixed(2)} €</p>
-                                <button type="button" onClick={() => setSelectedPack(pack)} className="mt-3 rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">
-                                    Comprar
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                        {whatsappReactivateUrl ? (
+                            <a
+                                href={whatsappReactivateUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500"
+                            >
+                                <WhatsAppIcon className="h-4 w-4" />
+                                Solicitar reactivación VIP
+                            </a>
+                        ) : null}
+                    </section>
+                )}
 
                 {/* Resumen — siempre visible */}
                 <section className="rounded-2xl border border-teal-500/25 bg-gradient-to-br from-gray-950 via-teal-950/20 to-gray-950 p-4 sm:p-5">

@@ -490,15 +490,19 @@ final class PublicPageSeoService
         bool $inStock,
         string $imageUrl = '',
         array $categoryLabels = [],
+        string $description = '',
     ): SeoMetaDto {
         $path = '/producto-ver/'.$id;
         $title = $name.' | Tienda San Sebastian Surf School';
-        $description = $name.' en la tienda oficial de San Sebastian Surf School (S4). Material y accesorios para socios con taquilla en Zurriola, Donostia.';
+        $trimmed = trim($description);
+        $metaDescription = $trimmed !== ''
+            ? mb_substr($trimmed, 0, 160)
+            : $name.' en la tienda oficial de San Sebastian Surf School (S4). Material y accesorios para socios con taquilla en Zurriola, Donostia.';
         $category = implode(', ', array_values(array_filter($categoryLabels)));
 
         return $this->make(
             title: $title,
-            description: $description,
+            description: $metaDescription,
             path: $path,
             ogType: 'product',
             jsonLd: [
@@ -513,6 +517,7 @@ final class PublicPageSeoService
                     category: $category !== '' ? $category : null,
                     sku: (string) $id,
                     itemCondition: self::CONDITION_NEW,
+                    description: $metaDescription,
                 ),
             ],
             ogImage: $imageUrl !== '' ? $imageUrl : null,
@@ -694,6 +699,7 @@ final class PublicPageSeoService
         string $itemCondition = self::CONDITION_NEW,
         ?string $businessFunction = null,
         ?string $offerName = null,
+        ?string $description = null,
     ): array {
         $ogImage = $imageUrl !== '' ? $imageUrl : self::DEFAULT_OG_IMAGE;
 
@@ -730,6 +736,9 @@ final class PublicPageSeoService
             ],
             'offers' => $offer,
         ];
+        if ($description !== null && trim($description) !== '') {
+            $node['description'] = trim($description);
+        }
         if ($sku !== null && $sku !== '') {
             $node['sku'] = $sku;
         }

@@ -209,18 +209,20 @@ final class ChatbotArticleCatalogService
      */
     public function enrichGeminiReply(string $geminiText, string $rawQuery): string
     {
-        if (str_contains($geminiText, '/taller/')) {
-            return $geminiText;
+        $text = $this->linkifyInternalPaths($geminiText);
+
+        if (str_contains($text, '/taller/')) {
+            return $text;
         }
 
         $normalized = $this->normalizeQuery($rawQuery);
         $matches = $this->rankArticles($normalized);
 
         if ($matches === []) {
-            return $geminiText;
+            return $text;
         }
 
-        $lines = [trim($geminiText), '', '**En el Taller de Surf puedes leer más:**'];
+        $lines = [trim($text), '', '**En el Taller de Surf puedes leer más:**'];
 
         foreach (array_slice($matches, 0, 2) as $match) {
             $article = $match['article'];
@@ -232,6 +234,35 @@ final class ChatbotArticleCatalogService
         }
 
         return implode("\n", $lines);
+    }
+
+    /** Convierte `/taller/slug` sueltos en enlaces markdown. */
+    public function linkifyInternalPaths(string $text): string
+    {
+        return preg_replace_callback(
+            '/(?<!\]\()(\/taller\/[a-z0-9\-]+)(?=[\s.,;:!?)]|$)/u',
+            function (array $m): string {
+                $path = $m[1];
+                $slug = substr($path, strlen('/taller/'));
+                $title = $this->titleForSlug($slug) ?? 'Ver en el Taller de Surf';
+
+                return '[**'.$title.'**]('.$path.')';
+            },
+            $text,
+        ) ?? $text;
+    }
+
+    private function titleForSlug(string $slug): ?string
+    {
+        foreach ($this->loadArticles() as $article) {
+            if ((string) $article->slug === $slug) {
+                $title = trim((string) $article->title);
+
+                return $title !== '' ? $title : null;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -55,7 +55,9 @@ export default function AuthShell({
 }) {
     return (
         <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a2230] to-slate-950 px-4 py-10 text-white sm:py-14">
-            <Head title={headTitle ?? title} />
+            <Head title={headTitle ?? title}>
+                <meta head-key="robots" name="robots" content="noindex, nofollow" />
+            </Head>
 
             <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
             <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
