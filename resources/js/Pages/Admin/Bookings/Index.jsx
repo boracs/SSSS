@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Clock, ExternalLink } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Clock, ExternalLink, PackageCheck } from "lucide-react";
 import { toast } from "react-toastify";
 import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
+import { DAY_PACKS, MINUTE_PACKS, packLabel } from "../../../lib/rentalPricing";
 
 const STATUS_SORT_ORDER = {
     pending: 0,
@@ -62,6 +63,57 @@ function money(v) {
     return `${n.toFixed(2).replace(".", ",")} €`;
 }
 
+/* El mostrador trabaja en hora de escuela: se fija la zona para no depender del equipo. */
+const MADRID_DATE_TIME = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+});
+
+const MADRID_TIME = new Intl.DateTimeFormat("es-ES", {
+    timeZone: "Europe/Madrid",
+    hour: "2-digit",
+    minute: "2-digit",
+});
+
+function formatMadrid(value, formatter = MADRID_DATE_TIME) {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : formatter.format(date);
+}
+
+/** Duración cobrada: etiqueta del pack si la reserva usa uno; si no, días del rango. */
+function durationLabel(booking) {
+    if (booking.pack_minutes) return packLabel(MINUTE_PACKS[booking.pack_minutes]);
+    if (booking.pack_days) return packLabel(DAY_PACKS[booking.pack_days]);
+
+    const pickup = new Date(booking.pickup_at);
+    const returnAt = new Date(booking.return_at);
+    if (Number.isNaN(pickup.getTime()) || Number.isNaN(returnAt.getTime())) return null;
+
+    const days = Math.round((returnAt.getTime() - pickup.getTime()) / 86400000);
+    return days > 0 ? `${days} día(s)` : null;
+}
+
+/** Misma regla que BookingService::markPickedUp: sin pago confirmado no se entrega la tabla. */
+function canMarkPickup(booking) {
+    return (
+        !booking.picked_up_at &&
+        ["pending", "confirmed"].includes(booking.status) &&
+        booking.payment_status === "confirmed"
+    );
+}
+
+function pickupBlockedByPayment(booking) {
+    return (
+        !booking.picked_up_at &&
+        ["pending", "confirmed"].includes(booking.status) &&
+        booking.payment_status !== "confirmed"
+    );
+}
+
 export default function Index({ surfboards, bookings, filters }) {
     const flash = usePage().props.flash || {};
 
@@ -93,8 +145,8 @@ export default function Index({ surfboards, bookings, filters }) {
 
         if (sortBy === "range") {
             return list.sort((a, b) => {
-                const da = new Date(a.start_date).getTime();
-                const db = new Date(b.start_date).getTime();
+                const da = new Date(a.pickup_at || a.start_date).getTime();
+                const db = new Date(b.pickup_at || b.start_date).getTime();
                 if (Number.isNaN(da) || Number.isNaN(db)) return 0;
                 return sortDir === "asc" ? da - db : db - da;
             });
@@ -111,6 +163,17 @@ export default function Index({ surfboards, bookings, filters }) {
 
         return list;
     }, [filtered, sortBy, sortDir]);
+
+    const markPickedUp = (booking) => {
+        const when = formatMadrid(booking.pickup_at);
+        if (!window.confirm(`¿Registrar la entrega de la tabla a ${booking.client_name}${when ? ` (recogida ${when})` : ""}?`)) {
+            return;
+        }
+        router.patch(route("admin.bookings.mark-picked-up", booking.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Recogida registrada."),
+        });
+    };
 
     const statusBadge = (status) => {
         if (status === "pending") return <Badge tone="amber">Pendiente</Badge>;
@@ -131,7 +194,8 @@ export default function Index({ surfboards, bookings, filters }) {
                                 Reservas (admin)
                             </h1>
                             <p className="mt-1.5 text-sm leading-relaxed text-slate-300">
-                                Filtra por tabla y estado, confirma pagos y libera fechas bloqueadas.
+                                Filtra por tabla y estado, confirma pagos, libera fechas bloqueadas y
+                                registra la recogida cuando el cliente se lleva la tabla.
                             </p>
                             <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs leading-relaxed text-amber-100/95">
                                 <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" aria-hidden />
@@ -253,9 +317,9 @@ export default function Index({ surfboards, bookings, filters }) {
                                 onClick={() => toggleSort("status")}
                             />
                         </div>
-                        <div className="col-span-2">Expirada</div>
-                        <div className="col-span-3">Precio</div>
-                        <div className="col-span-2 text-right">Acciones</div>
+                        <div className="col-span-2">Recogida</div>
+                        <div className="col-span-2">Precio</div>
+                        <div className="col-span-3 text-right">Acciones</div>
                     </div>
 
                     <div className="divide-y divide-slate-100">
@@ -267,27 +331,63 @@ export default function Index({ surfboards, bookings, filters }) {
                                     className="grid grid-cols-12 items-center gap-0 px-4 py-3"
                                 >
                                     <div className="col-span-3 text-sm text-slate-900">
-                                        <div className="font-semibold">
-                                            {new Date(b.start_date).toLocaleDateString()}
+                                        <div className="font-semibold tabular-nums">
+                                            {formatMadrid(b.pickup_at) || "—"}
                                         </div>
-                                        <div className="text-xs text-slate-500">
-                                            → {new Date(b.end_date).toLocaleDateString()}
+                                        <div className="text-xs tabular-nums text-slate-500">
+                                            → {formatMadrid(b.return_at) || "—"}
+                                        </div>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                                            <Badge tone={b.mode === "hour" ? "indigo" : "slate"}>
+                                                {b.mode === "hour" ? "Por horas" : "Por días"}
+                                            </Badge>
+                                            {durationLabel(b) ? (
+                                                <span className="text-xs font-semibold text-slate-600">
+                                                    {durationLabel(b)}
+                                                </span>
+                                            ) : null}
                                         </div>
                                     </div>
-                                    <div className="col-span-2">
+                                    <div className="col-span-2 flex flex-wrap items-start gap-1">
                                         {statusBadge(b.status)}
+                                        {expired ? <Badge tone="red">Expirada</Badge> : null}
                                     </div>
                                     <div className="col-span-2">
-                                        {expired ? (
-                                            <Badge tone="red">Sí</Badge>
+                                        {b.picked_up_at ? (
+                                            <Badge tone="green">
+                                                Recogida {formatMadrid(b.picked_up_at, MADRID_TIME)}
+                                            </Badge>
+                                        ) : b.no_show_at ? (
+                                            <Badge tone="red">No-show</Badge>
+                                        ) : b.status === "cancelled" ? (
+                                            <Badge tone="slate">—</Badge>
                                         ) : (
-                                            <Badge tone="slate">No</Badge>
+                                            <Badge tone="amber">Pendiente</Badge>
                                         )}
                                     </div>
-                                    <div className="col-span-3 text-sm text-slate-700">
+                                    <div className="col-span-2 text-sm text-slate-700">
                                         {money(b.total_price)}
                                     </div>
-                                    <div className="col-span-2 flex justify-end gap-2">
+                                    <div className="col-span-3 flex flex-wrap justify-end gap-2">
+                                        {canMarkPickup(b) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => markPickedUp(b)}
+                                                title="Registrar que el cliente ya se llevó la tabla"
+                                                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-cyan-700 transition hover:bg-cyan-50"
+                                            >
+                                                <PackageCheck className="h-3.5 w-3.5" aria-hidden />
+                                                Marcar recogida
+                                            </button>
+                                        ) : pickupBlockedByPayment(b) ? (
+                                            <span
+                                                title="Confirma el pago antes de entregar la tabla"
+                                                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-400"
+                                            >
+                                                <PackageCheck className="h-3.5 w-3.5 opacity-40" aria-hidden />
+                                                Pago pendiente
+                                            </span>
+                                        ) : null}
                                         <Link
                                             href={route(
                                                 "admin.bookings.confirm-payment",

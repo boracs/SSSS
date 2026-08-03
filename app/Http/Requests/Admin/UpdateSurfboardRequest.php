@@ -17,7 +17,7 @@ class UpdateSurfboardRequest extends FormRequest
     {
         return [
             'price_schema_id' => ['sometimes', 'integer', 'exists:price_schemas,id'],
-            'category' => ['sometimes', 'string', Rule::in([Surfboard::CATEGORY_HARD, Surfboard::CATEGORY_SOFT])],
+            'category' => ['sometimes', 'string', Rule::in(Surfboard::CATEGORIES)],
             'is_active' => ['sometimes', 'boolean'],
             'name' => ['nullable', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:120'],

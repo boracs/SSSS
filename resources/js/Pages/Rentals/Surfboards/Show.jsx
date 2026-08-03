@@ -11,6 +11,7 @@ export default function Show({
     paymentIban = "[IBAN]",
     paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
+    rentalPolicy = null,
     seo = null,
 }) {
     const [lightbox, setLightbox] = useState(null);
@@ -58,6 +59,7 @@ export default function Show({
                             paymentIban={paymentIban}
                             paymentBizumNumber={paymentBizumNumber}
                             whatsappHelpUrl={whatsappHelpUrl}
+                            rentalPolicy={rentalPolicy}
                             initialStart={initialDates.start}
                             initialEnd={initialDates.end}
                             titleAs="h1"

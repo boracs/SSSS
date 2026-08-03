@@ -5,7 +5,6 @@ import ZurriolaWebcamPlayer from "../components/webcam/ZurriolaWebcamPlayer";
 import SurfBriefCard from "../components/webcam/SurfBriefCard";
 import SurfForecastTable from "../components/webcam/SurfForecastTable";
 import ZurriolaGeoGuide from "../components/webcam/ZurriolaGeoGuide";
-import S4Button from "../components/S4Button";
 import SeoHead from "../components/seo/SeoHead";
 
 const GIPUZKOA_WEBCAM_URL =
@@ -107,6 +106,7 @@ export default function ServiciosWebcams({
                     days={Array.isArray(surfForecast?.days) ? surfForecast.days : Array.isArray(surfForecast) ? surfForecast : []}
                     metricHelp={surfForecast?.metricHelp ?? {}}
                     summary={surfBrief?.summary}
+                    summarySections={surfBrief?.summary_sections ?? null}
                     summaryStatus={surfBrief?.status ?? null}
                     summaryMessage={surfBrief?.message ?? null}
                     updatedAtHuman={surfBrief?.generated_at_human}
@@ -114,27 +114,6 @@ export default function ServiciosWebcams({
                     reactions={surfBrief?.reactions ?? null}
                 />
                 <SurfBriefCard brief={surfBrief} />
-            </section>
-
-            {/* 3) CTAs degradados */}
-            <section className="mx-auto max-w-6xl px-4 pb-10 sm:px-6 sm:pb-12">
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 sm:px-5 sm:py-5">
-                    <p className="text-sm font-medium text-slate-300">¿Vas a salir a surfear?</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                        Reserva clase o echa un ojo a foto y vídeo de tu sesión.
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <S4Button href={route("servicios.surf")} size="sm" variant="secondary">
-                            Clases
-                        </S4Button>
-                        <S4Button href={route("servicios.fotografia")} size="sm" variant="secondary">
-                            Fotografía
-                        </S4Button>
-                        <S4Button href={route("servicios.videograbaciones")} size="sm" variant="secondary">
-                            Vídeo
-                        </S4Button>
-                    </div>
-                </div>
             </section>
 
             <ZurriolaGeoGuide facts={zurriolaGeo} />

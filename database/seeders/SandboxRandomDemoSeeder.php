@@ -16,7 +16,6 @@ use App\Models\PackBono;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
 use App\Models\PlanTaquilla;
-use App\Models\PriceSchema;
 use App\Models\Producto;
 use App\Models\SecondHandBoard;
 use App\Models\StaffAssignment;
@@ -233,31 +232,18 @@ final class SandboxRandomDemoSeeder extends Seeder
     /** @return list<Surfboard> */
     private function seedRentalBoards(int $count): array
     {
-        if (! PriceSchema::query()->exists()) {
-            $this->call(PriceSchemaSeeder::class);
-        }
-
-        $schemas = PriceSchema::query()->get();
-        if ($schemas->isEmpty()) {
-            $schemas = collect([
-                PriceSchema::query()->create([
-                    'name' => 'Schema Sandbox',
-                    'price_1h' => 12, 'price_2h' => 20, 'price_4h' => 35,
-                    'price_12h' => 50, 'price_24h' => 70, 'price_48h' => 120,
-                    'price_72h' => 160, 'price_week' => 300,
-                ]),
-            ]);
-        }
+        $schemasByCategory = PriceSchemaSeeder::ensure();
 
         $out = [];
         for ($i = 1; $i <= $count; $i++) {
-            $schema = $schemas[($i - 1) % $schemas->count()];
+            $category = Surfboard::CATEGORIES[($i - 1) % count(Surfboard::CATEGORIES)];
+            $schema = $schemasByCategory[$category];
             $name = sprintf('Tabla Alquiler S4 %02d', $i);
             $out[] = Surfboard::query()->firstOrCreate(
                 ['slug' => Str::slug($name)],
                 [
                     'price_schema_id' => $schema->id,
-                    'category' => $i % 2 === 0 ? Surfboard::CATEGORY_SOFT : Surfboard::CATEGORY_HARD,
+                    'category' => $category,
                     'is_active' => true,
                     'name' => $name,
                     'image_url' => json_encode(['surfboards/demo-'.(($i % 4) + 1).'.jpg']),

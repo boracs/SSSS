@@ -25,8 +25,12 @@ final class GoogleAIService
 
     /**
      * @param  list<array{role: string, text: string}>  $history  Turnos previos (sin el mensaje actual).
+     * @param  int  $maxOutputTokens  Presupuesto de salida. 350 alcanza para las respuestas cortas del
+     *                                 chatbot; llamadas que piden un JSON estructurado con varios campos
+     *                                 (p. ej. el parte de Zurriola) deben pasar un valor mayor para evitar
+     *                                 truncados a mitad de JSON (finishReason MAX_TOKENS).
      */
-    public function generateReply(string $systemInstruction, array $history, string $currentMessage): string
+    public function generateReply(string $systemInstruction, array $history, string $currentMessage, int $maxOutputTokens = 350): string
     {
         $apiKey = trim((string) config('services.gemini.key', ''));
 
@@ -54,7 +58,7 @@ final class GoogleAIService
                     'generationConfig' => [
                         // Temperatura baja: priorizamos certeza factual sobre creatividad (precios, políticas).
                         'temperature' => 0.2,
-                        'maxOutputTokens' => 350,
+                        'maxOutputTokens' => $maxOutputTokens,
                         // gemini-2.5-flash consume "thinking tokens" del propio maxOutputTokens antes de
                         // escribir la respuesta visible — con presupuestos bajos esto puede agotar casi
                         // todo el budget en razonamiento interno y devolver texto cortado (finishReason

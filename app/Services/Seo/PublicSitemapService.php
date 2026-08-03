@@ -45,7 +45,8 @@ final class PublicSitemapService
         ['/taller', 'weekly', '0.7'],
         ['/tablas-alquiler', 'weekly', '0.8'],
         ['/tablas-alquiler/soft', 'weekly', '0.6'],
-        ['/tablas-alquiler/hard', 'weekly', '0.6'],
+        ['/tablas-alquiler/hard_basic', 'weekly', '0.6'],
+        ['/tablas-alquiler/hard_pro', 'weekly', '0.6'],
     ];
 
     public function robotsTxt(): string

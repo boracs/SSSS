@@ -1,3 +1,4 @@
+import { packLabel } from "./rentalPricing";
 import { formatSurfHeight } from "./surfboardMeasures";
 import { demoCatalogImage, DEMO_BOARD_IMAGES } from "../utils/demoCatalogImages";
 
@@ -36,12 +37,22 @@ export function formatVolumeLiters(raw) {
     return /l\b/i.test(text) ? text : `${text} L`;
 }
 
-export const TARIFF_SLOTS = [
-    { key: "price_1h", label: "1 h" },
-    { key: "price_4h", label: "4 h" },
-    { key: "price_24h", label: "24 h" },
-    { key: "price_week", label: "Semana" },
-];
+/** Precio ya en céntimos (payload de tarifas); mismo formato que el resto de la ficha. */
+export function formatRentalEurFromCents(cents) {
+    const n = Number(cents);
+    if (!Number.isFinite(n)) return null;
+    return formatRentalEur(n / 100);
+}
+
+/**
+ * Resumen de packs en la ficha; la tabla completa vive en /tablas-alquiler.
+ * Solo horas: el precio por día/semana ya se ve al elegir un rango en el
+ * calendario, así que no hace falta duplicarlo aquí.
+ */
+export const TARIFF_SLOTS = ["price_60m", "price_90m", "price_180m", "price_360m"].map((key) => ({
+    key,
+    label: packLabel(key),
+}));
 
 export function buildVisibleTariffs(priceSchema) {
     if (!priceSchema) return [];
@@ -51,9 +62,17 @@ export function buildVisibleTariffs(priceSchema) {
     }).filter(Boolean);
 }
 
-export function boardCategoryLabel(category) {
-    return category === "soft" ? "Softboard" : "Hardboard";
+/** Etiqueta de catálogo: prioriza 1 día, si no la primera tarifa visible. */
+export function catalogFromPriceLabel(priceSchema) {
+    if (!priceSchema) return null;
+    const day = formatRentalEur(priceSchema.price_1d);
+    if (day) return `desde ${day} / 1 día`;
+    const first = buildVisibleTariffs(priceSchema)[0];
+    if (!first) return null;
+    return `desde ${first.formatted} / ${first.label}`;
 }
+
+export { BOARD_CATEGORIES, boardCategoryLabel } from "./surfboardCategories";
 
 export function boardDisplayDescription(board, name) {
     if (!board?.description) return null;

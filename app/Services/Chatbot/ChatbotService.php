@@ -203,7 +203,7 @@ final class ChatbotService
             'context' => 'rental.howto',
             'response' => '**Para alquilar una tabla:**'."\n\n"
                 .'1. Menú **Alquiler de tablas**.'."\n"
-                .'2. Elige **modelo** (soft, hard, tu talla…).'."\n"
+                .'2. Elige **modelo** (softboard, dura básica, dura pro, tu talla…).'."\n"
                 .'3. Marca **recogida y devolución** en el calendario.'."\n"
                 .'4. Paga la **señal** online y listo.'."\n\n"
                 .'Recoges en el **club** en el horario acordado. Si la fecha que quieres está ocupada, prueba **otro día** o **otra tabla**.',

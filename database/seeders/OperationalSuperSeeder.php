@@ -13,7 +13,6 @@ use App\Models\PackBono;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
 use App\Models\PlanTaquilla;
-use App\Models\PriceSchema;
 use App\Models\Producto;
 use App\Models\StaffAssignment;
 use App\Models\Surfboard;
@@ -47,7 +46,7 @@ class OperationalSuperSeeder extends Seeder
             $products = $this->createProducts(24);
             $plans = $this->createLockerPlans();
             $packs = $this->createBonoPacks();
-            [$schemas, $boards] = $this->createRentalInventory(4, 14);
+            [$schemas, $boards] = $this->createRentalInventory(14);
 
             $this->seedStoreFlow($students, $products);
             $lessons = $this->seedAcademyFlow($students, $staff, $admin);
@@ -157,33 +156,20 @@ class OperationalSuperSeeder extends Seeder
         );
     }
 
-    private function createRentalInventory(int $schemaCount, int $boardCount): array
+    private function createRentalInventory(int $boardCount): array
     {
-        $schemas = [];
-        for ($i = 1; $i <= $schemaCount; $i++) {
-            $schemas[] = PriceSchema::query()->firstOrCreate(
-                ['name' => sprintf('Schema Superseed %02d', $i)],
-                [
-                    'price_1h' => 10 + $i,
-                    'price_2h' => 17 + $i,
-                    'price_4h' => 30 + $i,
-                    'price_12h' => 45 + $i,
-                    'price_24h' => 60 + $i,
-                    'price_48h' => 110 + $i,
-                    'price_72h' => 150 + $i,
-                    'price_week' => 280 + $i,
-                ]
-            );
-        }
+        $schemasByCategory = PriceSchemaSeeder::ensure();
+        $schemas = array_values($schemasByCategory);
 
         $boards = [];
         for ($i = 1; $i <= $boardCount; $i++) {
-            $schema = $schemas[array_rand($schemas)];
+            $category = Surfboard::CATEGORIES[($i - 1) % count(Surfboard::CATEGORIES)];
+            $schema = $schemasByCategory[$category];
             $boards[] = Surfboard::query()->firstOrCreate(
                 ['slug' => sprintf('tabla-superseed-%02d', $i)],
                 [
                     'price_schema_id' => $schema->id,
-                    'category' => $i % 2 === 0 ? Surfboard::CATEGORY_SOFT : Surfboard::CATEGORY_HARD,
+                    'category' => $category,
                     'is_active' => true,
                     'name' => sprintf('Tabla Superseed %02d', $i),
                     'image_url' => json_encode(["surfboards/superseed-{$i}.jpg"]),

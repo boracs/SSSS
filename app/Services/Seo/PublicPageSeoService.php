@@ -6,6 +6,7 @@ namespace App\Services\Seo;
 
 use App\DTOs\Seo\SeoMetaDto;
 use App\Models\Article;
+use App\Models\Surfboard;
 use App\Services\SurfConditions\ZurriolaGeoFactsService;
 use App\Support\MoneyCents;
 
@@ -393,8 +394,9 @@ final class PublicPageSeoService
             : '/tablas-alquiler';
 
         $label = match ($category) {
-            'soft' => 'softboards',
-            'hard' => 'hardboards',
+            Surfboard::CATEGORY_SOFT => 'softboards',
+            Surfboard::CATEGORY_HARD_BASIC => 'duras básicas',
+            Surfboard::CATEGORY_HARD_PRO => 'duras pro',
             default => null,
         };
 
@@ -403,7 +405,7 @@ final class PublicPageSeoService
             : 'Alquiler de tablas de surf | San Sebastian Surf School';
         $description = $label !== null
             ? 'Alquila tablas '.$label.' en S4 (Zurriola, Donostia). Consulta disponibilidad y reserva online.'
-            : 'Alquila tablas de surf (soft y hard) en San Sebastian Surf School, a pie de Zurriola en Donostia.';
+            : 'Alquila tablas de surf (softboards, duras básicas y duras pro) en San Sebastian Surf School, a pie de Zurriola en Donostia.';
 
         return $this->make(
             title: $title,
@@ -417,7 +419,7 @@ final class PublicPageSeoService
     }
 
     /**
-     * Ficha pública de alquiler. Precio de referencia = tarifa 24 h (si hay schema).
+     * Ficha pública de alquiler. Precio de referencia = pack de 1 día (si hay schema).
      *
      * @param  array{
      *     id: int|string,
@@ -425,7 +427,7 @@ final class PublicPageSeoService
      *     description?: string|null,
      *     category?: string|null,
      *     image_url?: string|null,
-     *     price_24h_eur?: float|string|null,
+     *     price_day_eur?: float|string|null,
      *     is_active?: bool|null
      * }  $board
      */
@@ -435,14 +437,10 @@ final class PublicPageSeoService
         $name = (string) $board['name'];
         $path = '/tablas-alquiler/tabla/'.$id;
         $category = (string) ($board['category'] ?? '');
-        $categoryLabel = match ($category) {
-            'soft' => 'Softboard',
-            'hard' => 'Hardboard',
-            default => 'Tabla de alquiler',
-        };
+        $categoryLabel = Surfboard::categoryLabel($category);
         $descBody = trim((string) ($board['description'] ?? ''));
         $imageUrl = (string) ($board['image_url'] ?? '');
-        $price24 = $board['price_24h_eur'] ?? null;
+        $priceDay = $board['price_day_eur'] ?? null;
         $inStock = (bool) ($board['is_active'] ?? true);
 
         $title = $name.' · Alquiler | San Sebastian Surf School';
@@ -450,11 +448,11 @@ final class PublicPageSeoService
             .($descBody !== '' ? ' '.mb_substr($descBody, 0, 120) : '');
 
         $jsonLd = [$this->organizationNode()];
-        if ($price24 !== null && $price24 !== '' && (float) $price24 > 0) {
+        if ($priceDay !== null && $priceDay !== '' && (float) $priceDay > 0) {
             $jsonLd[] = $this->productNode(
                 name: $name,
                 path: $path,
-                priceEur: number_format((float) $price24, 2, '.', ''),
+                priceEur: number_format((float) $priceDay, 2, '.', ''),
                 inStock: $inStock,
                 imageUrl: $imageUrl,
                 brandName: 'San Sebastian Surf School',
@@ -462,7 +460,7 @@ final class PublicPageSeoService
                 sku: 'rent-'.$id,
                 itemCondition: self::CONDITION_USED,
                 businessFunction: self::BUSINESS_LEASE,
-                offerName: 'Alquiler 24 h',
+                offerName: 'Alquiler 1 día',
             );
         } else {
             $jsonLd[] = $this->webPageNode($title, $description, $path);

@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
+// Alquiler: devuelve al inventario las tablas no recogidas (margen en config/rentals.php).
+Schedule::command('rentals:release-no-shows')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
 // Parte Zurriola: cada 6 h. Requiere crontab `* * * * * php artisan schedule:run` en servidor.
 Schedule::command('surf:generate-daily-brief', ['--force' => true])->everySixHours();

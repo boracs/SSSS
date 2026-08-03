@@ -134,17 +134,23 @@ final class CoherentDemoSeeder extends Seeder
             return;
         }
 
-        $this->call(PriceSchemaSeeder::class);
+        $schemasByCategory = PriceSchemaSeeder::ensure();
 
-        $schemas = PriceSchema::query()->get();
-        $names = ['Zurriola Soft 6\'2"', 'Zurriola Hard 6\'0"', 'Gros Soft 7\'0"', 'Mini Malibu 8\'0"'];
-        foreach ($names as $i => $name) {
-            $schema = $schemas[$i % $schemas->count()];
+        $names = [
+            'Zurriola Soft 6\'2"' => Surfboard::CATEGORY_SOFT,
+            'Zurriola Hard 6\'0"' => Surfboard::CATEGORY_HARD_BASIC,
+            'Gros Soft 7\'0"' => Surfboard::CATEGORY_SOFT,
+            'Mini Malibu 8\'0"' => Surfboard::CATEGORY_HARD_PRO,
+        ];
+        $i = -1;
+        foreach ($names as $name => $category) {
+            $i++;
+            $schema = $schemasByCategory[$category];
             Surfboard::query()->firstOrCreate(
                 ['slug' => Str::slug($name)],
                 [
                     'price_schema_id' => $schema->id,
-                    'category' => str_contains($name, 'Hard') ? Surfboard::CATEGORY_HARD : Surfboard::CATEGORY_SOFT,
+                    'category' => $category,
                     'is_active' => true,
                     'name' => $name,
                     'image_url' => json_encode(['surfboards/demo-'.($i + 1).'.jpg']),

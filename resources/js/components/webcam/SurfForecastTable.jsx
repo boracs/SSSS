@@ -15,6 +15,8 @@ import {
     Wind,
 } from "lucide-react";
 import SurfBriefReactions from "./SurfBriefReactions";
+import SurfLevelAccordion from "./SurfLevelAccordion";
+import { SURF_LEVELS } from "./surfLevels";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 
 const TONE_TEXT = {
@@ -482,6 +484,7 @@ export default function SurfForecastTable({
     days,
     metricHelp = {},
     summary,
+    summarySections = null,
     summaryStatus = null,
     summaryMessage = null,
     updatedAtHuman,
@@ -721,29 +724,65 @@ export default function SurfForecastTable({
 
             {summary ? (
                 <div className={`mt-4 rounded-2xl border p-4 shadow-lg sm:mt-5 sm:p-5 md:p-6 ${signalMeta ? signalMeta.tableWrap : "border-transparent bg-white"}`}>
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                         <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0f5f74]">
                             <Sparkles className="h-3.5 w-3.5" />
                             Parte S4 · Hoy
                         </div>
-                        {signalMeta ? (
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}>
-                                {signalMeta.badge}
-                                {signal?.is_manual ? (
-                                    <span className="ml-1.5 opacity-80">· S4</span>
-                                ) : null}
-                            </span>
-                        ) : null}
+                        <div className="ml-auto flex max-w-[16rem] flex-col items-end gap-1.5 text-right sm:max-w-xs">
+                            <p className="text-[11px] leading-snug text-slate-500">
+                                Actualizado {updatedAtHuman?.split(" ")[1] || "—"} · Confirma con la webcam arriba antes de entrar
+                            </p>
+                            {signalMeta ? (
+                                <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}>
+                                    {signalMeta.badge}
+                                    {signal?.is_manual ? (
+                                        <span className="ml-1.5 opacity-80">· S4</span>
+                                    ) : null}
+                                </span>
+                            ) : null}
+                        </div>
                     </div>
 
                     {signal?.note ? (
                         <p className="mb-3 rounded-xl bg-black/5 px-3 py-2 text-sm text-slate-800">{signal.note}</p>
                     ) : null}
 
-                    <p className="text-sm font-semibold leading-relaxed text-slate-900 sm:text-base">{summary}</p>
-                    <p className="mt-3 text-[11px] text-slate-500">
-                        Actualizado {updatedAtHuman?.split(" ")[1] || "—"} · Confirma con la webcam arriba antes de entrar
-                    </p>
+                    {summarySections?.general || summarySections?.iniciacion ? (
+                        <div className="space-y-3">
+                            {(summarySections.general || summary) ? (
+                                <p className="text-sm font-semibold leading-relaxed text-slate-900 sm:text-base">
+                                    {summarySections.general || summary}
+                                </p>
+                            ) : null}
+                            {SURF_LEVELS.map((lvl) => {
+                                const text = summarySections?.[lvl.level];
+                                if (!text) return null;
+                                return (
+                                    <div key={lvl.level} className="space-y-1.5">
+                                        <span
+                                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${lvl.labelClass}`}
+                                        >
+                                            {lvl.label}
+                                        </span>
+                                        <p className="text-sm leading-relaxed text-slate-800 sm:text-[15px]">
+                                            {text}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                            {summarySections.aviso ? (
+                                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
+                                    {summarySections.aviso}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : (
+                        <p className="text-sm font-semibold leading-relaxed text-slate-900 sm:text-base">
+                            {summary}
+                        </p>
+                    )}
+                    <SurfLevelAccordion />
                     <SurfBriefReactions initial={reactions} />
                 </div>
             ) : (

@@ -1,0 +1,41 @@
+{
+    "_comment": "Casos compartidos por PHP (BookingService::priceForMinutes) y JS (resources/js/lib/rentalPricing.js). Si cambias packs o algoritmo, este archivo debe cambiar en el mismo commit.",
+    "pricing_step_minutes": 30,
+    "schema": {
+        "price_60m": 10,
+        "price_90m": 13,
+        "price_120m": 16,
+        "price_180m": 20,
+        "price_240m": 24,
+        "price_360m": 30,
+        "price_1d": 35,
+        "price_2d": 60,
+        "price_3d": 80,
+        "price_4d": 95,
+        "price_5d": 110,
+        "price_week": 140
+    },
+    "cases": [
+        { "minutes": 20, "expected": 10, "why": "cualquier tramo iniciado paga el pack de 1 h entero" },
+        { "minutes": 30, "expected": 10, "why": "media hora paga el pack de 1 h entero" },
+        { "minutes": 45, "expected": 10, "why": "los minutos sueltos redondean al alza, no a la baja" },
+        { "minutes": 60, "expected": 10, "why": "pack 1 h" },
+        { "minutes": 100, "expected": 16, "why": "1 h 40 min entra en el pack de 2 h" },
+        { "minutes": 90, "expected": 13, "why": "pack 1,5 h" },
+        { "minutes": 120, "expected": 16, "why": "pack 2 h" },
+        { "minutes": 150, "expected": 20, "why": "2,5 h paga el pack de 3 h (20) antes que 2 h + 1 h (26)" },
+        { "minutes": 180, "expected": 20, "why": "pack 3 h" },
+        { "minutes": 240, "expected": 24, "why": "pack 4 h" },
+        { "minutes": 300, "expected": 30, "why": "5 h: el pack de 6 h (30) gana a 4 h + 1 h (34)" },
+        { "minutes": 360, "expected": 30, "why": "pack 6 h" },
+        { "minutes": 420, "expected": 35, "why": "7 h: el día completo (35) gana a 6 h + 1 h (40)" },
+        { "minutes": 1440, "expected": 35, "why": "pack 1 día" },
+        { "minutes": 2880, "expected": 60, "why": "pack 2 días gana a 1 d + 1 d (70)" },
+        { "minutes": 4320, "expected": 80, "why": "pack 3 días" },
+        { "minutes": 5760, "expected": 95, "why": "pack 4 días" },
+        { "minutes": 7200, "expected": 110, "why": "pack 5 días" },
+        { "minutes": 8640, "expected": 140, "why": "6 días: la semana (140) gana a 5 d + 1 d (145)" },
+        { "minutes": 10080, "expected": 140, "why": "pack semana" },
+        { "minutes": 11520, "expected": 175, "why": "8 días: semana + 1 día" }
+    ]
+}

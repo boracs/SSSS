@@ -53,4 +53,21 @@ class BusinessDateTimeTest extends TestCase
         $arr = $lesson->toArray();
         $this->assertStringStartsWith('2026-04-02T10:00:00', (string) ($arr['starts_at'] ?? ''));
     }
+
+    #[Test]
+    public function booking_lee_la_ventana_de_alquiler_en_hora_de_escuela(): void
+    {
+        config(['services.academy.business_timezone' => 'Europe/Madrid', 'app.timezone' => 'UTC']);
+
+        // Fila naive 10:00 = Madrid: ni la hora de pared ni el instante real se desplazan.
+        $booking = new \App\Models\Booking;
+        $booking->pickup_at = '2026-08-10 10:00:00';
+
+        $this->assertSame('2026-08-10 10:00:00', $booking->pickup_at->format('Y-m-d H:i:s'));
+        $this->assertSame('Europe/Madrid', $booking->pickup_at->timezone->getName());
+        $this->assertTrue(
+            $booking->pickup_at->equalTo(BusinessDateTime::parseInAppTimezone('2026-08-10 10:00:00')),
+            'pickup_at debe apuntar al mismo instante real que las 10:00 de la escuela.'
+        );
+    }
 }

@@ -69,8 +69,11 @@ maider_0/
 │   │   ├── seo-geo-public.mdc              ──► Reglas SEO/GEO páginas públicas
 │   │   └── chatbot-s4.mdc                  ──► Embudo FAQ→Gemini→escalación; fuentes de verdad S4
 │   └── skills/
-│       └── sovereign-architect-protocol/
-│           └── SKILL.md
+│       ├── sovereign-architect-protocol/
+│       │   └── SKILL.md
+│       └── prompt-forge/
+│           ├── SKILL.md                    ──► Diseño/auditoría de prompts; rúbrica + protocolo dúo DeepSeek
+│           └── TEMPLATES.md                ──► Esqueletos por tipo de tarea (feature, bug, refactor, auditoría…)
 ├── app/
 │   │
 │   ├── [DOMINIO: ACADEMIA] Actions/Academy/
@@ -99,10 +102,17 @@ maider_0/
 │   │       ├── CleanupExpiredReservations.php   ──► Invoca AutoReleaseService (cron)
 │   │       ├── MakeUserVip.php
 │   │       ├── OperationalSanityCheckCommand.php
+│   │       ├── ReleaseRentalNoShowsCommand.php  ──► rentals:release-no-shows (--dry-run); libera solo no pagadas del todo (respeta prepago completo); barrido OFF hasta que exista check-in (config/rentals.php)
 │   │       ├── SyncAutoCoachReferenceVideos.php ──► Sincroniza catálogo vídeos referencia
 │   │       └── SyncStripeCheckoutSessionCommand.php ──► Recupera pagos Stripe pending (webhook perdido)
 │   │
 │   ├── DTOs/
+│   │   ├── Rentals/
+│   │   │   ├── RentalPolicyDto.php             ──► Condiciones operativas para la UI (buffer, flexibilidad, hora mediodía, ventana de recogida, notas)
+│   │   │   ├── RentalRequestDto.php            ──► Entrada validada de alquiler (pickup_at/start/end, mode, pack_minutes, pack_days)
+│   │   │   ├── RentalTariffRowDto.php          ──► Fila de tarifas: categoría + precios en céntimos por pack (null = no ofertado)
+│   │   │   ├── RentalTariffTableDto.php        ──► Tabla pública de tarifas (columnas horas/días, filas, notas de condiciones)
+│   │   │   └── RentalWindowDto.php             ──► Ventana resuelta: pickupAt→returnAt (cobrado) vs blockEnd (inventario, +buffer)
 │   │   ├── Seo/
 │   │   │   ├── SeoMetaDto.php                  ──► title/description/canonical/OG/robots/jsonLd (readonly)
 │   │   │   └── SitemapUrlDto.php               ──► loc + lastmod/changefreq/priority (readonly)
@@ -167,7 +177,7 @@ maider_0/
 │   │   │   │   └── Admin/
 │   │   │   │       ├── AcademyController.php      ──► Commander; cancelación Mal Mar → Observer
 │   │   │   │       ├── BonoController.php
-│   │   │   │       ├── BookingController.php
+│   │   │   │       ├── BookingController.php        ──► Reservas alquiler admin; markPickedUp() = check-in de mostrador (PATCH admin/bookings/{booking}/mark-picked-up), exige payment_status=confirmed (si no, error flash y no entrega); check-availability sigue con detalle completo (id incluido) vía getBlockedRanges(); index() manda payment_status al listado para pintar el botón
 │   │   │   │       ├── PaymentValidationController.php
 │   │   │   │       ├── ClientPaymentsController.php ──► Admin · Pagos · Clientes: index (listado ligero + nº pagos) + history() JSON perezoso por acordeón; usa Services/Payments/ClientPaymentHistoryService
 │   │   │   │       ├── EmergencyKeyController.php ──► CRUD candado + histórico solicitudes
@@ -198,8 +208,8 @@ maider_0/
 │   │   │   │
 │   │   │   ├── [DOMINIO: ALQUILERES]
 │   │   │   │   └── Rentals/
-│   │   │   │       ├── BookingController.php
-│   │   │   │       └── SurfboardController.php
+│   │   │   │       ├── BookingController.php    ──► Alta pública + Stripe; si el cobro no se abre (o el importe sale 0) cancela la pending para no bloquear la tabla; expira en minutos (no 7 días) si el cliente abandona el pago; store/check-availability con throttle:8,1 / throttle:40,1; check-availability usa getPublicBlockedRanges() (sin id de reserva ni status crudo, solo start/end/display_status)
+│   │   │   │       └── SurfboardController.php  ──► Catálogo público (solo is_active); show() 404 si la tabla está retirada
 │   │   │   │
 │   │   │   ├── [DOMINIO: USUARIO]
 │   │   │   │   └── User/
@@ -258,7 +268,7 @@ maider_0/
 │   │   │   ├── Auth/
 │   │   │   │   └── LoginRequest.php
 │   │   │   ├── Rentals/
-│   │   │   │   └── StoreBookingRequest.php
+│   │   │   │   └── StoreBookingRequest.php  ──► surfboard_id debe existir Y estar activa (igual en Admin/StoreBookingRequest)
 │   │   │   ├── Taquilla/
 │   │   │   │   ├── RegistrarPagoTaquillaRequest.php
 │   │   │   │   ├── SubirJustificanteTaquillaRequest.php
@@ -321,7 +331,7 @@ maider_0/
 │   │   ├── AttendanceNote.php
 │   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
-│   │   ├── Booking.php
+│   │   ├── Booking.php                       ──► Ventana alquiler (start/end, pickup_at, return_at, block_end, picked_up_at, no_show_at) con cast BusinessWallClockDatetime (hora de escuela)
 │   │   ├── Carrito.php
 │   │   ├── ChatbotInteraction.php            ──► history JSON acotado (trimHistory); status enum; contact_phone; accessor case_reference (S4-000123)
 │   │   ├── CreditTransaction.php
@@ -338,11 +348,11 @@ maider_0/
 │   │   ├── Pedido.php
 │   │   ├── PedidoProducto.php
 │   │   ├── PlanTaquilla.php
-│   │   ├── PriceSchema.php
+│   │   ├── PriceSchema.php                   ──► Packs alquiler: minutos (60/90/120/180/240/360) + días (1d…5d, week); NAME_BY_CATEGORY; alias legacy price_1h…price_72h (deprecados)
 │   │   ├── Producto.php
 │   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; campos model/board_type; scope adminFilters; scopes publicCatalog (excluye sold); toPublicArray() sin datos financieros internos
 │   │   ├── StaffAssignment.php
-│   │   ├── Surfboard.php
+│   │   ├── Surfboard.php                     ──► CATEGORIES: soft | hard_basic | hard_pro; categoryLabel()
 │   │   ├── User.php                          ──► is_vip; taquilla_baja_solicitada_at (aviso baja taquilla)
 │   │   └── UserBono.php
 │   │
@@ -371,7 +381,7 @@ maider_0/
 │   │   │   └── AutoCoachUploadService.php      ──► Cuotas atómicas, MIME, disco public/autocoach
 │   │   ├── AvailabilityService.php             ──► assertActiveTransaction; evaluate() exige tx; preview() lectura UI
 │   │   ├── BonoService.php                     ──► lockForUpdate en confirmBono; flujo prepago VIP
-│   │   ├── BookingService.php                  ──► SSOT precios/solapes; createPendingBooking(PaymentStatus::Pending); checkAvailability()
+│   │   ├── BookingService.php                  ──► SSOT alquiler: priceForMinutes (DP packs), buildWindow/normalizeDayRange (12:00→12:00), modo hora con recogida real dentro del horario de mostrador, buffer rotación, isAvailable sobre block window, releaseNoShows; getBlockedRanges() (detalle completo, admin) vs getPublicBlockedRanges() (start/end/display_status, sin id, para el endpoint público); markPickedUp() rechaza si payment_status !== confirmed (InvalidArgumentException)
 │   │   ├── ContactMessageService.php
 │   │   ├── CreditEngineService.php             ──► Saldo atómico UserBono; refund vía BonoConsumption; sin LEGACY_SIN_SALDO
 │   │   ├── CuotaService.php                    ──► Ciclo vida cuotas taquilla
@@ -387,6 +397,9 @@ maider_0/
 │   │   │   ├── ClientFiscalInvoiceListService.php ──► "Mis facturas" (/mis-facturas): paginado + filtro por FiscalInvoiceCategory; ownership por user_id; reusa FiscalInvoiceAccessService::toPublicDto()
 │   │   │   ├── B2BRouterClient.php               ──► HTTP fino: POST invoices, GET tax_reports, GET PDF; headers X-B2B-API-Key/Version
 │   │   │   └── B2BRouterFiscalInvoiceIssuer.php   ──► Adapter FiscalInvoiceIssuerInterface; única conversión céntimos→euros (MoneyCents)
+│   │   ├── Rentals/
+│   │   │   ├── RentalPolicyService.php        ──► config/rentals.php → RentalPolicyDto (buffer, ±flexibilidad, hora mediodía, horario 09:00–19:00, paso de slots) + notas; prop `rentalPolicy`
+│   │   │   └── RentalTariffTableService.php   ──► Tabla pública de tarifas: 3 esquemas canónicos → RentalTariffTableDto (céntimos + notas de RentalPolicyService); prop `tariffTable` en /tablas-alquiler
 │   │   ├── Taquilla/
 │   │   │   ├── TaquillaMembershipService.php   ──► Pagos/planes/cola; vigencia; toggleBajaSolicitada; confirmarBajaTaquilla; marcarBajaSolicitadaPorCliente; DB::transaction; MoneyCents; event PagoTaquillaConfirmado
 │   │   │   ├── TaquillaConfirmationMailService.php ──► Envio correo confirmacion cuota
@@ -417,7 +430,7 @@ maider_0/
 │       ├── AutoCoach/
 │       │   └── VideoDurationProbe.php        ──► Duración MP4/MOV (mvhd) / ffprobe opcional
 │       ├── ChatbotQueryNormalizer.php        ──► Normalización consultas chatbot (acentos + raíces verbales ES)
-│       ├── BusinessDateTime.php                ──► Now() negocio Europe/Madrid
+│       ├── BusinessDateTime.php                ──► Now()/toApi()/toDatabaseString() en zona de negocio Europe/Madrid (los datetimes naive de BD se leen con el cast BusinessWallClockDatetime)
 │       └── StaffVisualIdentity.php             ──► Iniciales + color estable por monitor
 │       ├── IniSize.php                         ──► Parseo upload/post limits de php.ini
 │       ├── LessonBonoCreditUnits.php           ──► Unidades crédito bono por modalidad edad
@@ -432,12 +445,13 @@ maider_0/
 │   ├── app.php, auth.php, autocoach.php, cache.php, cors.php, database.php
 │   ├── filesystems.php, google.php, logging.php, mail.php
 │   ├── queue.php, sanctum.php, services.php, chatbot_pages.php, chatbot_faq.php, session.php, vip.php
+│   ├── rentals.php  ──► Buffer rotación (30m, no cobrado), flexibilidad recogida ±30m, no-show (grace + kill-switch + lookback), hora modo día (12:00), señal %, paso DP, caducidad pending: 45m (pública/Stripe, pending_unpaid_expiration_minutes) vs 7 días (admin/pago manual, pending_expiration_days)
 │   └── invoicing.php  ──► INVOICING_ENABLED (kill-switch), driver, credenciales B2BRouter, payable_types whitelist, IVA default, backoff sondeo
 │
 ├── database/
-│   ├── factories/          (7)
-│   ├── migrations/         (76) — … payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions
-│   └── seeders/            (26) — CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, …
+│   ├── factories/          (10) — … PriceSchemaFactory (tarifa Softboards de referencia + onlyPacks), SurfboardFactory, BookingFactory (hourWindow/dayWindow/depositPaid/fullyPaid para tests de alquiler)
+│   ├── migrations/         (79) — … payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions; restructure_price_schema_packs; split_hard_surfboard_categories; add_rental_window_fields_to_bookings
+│   └── seeders/            (26) — CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, PriceSchemaSeeder (3 esquemas canónicos + reasignación tablas por categoría), …
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
@@ -455,6 +469,10 @@ maider_0/
 │   ├── taller-seo/
 │   │   ├── SEO_MATRIX.md                       ← auditoría + Paso 1b + checklists Paso 2 / estructura
 │   │   └── SEO_DONE.md                         ← cierre Paso 4 (SeoHead/DTO/sitemap QA)
+│   ├── taller-prompts/
+│   │   ├── PROTOCOLO.md                        ← metodología prompt-forge + protocolo dúo DeepSeek↔Cursor para esta sesión
+│   │   ├── COORDINACION.md                     ← estado de trabajo compartido Reasonix↔Cursor (quién toca qué, evitar pisarse)
+│   │   └── REGISTRO.md                         ← registro de iteraciones de prompts (aprendizaje mutuo)
 │   ├── PROJECT_TREE.md
 │   ├── INFORME_TECNICO_COTIZACION.md           ← informe estructural/funcional para cotización
 │   └── PROJECT_TREE_FOR_GEMINI.md              ← este documento
@@ -492,8 +510,12 @@ maider_0/
 │   └── public/             — productos, surfboards, comprobantes_bonos, taquilla-proofs, autocoach/uploads
 │
 ├── tests/
-│   ├── Feature/            — Auth, Carrito, Contact, Profile
+│   ├── Feature/            — Auth, Carrito, Contact, Profile, Invoicing
+│   │   └── Rentals/        — RentalAvailabilityTest (solape con buffer, extremos, TZ pared, alta de reserva), RentalNoShowSweepTest (barrido apagado + liberación manual), RentalBookingStoreTest (tabla retirada + liberación si falla Stripe), RentalPendingExpirationTest (caducidad corta pública vs larga admin + autoExpirePending), RentalThrottleTest (contrato de límites en las rutas), RentalHardeningCierreTest (check-availability público sin id/status crudo vs admin con detalle completo; markPickedUp exige payment_status confirmed; listado admin manda payment_status)
 │   ├── Unit/               — BusinessDateTimeTest
+│   │   └── Rentals/        — RentalPricingTest (DP packs), RentalWindowTest (día 12:00→12:00 / hora + horario mostrador), RentalNoShowTest (regla actual: protege solo prepago íntegro; markPickedUp rechaza sin pago confirmado), RentalPricingJsParityTest (PHP↔JS), RentalAvailabilityGuardTest (isAvailable exige transacción)
+│   ├── Fixtures/           — rental-pricing-cases.json (contrato de precios compartido PHP↔JS)
+│   ├── Js/                 — rental-pricing-parity.mjs (ejecuta lib/rentalPricing.js; lo lanza el test de paridad)
 │   ├── Pest.php
 │   └── TestCase.php
 │
@@ -515,7 +537,7 @@ maider_0/
 | `AvailabilityService`                              | Pessimistic locking       | `evaluate()`/`withLockedLesson()` exigen tx activa; `preview()` para UI. Margen 15m/75m; máx. 2 monitores. |
 | `EnrollStudentAction`                              | Action + lock             | VIP; doble `UserBono::lockForUpdate()`; `BonoConsumption`; `PaymentStatus::Confirmed` al consumir bono. |
 | `BonoService`                                      | Transaction + lock        | `confirmBono()` usa `lockForUpdate`; fuente de verdad clases restantes. |
-| `BookingService`                                   | Domain service (SSOT)     | `resolvePricing`, `createPendingBooking` (`PaymentStatus::Pending`), `checkAvailability()`. |
+| `BookingService`                                   | Domain service (SSOT)     | `priceForMinutes` (DP sobre packs, paso 30 min) · `buildWindow`/`normalizeDayRange` (12:00→12:00) · buffer de rotación no cobrado (`block_end`) · `isAvailable` con solape estricto + `lockForUpdate` · `createPendingBooking` rechaza tablas `is_active=false` dentro del lock; caducidad corta (`expiresInMinutes`) para el flujo público Stripe vs larga (7 días) para admin/pago manual · `releaseNoShows` (OFF por defecto; solo libera si `Booking::isRentalFullyPaid()` es false). Espejo JS: `resources/js/lib/rentalPricing.js` (paridad verificada en `tests/Unit/Rentals/RentalPricingJsParityTest`). Contrato fijado en `tests/Unit/Rentals/*` y `tests/Feature/Rentals/*`. |
 | `PaymentGatewayService`                            | Pasarela Stripe           | `createCheckoutSession(InitiatePaymentDto): CheckoutSessionResultDto`; metadata con `idempotency_token`; `registerPaymentIntent` + `confirmPaymentFromWebhook` con `lockForUpdate`. |
 | `InitiatePaymentAction`                            | Action pagos              | DTO → PaymentGatewayService → PaymentInitiated (graceful) → URL checkout. |
 | `PaymentWebhookController`                         | Webhook Stripe            | Firma HMAC → confirmPaymentFromWebhook → PaymentConfirmed (graceful). POST /webhooks/stripe. |
@@ -593,7 +615,10 @@ resources/
     │   ├── staffAssignValidation.js ──► Conflictos monitor/fotógrafo (no duplicar roles)
     │   ├── staffConflictFormat.js   ──► Formato legible ventanas horarias en conflictos staff
     │   ├── surfboardMeasures.js ──► Altura/volumen surf (3'5"→11'0", filtros alquiler)
-    │   ├── surfboardPublicDisplay.js ──► Helpers ficha pública alquiler (galería demo, specs, tarifas)
+    │   ├── rentalAvailability.js ──► Slots de recogida + solape con block_end (espejo de BookingService::isAvailable) + normalizeDayWindow mediodía
+    │   ├── rentalPricing.js     ──► Espejo JS de BookingService::priceForMinutes (packs 60→360 min + 1d…5d/week, paso 30 min) + PACK_LABELS/packLabel (etiquetas de duración únicas en la UI). Paridad con PHP: tests/Unit/Rentals/RentalPricingJsParityTest + tests/Fixtures/rental-pricing-cases.json
+    │   ├── surfboardCategories.js ──► BOARD_CATEGORIES + boardCategoryLabel (espejo de Surfboard::CATEGORIES)
+    │   ├── surfboardPublicDisplay.js ──► Helpers ficha pública alquiler (galería demo, specs, tarifas 60m/240m/1d/week)
     │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla…)
     │   ├── chatbotApi.js       ──► POST message + GET history + POST contact-phone (FAQ + derivación WhatsApp)
     │   ├── inertiaErrors.js    ──► inertiaErrorMessages + showInertiaErrors (toasts desde errors Laravel)
@@ -632,12 +657,16 @@ resources/
     │   │   ├── ZurriolaGeoGuide.jsx ──► Bloque GEO citables (props `zurriolaGeo`; sin lógica)
     │   │   ├── SurfBriefCard.jsx ──► Controles admin del parte (override + regenerar) en `/servicios/webcams`
     │   │   ├── surfBriefOverride.js ──► Labels/tonos override: good | espigon | caution | closed
+    │   │   ├── surfLevels.js ──► Textos fijos iniciación/intermedio/avanzado + clases de etiqueta del Parte S4
+    │   │   ├── SurfLevelAccordion.jsx ──► Acordeón «¿Cuál es mi nivel?» (fila desktop / vertical móvil)
     │   │   ├── SurfBriefMini.jsx ──► Parte S4 destacado en home (resumen expertos + métricas → webcams)
     │   │   ├── SurfBriefReactions.jsx ──► 👍/👎 + contadores bajo el texto del parte
-    │   │   └── SurfForecastTable.jsx ──► Tabla previsión 3 días × franjas 06-21h/3h + marea + bloque Parte S4, en `/servicios/webcams`. Datos de `SurfForecastTableService`
-    │   ├── BookingCalendar.jsx
-    │   ├── SurfboardBookingSection.jsx   ──► calendario + Collapsible + pago alquiler
+    │   │   ├── SurfForecastTable.jsx ──► Tabla previsión 3 días × franjas 06-21h/3h + marea + Parte S4 (general + 3 niveles + acordeón), en `/servicios/webcams`
+    │   ├── BookingCalendar.jsx ──► selectionMode range (días 12:00→12:00 + total) | single (día suelto para el selector de horas)
+    │   ├── SurfboardBookingSection.jsx   ──► Toggle horas/días + Collapsible + pago alquiler; POST con mode/pack/pickup_at
     │   ├── Rentals/
+    │   │   ├── RentalHourPicker.jsx ──► Modo horas: chips de pack + día + slots de recogida (descarta los que pisan el buffer); devolución solo lectura
+    │   │   ├── RentalTariffTable.jsx ──► Tabla RENT en /tablas-alquiler (prop `tariffTable`; horas + días, scroll móvil, notas 12:00/±30/cortesía)
     │   │   └── SurfboardPublicDetail.jsx ──► Ficha compartida Index/Show (galería, specs, tarifas, booking embedded)
     │   ├── PaymentModal.jsx
     │   ├── Taquilla.jsx

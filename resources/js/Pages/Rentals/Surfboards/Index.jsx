@@ -4,6 +4,7 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 import EmptyState from "../../../components/EmptyState";
 import ImageLightbox from "../../../components/ImageLightbox";
 import SafeImage from "../../../components/SafeImage";
+import RentalTariffTable from "../../../components/Rentals/RentalTariffTable";
 import SurfboardPublicDetail from "../../../components/Rentals/SurfboardPublicDetail";
 import SeoHead from "../../../components/seo/SeoHead";
 import {
@@ -12,7 +13,12 @@ import {
     buildVolumeOptions,
     formatSurfHeight,
 } from "../../../lib/surfboardMeasures";
-import { imageUrlFor } from "../../../lib/surfboardPublicDisplay";
+import {
+    BOARD_CATEGORIES,
+    boardCategoryLabel,
+    catalogFromPriceLabel,
+    imageUrlFor,
+} from "../../../lib/surfboardPublicDisplay";
 
 const HEIGHT_OPTIONS = buildSurfHeightOptions(3, 5, 11, 0);
 const VOLUME_OPTIONS = buildVolumeOptions(15, 100, 1);
@@ -23,6 +29,8 @@ const selectClass =
 export default function Index({
     surfboards,
     category,
+    tariffTable = null,
+    rentalPolicy = null,
     paymentIban = "[IBAN]",
     paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
@@ -101,10 +109,12 @@ export default function Index({
         setSelectedId(null);
     };
 
-    const counts = useMemo(() => {
-        const soft = allBoards.filter((s) => s.category === "soft").length;
-        const hard = allBoards.filter((s) => s.category === "hard").length;
-        return { all: allBoards.length, soft, hard };
+    const categoryTabs = useMemo(() => {
+        const tabs = BOARD_CATEGORIES.map(({ id, label }) => ({
+            id,
+            label: `${label} (${allBoards.filter((s) => s.category === id).length})`,
+        }));
+        return [{ id: "all", label: `Todas (${allBoards.length})` }, ...tabs];
     }, [allBoards]);
 
     const filteredBoards = useMemo(() => {
@@ -147,6 +157,8 @@ export default function Index({
                     className="mx-auto w-full max-w-7xl rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 px-4 py-6 shadow-sm sm:px-6 lg:px-7"
                     style={{ fontFamily: "'Inter', 'Geist', sans-serif" }}
                 >
+                    <RentalTariffTable tariffTable={tariffTable} />
+
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
                     {/* ── Catálogo ── */}
@@ -164,11 +176,7 @@ export default function Index({
                                 role="tablist"
                                 aria-label="Filtros de categoría"
                             >
-                                {[
-                                    { id: "all",  label: `Todas (${counts.all})` },
-                                    { id: "soft", label: `Softboards (${counts.soft})` },
-                                    { id: "hard", label: `Hardboards (${counts.hard})` },
-                                ].map((f) => (
+                                {categoryTabs.map((f) => (
                                     <button
                                         key={f.id}
                                         type="button"
@@ -299,7 +307,7 @@ export default function Index({
                                             <button
                                                 type="button"
                                                 onClick={clearMeasureFilters}
-                                                className="inline-flex items-center rounded-xl bg-sky-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800"
+                                                className="inline-flex items-center rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-600"
                                             >
                                                 Limpiar filtros
                                             </button>
@@ -307,64 +315,81 @@ export default function Index({
                                     }
                                 />
                             ) : (
-                                <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-3">
+                                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
                                     {filteredBoards.map((s) => {
                                         const name     = s.name || `Tabla #${s.id}`;
                                         const imgUrl   = imageUrlFor(s);
                                         const selected = selectedId === s.id;
+                                        const fromPrice = catalogFromPriceLabel(s.price_schema);
+                                        const metaParts = [
+                                            boardCategoryLabel(s.category),
+                                            s.altura ? formatSurfHeight(s.altura) : null,
+                                            s.volumen ? `${parseFloat(s.volumen)} L` : null,
+                                        ].filter(Boolean);
                                         return (
                                             /* Tarjeta + acordeón en el mismo celda: en <lg el detalle cae justo debajo */
                                             <div key={s.id} className="flex flex-col gap-2.5">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCardClick(s.id)}
-                                                    aria-expanded={selected}
-                                                    aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
-                                                    className={`group flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition-all duration-200 ${
+                                                <div
+                                                    className={`group rounded-2xl border p-3 transition-all duration-200 ${
                                                         selected
                                                             ? "border-cyan-400 bg-cyan-500/10 shadow-sm"
                                                             : "border-slate-700 bg-slate-900 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-sm"
                                                     }`}
                                                 >
-                                                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                                                        <SafeImage
-                                                            src={imgUrl}
-                                                            alt={s.image_alt || name}
-                                                            className="h-full w-full object-cover"
-                                                            placeholderClassName="rounded-lg"
-                                                        />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-[15px] font-semibold text-slate-100">
-                                                            {name}
-                                                        </p>
-                                                        <p className="text-xs uppercase tracking-wide text-slate-400">
-                                                            {s.category === "soft" ? "Softboard" : "Hardboard"}
-                                                            {s.altura || s.volumen ? (
-                                                                <>
-                                                                    {" · "}
-                                                                    {formatSurfHeight(s.altura)}
-                                                                    {s.volumen ? ` · ${parseFloat(s.volumen)} L` : ""}
-                                                                </>
-                                                            ) : null}
-                                                        </p>
-                                                    </div>
-                                                    {!isLgUp ? (
-                                                        <span
-                                                            className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
-                                                                selected
-                                                                    ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
-                                                                    : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
-                                                            }`}
-                                                            aria-hidden="true"
-                                                        >
-                                                            <ChevronDown
-                                                                className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
-                                                                strokeWidth={2.5}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCardClick(s.id)}
+                                                        aria-expanded={selected}
+                                                        aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
+                                                        className="flex w-full items-start gap-3 text-left"
+                                                    >
+                                                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                                                            <SafeImage
+                                                                src={imgUrl}
+                                                                alt={s.image_alt || name}
+                                                                className="h-full w-full object-cover"
+                                                                placeholderClassName="rounded-lg"
                                                             />
-                                                        </span>
-                                                    ) : null}
-                                                </button>
+                                                        </div>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="truncate font-heading text-[15px] font-semibold text-slate-100">
+                                                                {name}
+                                                            </p>
+                                                            <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-slate-400">
+                                                                {metaParts.join(" · ")}
+                                                            </p>
+                                                            {fromPrice ? (
+                                                                <p className="mt-0.5 truncate text-xs font-medium text-cyan-300/90">
+                                                                    {fromPrice}
+                                                                </p>
+                                                            ) : null}
+                                                        </div>
+                                                        {!isLgUp ? (
+                                                            <span
+                                                                className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+                                                                    selected
+                                                                        ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
+                                                                        : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
+                                                                }`}
+                                                                aria-hidden="true"
+                                                            >
+                                                                <ChevronDown
+                                                                    className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
+                                                                    strokeWidth={2.5}
+                                                                />
+                                                            </span>
+                                                        ) : null}
+                                                    </button>
+                                                    <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
+                                                        <Link
+                                                            href={route("rentals.surfboards.show", s.id)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200"
+                                                        >
+                                                            Ver ficha
+                                                        </Link>
+                                                    </div>
+                                                </div>
 
                                                 {/* Acordeón: solo en <lg, montado justo debajo de ESTA tarjeta */}
                                                 {selected && !isLgUp ? (
@@ -375,6 +400,7 @@ export default function Index({
                                                             paymentIban={paymentIban}
                                                             paymentBizumNumber={paymentBizumNumber}
                                                             whatsappHelpUrl={whatsappHelpUrl}
+                                                            rentalPolicy={rentalPolicy}
                                                             titleAs="h2"
                                                         />
                                                     </div>
@@ -409,6 +435,7 @@ export default function Index({
                                     paymentIban={paymentIban}
                                     paymentBizumNumber={paymentBizumNumber}
                                     whatsappHelpUrl={whatsappHelpUrl}
+                                    rentalPolicy={rentalPolicy}
                                     titleAs="h2"
                                 />
                             )}

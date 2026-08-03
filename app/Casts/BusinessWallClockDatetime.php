@@ -3,14 +3,17 @@
 namespace App\Casts;
 
 use App\Support\BusinessDateTime;
-use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 /**
  * DATETIME naive en BD = hora de negocio en {@see BusinessDateTime::businessTimezone()},
  * sin depender de APP_TIMEZONE (p. ej. UTC) que desplazaría la hora al leer.
+ *
+ * Devuelve Illuminate\Support\Carbon, igual que los casts date/datetime nativos:
+ * el código que tipa las fechas de modelo con esa clase sigue funcionando.
  */
 final class BusinessWallClockDatetime implements CastsAttributes
 {
@@ -21,7 +24,7 @@ final class BusinessWallClockDatetime implements CastsAttributes
         }
 
         if ($value instanceof CarbonInterface) {
-            return $value->copy()->timezone(BusinessDateTime::businessTimezone());
+            return Carbon::instance($value)->timezone(BusinessDateTime::businessTimezone());
         }
 
         $tz = BusinessDateTime::businessTimezone();

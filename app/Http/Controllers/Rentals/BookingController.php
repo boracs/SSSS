@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Rentals;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\DTOs\Payments\PaymentLineItemDto;
+use App\DTOs\Rentals\RentalWindowDto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Rentals\StoreBookingRequest;
 use App\Models\Booking;
@@ -19,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 final class BookingController extends Controller
 {
@@ -31,23 +33,25 @@ final class BookingController extends Controller
     {
         $data      = $request->validated();
         $surfboard = Surfboard::query()->findOrFail($data['surfboard_id']);
-        $start     = BusinessDateTime::parseRentalHandoffDate((string) $data['start_date']);
-        $end       = BusinessDateTime::parseRentalHandoffDate((string) $data['end_date']);
 
         // 1. Crear la reserva (estado pending) — sin proof file
         try {
+            $window = $this->bookingService->buildWindow($request->toRentalRequest());
+
             $booking = $this->bookingService->createPendingBooking(
                 $surfboard,
-                $start,
-                $end,
+                $window,
                 [
                     'client_name'    => $data['client_name'],
                     'client_email'   => $data['client_email'] ?? null,
                     'client_phone'   => $data['client_phone'] ?? null,
                     'payment_method' => 'card',
                 ],
-                null,
-                $request->user()?->id,
+                proofFile: null,
+                userId: $request->user()?->id,
+                // Va directa a Stripe Checkout: si el cliente abandona el pago,
+                // la tabla se libera en minutos, no tras 7 días de gracia.
+                expiresInMinutes: $this->bookingService->pendingUnpaidExpirationMinutes(),
             );
         } catch (InvalidArgumentException $e) {
             $msg = $e->getMessage();
@@ -73,6 +77,8 @@ final class BookingController extends Controller
                 'deposit_amount' => $booking->deposit_amount,
             ]);
 
+            $this->releaseUnpaidBooking($booking, 'Reserva liberada: no se pudo calcular el importe del alquiler.');
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -85,8 +91,7 @@ final class BookingController extends Controller
             ]);
         }
 
-        $days         = max(1, (int) $start->diffInDays($end));
-        $description  = "Alquiler {$days} día(s) · {$start->format('d/m/Y')} → {$end->format('d/m/Y')}";
+        $description = $this->describeWindow($window);
 
         $dto = new InitiatePaymentDto(
             payableType:   Booking::class,
@@ -113,18 +118,20 @@ final class BookingController extends Controller
                 'error'      => $e->getMessage(),
             ]);
 
+            // Sin pasarela no hay reserva: si la dejáramos pending bloquearía la
+            // tabla durante días por un fallo que el cliente no puede resolver.
+            $this->releaseUnpaidBooking($booking, 'Reserva liberada: falló la apertura del pago (Stripe).');
+
+            $message = 'No se pudo abrir la pasarela de pago y la reserva no se ha guardado. Inténtalo de nuevo en unos minutos.';
+
             if ($request->wantsJson()) {
                 return response()->json([
-                    'success'    => true,
-                    'booking_id' => $booking->id,
-                    'message'    => 'Reserva creada. Por favor, contacta con nosotros para completar el pago.',
-                ], 201);
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
             }
 
-            return redirect()->back()->with(
-                'success',
-                'Reserva registrada. Hubo un problema al abrir el pago automático — por favor, contáctanos.'
-            );
+            return redirect()->back()->withErrors(['payment' => $message]);
         }
 
         if ($request->wantsJson()) {
@@ -137,6 +144,46 @@ final class BookingController extends Controller
         }
 
         return $this->redirectToStripeCheckout($checkoutUrl);
+    }
+
+    /**
+     * Devuelve la tabla al inventario cuando la reserva recién creada no llega
+     * a cobrarse. Se cancela (no se borra) para dejar rastro en el panel, y el
+     * scope `blocking()` deja de contarla al instante.
+     *
+     * Nunca debe tapar el error original: si la liberación falla, se registra.
+     */
+    private function releaseUnpaidBooking(Booking $booking, string $reason): void
+    {
+        try {
+            $note = trim((string) $booking->admin_notes);
+            $booking->admin_notes = trim($note."\n".$reason);
+            $booking->applyCancellationWithRefundQueue();
+        } catch (Throwable $e) {
+            Log::error('BookingController::store no se pudo liberar la reserva sin pago', [
+                'booking_id' => $booking->id,
+                'reason'     => $reason,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Texto de la línea de pago: refleja el tiempo cobrado, nunca el buffer.
+     */
+    private function describeWindow(RentalWindowDto $window): string
+    {
+        $range = $window->pickupAt->format('d/m/Y H:i').' → '.$window->returnAt->format('d/m/Y H:i');
+
+        if ($window->isDayMode()) {
+            $days = (int) round($window->chargedMinutes / 1440);
+
+            return "Alquiler {$days} día(s) · {$range}";
+        }
+
+        $hours = rtrim(rtrim(number_format($window->chargedMinutes / 60, 1, ',', ''), '0'), ',');
+
+        return "Alquiler {$hours} h · {$range}";
     }
 
     public function checkAvailability(Request $request): JsonResponse
@@ -154,7 +201,9 @@ final class BookingController extends Controller
             ? BusinessDateTime::parseInAppTimezone(trim($toRaw).' 23:59:59')
             : BusinessDateTime::parseRentalDate($toRaw);
 
-        $ranges = $this->bookingService->getBlockedRanges(
+        // Endpoint público: nada de id de reserva ni estado interno crudo, solo
+        // el rango de inventario y el color a pintar (ver getPublicBlockedRanges).
+        $ranges = $this->bookingService->getPublicBlockedRanges(
             (int) $request->input('surfboard_id'),
             $from,
             $to,

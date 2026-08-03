@@ -3,8 +3,6 @@ import { Plus } from "lucide-react";
 import SafeImage from "../SafeImage";
 import SurfboardBookingSection from "../SurfboardBookingSection";
 import {
-    boardCategoryLabel,
-    boardDisplayDescription,
     boardSpecs,
     buildVisibleTariffs,
     imageListFor,
@@ -21,13 +19,12 @@ export default function SurfboardPublicDetail({
     paymentIban,
     paymentBizumNumber,
     whatsappHelpUrl,
+    rentalPolicy = null,
     initialStart = null,
     initialEnd = null,
     titleAs = "h2",
 }) {
     const name = board.name || `Tabla #${board.id}`;
-    const categoryLabel = boardCategoryLabel(board.category);
-    const description = boardDisplayDescription(board, name);
     const TitleTag = titleAs === "h1" ? "h1" : "h2";
 
     const displayImages = useMemo(() => {
@@ -62,17 +59,9 @@ export default function SurfboardPublicDetail({
     return (
         <div className="space-y-5 text-slate-100">
             <header>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-300/85">
-                    {categoryLabel} · Zurriola
-                </p>
-                <TitleTag className="mt-1 font-heading text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+                <TitleTag className="font-heading text-2xl font-extrabold tracking-tight text-cyan-300 sm:text-3xl">
                     {name}
                 </TitleTag>
-                {description ? (
-                    <p className="mt-2 max-w-prose text-sm leading-relaxed text-slate-400">
-                        {description}
-                    </p>
-                ) : null}
             </header>
 
             <div aria-label="Galería de la tabla">
@@ -184,12 +173,27 @@ export default function SurfboardPublicDetail({
                 </div>
             ) : null}
 
+            <div className="border-t border-white/10 pt-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    Cómo funciona
+                </p>
+                <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-400">
+                    <li>Elige horas o días, la hora de recogida y confirma con el pago.</li>
+                    <li>La recogida y devolución se hacen en la escuela S4 (Zurriola).</li>
+                    <li>La hora de devolución se calcula sola a partir de la duración elegida.</li>
+                </ul>
+                {/* CTA de WhatsApp retirado a propósito: el flujo ya es autoservicio
+                    (calendario + pago) y este botón invitaba a preguntar por cada
+                    tabla en vez de reservar directamente. */}
+            </div>
+
             <SurfboardBookingSection
                 key={board.id}
                 surfboard={board}
                 paymentIban={paymentIban}
                 paymentBizumNumber={paymentBizumNumber}
                 whatsappHelpUrl={whatsappHelpUrl}
+                rentalPolicy={rentalPolicy}
                 initialStart={initialStart}
                 initialEnd={initialEnd}
                 embedded

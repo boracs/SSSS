@@ -100,6 +100,12 @@
         "notes": "Playa saturada. Demasiada masa de agua en movimiento, corrientes incontrolables y olas cerrando en barra. Peligroso."
       }
     ],
+    "level_skill_profiles": {
+      "description": "Qué sabe hacer realmente cada nivel en el agua. Úsalo para calibrar el tono y las expectativas de cada bloque (iniciacion/intermedio/avanzado) del parte: no le pidas a iniciación que lea picos, ni le hables a avanzado de ponerse de pie.",
+      "iniciacion": "Se pone de pie y sabe remar, pero con poca fuerza. Coge espumas y alguna ola sin romper, de tamaño pequeño y que rompe suave. Va con tablas de gran volumen (fácil flotabilidad/estabilidad). Apenas tiene lectura de ola: no identifica picos, no elige la ola por su forma, depende de que la ola venga a él.",
+      "intermedio": "Rema con soltura, coge olas ya rotas y algunas verdes de poca fuerza, empieza a hacer algún giro básico. Tiene cierta lectura de ola pero todavía se equivoca de pico o de timing en días con secciones rápidas.",
+      "avanzado": "Rema fuerte y lee la playa: elige pico, se posiciona antes de que rompa, encadena maniobras y aprovecha secciones técnicas. Solo busca fuerza real; con energía baja no encuentra reto ni beneficio."
+    },
     "level_recommendation_by_energy_kj": {
       "description": "Criterio S4 de recomendación por nivel según energía (kJ). Usar esto al redactar el parte cuando digas para quién merece la pena el día.",
       "rules": [
@@ -133,9 +139,12 @@
       ]
     },
     "tide_strategy": {
-      "low_energy_under_400": "Funciona correctamente en todos los puntos de marea (baja, media y alta).",
-      "mid_energy_400_800": "Se recomienda prioritariamente el rango de marea media a alta.",
-      "high_energy_above_1000": "Se recomienda marea alta en general, o marea baja resguardado estrictamente detrás del espigón."
+      "very_low_under_100": "Marea media o baja. Fuerza mínima; con alta apenas queda ola aprovechable.",
+      "low_medium_100_400_spring_tide": "Con mareas VIVAS (rango grande), evitar marea alta: se forma orillera (shorebreak) que corta la ola en la misma orilla y deja de ser surfeable. Preferir baja o media.",
+      "low_medium_100_400_neap_tide": "Con mareas MUERTAS (rango pequeño) en este rango de energía, se recomienda marea alta como en el comportamiento general de la playa.",
+      "mid_400_to_600_700": "Se recomienda marea alta en general (salvo el caso de mareas vivas descrito arriba para el tramo 100-400 kJ).",
+      "high_above_600_700": "A partir de aquí la marea deja de ser determinante: funciona tanto alta como media, en vivas o en muertas. La referencia deja de ser la zona Espigón (base) y pasa a la Punta del Espigón (ver `punta_espigon_zone`).",
+      "seasonal_note_2026": "Nota de esta temporada (revisar en temporadas siguientes, no tratar como criterio permanente): con mareas muertas está saliendo peor tanto en alta como en baja, posiblemente por cambio en los bancos de arena."
     },
     "tide_morphology": {
       "high_tide": {
@@ -146,6 +155,22 @@
       "low_or_mid_tide": {
         "effect": "La ola tiende a ser notablemente más hueca, rápida y seca. Rompe con mayor impacto y fuerza sobre el fondo de arena."
       }
+    },
+    "tide_range_classification": {
+      "how_to_infer": "El mensaje del día ya trae 'Marea hoy: Alta Xh (Ym) · Baja Xh (Ym)'. La amplitud = altura de la Alta − altura de la Baja consecutivas. Úsala para decidir si es viva o muerta antes de aplicar `tide_strategy`.",
+      "spring_tide_vivas": "Amplitud aprox. ≥ 3 m → marea viva.",
+      "neap_tide_muertas": "Amplitud aprox. ≤ 2 m → marea muerta.",
+      "reference": "Rango astronómico oficial de la zona (San Sebastián): mínimo ~1,5 m en mareas muertas, máximo ~4 m en mareas vivas (fuente: perfil de aguas de baño del Gobierno Vasco / Uragentzia)."
+    },
+    "punta_espigon_zone": {
+      "name": "Punta del Espigón",
+      "distinction": "No confundir con la zona 'Espigón' (base, resguardada, refugio de iniciación en energía alta). Esta es el extremo final de la estructura, más allá del abrigo.",
+      "exposure": "Totalmente expuesta a la dirección NW del oleaje; no está tapada por el espigón como sí lo está la zona base.",
+      "trigger_energy_kj_min": 600,
+      "trigger_energy_kj_typical": "600-700 kJ, algunos días hasta 700-800 kJ",
+      "tide": "Indiferente por encima del umbral: funciona con alta o media, vivas o muertas.",
+      "level": "Avanzado — lo opuesto a la zona Espigón base, que es de iniciación.",
+      "notes": "Con esa fuerza de mar, en la punta expuesta rompe una ola buena y aprovechable que no está disponible en el resto de la playa con esas condiciones."
     },
     "swell_direction": {
       "NW": {

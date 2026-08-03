@@ -43,11 +43,22 @@ class BookingController extends Controller
                 'surfboard_id' => $b->surfboard_id,
                 'surfboard_name' => $b->surfboard?->name,
                 'status' => $b->status,
+                // El botón de recogida solo se activa con el pago confirmado.
+                'payment_status' => $b->payment_status,
                 'client_name' => $b->client_name,
                 'client_email' => $b->client_email,
                 'client_phone' => $b->client_phone,
-                'start_date' => $b->start_date?->toIso8601String(),
-                'end_date' => $b->end_date?->toIso8601String(),
+                // Ventana del alquiler en hora de escuela: recogida y devolución
+                // cobrada (el buffer de rotación no se muestra al mostrador).
+                'mode' => $b->mode,
+                'pickup_at' => $this->windowDate($b->pickup_at ?? $b->start_date),
+                'return_at' => $this->windowDate($b->return_at ?? $b->end_date),
+                'pack_minutes' => $b->pack_minutes,
+                'pack_days' => $b->pack_days,
+                'picked_up_at' => $this->windowDate($b->picked_up_at),
+                'no_show_at' => $this->windowDate($b->no_show_at),
+                'start_date' => $this->windowDate($b->start_date),
+                'end_date' => $this->windowDate($b->end_date),
                 'expires_at' => $b->expires_at?->toIso8601String(),
                 'total_price' => (float) $b->total_price,
                 'deposit_amount' => (float) $b->deposit_amount,
@@ -64,18 +75,24 @@ class BookingController extends Controller
         ]);
     }
 
+    /**
+     * ISO con el offset de la escuela: el panel nunca debe pintar 12:00 donde el
+     * mostrador entrega a las 10:00.
+     */
+    private function windowDate(?\DateTimeInterface $date): ?string
+    {
+        return $date !== null ? BusinessDateTime::toApi($date) : null;
+    }
+
     public function store(StoreBookingRequest $request): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
         $surfboard = Surfboard::query()->findOrFail($data['surfboard_id']);
-        $start = BusinessDateTime::parseRentalHandoffDate((string) $data['start_date']);
-        $end = BusinessDateTime::parseRentalHandoffDate((string) $data['end_date']);
 
         try {
             $booking = $this->bookingService->createPendingBooking(
                 $surfboard,
-                $start,
-                $end,
+                $this->bookingService->buildWindow($request->toRentalRequest()),
                 [
                     'client_name' => $data['client_name'],
                     'client_email' => $data['client_email'] ?? null,
@@ -116,7 +133,9 @@ class BookingController extends Controller
     }
 
     /**
-     * Rangos de fechas ocupados de una tabla (para calendario).
+     * Rangos de fechas ocupados de una tabla (para calendario admin).
+     * Detalle completo (id de reserva incluido): a diferencia del endpoint
+     * público, aquí sí hace falta para poder enlazar con la reserva concreta.
      */
     public function checkAvailability(Request $request): JsonResponse
     {
@@ -252,6 +271,42 @@ class BookingController extends Controller
         $mime = Storage::disk('local')->mimeType($booking->payment_proof_path);
 
         return response()->file($path, ['Content-Type' => $mime]);
+    }
+
+    /**
+     * Mostrador: registra la entrega real de la tabla. Sin este dato el barrido de
+     * no-shows no puede distinguir un cliente que llega tarde de uno que no aparece,
+     * por eso `rentals.no_show_release_enabled` sigue desactivado hasta que se use.
+     */
+    public function markPickedUp(Booking $booking): RedirectResponse
+    {
+        if ($booking->picked_up_at !== null) {
+            return redirect()->back()->with(
+                'error',
+                'La recogida ya estaba registrada ('.$booking->picked_up_at->format('d/m/Y H:i').').'
+            );
+        }
+
+        if (! in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED], true)) {
+            return redirect()->back()->with(
+                'error',
+                'Solo se registra la recogida de reservas pendientes o confirmadas.'
+            );
+        }
+
+        if ($booking->payment_status !== Booking::PAYMENT_CONFIRMED) {
+            return redirect()->back()->with(
+                'error',
+                'No se puede entregar la tabla sin el pago confirmado. Confirma el pago primero.'
+            );
+        }
+
+        $booking = $this->bookingService->markPickedUp($booking);
+
+        return redirect()->back()->with(
+            'success',
+            'Recogida registrada a las '.$booking->picked_up_at->format('H:i').'.'
+        );
     }
 
     /**

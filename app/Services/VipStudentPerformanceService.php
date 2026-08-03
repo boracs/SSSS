@@ -420,7 +420,9 @@ class VipStudentPerformanceService
 
         $rentalRows = $rentalEntities
             ->map(function (Booking $row) use ($receiptAccess, $receiptMap) {
-                $startAt = $row->start_date;
+                // Recogida y devolución cobrada; las columnas legacy solo son fallback.
+                $startAt = $row->pickup_at ?? $row->start_date;
+                $endAt = $row->return_at ?? $row->end_date;
                 $paymentPending = ($row->payment_status ?? '') === Booking::PAYMENT_PENDING;
                 $sessionExpired = $paymentPending
                     && $row->created_at
@@ -455,7 +457,7 @@ class VipStudentPerformanceService
                     'payment_status' => $row->payment_status ?: Booking::PAYMENT_PENDING,
                     'created_at' => $row->created_at?->toIso8601String(),
                     'start_time' => $startAt ? BusinessDateTime::toApi($startAt) : null,
-                    'end_time' => $row->end_date ? BusinessDateTime::toApi($row->end_date) : null,
+                    'end_time' => $endAt ? BusinessDateTime::toApi($endAt) : null,
                     'deposit_amount' => $deposit,
                     'total_price' => $totalPrice,
                     /** Importe a abonar como compromiso (p. ej. % del total); mismo valor que deposit_amount. */

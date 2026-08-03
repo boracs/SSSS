@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { es } from "date-fns/locale";
 import "react-datepicker/dist/react-datepicker.css";
+import { priceForDayRange } from "../lib/rentalPricing";
 
 registerLocale("es", es);
 
@@ -34,30 +35,6 @@ function clampIntervals(blockedRanges) {
         .filter(Boolean);
 }
 
-function calculateBestPriceJs(pricesByDuration, startDate, endDate) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const totalHours = Math.ceil((end.getTime() - start.getTime()) / 3600000);
-    if (!Number.isFinite(totalHours) || totalHours <= 0) return 0;
-
-    const durations = [1, 2, 4, 12, 24, 48, 72, 168];
-    const minCost = new Array(totalHours + 1).fill(0);
-
-    for (let h = 1; h <= totalHours; h++) {
-        const p1 = Number(pricesByDuration?.[1] ?? pricesByDuration?.["1"] ?? 0);
-        minCost[h] = h * (p1 || 0);
-        for (const dur of durations) {
-            const price = Number(pricesByDuration?.[dur] ?? pricesByDuration?.[String(dur)] ?? 0);
-            if (dur <= h && price > 0) {
-                const candidate = price + minCost[h - dur];
-                if (candidate < minCost[h]) minCost[h] = candidate;
-            }
-        }
-    }
-
-    return Math.round(minCost[totalHours] * 100) / 100;
-}
-
 function buildDateStatusMap(blockedRanges) {
     const map = {};
     for (const r of blockedRanges || []) {
@@ -65,9 +42,8 @@ function buildDateStatusMap(blockedRanges) {
         const end = toDate(r.end);
         if (!start || !end) continue;
 
-        const displayStatus =
-            r.display_status ||
-            (r.status === "confirmed" || r.status === "completed" ? "ocupado" : "pendiente");
+        // Endpoint público: solo start/end/display_status, sin id ni status interno.
+        const displayStatus = r.display_status || "pendiente";
 
         const cur = new Date(start);
         cur.setHours(0, 0, 0, 0);
@@ -196,6 +172,11 @@ const calendarShellClass = {
     `,
 };
 
+/**
+ * selectionMode="range": alquiler por días (12:00 → 12:00), con total estimado.
+ * selectionMode="single": el cliente elige el día y la hora de recogida se
+ * decide fuera (RentalHourPicker), así que aquí no se excluyen días completos.
+ */
 export default function BookingCalendar({
     blockedRanges = [],
     pricesByDuration = null,
@@ -205,7 +186,13 @@ export default function BookingCalendar({
     disabled = false,
     isChecking = false,
     tone = "light",
+    selectionMode = "range",
+    selectedDate = null,
+    onDateChange,
+    excludeBlockedDays = true,
+    showTotal = true,
 }) {
+    const isRange = selectionMode !== "single";
     const [range, setRange] = useState([toDate(initialStart), toDate(initialEnd)]);
     const [startDate, endDate] = range;
     const palette = tone === "dark" ? "dark" : "light";
@@ -215,14 +202,16 @@ export default function BookingCalendar({
 
     const dateStatusMap = useMemo(() => buildDateStatusMap(blockedRanges), [blockedRanges]);
 
+    /* El calendario selecciona días: ciclo 12:00 → 12:00, igual que el backend. */
     const totalPrice = useMemo(() => {
-        if (!pricesByDuration || !startDate || !endDate) return null;
-        return calculateBestPriceJs(pricesByDuration, startDate, endDate);
-    }, [pricesByDuration, startDate, endDate]);
+        if (!isRange || !pricesByDuration || !startDate || !endDate) return null;
+        return priceForDayRange(pricesByDuration, startDate, endDate);
+    }, [isRange, pricesByDuration, startDate, endDate]);
 
     useEffect(() => {
+        if (!isRange) return;
         onRangeChange?.({ startDate, endDate, totalPrice });
-    }, [startDate, endDate, totalPrice, onRangeChange]);
+    }, [isRange, startDate, endDate, totalPrice, onRangeChange]);
 
     return (
         <div className="space-y-3">
@@ -239,16 +228,18 @@ export default function BookingCalendar({
             <div className={`relative ${calendarShellClass[palette]}`}>
                 <DatePicker
                     locale="es"
-                    selectsRange
-                    startDate={startDate}
-                    endDate={endDate}
-                    onChange={(update) => setRange(update)}
+                    selectsRange={isRange}
+                    selected={isRange ? undefined : toDate(selectedDate)}
+                    startDate={isRange ? startDate : undefined}
+                    endDate={isRange ? endDate : undefined}
+                    onChange={(update) => (isRange ? setRange(update) : onDateChange?.(update))}
                     minDate={new Date()}
-                    excludeDateIntervals={intervals}
+                    excludeDateIntervals={excludeBlockedDays ? intervals : undefined}
                     disabled={disabled}
                     inline
                     calendarStartDay={1}
                     dayClassName={(date) => {
+                        if (!excludeBlockedDays) return "";
                         const s = dateStatusMap[isoDate(date)];
                         return statusClasses[s] ?? "";
                     }}
@@ -263,22 +254,24 @@ export default function BookingCalendar({
                 ) : null}
             </div>
 
-            <div
-                className={`flex flex-wrap items-center justify-center gap-4 text-xs ${
-                    palette === "dark" ? "text-slate-400" : "text-slate-600"
-                }`}
-            >
-                <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                    Disponible
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
-                    Ocupado
-                </span>
-            </div>
+            {excludeBlockedDays ? (
+                <div
+                    className={`flex flex-wrap items-center justify-center gap-4 text-xs ${
+                        palette === "dark" ? "text-slate-400" : "text-slate-600"
+                    }`}
+                >
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                        Disponible
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                        Ocupado
+                    </span>
+                </div>
+            ) : null}
 
-            {totalPrice != null ? (
+            {showTotal && totalPrice != null ? (
                 <div
                     className={`rounded-xl p-3 text-sm ring-1 ring-inset ${
                         palette === "dark"

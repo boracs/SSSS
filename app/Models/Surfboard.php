@@ -12,8 +12,27 @@ class Surfboard extends Model
 {
     use HasFactory;
 
-    public const CATEGORY_HARD = 'hard';
     public const CATEGORY_SOFT = 'soft';
+    public const CATEGORY_HARD_BASIC = 'hard_basic';
+    public const CATEGORY_HARD_PRO = 'hard_pro';
+
+    /** @var list<string> */
+    public const CATEGORIES = [
+        self::CATEGORY_SOFT,
+        self::CATEGORY_HARD_BASIC,
+        self::CATEGORY_HARD_PRO,
+    ];
+
+    private const CATEGORY_LABELS = [
+        self::CATEGORY_SOFT => 'Softboards',
+        self::CATEGORY_HARD_BASIC => 'Duras básicas',
+        self::CATEGORY_HARD_PRO => 'Duras pro boards',
+    ];
+
+    public static function categoryLabel(?string $category): string
+    {
+        return self::CATEGORY_LABELS[$category] ?? 'Tabla de alquiler';
+    }
 
     protected $fillable = [
         'price_schema_id',

@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import Layout1 from "../../../layouts/Layout1";
 import BackButton from "../../../components/BackButton";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import { BOARD_CATEGORIES } from "../../../lib/surfboardCategories";
 
 const inputClass =
     "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
@@ -136,8 +137,11 @@ export default function Create({ priceSchemas }) {
                                     onChange={(e) => setData("category", e.target.value)}
                                     className={inputClass}
                                 >
-                                    <option value="soft">Softboards</option>
-                                    <option value="hard">Hardboards</option>
+                                    {BOARD_CATEGORIES.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.label}
+                                        </option>
+                                    ))}
                                 </select>
                                 {errors.category ? (
                                     <div className="mt-1 text-xs text-rose-400">{errors.category}</div>

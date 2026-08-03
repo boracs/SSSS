@@ -28,7 +28,7 @@ class SurfboardController extends Controller
                 'image_url',
                 'image_alt',
             ])
-            ->with(['priceSchema:id,name,price_24h'])
+            ->with(['priceSchema:id,name,price_1d'])
             ->orderBy('name')
             ->get();
 

@@ -315,12 +315,18 @@ Route::middleware('auth')->prefix('bonos')->name('bonos.')->group(function () {
 Route::prefix('tablas-alquiler')->name('rentals.')->group(function () {
     Route::get('/', [RentalsSurfboardController::class, 'index'])->name('surfboards.index');
     Route::get('/{category}', [RentalsSurfboardController::class, 'index'])
-        ->whereIn('category', ['soft', 'hard'])
+        ->whereIn('category', ['soft', 'hard_basic', 'hard_pro'])
         ->name('surfboards.index.category');
     Route::get('/tabla/{surfboard}', [RentalsSurfboardController::class, 'show'])->name('surfboards.show');
 
-    Route::get('/check-availability', [RentalsBookingController::class, 'checkAvailability'])->name('bookings.check-availability');
-    Route::post('/reservar', [RentalsBookingController::class, 'store'])->name('bookings.store');
+    // El calendario público consulta varias veces por carga (mes visible + refrescos).
+    Route::get('/check-availability', [RentalsBookingController::class, 'checkAvailability'])
+        ->middleware('throttle:40,1')
+        ->name('bookings.check-availability');
+    // Crea reserva + sesión Stripe: límite estricto, un cliente real no manda más de una reserva por minuto.
+    Route::post('/reservar', [RentalsBookingController::class, 'store'])
+        ->middleware('throttle:8,1')
+        ->name('bookings.store');
 });
 
 // ///USUARIO REGISTRADO SIN TAQUILLA ASIGNADA////////////
@@ -480,6 +486,8 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('bookings/mark-expired', [AdminBookingController::class, 'markExpired'])->name('bookings.mark-expired');
         Route::patch('bookings/{booking}/confirm-payment', [AdminBookingController::class, 'confirmPayment'])->name('bookings.confirm-payment');
         Route::patch('bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
+        // Mostrador: registra la entrega real de la tabla (picked_up_at).
+        Route::patch('bookings/{booking}/mark-picked-up', [AdminBookingController::class, 'markPickedUp'])->name('bookings.mark-picked-up');
         Route::post('bookings/{booking}/approve-proof', [AdminBookingController::class, 'approveProof'])->name('bookings.approve-proof');
         Route::post('bookings/{booking}/reject-proof', [AdminBookingController::class, 'rejectProof'])->name('bookings.reject-proof');
         Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');

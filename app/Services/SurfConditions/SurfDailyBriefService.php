@@ -70,7 +70,7 @@ final class SurfDailyBriefService
         $energyLabel = $this->energyCalculator->labelFor($energyIndex);
         $level = $this->levelRecommender->recommend($snapshot);
 
-        [$summary, $source] = $this->buildSummary($snapshot, $level, $energyLabel);
+        [$summary, $source, $sections] = $this->buildSummary($snapshot, $level, $energyLabel);
 
         $brief = SurfDailyBrief::query()->updateOrCreate(
             ['report_date' => $today->toDateString()],
@@ -87,6 +87,7 @@ final class SurfDailyBriefService
                 'energy_label' => $energyLabel,
                 'level_recommendation' => $level,
                 'ai_summary' => $summary,
+                'ai_summary_sections' => $sections,
                 'summary_source' => $source,
                 'generated_at' => Carbon::now(),
                 'fetched_at' => $snapshot->fetchedAt,
@@ -187,6 +188,7 @@ final class SurfDailyBriefService
                 'label' => $brief->level_recommendation !== null ? $this->levelRecommender->label($brief->level_recommendation) : null,
             ],
             'summary' => $brief->ai_summary,
+            'summary_sections' => $this->publicSummarySections($brief),
             'summary_source' => $brief->summary_source,
             'generated_at' => $brief->generated_at?->toIso8601String(),
             'generated_at_human' => $brief->generated_at?->locale('es')->translatedFormat('d/m/Y H:i'),
@@ -265,23 +267,134 @@ final class SurfDailyBriefService
         })->afterResponse();
     }
 
-    /** @return array{0: string, 1: string} [texto, fuente] */
+    /**
+     * @return array{0: string, 1: string, 2: array{general: string, iniciacion: ?string, intermedio: ?string, avanzado: ?string, aviso: ?string}}
+     */
     private function buildSummary(SurfConditionsSnapshotDto $snapshot, string $level, string $energyLabel): array
     {
         $currentMessage = $this->formatDayForAI($snapshot, $level, $energyLabel);
 
         try {
             $guide = $this->readGuide().$this->readLogisticsJsonBlock();
-            $summary = $this->googleAI->generateReply($guide, [], $currentMessage);
+            // El parte devuelve un JSON con 5 campos (general + 3 niveles + aviso); 350 tokens (el
+            // default pensado para respuestas cortas del chatbot) se queda corto y trunca el JSON.
+            $raw = $this->googleAI->generateReply($guide, [], $currentMessage, maxOutputTokens: 900);
+            $sections = $this->parseStructuredSummary($raw);
 
-            return [$this->sanitizePlainText($summary), SurfDailyBrief::SOURCE_GEMINI];
+            return [$sections['general'], SurfDailyBrief::SOURCE_GEMINI, $sections];
         } catch (GeminiUnavailableException $e) {
             Log::warning('SurfDailyBriefService: Gemini no disponible, usando plantilla de respaldo.', [
                 'error' => $e->getMessage(),
             ]);
 
-            return [$this->fallbackSummary($snapshot, $level), SurfDailyBrief::SOURCE_FALLBACK];
+            $sections = $this->fallbackSections($snapshot, $level);
+
+            return [$sections['general'], SurfDailyBrief::SOURCE_FALLBACK, $sections];
         }
+    }
+
+    /**
+     * @return array{general: string, iniciacion: ?string, intermedio: ?string, avanzado: ?string, aviso: ?string}
+     */
+    private function parseStructuredSummary(string $raw): array
+    {
+        $trimmed = trim($raw);
+        $trimmed = preg_replace('/^```(?:json)?\s*/i', '', $trimmed) ?? $trimmed;
+        $trimmed = preg_replace('/\s*```$/', '', $trimmed) ?? $trimmed;
+        $trimmed = trim($trimmed);
+
+        $decoded = json_decode($trimmed, true);
+
+        // Red de seguridad: si Gemini antepuso texto/fences extra o el objeto quedó rodeado de
+        // basura (p. ej. una respuesta "meta" que envuelve el JSON esperado), nos quedamos con el
+        // primer '{' hasta el último '}' y reintentamos antes de rendirnos al texto plano.
+        if (! is_array($decoded)) {
+            $start = strpos($trimmed, '{');
+            $end = strrpos($trimmed, '}');
+            if ($start !== false && $end !== false && $end > $start) {
+                $decoded = json_decode(substr($trimmed, $start, $end - $start + 1), true);
+            }
+        }
+
+        if (! is_array($decoded)) {
+            $plain = $this->sanitizePlainText($raw);
+
+            return [
+                'general' => $plain !== '' ? $plain : 'Parte no disponible.',
+                'iniciacion' => null,
+                'intermedio' => null,
+                'avanzado' => null,
+                'aviso' => null,
+            ];
+        }
+
+        $general = $this->sanitizePlainText((string) ($decoded['general'] ?? ''));
+        if ($general === '') {
+            $general = $this->sanitizePlainText($raw);
+        }
+
+        $avisoRaw = $decoded['aviso'] ?? null;
+        $aviso = null;
+        if (is_string($avisoRaw) && trim($avisoRaw) !== '' && strtolower(trim($avisoRaw)) !== 'null') {
+            $aviso = $this->sanitizePlainText($avisoRaw);
+        }
+
+        return [
+            'general' => $general !== '' ? $general : 'Parte no disponible.',
+            'iniciacion' => $this->nullableSanitizedField($decoded['iniciacion'] ?? null),
+            'intermedio' => $this->nullableSanitizedField($decoded['intermedio'] ?? null),
+            'avanzado' => $this->nullableSanitizedField($decoded['avanzado'] ?? null),
+            'aviso' => $aviso,
+        ];
+    }
+
+    private function nullableSanitizedField(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $clean = $this->sanitizePlainText($value);
+
+        return $clean !== '' ? $clean : null;
+    }
+
+    /**
+     * @return array{general: ?string, iniciacion: ?string, intermedio: ?string, avanzado: ?string, aviso: ?string}|null
+     */
+    private function publicSummarySections(SurfDailyBrief $brief): ?array
+    {
+        $sections = $brief->ai_summary_sections;
+        if (! is_array($sections)) {
+            return null;
+        }
+
+        $general = isset($sections['general']) && is_string($sections['general'])
+            ? trim($sections['general'])
+            : null;
+        $iniciacion = isset($sections['iniciacion']) && is_string($sections['iniciacion'])
+            ? trim($sections['iniciacion'])
+            : null;
+        $intermedio = isset($sections['intermedio']) && is_string($sections['intermedio'])
+            ? trim($sections['intermedio'])
+            : null;
+        $avanzado = isset($sections['avanzado']) && is_string($sections['avanzado'])
+            ? trim($sections['avanzado'])
+            : null;
+        $aviso = isset($sections['aviso']) && is_string($sections['aviso'])
+            ? trim($sections['aviso'])
+            : null;
+
+        if ($iniciacion === null && $intermedio === null && $avanzado === null) {
+            return null;
+        }
+
+        return [
+            'general' => $general !== '' ? $general : $brief->ai_summary,
+            'iniciacion' => $iniciacion !== '' ? $iniciacion : null,
+            'intermedio' => $intermedio !== '' ? $intermedio : null,
+            'avanzado' => $avanzado !== '' ? $avanzado : null,
+            'aviso' => $aviso !== '' ? $aviso : null,
+        ];
     }
 
     private function readGuide(): string
@@ -360,7 +473,7 @@ final class SurfDailyBriefService
             $level,
         );
         $lines[] = '';
-        $lines[] = 'Redacta el parte del día explicando cómo estará por la mañana, cómo estará por la tarde, y qué franja horaria recomendarías según el nivel, siguiendo la guía y las reglas técnicas del spot.';
+        $lines[] = 'Redacta el parte del día en el JSON obligatorio de la guía (general + iniciacion + intermedio + avanzado + aviso), con los kJ reales de cada franja y las reglas técnicas del spot.';
 
         return implode("\n", $lines);
     }
@@ -405,7 +518,7 @@ final class SurfDailyBriefService
             : 'Swell: sin dato separado (usa la ola combinada).';
 
         return sprintf(
-            "Datos de hoy en Zurriola:\nOla combinada: %.1f m, %.1f s, dirección %d°.\n%s\nViento: %.0f km/h, dirección %d°.\nÍndice de energía interno: %s.\nNivel recomendado por el sistema (orientativo): %s.\nRedacta el parte del día siguiendo la guía del spot.",
+            "Datos de hoy en Zurriola:\nOla combinada: %.1f m, %.1f s, dirección %d°.\n%s\nViento: %.0f km/h, dirección %d°.\nÍndice de energía interno: %s.\nNivel recomendado por el sistema (orientativo): %s.\nRedacta el parte del día en el JSON obligatorio de la guía.",
             $snapshot->waveHeightM,
             $snapshot->wavePeriodS,
             $snapshot->waveDirectionDeg,
@@ -417,17 +530,31 @@ final class SurfDailyBriefService
         );
     }
 
-    private function fallbackSummary(SurfConditionsSnapshotDto $snapshot, string $level): string
+    /**
+     * @return array{general: string, iniciacion: string, intermedio: string, avanzado: string, aviso: null}
+     */
+    private function fallbackSections(SurfConditionsSnapshotDto $snapshot, string $level): array
     {
         $levelLabel = $this->levelRecommender->label($level);
-
-        return sprintf(
-            'Hoy en Zurriola: olas de %.1f m (%.0f s), viento %.0f km/h. %s. Confirma siempre con la webcam antes de entrar al agua.',
+        $general = sprintf(
+            'Hoy en Zurriola: olas de %.1f m (%.0f s), viento %.0f km/h. Confirma siempre con la webcam antes de entrar al agua.',
             $snapshot->waveHeightM,
             $snapshot->wavePeriodS,
             $snapshot->windSpeedKmh,
-            $levelLabel,
         );
+
+        return [
+            'general' => $general,
+            'iniciacion' => 'Condiciones orientativas para iniciación: '.$levelLabel.'.',
+            'intermedio' => 'Condiciones orientativas para intermedio: '.$levelLabel.'.',
+            'avanzado' => 'Condiciones orientativas para avanzado: '.$levelLabel.'.',
+            'aviso' => null,
+        ];
+    }
+
+    private function fallbackSummary(SurfConditionsSnapshotDto $snapshot, string $level): string
+    {
+        return $this->fallbackSections($snapshot, $level)['general'];
     }
 
     private function persistTotalFailure(Carbon $date): SurfDailyBrief
@@ -436,6 +563,13 @@ final class SurfDailyBriefService
             ['report_date' => $date->toDateString()],
             [
                 'ai_summary' => 'No hemos podido obtener el parte de hoy. Consulta la webcam en directo o pregúntanos por WhatsApp.',
+                'ai_summary_sections' => [
+                    'general' => 'No hemos podido obtener el parte de hoy. Consulta la webcam en directo o pregúntanos por WhatsApp.',
+                    'iniciacion' => null,
+                    'intermedio' => null,
+                    'avanzado' => null,
+                    'aviso' => null,
+                ],
                 'summary_source' => SurfDailyBrief::SOURCE_FALLBACK,
                 'generated_at' => Carbon::now(),
             ],

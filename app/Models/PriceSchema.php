@@ -10,26 +10,63 @@ class PriceSchema extends Model
 {
     use HasFactory;
 
+    public const MINUTES_PER_DAY = 1440;
+
+    /** Packs por minutos (tramos cortos). */
+    public const MINUTE_PACKS = [
+        60 => 'price_60m',
+        90 => 'price_90m',
+        120 => 'price_120m',
+        180 => 'price_180m',
+        240 => 'price_240m',
+        360 => 'price_360m',
+    ];
+
+    /** Packs por días (tramos largos); 7 => semana. */
+    public const DAY_PACKS = [
+        1 => 'price_1d',
+        2 => 'price_2d',
+        3 => 'price_3d',
+        4 => 'price_4d',
+        5 => 'price_5d',
+        7 => 'price_week',
+    ];
+
+    /** Nombre canónico del esquema por categoría de tabla. */
+    public const NAME_BY_CATEGORY = [
+        Surfboard::CATEGORY_SOFT => 'Softboards',
+        Surfboard::CATEGORY_HARD_BASIC => 'Duras básicas',
+        Surfboard::CATEGORY_HARD_PRO => 'Duras pro boards',
+    ];
+
     protected $fillable = [
         'name',
-        'price_1h',
-        'price_2h',
-        'price_4h',
-        'price_12h',
-        'price_24h',
-        'price_48h',
-        'price_72h',
+        'price_60m',
+        'price_90m',
+        'price_120m',
+        'price_180m',
+        'price_240m',
+        'price_360m',
+        'price_1d',
+        'price_2d',
+        'price_3d',
+        'price_4d',
+        'price_5d',
         'price_week',
     ];
 
     protected $casts = [
-        'price_1h' => 'decimal:2',
-        'price_2h' => 'decimal:2',
-        'price_4h' => 'decimal:2',
-        'price_12h' => 'decimal:2',
-        'price_24h' => 'decimal:2',
-        'price_48h' => 'decimal:2',
-        'price_72h' => 'decimal:2',
+        'price_60m' => 'decimal:2',
+        'price_90m' => 'decimal:2',
+        'price_120m' => 'decimal:2',
+        'price_180m' => 'decimal:2',
+        'price_240m' => 'decimal:2',
+        'price_360m' => 'decimal:2',
+        'price_1d' => 'decimal:2',
+        'price_2d' => 'decimal:2',
+        'price_3d' => 'decimal:2',
+        'price_4d' => 'decimal:2',
+        'price_5d' => 'decimal:2',
         'price_week' => 'decimal:2',
     ];
 
@@ -39,19 +76,34 @@ class PriceSchema extends Model
     }
 
     /**
-     * Precios indexados por duración en horas (para cálculo progresivo).
+     * TODOS los packs cobrables indexados por minutos: fuente única del cálculo
+     * de mejor precio (PHP en BookingService, espejo JS en lib/rentalPricing.js).
+     * Los packs de día se expresan como ciclos de 1440 min (12:00 → 12:00).
+     *
+     * @return array<int, float>
      */
-    public function getPricesByDuration(): array
+    public function getPacksByMinutes(): array
     {
-        return [
-            1   => (float) $this->price_1h,
-            2   => (float) $this->price_2h,
-            4   => (float) $this->price_4h,
-            12  => (float) $this->price_12h,
-            24  => (float) $this->price_24h,
-            48  => (float) $this->price_48h,
-            72  => (float) $this->price_72h,
-            168 => (float) $this->price_week, // 7 días
-        ];
+        $packs = [];
+
+        foreach (self::MINUTE_PACKS as $minutes => $column) {
+            $packs[$minutes] = (float) $this->{$column};
+        }
+
+        foreach (self::DAY_PACKS as $days => $column) {
+            $packs[$days * self::MINUTES_PER_DAY] = (float) $this->{$column};
+        }
+
+        return $packs;
+    }
+
+    /**
+     * Packs con precio configurado (> 0). Un pack a 0 se considera no ofertado.
+     *
+     * @return array<int, float>
+     */
+    public function getSellablePacksByMinutes(): array
+    {
+        return array_filter($this->getPacksByMinutes(), static fn (float $price) => $price > 0);
     }
 }

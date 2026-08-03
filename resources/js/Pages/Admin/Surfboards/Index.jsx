@@ -6,6 +6,7 @@ import Layout1 from "../../../layouts/Layout1";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import EmptyState from "../../../components/EmptyState";
 import SafeImage from "../../../components/SafeImage";
+import { BOARD_CATEGORIES, boardCategoryLabel } from "../../../lib/surfboardCategories";
 
 const inputClass =
     "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
@@ -184,8 +185,11 @@ function SurfboardInlineEditor({ detail }) {
                         onChange={(e) => setData("category", e.target.value)}
                         className={inputClass}
                     >
-                        <option value="soft">Softboards</option>
-                        <option value="hard">Hardboards</option>
+                        {BOARD_CATEGORIES.map((c) => (
+                            <option key={c.id} value={c.id}>
+                                {c.label}
+                            </option>
+                        ))}
                     </select>
                     {errors.category ? <div className="mt-1 text-xs text-rose-400">{errors.category}</div> : null}
                 </label>
@@ -344,8 +348,9 @@ export default function Index({ surfboards }) {
         const activeCount = all.filter((s) => !!s.is_active).length;
         const inactiveCount = total - activeCount;
         const soft = all.filter((s) => s.category === "soft").length;
-        const hard = all.filter((s) => s.category === "hard").length;
-        return { total, activeCount, inactiveCount, soft, hard };
+        const hardBasic = all.filter((s) => s.category === "hard_basic").length;
+        const hardPro = all.filter((s) => s.category === "hard_pro").length;
+        return { total, activeCount, inactiveCount, soft, hardBasic, hardPro };
     }, [surfboards]);
 
     const filtered = useMemo(() => {
@@ -509,9 +514,11 @@ export default function Index({ surfboards }) {
                                     </div>
                                 </div>
                                 <div className="rounded-2xl border border-indigo-500/25 bg-indigo-950/30 p-3">
-                                    <div className="text-xs font-semibold text-indigo-400/80">Soft/Hard</div>
+                                    <div className="text-xs font-semibold text-indigo-400/80">
+                                        Soft/Básica/Pro
+                                    </div>
                                     <div className="mt-1 text-sm font-bold text-indigo-300">
-                                        {stats.soft} / {stats.hard}
+                                        {stats.soft} / {stats.hardBasic} / {stats.hardPro}
                                     </div>
                                 </div>
                             </div>
@@ -536,8 +543,11 @@ export default function Index({ surfboards }) {
                                             className={inputClass}
                                         >
                                             <option value="all">Todas</option>
-                                            <option value="soft">Soft</option>
-                                            <option value="hard">Hard</option>
+                                            {BOARD_CATEGORIES.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.label}
+                                                </option>
+                                            ))}
                                         </select>
                                     </label>
 
@@ -567,7 +577,7 @@ export default function Index({ surfboards }) {
                                 <div className="col-span-2">Categoría</div>
                                 <div className="col-span-2">Estado</div>
                                 <div className="col-span-2">Esquema</div>
-                                <div className="col-span-2">Precio 24h</div>
+                                <div className="col-span-2">Precio 1 día</div>
                                 <div className="col-span-1 text-right">Acciones</div>
                             </div>
 
@@ -625,7 +635,7 @@ export default function Index({ surfboards }) {
                                                 </div>
 
                                                 <div className="col-span-2">
-                                                    <Badge tone="indigo">{String(s.category).toUpperCase()}</Badge>
+                                                    <Badge tone="indigo">{boardCategoryLabel(s.category)}</Badge>
                                                 </div>
 
                                                 <div className="col-span-2">
@@ -641,7 +651,7 @@ export default function Index({ surfboards }) {
                                                 </div>
 
                                                 <div className="col-span-2 text-sm font-semibold text-slate-200">
-                                                    {formatMoney(s.price_schema?.price_24h)}
+                                                    {formatMoney(s.price_schema?.price_1d)}
                                                 </div>
 
                                                 <div

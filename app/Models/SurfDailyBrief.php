@@ -54,6 +54,7 @@ final class SurfDailyBrief extends Model
         'energy_label',
         'level_recommendation',
         'ai_summary',
+        'ai_summary_sections',
         'summary_source',
         'generated_at',
         'admin_override_status',
@@ -81,6 +82,7 @@ final class SurfDailyBrief extends Model
         'fetched_at' => 'datetime',
         'likes_count' => 'integer',
         'dislikes_count' => 'integer',
+        'ai_summary_sections' => 'array',
     ];
 
     public function overrideBy()

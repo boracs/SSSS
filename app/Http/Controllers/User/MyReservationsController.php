@@ -187,7 +187,9 @@ class MyReservationsController extends Controller
             return back()->with('error', 'La sesión de pago ha expirado; esta reserva ya no se puede cancelar desde aquí.');
         }
 
-        if (! $booking->start_date || BusinessDateTime::now()->diffInHours($booking->start_date, false) <= 24) {
+        $pickupAt = $booking->pickup_at ?? $booking->start_date;
+
+        if (! $pickupAt || BusinessDateTime::now()->diffInHours($pickupAt, false) <= 24) {
             return back()->with('error', 'Fuera de plazo de cancelación (requiere 24h de antelación).');
         }
 

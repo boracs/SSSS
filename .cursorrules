@@ -28,6 +28,7 @@ You are a Senior Software Architect specialized in scalable SaaS systems.
 ──────────────────────────────
 # Reglas de Contexto Obligatorias
 - Antes de responder o generar código, lee `docs/PROJECT_TREE_FOR_GEMINI.md` para rutas y dominios.
+- Antes de tocar archivos, lee `docs/taller-prompts/COORDINACION.md` (Estado actual + Última actividad): no repitas, solapes ni pises trabajo ya hecho; reclama la tarea y ciérrala ahí al terminar.
 - No inventes directorios ni archivos fuera del mapa.
 - Archivos nuevos deben encajar en la zonificación por dominios del mapa.
 - **Mantenimiento del mapa:** al crear/eliminar/renombrar archivos, actualiza solo la sección afectada de `PROJECT_TREE_FOR_GEMINI.md` (no pegues el documento entero salvo petición explícita).

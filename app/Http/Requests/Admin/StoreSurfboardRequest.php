@@ -17,7 +17,7 @@ class StoreSurfboardRequest extends FormRequest
     {
         return [
             'price_schema_id' => ['required', 'integer', 'exists:price_schemas,id'],
-            'category' => ['required', 'string', Rule::in([Surfboard::CATEGORY_HARD, Surfboard::CATEGORY_SOFT])],
+            'category' => ['required', 'string', Rule::in(Surfboard::CATEGORIES)],
             'is_active' => ['boolean'],
             'name' => ['nullable', 'string', 'max:255'],
             'slug' => ['nullable', 'string', 'max:120'],

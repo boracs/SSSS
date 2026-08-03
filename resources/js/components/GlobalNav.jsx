@@ -158,12 +158,25 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     );
 
     // Taquillas (zona dentro de Servicios)
+    // Invitado → Planes públicas; auth sin locker → área cliente; con locker → Mi Taquilla + sin llave (sin Planes duplicado).
     const taquillasLinks = [];
     if (hasLocker) {
-        taquillasLinks.push({ label: "Mi Taquilla", href: safeRoute("taquillas.index.client"), featured: true });
+        taquillasLinks.push({
+            label: "Mi Taquilla",
+            href: safeRoute("taquillas.index.client"),
+            featured: true,
+        });
         taquillasLinks.push({
             label: "Me quedé sin llave",
             href: safeRoute("emergency-key.show"),
+        });
+    } else {
+        taquillasLinks.push({
+            label: "Planes y Cuotas",
+            href: isAuth
+                ? safeRoute("taquillas.index.client")
+                : safeRoute("taquillas.planes"),
+            featured: true,
         });
     }
     if (isAuth && !isVip) {
@@ -172,11 +185,6 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     if (isVip) {
         clasesLinks.push({ label: "Mis Bonos VIP · Recargar", href: safeRoute("bonos.index"), featured: !hasLocker });
     }
-    taquillasLinks.push({
-        label: "Planes y Cuotas",
-        href: isAuth ? safeRoute("taquillas.index.client") : safeRoute("taquillas.planes"),
-        featured: !hasLocker,
-    });
 
     const alquileresLinks = [
         { label: "Tablas de alquiler", href: safeRoute("rentals.surfboards.index"), featured: true },
