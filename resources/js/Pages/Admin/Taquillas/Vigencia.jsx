@@ -103,7 +103,10 @@ function bajaUrgencyLevel(user) {
     if (!user?.baja_solicitada_at) return null;
     const d = Number(user?.dias_restantes);
     const expired =
-        user?.estado === "vencido" || !Number.isFinite(d) || d < 0;
+        user?.estado === "vencido" ||
+        user?.estado === "sin plan" ||
+        !Number.isFinite(d) ||
+        d < 0;
 
     if (expired || d < BAJA_CRITICAL_DAYS) return "red";
     if (d <= NOTICE_DAYS) return "orange";
@@ -149,12 +152,15 @@ function buildWaLink(user) {
     const duration = planDurationLabel(user);
     const planName = String(user?.plan_vigente?.nombre || "").trim();
     const planLine = planName ? `${duration} (${planName})` : duration;
+    const neverPaid = user?.estado === "sin plan";
     const expired = user?.estado === "vencido";
     const daysLeft = Number(user?.dias_restantes);
     const renewUrl = clientRenewUrl();
 
     let intro;
-    if (expired) {
+    if (neverPaid) {
+        intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque no encontramos ningún pago registrado para tu taquilla.`;
+    } else if (expired) {
         intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque tu taquilla ha vencido el ${due}.`;
     } else if (Number.isFinite(daysLeft) && daysLeft <= NOTICE_DAYS) {
         intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque tu taquilla vence en breve, el ${due} (quedan ${daysLeft} días).`;
@@ -207,7 +213,7 @@ function ExtraDaysBadge({ days }) {
             <button
                 ref={refs.setReference}
                 type="button"
-                className="ml-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-cyan-500/20 px-1.5 text-[11px] font-bold text-cyan-200 ring-1 ring-cyan-500/30"
+                className="ml-1.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700/50 px-1.5 text-[10px] font-semibold tabular-nums text-slate-300 ring-1 ring-white/10"
                 {...getReferenceProps()}
             >
                 +{days}
@@ -280,8 +286,12 @@ function BajaNoticeButton({ user, onToggle, size = "md" }) {
     const fecha = isMarked ? fmtDate(markedAt) : "";
     const due = user?.fecha_fin ? fmtDate(user.fecha_fin) : "sin fecha";
     const daysLeft = Number(user?.dias_restantes);
+    const neverPaid = user?.estado === "sin plan";
     const expired =
-        user?.estado === "vencido" || !Number.isFinite(daysLeft) || daysLeft < 0;
+        user?.estado === "vencido" ||
+        neverPaid ||
+        !Number.isFinite(daysLeft) ||
+        daysLeft < 0;
 
     const { refs, floatingStyles, context } = useFloating({
         open: isMarked ? open : false,
@@ -319,9 +329,11 @@ function BajaNoticeButton({ user, onToggle, size = "md" }) {
 
     const urgencyHint =
         urgency === "red"
-            ? expired
-                ? `Cuota ya vencida (vence/venció el ${due}).`
-                : `Quedan menos de ${BAJA_CRITICAL_DAYS} días para el vencimiento (${due}).`
+            ? neverPaid
+                ? "No hay ningún pago registrado para esta taquilla."
+                : expired
+                  ? `Cuota ya vencida (vence/venció el ${due}).`
+                  : `Quedan menos de ${BAJA_CRITICAL_DAYS} días para el vencimiento (${due}).`
             : urgency === "orange"
               ? `Vence pronto: ${daysLeft} días restantes (${due}).`
               : `Cuota con margen: ${daysLeft} días restantes (${due}).`;
@@ -399,14 +411,13 @@ function paymentStatusPill(status) {
 }
 
 function paymentStatusLabel(status) {
-    if (status === "confirmed") return "Confirmado";
-    if (status === "rejected") return "Rechazado";
-    return "Pendiente";
+    if (status === "confirmed") return "Pagado";
+    if (status === "rejected") return "No válido";
+    return "Por revisar";
 }
 
+/** Método de pago (columna independiente del estado; el estado ya lo indica su propia pill). */
 function paymentMethodLabel(row) {
-    if (row?.status === "rejected") return "Fallido";
-    if (row?.status === "pending") return "Pendiente";
     const method = String(row?.payment_method || "").toLowerCase();
     if (method === "card") return "Online";
     if (method === "transferencia" || method === "bizum")
@@ -416,38 +427,128 @@ function paymentMethodLabel(row) {
     return "—";
 }
 
+/** Acorta "Taquilla Anual" → "Anual" (contexto ya es taquillas). */
+function planShortName(nombre) {
+    if (!nombre) return "—";
+    const s = String(nombre).trim();
+    const stripped = s.replace(/^taquilla\s+/i, "").trim();
+    return stripped || s;
+}
+
+/**
+ * Urgencia visual de la fila (semáforo).
+ * Prioriza dias_restantes sobre estado para evitar rojo con "N días restantes".
+ * @returns {"ok"|"soon"|"expired"}
+ */
+function rowUrgency(u) {
+    const raw = u?.dias_restantes;
+    if (raw !== null && raw !== undefined && raw !== "") {
+        const d = Number(raw);
+        if (Number.isFinite(d)) {
+            if (d < 0) return "expired";
+            if (d <= 7) return "soon";
+            return "ok";
+        }
+    }
+    if (u?.estado === "vencido" || u?.estado === "sin plan") return "expired";
+    return "ok";
+}
+
 function enrichUser(u) {
     const duracion = Number(u?.plan_vigente?.duracion_dias || 0);
-    const restantes = Number(u?.dias_restantes ?? 0);
-    const pct =
-        duracion > 0
-            ? Math.max(
-                  0,
-                  Math.min(
-                      100,
-                      Math.round(
-                          ((duracion - Math.max(restantes, 0)) * 100) /
-                              duracion,
-                      ),
-                  ),
-              )
-            : u?.estado === "vencido"
-              ? 100
-              : 0;
-    let bar = "bg-emerald-500";
-    if (restantes < 0 || u?.estado === "vencido") bar = "bg-rose-500";
-    else if (restantes <= 7) bar = "bg-orange-500";
-    return { ...u, pct, bar };
+    const raw = u?.dias_restantes;
+    const restantes = Number(raw);
+    const urgency = rowUrgency(u);
+    // Escala = duración del plan (fallback 90 si no hay plan).
+    const scale = duracion > 0 ? duracion : 90;
+
+    let pct = 0;
+    if (raw !== null && raw !== undefined && raw !== "" && Number.isFinite(restantes)) {
+        if (restantes > 0) {
+            // Días que quedan → más días = barra más larga.
+            pct = Math.round((restantes / scale) * 100);
+        } else if (restantes < 0) {
+            // Días de retraso → más atraso = barra más larga (tope 100%).
+            pct = Math.round((Math.abs(restantes) / scale) * 100);
+        }
+        // restantes === 0 → Vence hoy → barra vacía.
+        pct = Math.max(0, Math.min(100, pct));
+        // Mínimo visible si hay al menos 1 día (restante o de atraso).
+        if (restantes !== 0 && pct < 3) pct = 3;
+    }
+
+    let bar = "bg-emerald-700/50";
+    if (urgency === "expired") bar = "bg-rose-400/55";
+    else if (urgency === "soon") bar = "bg-orange-400/60";
+    return { ...u, pct, bar, urgency };
 }
 
 function daysLabel(u) {
     const d = u.dias_restantes;
     if (d === null || d === undefined) {
-        return u.estado === "vencido" ? "Vencido" : "Sin plan";
+        // Con backend actualizado, este caso solo ocurre para estado 'sin plan'
+        // (nunca hubo un pago confirmado). 'vencido'/'activo' siempre traen días.
+        return "Sin plan";
     }
     if (d > 0) return `${d} días restantes`;
     if (d === 0) return "Vence hoy";
-    return "Vencido";
+    const overdue = Math.abs(Number(d));
+    if (!Number.isFinite(overdue) || overdue <= 0) return "Vencido";
+    return overdue === 1 ? "Vencido hace 1 día" : `Vencido hace ${overdue} días`;
+}
+
+function daysLabelClass(urgency) {
+    if (urgency === "expired") return "text-xs font-medium text-rose-300";
+    if (urgency === "soon") return "text-xs font-medium text-orange-300";
+    return "text-xs text-emerald-400/80";
+}
+
+function rowUrgencyClass(urgency) {
+    if (urgency === "expired") {
+        return "bg-rose-500/[0.05] shadow-[inset_3px_0_0_0_rgba(251,113,133,0.55)]";
+    }
+    if (urgency === "soon") {
+        return "bg-orange-500/[0.06] shadow-[inset_3px_0_0_0_rgba(251,146,60,0.50)]";
+    }
+    return "bg-emerald-500/[0.04] shadow-[inset_3px_0_0_0_rgba(52,211,153,0.35)]";
+}
+
+function cardUrgencyClass(urgency) {
+    if (urgency === "expired") {
+        return "border-l-[3px] border-l-rose-400/60 bg-rose-500/[0.05]";
+    }
+    if (urgency === "soon") {
+        return "border-l-[3px] border-l-orange-400/55 bg-orange-500/[0.06]";
+    }
+    return "border-l-[3px] border-l-emerald-500/35 bg-emerald-500/[0.04]";
+}
+
+const WA_BTN_CLASS =
+    "inline-flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/25 bg-transparent text-emerald-400/75 transition hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300";
+
+function ProgressMeter({ user, barWidthClass = "w-40" }) {
+    const urgency = user.urgency || "ok";
+    const neverPaid = user.estado === "sin plan";
+    return (
+        <div>
+            <div
+                className={`h-1 ${barWidthClass} max-w-full rounded-full bg-slate-800/90`}
+            >
+                <div
+                    className={`h-1 rounded-full transition-[width] ${user.bar}`}
+                    style={{ width: `${user.pct}%` }}
+                    title={
+                        neverPaid
+                            ? "Sin pagos registrados"
+                            : urgency === "expired"
+                              ? "Proporcional a días de retraso"
+                              : "Proporcional a días restantes"
+                    }
+                />
+            </div>
+            <p className={`mt-1 ${daysLabelClass(urgency)}`}>{daysLabel(user)}</p>
+        </div>
+    );
 }
 
 export default function Vigencia({ usuarios = [], flash = {} }) {
@@ -462,6 +563,17 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
     const [bajaConfirmUser, setBajaConfirmUser] = useState(null);
     const [liberarConfirmUser, setLiberarConfirmUser] = useState(null);
     const [bajaBusy, setBajaBusy] = useState(false);
+
+    // Recibo Stripe: página alojada por Stripe, bloquea iframe (X-Frame-Options).
+    // Justificante manual: sí se puede embeber en el modal.
+    const openProof = (row) => {
+        if (!row?.proof_url) return;
+        if (row.proof_is_stripe_receipt) {
+            window.open(row.proof_url, "_blank", "noopener,noreferrer");
+            return;
+        }
+        setProofModalUrl(row.proof_url);
+    };
 
     const users = useMemo(() => (usuarios || []).map(enrichUser), [usuarios]);
 
@@ -658,7 +770,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                 return (
                                     <article
                                         key={u.id}
-                                        className="rounded-2xl border border-white/10 bg-slate-900/70 p-3"
+                                        className={`rounded-xl border border-white/10 bg-slate-900/70 p-2.5 ${cardUrgencyClass(u.urgency)}`}
                                     >
                                         <div className="flex items-start justify-between gap-2">
                                             <button
@@ -672,13 +784,13 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                     <p className="truncate font-semibold text-white">
                                                         {u.nombre} {u.apellido}
                                                     </p>
-                                                    <span className="shrink-0 rounded-full bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-200 ring-1 ring-white/10">
+                                                    <span className="shrink-0 rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-slate-300 ring-1 ring-white/10">
                                                         #
                                                         {u.numeroTaquilla ??
                                                             "—"}
                                                     </span>
                                                 </div>
-                                                <p className="mt-0.5 truncate text-xs text-slate-400">
+                                                <p className="mt-0.5 truncate text-xs text-slate-500">
                                                     {u.email || "sin email"}
                                                 </p>
                                             </button>
@@ -715,7 +827,9 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                             href={waUrl}
                                                             target="_blank"
                                                             rel="noreferrer"
-                                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white"
+                                                            className={
+                                                                WA_BTN_CLASS
+                                                            }
                                                             aria-label="WhatsApp"
                                                             onClick={(e) =>
                                                                 e.stopPropagation()
@@ -732,12 +846,16 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                                        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-400">
                                             <p>
                                                 <span className="text-slate-500">
                                                     Plan
                                                 </span>{" "}
-                                                {u.plan_vigente?.nombre || "—"}
+                                                <span className="text-slate-300">
+                                                    {planShortName(
+                                                        u.plan_vigente?.nombre,
+                                                    )}
+                                                </span>
                                                 {u.plan_vigente &&
                                                 u.plan_vigente.activo ===
                                                     false ? (
@@ -748,7 +866,9 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                 <span className="text-slate-500">
                                                     Vence
                                                 </span>{" "}
-                                                {fmtDate(u.fecha_fin)}
+                                                <span className="tabular-nums text-slate-300">
+                                                    {fmtDate(u.fecha_fin)}
+                                                </span>
                                                 <ExtraDaysBadge
                                                     days={Number(
                                                         u.prepaid_extra_days ||
@@ -760,16 +880,15 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                 <span className="text-slate-500">
                                                     Último pago
                                                 </span>{" "}
-                                                {fmtDate(u.ultimo_pago)}
-                                            </p>
-                                            <p className="text-slate-400">
-                                                {daysLabel(u)}
+                                                <span className="tabular-nums text-slate-300">
+                                                    {fmtDate(u.ultimo_pago)}
+                                                </span>
                                             </p>
                                         </div>
-                                        <div className="mt-2 h-1.5 w-full rounded-full bg-slate-800">
-                                            <div
-                                                className={`h-1.5 rounded-full ${u.bar}`}
-                                                style={{ width: `${u.pct}%` }}
+                                        <div className="mt-2">
+                                            <ProgressMeter
+                                                user={u}
+                                                barWidthClass="w-full"
                                             />
                                         </div>
                                         {isOpen ? (
@@ -822,8 +941,8 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                             type="button"
                                                                             className="mt-1 text-cyan-300 underline-offset-2 hover:underline"
                                                                             onClick={() =>
-                                                                                setProofModalUrl(
-                                                                                    row.proof_url,
+                                                                                openProof(
+                                                                                    row,
                                                                                 )
                                                                             }
                                                                         >
@@ -848,7 +967,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                     <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 md:block">
                         <div className="overflow-auto">
                             <table className="min-w-full text-sm">
-                                <thead className="bg-slate-800/90 text-slate-200">
+                                <thead className="bg-slate-800/80 text-slate-400">
                                     <tr>
                                         <SortableTh
                                             label="Usuario"
@@ -856,6 +975,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             activeKey={sortKey}
                                             activeDir={sortDir}
                                             onSort={toggleSort}
+                                            className="px-3 py-2 text-left text-xs tracking-wide"
                                         />
                                         <SortableTh
                                             label="Taquilla"
@@ -863,14 +983,15 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             activeKey={sortKey}
                                             activeDir={sortDir}
                                             onSort={toggleSort}
+                                            className="px-3 py-2 text-left text-xs tracking-wide"
                                         />
-                                        <th className="px-4 py-3 text-left">
+                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
                                             Plan
                                         </th>
-                                        <th className="px-4 py-3 text-left">
+                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
                                             Último pago
                                         </th>
-                                        <th className="px-4 py-3 text-left">
+                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
                                             Vence
                                         </th>
                                         <SortableTh
@@ -879,6 +1000,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             activeKey={sortKey}
                                             activeDir={sortDir}
                                             onSort={toggleSort}
+                                            className="px-3 py-2 text-left text-xs tracking-wide"
                                         />
                                         <SortableTh
                                             label="Baja"
@@ -886,6 +1008,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             activeKey={sortKey}
                                             activeDir={sortDir}
                                             onSort={toggleSort}
+                                            className="px-3 py-2 text-left text-xs tracking-wide"
                                         />
                                     </tr>
                                 </thead>
@@ -894,7 +1017,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                         <tr>
                                             <td
                                                 colSpan={7}
-                                                className="px-4 py-10 text-center text-slate-400"
+                                                className="px-3 py-10 text-center text-slate-400"
                                             >
                                                 Sin socios con taquilla.
                                             </td>
@@ -911,14 +1034,14 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             return (
                                                 <React.Fragment key={u.id}>
                                                     <tr
-                                                        className="cursor-pointer border-t border-white/5 text-slate-100 hover:bg-slate-800/40"
+                                                        className={`cursor-pointer border-t border-white/5 text-slate-100 hover:bg-slate-800/40 ${rowUrgencyClass(u.urgency)}`}
                                                         onClick={() =>
                                                             openUserHistory(
                                                                 u.id,
                                                             )
                                                         }
                                                     >
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-3 py-2">
                                                             <div className="flex items-center gap-2">
                                                                 {waUrl ? (
                                                                     <a
@@ -927,7 +1050,9 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                         }
                                                                         target="_blank"
                                                                         rel="noreferrer"
-                                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow transition hover:scale-105 hover:bg-emerald-500"
+                                                                        className={
+                                                                            WA_BTN_CLASS
+                                                                        }
                                                                         aria-label="WhatsApp"
                                                                         title="WhatsApp"
                                                                         onClick={(
@@ -943,8 +1068,8 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                         sin tel.
                                                                     </span>
                                                                 )}
-                                                                <div>
-                                                                    <p className="font-semibold text-white">
+                                                                <div className="min-w-0">
+                                                                    <p className="truncate font-semibold text-white">
                                                                         {
                                                                             u.nombre
                                                                         }{" "}
@@ -952,25 +1077,26 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                             u.apellido
                                                                         }
                                                                     </p>
-                                                                    <p className="text-xs text-slate-400">
+                                                                    <p className="truncate text-xs text-slate-500">
                                                                         {u.email ||
                                                                             "sin email"}
                                                                     </p>
                                                                 </div>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3 font-medium">
+                                                        <td className="px-3 py-2 tabular-nums text-slate-300">
                                                             #
                                                             {u.numeroTaquilla ??
                                                                 "—"}
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-3 py-2 text-slate-400">
                                                             <div className="inline-flex items-center">
                                                                 <span>
-                                                                    {u
-                                                                        .plan_vigente
-                                                                        ?.nombre ||
-                                                                        "—"}
+                                                                    {planShortName(
+                                                                        u
+                                                                            .plan_vigente
+                                                                            ?.nombre,
+                                                                    )}
                                                                 </span>
                                                                 {u.plan_vigente &&
                                                                 u.plan_vigente
@@ -980,14 +1106,14 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                 ) : null}
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-3 py-2 tabular-nums text-slate-400">
                                                             {fmtDate(
                                                                 u.ultimo_pago,
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-3 py-2">
                                                             <div className="inline-flex items-center">
-                                                                <span>
+                                                                <span className="tabular-nums text-slate-400">
                                                                     {fmtDate(
                                                                         u.fecha_fin,
                                                                     )}
@@ -1000,20 +1126,12 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                 />
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-3">
-                                                            <div className="h-2 w-44 rounded-full bg-slate-800">
-                                                                <div
-                                                                    className={`h-2 rounded-full ${u.bar}`}
-                                                                    style={{
-                                                                        width: `${u.pct}%`,
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <p className="mt-1 text-xs text-slate-400">
-                                                                {daysLabel(u)}
-                                                            </p>
+                                                        <td className="px-3 py-2">
+                                                            <ProgressMeter
+                                                                user={u}
+                                                            />
                                                         </td>
-                                                        <td className="px-4 py-3">
+                                                        <td className="px-3 py-2">
                                                             <div className="inline-flex items-center gap-1.5">
                                                                 <BajaNoticeButton
                                                                     user={u}
@@ -1036,7 +1154,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                         <tr className="border-t border-white/5 bg-slate-950/50">
                                                             <td
                                                                 colSpan={7}
-                                                                className="px-4 py-3"
+                                                                className="px-3 py-2.5"
                                                             >
                                                                 {isLoading ? (
                                                                     <p className="py-3 text-sm text-slate-400">
@@ -1122,8 +1240,8 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                                                         type="button"
                                                                                                         className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-cyan-500/30 hover:bg-slate-700"
                                                                                                         onClick={() =>
-                                                                                                            setProofModalUrl(
-                                                                                                                row.proof_url,
+                                                                                                            openProof(
+                                                                                                                row,
                                                                                                             )
                                                                                                         }
                                                                                                     >

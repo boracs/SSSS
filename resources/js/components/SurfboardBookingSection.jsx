@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import BookingCalendar from "./BookingCalendar";
 import ContactChannelsModal from "./ContactChannelsModal";
 import RentalHourPicker from "./Rentals/RentalHourPicker";
+import WetsuitTariffModal from "./Rentals/WetsuitTariffModal";
 import { Collapsible, CollapsibleContent } from "./ui/collapsible";
 import { buildPacksFromSchema, DAY_PACKS } from "../lib/rentalPricing";
 import { localDate, localDateTime, normalizeDayWindow, resolveRentalPolicy } from "../lib/rentalAvailability";
@@ -65,6 +66,7 @@ export default function SurfboardBookingSection({
     const [formOpen, setFormOpen] = useState(false);
     const [paying, setPaying] = useState(false);
     const [contactOpen, setContactOpen] = useState(false);
+    const [wetsuitTariffOpen, setWetsuitTariffOpen] = useState(false);
     const [daySelection, setDaySelection] = useState({
         startDate: null,
         endDate: null,
@@ -225,8 +227,19 @@ export default function SurfboardBookingSection({
         ? "mt-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-xl shadow-black/20 sm:p-5"
         : "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
 
+    const tabActiveClass = embedded
+        ? "bg-cyan-600 text-white ring-cyan-500 shadow-md shadow-cyan-950/40"
+        : "bg-cyan-600 text-white ring-cyan-500 shadow-md";
+
+    const tabClass = embedded
+        ? "bg-slate-950/60 text-slate-200 ring-white/10 hover:bg-slate-800 hover:text-slate-100 hover:ring-cyan-500/40"
+        : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50";
+
     const showMobileSticky = embedded && (hasValidSelection || formOpen);
     const stickyTotal = formatRentalEur(activeWindow?.totalPrice);
+    const reserveLabel = formatRentalEur(activeWindow?.totalPrice);
+    const reserveButtonText =
+        hasValidSelection && reserveLabel ? `Reservar por ${reserveLabel}` : "Reservar";
     const pickupLabel = formatDateTimeLabel(activeWindow?.pickupAt);
     const returnLabel = formatDateTimeLabel(activeWindow?.returnAt);
 
@@ -262,9 +275,7 @@ export default function SurfboardBookingSection({
                             aria-pressed={active}
                             onClick={() => handleModeChange(tab.id)}
                             className={`flex flex-col items-center gap-1 rounded-2xl px-3 py-3.5 text-center ring-1 ring-inset transition sm:px-4 ${
-                                active
-                                    ? "bg-cyan-600 text-white ring-cyan-500 shadow-md shadow-cyan-950/40"
-                                    : "bg-slate-950/60 text-slate-200 ring-white/10 hover:bg-slate-800 hover:text-slate-100 hover:ring-cyan-500/40"
+                                active ? tabActiveClass : tabClass
                             }`}
                         >
                             <Icon className="h-5 w-5" aria-hidden="true" />
@@ -347,6 +358,18 @@ export default function SurfboardBookingSection({
                         y lo ajustamos: así mantienes el descuento por días en vez de pagar la
                         prórroga como una hora suelta.
                     </li>
+                    <li>
+                        ¿No tienes neopreno? Tenemos disponibilidad de sobra: no hace falta
+                        reservarlo aquí, se alquila al momento en la recogida (
+                        <button
+                            type="button"
+                            onClick={() => setWetsuitTariffOpen(true)}
+                            className="font-semibold text-cyan-400 underline decoration-cyan-400/40 underline-offset-2 transition hover:text-cyan-300"
+                        >
+                            ver precios
+                        </button>
+                        ).
+                    </li>
                 </ul>
             ) : null}
 
@@ -359,6 +382,10 @@ export default function SurfboardBookingSection({
                 />
             ) : null}
 
+            {wetsuitTariffOpen ? (
+                <WetsuitTariffModal onClose={() => setWetsuitTariffOpen(false)} />
+            ) : null}
+
             <Collapsible open={formOpen} onOpenChange={setFormOpen}>
                 {!formOpen ? (
                     <button
@@ -367,7 +394,7 @@ export default function SurfboardBookingSection({
                         onClick={() => setFormOpen(true)}
                         className={`mt-5 ${primaryBtn}`}
                     >
-                        Reservar
+                        {reserveButtonText}
                     </button>
                 ) : null}
 
@@ -504,7 +531,7 @@ export default function SurfboardBookingSection({
                                 onClick={() => setFormOpen(true)}
                                 className="shrink-0 rounded-xl bg-cyan-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                Reservar
+                                {reserveButtonText}
                             </button>
                         ) : (
                             <button

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
 import Layout1 from "../layouts/Layout1";
 import "../../css/pagina_principal.css";
@@ -50,16 +50,19 @@ const motivos = [
     },
 ];
 
-const seccionesRapidas = [
-    { label: "Sobre nosotros", href: route("nosotros"), icon: MapPin },
+const seccionesDestacadas = [
     { label: "Clases de surf", href: route("servicios.surf"), icon: Waves },
-    { label: "Surftrips", href: route("servicios.surfTrips"), icon: Compass },
-    { label: "Surfskate", href: route("servicios.surfSkate"), icon: Sparkles },
-    { label: "Tienda S4", href: route("tienda"), icon: Star },
     { label: "Taquillas", href: route("taquillas.planes"), icon: ShieldCheck },
     { label: "Webcam", href: route("servicios.webcams"), icon: Video },
-    { label: "Fotografía", href: route("servicios.fotografia"), icon: Camera },
     { label: "Reparación de tablas", href: route("servicios"), icon: Wrench },
+    { label: "Tienda S4", href: route("tienda"), icon: Star },
+    { label: "Sobre nosotros", href: route("nosotros"), icon: MapPin },
+];
+
+const seccionesSecundarias = [
+    { label: "Surftrips", href: route("servicios.surfTrips"), icon: Compass },
+    { label: "Surfskate", href: route("servicios.surfSkate"), icon: Sparkles },
+    { label: "Fotografía", href: route("servicios.fotografia"), icon: Camera },
     { label: "Reparación de neoprenos", href: route("servicios.reparacionNeoprenos"), icon: Shirt },
     { label: "Subastas", href: route("auctions.index"), icon: Gavel },
     { label: "Comparador de maniobras", href: route("autocoach.index"), icon: GitCompareArrows },
@@ -88,7 +91,13 @@ const testimonios = [
     },
 ];
 
-const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
+const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
+    const [mostrarTodosServicios, setMostrarTodosServicios] = useState(false);
+    const accesosVisibles = mostrarTodosServicios
+        ? [...seccionesDestacadas, ...seccionesSecundarias]
+        : seccionesDestacadas;
+
+    return (
     <Layout1>
         <SeoHead seo={seo} />
 
@@ -148,6 +157,9 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
                             <Waves className="h-4 w-4" />
                             Reserva tu clase
                         </S4Button>
+                        <p className="mt-2.5 text-sm text-white/80">
+                            Clases desde 35 € · material incluido
+                        </p>
                     </div>
                 </div>
             </section>
@@ -178,7 +190,7 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
                 {/* ── Accesos rápidos ── */}
                 <section className="mt-10" aria-label="Accesos rápidos">
                     <div className="flex flex-nowrap gap-2.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] md:flex-wrap md:overflow-visible md:pb-0 [&::-webkit-scrollbar]:hidden">
-                        {seccionesRapidas.map(({ label, href, icon: Icon }) => (
+                        {accesosVisibles.map(({ label, href, icon: Icon }) => (
                             <Link
                                 key={label}
                                 href={href}
@@ -189,6 +201,13 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
                             </Link>
                         ))}
                     </div>
+                    <button
+                        type="button"
+                        onClick={() => setMostrarTodosServicios((prev) => !prev)}
+                        className="mt-3 text-sm font-semibold text-s4 transition hover:text-s4-hover"
+                    >
+                        {mostrarTodosServicios ? "Ver menos" : "Ver todos los servicios"}
+                    </button>
                 </section>
 
                 {/* ── Sobre nosotros teaser ── */}
@@ -376,6 +395,7 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => (
             />
         </div>
     </Layout1>
-);
+    );
+};
 
 export default Pag_principal;

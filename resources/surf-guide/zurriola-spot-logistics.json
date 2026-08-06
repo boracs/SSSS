@@ -41,7 +41,7 @@
         "label": "Minúsculo",
         "level": "Iniciación absoluta / Iniciación",
         "zone_recommendation": "Cualquiera",
-        "notes": "Ideal para niños con poco peso o primer día de toma de contacto. Fuerza mínima. Para INTERMEDIO: escaso (poca ola útil). Para AVANZADO: no merece la pena salir."
+        "notes": "Ideal para niños con poco peso o primer día de toma de contacto. Fuerza mínima. En Zurriola, con ~9–12 kJ (y en general <50), iniciación puede coger espumas y también olas pequeñas sin romper que se montan fácil — no digas 'solo espumas'. Para INTERMEDIO: escaso. Para AVANZADO: no merece la pena salir."
       },
       {
         "min": 50,
@@ -49,7 +49,7 @@
         "label": "Muy pequeño (límite)",
         "level": "Iniciación",
         "zone_recommendation": "Cualquiera",
-        "notes": "Fuerza justa para deslizar espumas y ponerse de pie. Intermedio sigue escaso. Avanzado: aún no merece la pena de forma general."
+        "notes": "Fuerza justa para ponerse de pie: espumas y olas pequeñas sin romper (Zurriola lo permite con facilidad). Intermedio sigue escaso. Avanzado: aún no merece la pena de forma general."
       },
       {
         "min": 70,
@@ -102,7 +102,7 @@
     ],
     "level_skill_profiles": {
       "description": "Qué sabe hacer realmente cada nivel en el agua. Úsalo para calibrar el tono y las expectativas de cada bloque (iniciacion/intermedio/avanzado) del parte: no le pidas a iniciación que lea picos, ni le hables a avanzado de ponerse de pie.",
-      "iniciacion": "Se pone de pie y sabe remar, pero con poca fuerza. Coge espumas y alguna ola sin romper, de tamaño pequeño y que rompe suave. Va con tablas de gran volumen (fácil flotabilidad/estabilidad). Apenas tiene lectura de ola: no identifica picos, no elige la ola por su forma, depende de que la ola venga a él.",
+      "iniciacion": "Se pone de pie y sabe remar, pero con poca fuerza. En Zurriola coge espumas y/o olas pequeñas sin romper (verdes suaves de poco tamaño); no hace falta insistir solo en espuma: aquí esas olas sin romper se montan con facilidad. Va con tablas de gran volumen. Apenas tiene lectura de ola: no identifica picos ni elige la ola por su forma; depende de que la ola venga a él.",
       "intermedio": "Rema con soltura, coge olas ya rotas y algunas verdes de poca fuerza, empieza a hacer algún giro básico. Tiene cierta lectura de ola pero todavía se equivoca de pico o de timing en días con secciones rápidas.",
       "avanzado": "Rema fuerte y lee la playa: elige pico, se posiciona antes de que rompa, encadena maniobras y aprovecha secciones técnicas. Solo busca fuerza real; con energía baja no encuentra reto ni beneficio."
     },
@@ -111,28 +111,28 @@
       "rules": [
         {
           "max_kj": 49,
-          "iniciacion": "Sí — fuerza mínima, ideal primer contacto / niños.",
+          "iniciacion": "Sí — fuerza mínima; espumas y olas pequeñas sin romper (Zurriola). Ideal primer contacto / niños.",
           "intermedio": "Escaso — poca ola útil para progresar.",
           "avanzado": "No merece la pena."
         },
         {
           "min_kj": 50,
           "max_kj": 69,
-          "iniciacion": "Sí — espumas y ponerse de pie.",
+          "iniciacion": "Sí — espumas y/o olas pequeñas sin romper; ponerse de pie.",
           "intermedio": "Escaso.",
           "avanzado": "Aún no merece la pena de forma general."
         },
         {
           "min_kj": 70,
           "max_kj": 99,
-          "iniciacion": "Sí.",
+          "iniciacion": "Sí — espumas y olas verdes pequeñas suaves.",
           "intermedio": "Todavía corto de fuerza.",
           "avanzado": "Escaso pero ya posible (a partir de ~70-80 kJ)."
         },
         {
           "min_kj": 100,
           "max_kj": 400,
-          "iniciacion": "Sí — pueden surfear todos.",
+          "iniciacion": "Sí — pueden surfear todos (seguir en zona segura; no solo espuma).",
           "intermedio": "Sí — olas nobles para progresar.",
           "avanzado": "Sí — ola pequeña y muy técnica, ideal para mejorar la técnica."
         }

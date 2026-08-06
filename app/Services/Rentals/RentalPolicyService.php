@@ -31,17 +31,19 @@ final class RentalPolicyService
 
     /**
      * Condiciones reales del alquiler; mismo texto en tabla de tarifas y reserva.
+     * El buffer de rotación (inventario) no se comunica al cliente: es operativo.
      *
      * @return list<string>
      */
     private function notes(int $dayHour, int $flexibility, int $buffer): array
     {
         $noon = sprintf('%02d:00', $dayHour);
+        $courtesy = $flexibility > 0 ? $flexibility : $buffer;
 
         return [
             "Los alquileres por días son de {$noon} a {$noon}.",
-            "Flexibilidad horaria de ±{$flexibility} minutos sobre la hora acordada.",
-            "Tras la devolución hay {$buffer} minutos de cortesía operativa (no se cobran; evitan solapes entre reservas).",
+            "Te damos {$courtesy} minutos de cortesía ante posibles retrasos (no se cobran).",
+            'En alquiler por horas, una vez recogida la tabla empieza a contar el tiempo del pack hasta la hora de devolución acordada.',
         ];
     }
 

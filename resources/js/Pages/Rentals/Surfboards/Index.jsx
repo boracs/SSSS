@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import EmptyState from "../../../components/EmptyState";
 import ImageLightbox from "../../../components/ImageLightbox";
@@ -15,6 +15,7 @@ import {
 } from "../../../lib/surfboardMeasures";
 import {
     BOARD_CATEGORIES,
+    boardCategoryAccent,
     boardCategoryLabel,
     catalogFromPriceLabel,
     imageUrlFor,
@@ -23,8 +24,31 @@ import {
 const HEIGHT_OPTIONS = buildSurfHeightOptions(3, 5, 11, 0);
 const VOLUME_OPTIONS = buildVolumeOptions(15, 100, 1);
 
+/** Rangos claros para no surfistas (bordes sin solape). Fuente de verdad = min/max. */
+const HEIGHT_RANGE_PRESETS = [
+    { id: "any", label: "Cualquiera", min: "", max: "" },
+    { id: "short", label: "Hasta 6'0\"", min: "", max: "72" },
+    { id: "m1", label: "6'1\" – 6'6\"", min: "73", max: "78" },
+    { id: "m2", label: "6'7\" – 7'0\"", min: "79", max: "84" },
+    { id: "long", label: "Más de 7'0\"", min: "85", max: "" },
+];
+
+const VOLUME_RANGE_PRESETS = [
+    { id: "any", label: "Cualquiera", min: "", max: "" },
+    { id: "v35", label: "Hasta 35 L", min: "", max: "35" },
+    { id: "v45", label: "36 – 45 L", min: "36", max: "45" },
+    { id: "v55", label: "46 – 55 L", min: "46", max: "55" },
+    { id: "v56", label: "Más de 55 L", min: "56", max: "" },
+];
+
 const selectClass =
     "w-full rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-sm font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30";
+
+const chipBaseClass =
+    "rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition";
+const chipActiveClass = "bg-cyan-600 text-white ring-cyan-500";
+const chipIdleClass =
+    "bg-slate-900 text-slate-300 ring-slate-600 hover:bg-slate-800 hover:text-slate-100";
 
 export default function Index({
     surfboards,
@@ -48,6 +72,9 @@ export default function Index({
     const [volumeMax, setVolumeMax]           = useState("");
     const [heightMin, setHeightMin]           = useState("");
     const [heightMax, setHeightMax]           = useState("");
+    const [showAdvancedMeasures, setShowAdvancedMeasures] = useState(false);
+    const [heightPresetId, setHeightPresetId] = useState("any");
+    const [volumePresetId, setVolumePresetId] = useState("any");
     /** true = panel lateral (≥1024px); false = acordeón bajo la tarjeta (móvil/tablet) */
     const [isLgUp, setIsLgUp] = useState(() =>
         typeof window !== "undefined" && window.matchMedia
@@ -74,10 +101,27 @@ export default function Index({
         setVolumeMax("");
         setHeightMin("");
         setHeightMax("");
+        setHeightPresetId("any");
+        setVolumePresetId("any");
+        setSelectedId(null);
+    };
+
+    const applyHeightPreset = (preset) => {
+        setHeightPresetId(preset.id);
+        setHeightMin(preset.min);
+        setHeightMax(preset.max);
+        setSelectedId(null);
+    };
+
+    const applyVolumePreset = (preset) => {
+        setVolumePresetId(preset.id);
+        setVolumeMin(preset.min);
+        setVolumeMax(preset.max);
         setSelectedId(null);
     };
 
     const handleHeightMinChange = (value) => {
+        setHeightPresetId("custom");
         setHeightMin(value);
         if (value !== "" && heightMax !== "" && Number(value) > Number(heightMax)) {
             setHeightMax(value);
@@ -86,6 +130,7 @@ export default function Index({
     };
 
     const handleHeightMaxChange = (value) => {
+        setHeightPresetId("custom");
         setHeightMax(value);
         if (value !== "" && heightMin !== "" && Number(value) < Number(heightMin)) {
             setHeightMin(value);
@@ -94,6 +139,7 @@ export default function Index({
     };
 
     const handleVolumeMinChange = (value) => {
+        setVolumePresetId("custom");
         setVolumeMin(value);
         if (value !== "" && volumeMax !== "" && Number(value) > Number(volumeMax)) {
             setVolumeMax(value);
@@ -102,6 +148,7 @@ export default function Index({
     };
 
     const handleVolumeMaxChange = (value) => {
+        setVolumePresetId("custom");
         setVolumeMax(value);
         if (value !== "" && volumeMin !== "" && Number(value) < Number(volumeMin)) {
             setVolumeMin(value);
@@ -162,7 +209,10 @@ export default function Index({
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
                     {/* ── Catálogo ── */}
-                    <section className="rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
+                    <section
+                        id="catalogo-tablas"
+                        className="scroll-mt-4 rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur"
+                    >
                         {/* Cabecera con título + filtros */}
                         <div className="border-b border-slate-700 p-6">
                             <h1 className="text-[32px] font-extrabold tracking-tight text-slate-100">
@@ -176,22 +226,38 @@ export default function Index({
                                 role="tablist"
                                 aria-label="Filtros de categoría"
                             >
-                                {categoryTabs.map((f) => (
-                                    <button
-                                        key={f.id}
-                                        type="button"
-                                        role="tab"
-                                        aria-selected={activeCategory === f.id}
-                                        onClick={() => handleCategoryChange(f.id)}
-                                        className={`rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ${
-                                            activeCategory === f.id
-                                                ? "bg-cyan-600 text-white ring-cyan-500"
-                                                : "bg-slate-900 text-slate-300 ring-slate-600 hover:-translate-y-px hover:bg-slate-800 hover:text-slate-100"
-                                        }`}
-                                    >
-                                        {f.label}
-                                    </button>
-                                ))}
+                                {categoryTabs.map((f) => {
+                                    const selected = activeCategory === f.id;
+                                    const accent = f.id === "all" ? null : boardCategoryAccent(f.id);
+                                    const activeClass = accent
+                                        ? accent.tabActive
+                                        : "bg-cyan-600 text-white ring-cyan-500";
+
+                                    return (
+                                        <button
+                                            key={f.id}
+                                            type="button"
+                                            role="tab"
+                                            aria-selected={selected}
+                                            onClick={() => handleCategoryChange(f.id)}
+                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ${
+                                                selected
+                                                    ? activeClass
+                                                    : "bg-slate-900 text-slate-300 ring-slate-600 hover:-translate-y-px hover:bg-slate-800 hover:text-slate-100"
+                                            }`}
+                                        >
+                                            {accent ? (
+                                                <span
+                                                    className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                                                        selected ? "bg-white/90" : accent.dot
+                                                    }`}
+                                                    aria-hidden="true"
+                                                />
+                                            ) : null}
+                                            {f.label}
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-800/70 p-3">
@@ -211,80 +277,173 @@ export default function Index({
                                     ) : null}
                                 </div>
 
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <label className="block">
-                                        <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                            Altura mínima
-                                        </span>
-                                        <select
-                                            value={heightMin}
-                                            onChange={(e) => handleHeightMinChange(e.target.value)}
-                                            className={selectClass}
-                                            aria-label="Altura mínima de tabla"
-                                        >
-                                            {HEIGHT_OPTIONS.map((opt) => (
-                                                <option key={`hmin-${opt.value || "any"}`} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className="block">
-                                        <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                            Altura máxima
-                                        </span>
-                                        <select
-                                            value={heightMax}
-                                            onChange={(e) => handleHeightMaxChange(e.target.value)}
-                                            className={selectClass}
-                                            aria-label="Altura máxima de tabla"
-                                        >
-                                            {HEIGHT_OPTIONS.map((opt) => (
-                                                <option key={`hmax-${opt.value || "any"}`} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className="block">
-                                        <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                            Volumen mínimo
-                                        </span>
-                                        <select
-                                            value={volumeMin}
-                                            onChange={(e) => handleVolumeMinChange(e.target.value)}
-                                            className={selectClass}
-                                            aria-label="Volumen mínimo en litros"
-                                        >
-                                            {VOLUME_OPTIONS.map((opt) => (
-                                                <option key={`vmin-${opt.value || "any"}`} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-                                    <label className="block">
-                                        <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                            Volumen máximo
-                                        </span>
-                                        <select
-                                            value={volumeMax}
-                                            onChange={(e) => handleVolumeMaxChange(e.target.value)}
-                                            className={selectClass}
-                                            aria-label="Volumen máximo en litros"
-                                        >
-                                            {VOLUME_OPTIONS.map((opt) => (
-                                                <option key={`vmax-${opt.value || "any"}`} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
+                                <div className="mt-3">
+                                    <p className="text-[11px] font-semibold text-slate-400">
+                                        Altura de la tabla
+                                    </p>
+                                    <div
+                                        className="mt-1.5 flex flex-wrap gap-1.5"
+                                        role="group"
+                                        aria-label="Rango de altura"
+                                    >
+                                        {HEIGHT_RANGE_PRESETS.map((preset) => {
+                                            const active = heightPresetId === preset.id;
+                                            return (
+                                                <button
+                                                    key={preset.id}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    onClick={() => applyHeightPreset(preset)}
+                                                    className={`${chipBaseClass} ${
+                                                        active ? chipActiveClass : chipIdleClass
+                                                    }`}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                                <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-                                    Alturas en pies y pulgadas (3&apos;5&quot; → 11&apos;0&quot;). Ej.: 6&apos;2&quot; = entre 6&apos;0&quot; y 6&apos;2&quot;.
-                                    {" "}Traducción rápida: 1 pie = 30,48 cm · 1 pulgada = 2,54 cm.
-                                </p>
+
+                                <div className="mt-3">
+                                    <p className="text-[11px] font-semibold text-slate-400">
+                                        Volumen
+                                    </p>
+                                    <div
+                                        className="mt-1.5 flex flex-wrap gap-1.5"
+                                        role="group"
+                                        aria-label="Rango de volumen"
+                                    >
+                                        {VOLUME_RANGE_PRESETS.map((preset) => {
+                                            const active = volumePresetId === preset.id;
+                                            return (
+                                                <button
+                                                    key={preset.id}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    onClick={() => applyVolumePreset(preset)}
+                                                    className={`${chipBaseClass} ${
+                                                        active ? chipActiveClass : chipIdleClass
+                                                    }`}
+                                                >
+                                                    {preset.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="mt-3 border-t border-slate-700/80 pt-2">
+                                    <button
+                                        type="button"
+                                        aria-expanded={showAdvancedMeasures}
+                                        onClick={() =>
+                                            setShowAdvancedMeasures((open) => !open)
+                                        }
+                                        className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                                    >
+                                        <span>Ajuste fino</span>
+                                        <ChevronDown
+                                            className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                                                showAdvancedMeasures ? "rotate-180" : ""
+                                            }`}
+                                            aria-hidden="true"
+                                        />
+                                    </button>
+
+                                    {showAdvancedMeasures ? (
+                                        <div className="mt-2 grid grid-cols-2 gap-2">
+                                            <label className="block">
+                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    Altura mínima
+                                                </span>
+                                                <select
+                                                    value={heightMin}
+                                                    onChange={(e) =>
+                                                        handleHeightMinChange(e.target.value)
+                                                    }
+                                                    className={selectClass}
+                                                    aria-label="Altura mínima de tabla"
+                                                >
+                                                    {HEIGHT_OPTIONS.map((opt) => (
+                                                        <option
+                                                            key={`hmin-${opt.value || "any"}`}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label className="block">
+                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    Altura máxima
+                                                </span>
+                                                <select
+                                                    value={heightMax}
+                                                    onChange={(e) =>
+                                                        handleHeightMaxChange(e.target.value)
+                                                    }
+                                                    className={selectClass}
+                                                    aria-label="Altura máxima de tabla"
+                                                >
+                                                    {HEIGHT_OPTIONS.map((opt) => (
+                                                        <option
+                                                            key={`hmax-${opt.value || "any"}`}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label className="block">
+                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    Volumen mínimo
+                                                </span>
+                                                <select
+                                                    value={volumeMin}
+                                                    onChange={(e) =>
+                                                        handleVolumeMinChange(e.target.value)
+                                                    }
+                                                    className={selectClass}
+                                                    aria-label="Volumen mínimo en litros"
+                                                >
+                                                    {VOLUME_OPTIONS.map((opt) => (
+                                                        <option
+                                                            key={`vmin-${opt.value || "any"}`}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                            <label className="block">
+                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    Volumen máximo
+                                                </span>
+                                                <select
+                                                    value={volumeMax}
+                                                    onChange={(e) =>
+                                                        handleVolumeMaxChange(e.target.value)
+                                                    }
+                                                    className={selectClass}
+                                                    aria-label="Volumen máximo en litros"
+                                                >
+                                                    {VOLUME_OPTIONS.map((opt) => (
+                                                        <option
+                                                            key={`vmax-${opt.value || "any"}`}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        </div>
+                                    ) : null}
+                                </div>
                             </div>
                         </div>
 
@@ -299,8 +458,8 @@ export default function Index({
                                     }
                                     description={
                                         hasMeasureFilters
-                                            ? "Prueba ampliando el rango de altura o volumen, o limpia los filtros."
-                                            : "Prueba con otro filtro para ver disponibilidad."
+                                            ? "Amplía altura o volumen, o limpia los filtros para ver más opciones."
+                                            : "Prueba otra categoría arriba. Las demás pueden tener disponibilidad."
                                     }
                                     action={
                                         hasMeasureFilters ? (
@@ -343,12 +502,12 @@ export default function Index({
                                                         aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
                                                         className="flex w-full items-start gap-3 text-left"
                                                     >
-                                                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24">
                                                             <SafeImage
                                                                 src={imgUrl}
                                                                 alt={s.image_alt || name}
                                                                 className="h-full w-full object-cover"
-                                                                placeholderClassName="rounded-lg"
+                                                                placeholderClassName="rounded-xl"
                                                             />
                                                         </div>
                                                         <div className="min-w-0 flex-1">
@@ -384,7 +543,7 @@ export default function Index({
                                                         <Link
                                                             href={route("rentals.surfboards.show", s.id)}
                                                             onClick={(e) => e.stopPropagation()}
-                                                            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200"
+                                                            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200 lg:hidden"
                                                         >
                                                             Ver ficha
                                                         </Link>
@@ -447,15 +606,16 @@ export default function Index({
                     {allBoards.length === 0 && (
                         <div className="mt-8">
                             <EmptyState
-                                title="No hay tablas en este momento"
-                                description="No hay tablas activas para esta categoría. Prueba con otra o vuelve más tarde."
+                                title="No hay tablas disponibles ahora"
+                                description="En este momento no hay tablas activas en el catálogo. Vuelve más tarde o explora otra sección."
                                 action={
-                                    <Link
-                                        href={route("rentals.surfboards.index")}
-                                        className="inline-flex items-center rounded-xl bg-brand-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-300 ease-in-out hover:bg-brand-primary/90"
+                                    <button
+                                        type="button"
+                                        onClick={() => router.reload()}
+                                        className="inline-flex items-center rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-600"
                                     >
-                                        Ver todas las categorías
-                                    </Link>
+                                        Recargar página
+                                    </button>
                                 }
                             />
                         </div>

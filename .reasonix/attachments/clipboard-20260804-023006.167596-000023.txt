@@ -1,0 +1,57 @@
+Modo: Agent. Grok en Cursor. SOLO UI. Cumple EXACTAMENTE esto.
+
+OBJETIVO
+Rediseñar la vista del carrito CON productos para que combine con EmptyCartView
+y el sistema S4 (slate + cyan + rose). Lógica de negocio INTACTA.
+Resultado: simple, profesional, sin aspecto "Bootstrap 2019".
+Además: convertir el bloqueo !canCheckout en conversión (link a taquillas)
+y dar salida clara a la tienda (Seguir comprando), sin depender de history.back().
+
+ARCHIVO ÚNICO
+resources/js/Pages/Carrito.jsx
+
+PRE-VUELO
+Lee Carrito.jsx entero. Identifica: EmptyCartView (NO tocar), rama vacía
+(`productos.length === 0`), rama llena, modal eliminar, toast.
+NO reescribas EmptyCartView.
+Confirma que existen `route("tienda")` y `route("taquillas.planes")` (ya usados
+en el proyecto). Inertia Link usa `href={...}`, NUNCA `to={...}`.
+
+HECHOS DEL CÓDIGO (no contradecir)
+- Vista vacía: shell `bg-slate-50` + `max-w-3xl` + H1 "Tu carrito".
+  EmptyCartView: `rounded-2xl bg-white shadow-sm ring-1 ring-slate-200`
+  y ya enlaza a la tienda.
+- Vista llena hoy: `bg-gray-100`, `max-w-lg`, gray/red/violet, `key={index}`,
+  modal con ⚠️, Eliminar lista en `bg-red-500`, total en `text-red-500`,
+  CTA en `bg-violet-600`, "Volver atrás" = `window.history.back()` (destino incierto).
+- !canCheckout hoy: solo texto amber muerto, sin link a conseguir taquilla.
+- Cada producto: id, nombre, precio, cantidad, subtotal, descuento. NO hay imagen.
+- precio/subtotal/total suelen ser number; a veces string. NUNCA asumas "15,00".
+  El helper debe tolerar number y string.
+- `iniciarPagoStripe`, `eliminarProducto`, `abrirModal`, `cerrarModal`,
+  `useEffect(flash)`: NO cambies firmas ni cuerpos. Solo retoca el JSX que los llama.
+
+PROHIBIDO
+- Otros archivos, backend, PHP, Stripe, rutas nuevas, .env, tailwind.config.js
+- Inventar imagen, talla, stock, SKU, controles +/- cantidad
+- Borrar variables no usadas (paymentModalOpen, paymentIban, etc.) — déjalas
+- Reescribir EmptyCartView
+- CTA violet/indigo/purple
+- Total en `text-red-*`
+- Eliminar de la LISTA en `bg-red-500` sólido
+- Emojis (ni nuevos ni los del modal/toast)
+- Newsletter, upsell de productos, urgencia
+- Usar `to=` en Link (es `href=`)
+- Cualquier mejora no listada en TAREAS
+
+TAREAS (en este orden)
+
+1) Helper `formatCartEur` (fuera del componente, mismo archivo)
+```js
+function formatCartEur(value) {
+  const n = parseFloat(String(value ?? 0).replace(",", "."));
+  return new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number.isFinite(n) ? n : 0);
+} 

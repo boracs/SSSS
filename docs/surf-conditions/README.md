@@ -10,7 +10,9 @@
 Cada mañana (y cada 6 h vía schedule) un job automático:
 
 1. Pide oleaje + viento a **Open-Meteo** (gratis, sin API key) para el punto
-   frente a Zurriola.
+   frente a Zurriola. Las **mareas** de la tabla/parte prefieren
+   **Euskalmet** (Open Data Euskadi, XML público `sea_forecast.xml`); si falla,
+   se estima desde Open-Meteo.
 2. Calcula la **energía/potencia** con la fórmula de apps
    P ≈ 0.5 × Hs² × Tp (kW/m; valor indexado en UI como kJ) y un índice
    verbal (Suave/Moderado/Fuerte/Muy fuerte).
@@ -72,7 +74,8 @@ markdown y colapsa saltos de línea por si el modelo no lo respeta al 100%.
 
 | Archivo | Rol |
 |---|---|
-| `app/Services/SurfConditions/OpenMeteoMarineClient.php` | HTTP puro hacia Open-Meteo (oleaje + viento). Sin lógica de negocio. |
+| `app/Services/SurfConditions/OpenMeteoMarineClient.php` | HTTP puro hacia Open-Meteo (oleaje + viento horario). Sin lógica de negocio. |
+| `app/Services/SurfConditions/EuskalmetSeaForecastClient.php` | HTTP/XML Euskalmet marítimo (mareas oficiales costa vasca). Fallback → Open-Meteo. |
 | `app/Services/SurfConditions/SurfEnergyCalculator.php` | P ≈ 0.5×Hs²×Tp (kW/m, indexado como kJ en UI); índice verbal (`energy_bands`). |
 | `app/Services/SurfConditions/SurfLevelRecommender.php` | Recomendación de nivel rápida (config `level_thresholds` + `offshore_wind_*`). |
 | `app/Services/SurfConditions/SurfDailyBriefService.php` | Orquestador: fetch → cálculo → Gemini/fallback → persistencia → único punto de lectura (`today()`, `publicPayload()`). Inyecta `SurfForecastTableService` para el desglose mañana/tarde del prompt. |
@@ -153,6 +156,11 @@ Fuente de verdad: `config('services.zurriola_surf.forecast_energy_color_kj.bands
 
 Caché de tabla: `surf_conditions.forecast_table.v5` (sube versión al cambiar tones/shape).
 
+### Calibración con el equipo (estrellas + preguntas)
+
+- Escenarios para puntuar 1–5 estrellas: `CALIBRACION_ESTRELLAS.csv` (o el TSV de Google).
+- **Cuestionario de referencia** (criterios, texto del parte, organización de la info — no es el Excel): `CALIBRACION_PREGUNTAS.md`.
+
 ### Calibración vs Surf-Forecast
 
 La gente compara el kJ S4 con Surf-Forecast Zurriola. Diagnóstico completo:
@@ -164,8 +172,10 @@ Qué hace la app (sin afirmar que somos SF):
 |---|---|
 | Fuente oleaje/viento | Open-Meteo (marine + weather) |
 | H/T para el kJ | `energy_kj_height_source` default **`wave`** (ola combinada; no swell preferido) |
-| Fórmula UI | `kJ = round(factor × 0.5 × H_ft² × T)` |
-| Factor | `energy_kj_calibration_factor` default **2.4** (`ZURRIOLA_ENERGY_KJ_FACTOR`) |
+| Fórmula UI | `kJ = round(factor × periodBoost × 0.5 × (H×height_scale)_ft² × T)` |
+| Factor SF | `energy_kj_calibration_factor` default **2.4** (con H/T de SF, periodo corto → mismo kJ) |
+| Escala OM→SF | `energy_kj_height_scale` default **1.52** (solo energía; no cambia la columna de altura) |
+| Periodo largo | `energy_kj_period_boost_max` default **1.6** (1.0 si T≤6 s → max si T≥10 s) |
 
 Límites: el factor alinea bien periodo corto cuando H/T coinciden con SF; periodo largo SF suele ir más alto; si Open-Meteo trae Hs más bajo que SF, el kJ S4 también queda más bajo (no inventamos metros). Umbrales del JSON de logística (`≥100`, `400`, …) se mantienen: ya estaban en escala tipo apps/SF.
 

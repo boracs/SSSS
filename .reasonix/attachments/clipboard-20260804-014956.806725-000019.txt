@@ -1,0 +1,84 @@
+Modo: Agent. Solo frontend — tarifas de alquiler de tablas.
+
+OBJETIVO
+Diferenciar visualmente las 3 categorías de tablas (Softboards / Duras básicas /
+Duras pro boards) en la tabla de tarifas, para que se perciba una progresión
+(básico → pro) y no parezcan la misma tarjeta repetida con texto distinto.
+
+ALCANCE
+- Archivos: `resources/js/components/Rentals/RentalTariffTable.jsx`,
+  `resources/js/lib/surfboardCategories.js`.
+- No tocar `WetsuitPriceTables.jsx` ni el bloque de Neopreno.
+- No tocar precios, columnas, `RentalTariffTableService`, ni el DTO backend.
+- No inventar colores de marca nuevos: usa tonos ya presentes en el proyecto
+  para jerarquías (p. ej. `emerald` / `cyan` / `amber` — ya usados como tonos
+  de estado en `Admin/Bookings/Index.jsx`), NO edites `tailwind.config.js`.
+
+PRE-VUELO
+1. Lee `RentalTariffTable.jsx` completo (componentes `TariffBlock`, `TariffChip`,
+   `TariffCards`, `RentalTariffTable`).
+2. Lee `surfboardCategories.js` (`BOARD_CATEGORIES`: ids `soft`, `hard_basic`, `hard_pro`).
+3. Confirma que `row.category` en `rows` coincide con esos ids (viene de
+   `RentalTariffTableDto` vía `tariffTable.rows`).
+
+HECHOS DEL CÓDIGO
+- `TariffCards` (vista <lg, la de la captura): cada categoría es
+  `rounded-2xl border border-slate-700 bg-slate-900/60 p-4`, idéntico para las 3.
+- `TariffBlock` (vista ≥lg, tabla): filas solo con zebra `bg-slate-950/40` en
+  índices impares, sin identidad por categoría.
+- `TariffChip` ya usa tono `hour` (cyan) / `day` (indigo) — eso NO se toca,
+  es la diferenciación horas/días, no la de categoría.
+
+TAREAS
+
+1) Mapa de acento por categoría — `surfboardCategories.js`
+   Añade y exporta una función `boardCategoryAccent(category)` que devuelva un
+   objeto de clases Tailwind por id, con progresión básico→pro:
+   - `soft`: acento `emerald` (borde/icono/texto)
+   - `hard_basic`: acento `cyan`
+   - `hard_pro`: acento `amber`
+   - fallback (id desconocido): `slate`
+   Formato sugerido:
+     { border: "border-emerald-500/30", icon: "text-emerald-400", label: "text-emerald-300" }
+   No cambies `BOARD_CATEGORIES` ni sus labels.
+
+2) Aplicar acento en `TariffCards` (vista móvil, <lg)
+   - Añade un borde superior o lateral de acento a cada tarjeta de categoría,
+     usando `boardCategoryAccent(row.category).border` (p. ej. `border-t-2` con
+     ese color, manteniendo `border-slate-700` en los otros 3 lados).
+   - Añade un indicador de nivel junto al label de la categoría (icono pequeño
+     o punto de color con `boardCategoryAccent(row.category).icon`), NO texto
+     nuevo tipo "Nivel 1/2/3" salvo que ya exista un patrón así en el proyecto.
+   - No cambies el tamaño, el padding general ni el orden de las categorías.
+
+3) Aplicar el mismo acento en `TariffBlock` (vista desktop, ≥lg)
+   - En la celda `<th scope="row">` de cada fila (el label de categoría),
+     aplica `boardCategoryAccent(row.category).label` al texto y un borde
+     izquierdo de acento (`border-l-2` con el color) para coherencia con la
+     vista móvil.
+   - No toques las columnas de precios ni el zebra striping existente.
+
+4) Verificación
+   Las 3 categorías deben ser distinguibles de un vistazo (color + posición del
+   acento) tanto en <lg (cards) como en ≥lg (tabla), sin que compita visualmente
+   con los tonos cyan/indigo de horas/días ni con los CTAs reales de la página.
+
+FUERA DE ALCANCE
+- Neopreno, columnas, precios, backend, DTO, Service.
+- Cambiar `tailwind.config.js` o crear tokens de marca nuevos.
+- Reordenar categorías o cambiar sus labels.
+- Tocar `SurfboardPublicDetail.jsx` u otros archivos de la ficha individual.
+
+FORMATO DE SALIDA
+1. Diff por archivo tocado (máx. 2 archivos).
+2. Sin prosa entre archivos.
+3. Checklist final: cards con acento por categoría / tabla con acento por
+   categoría / neopreno intacto / sin nuevos tokens en tailwind.config.js.
+
+AUTONOMÍA
+- Elige el matiz exacto (`/20`, `/30`, `400` vs `500`) dentro de la paleta
+  Tailwind estándar ya usada en el proyecto (emerald/cyan/amber/indigo/rose/slate).
+- Si `row.category` no coincide con ningún id conocido, usa el fallback `slate`
+  sin romper el render.
+- No preguntes por el matiz de color exacto; decide y aplica consistencia
+  entre `TariffCards` y `TariffBlock`.

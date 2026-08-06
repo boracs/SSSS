@@ -17,9 +17,16 @@ import {
     ShieldAlert,
     Check,
     ChevronRight,
+    ZoomIn,
+    ZoomOut,
 } from "lucide-react";
 
 const SPEEDS = [0.1, 0.25, 0.5, 0.75, 1];
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 3;
+const ZOOM_DESKTOP = 2;
+const PINCH_ARM_PX = 10;
+const TAP_MOVE_PX = 5;
 
 function getPlayableDuration(video) {
     if (!video) return 0;
@@ -67,6 +74,17 @@ function labelize(value) {
     return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, " ");
 }
 
+function formatZoomBadge(zoom) {
+    const rounded = Math.round(zoom * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}x` : `${rounded.toFixed(1)}x`;
+}
+
+function touchDistance(a, b) {
+    const dx = a.clientX - b.clientX;
+    const dy = a.clientY - b.clientY;
+    return Math.hypot(dx, dy);
+}
+
 /** Marco 16:9 fijo: el vídeo escala con object-contain (vertical, cuadrado, horizontal). */
 function VideoFrame({
     videoRef,
@@ -79,18 +97,92 @@ function VideoFrame({
     paintEnabled,
 }) {
     const containerRef = useRef(null);
+    const transformRef = useRef(null);
     const scrubberRef = useRef(null);
     const isDrawing = useRef(false);
     const scrubbingRef = useRef(false);
     const pendingSeekPctRef = useRef(null);
     const userIntentPctRef = useRef(null);
+    const zoomRef = useRef(ZOOM_MIN);
+    const panRef = useRef({ x: 0, y: 0 });
+    const gestureRef = useRef({
+        mode: null,
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        startPanX: 0,
+        startPanY: 0,
+        moved: false,
+        pinchStartDist: 0,
+        pinchArmed: false,
+        pinchBaseZoom: ZOOM_MIN,
+        activeTouchMove: false,
+    });
     const [sliderPct, setSliderPct] = useState(0);
+    const [zoomUi, setZoomUi] = useState(ZOOM_MIN);
+
+    const applyTransform = useCallback(() => {
+        const el = transformRef.current;
+        if (!el) return;
+        const z = zoomRef.current;
+        const { x, y } = panRef.current;
+        el.style.transform = `translate(${x}px, ${y}px) scale(${z})`;
+        el.style.touchAction = z > ZOOM_MIN || gestureRef.current.mode === "pinch" ? "none" : "pan-y";
+        el.style.cursor = z > ZOOM_MIN ? "grab" : "";
+    }, []);
+
+    const clampPan = useCallback(() => {
+        const container = containerRef.current;
+        const z = zoomRef.current;
+        if (!container || z <= ZOOM_MIN) {
+            panRef.current = { x: 0, y: 0 };
+            return;
+        }
+        const maxX = ((z - 1) * container.clientWidth) / 2;
+        const maxY = ((z - 1) * container.clientHeight) / 2;
+        panRef.current = {
+            x: Math.min(maxX, Math.max(-maxX, panRef.current.x)),
+            y: Math.min(maxY, Math.max(-maxY, panRef.current.y)),
+        };
+    }, []);
+
+    const commitZoomUi = useCallback(() => {
+        setZoomUi(zoomRef.current);
+    }, []);
+
+    const setZoomLive = useCallback((next, { syncUi = false } = {}) => {
+        const z = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, next));
+        zoomRef.current = z;
+        if (z <= ZOOM_MIN) {
+            panRef.current = { x: 0, y: 0 };
+        } else {
+            clampPan();
+        }
+        applyTransform();
+        if (syncUi) setZoomUi(z);
+    }, [applyTransform, clampPan]);
+
+    const resetZoom = useCallback(() => {
+        zoomRef.current = ZOOM_MIN;
+        panRef.current = { x: 0, y: 0 };
+        applyTransform();
+        setZoomUi(ZOOM_MIN);
+    }, [applyTransform]);
+
+    const togglePlayPause = useCallback(() => {
+        if (paintEnabled) return;
+        const v = videoRef.current;
+        if (!v) return;
+        if (v.paused) v.play().catch(() => {});
+        else v.pause();
+    }, [paintEnabled, videoRef]);
 
     useEffect(() => {
         setSliderPct(0);
         pendingSeekPctRef.current = null;
         userIntentPctRef.current = null;
-    }, [videoKey]);
+        resetZoom();
+    }, [videoKey, src, resetZoom]);
 
     const applySeek = useCallback((pct) => {
         const video = videoRef.current;
@@ -284,6 +376,231 @@ function VideoFrame({
         };
     }, [stopDrawing]);
 
+    // Gestos pan/pinch/play en el wrapper (vídeo+canvas).
+    useEffect(() => {
+        const el = transformRef.current;
+        if (!el) return undefined;
+
+        const gesture = gestureRef.current;
+
+        const detachActiveTouchMove = () => {
+            if (!gesture.activeTouchMove) return;
+            el.removeEventListener("touchmove", onTouchMoveActive);
+            gesture.activeTouchMove = false;
+        };
+
+        const attachActiveTouchMove = () => {
+            if (gesture.activeTouchMove) return;
+            el.addEventListener("touchmove", onTouchMoveActive, { passive: false });
+            gesture.activeTouchMove = true;
+        };
+
+        const endGesture = ({ maybeTogglePlay = false } = {}) => {
+            const wasPanOrPinch = gesture.mode === "pan" || gesture.mode === "pinch";
+            const wasTap = maybeTogglePlay && !gesture.moved && gesture.mode !== "pinch";
+            detachActiveTouchMove();
+            gesture.mode = null;
+            gesture.pointerId = null;
+            gesture.pinchArmed = false;
+            applyTransform();
+            commitZoomUi();
+            if (wasTap && !paintEnabled) {
+                togglePlayPause();
+            }
+            if (wasPanOrPinch) {
+                el.style.cursor = zoomRef.current > ZOOM_MIN ? "grab" : "";
+            }
+        };
+
+        const onTouchMoveActive = (e) => {
+            if (gesture.mode === "pinch" && e.touches.length >= 2) {
+                e.preventDefault();
+                const dist = touchDistance(e.touches[0], e.touches[1]);
+                if (!gesture.pinchArmed) {
+                    if (Math.abs(dist - gesture.pinchStartDist) < PINCH_ARM_PX) return;
+                    gesture.pinchArmed = true;
+                }
+                const ratio = dist / Math.max(gesture.pinchStartDist, 1);
+                setZoomLive(gesture.pinchBaseZoom * ratio, { syncUi: false });
+                return;
+            }
+
+            if (gesture.mode === "pan" && e.touches.length === 1 && zoomRef.current > ZOOM_MIN) {
+                e.preventDefault();
+                const t = e.touches[0];
+                const dx = t.clientX - gesture.startX;
+                const dy = t.clientY - gesture.startY;
+                if (Math.hypot(dx, dy) > TAP_MOVE_PX) gesture.moved = true;
+                panRef.current = {
+                    x: gesture.startPanX + dx,
+                    y: gesture.startPanY + dy,
+                };
+                clampPan();
+                applyTransform();
+            }
+        };
+
+        const onTouchStart = (e) => {
+            if (isDrawing.current) return;
+
+            if (e.touches.length === 2) {
+                gesture.mode = "pinch";
+                gesture.moved = true;
+                gesture.pinchArmed = false;
+                gesture.pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
+                gesture.pinchBaseZoom = zoomRef.current;
+                attachActiveTouchMove();
+                applyTransform();
+                return;
+            }
+
+            if (e.touches.length !== 1 || paintEnabled) return;
+
+            const t = e.touches[0];
+            gesture.moved = false;
+            gesture.startX = t.clientX;
+            gesture.startY = t.clientY;
+            gesture.startPanX = panRef.current.x;
+            gesture.startPanY = panRef.current.y;
+
+            if (zoomRef.current > ZOOM_MIN) {
+                gesture.mode = "pan";
+                attachActiveTouchMove();
+                applyTransform();
+            } else {
+                // Tap candidato a play/pausa; sin touchmove activo → scroll de página OK.
+                gesture.mode = "tap";
+            }
+        };
+
+        const onTouchMovePassive = (e) => {
+            if (gesture.mode !== "tap" || e.touches.length !== 1) return;
+            const t = e.touches[0];
+            const dx = t.clientX - gesture.startX;
+            const dy = t.clientY - gesture.startY;
+            if (Math.hypot(dx, dy) > TAP_MOVE_PX) {
+                gesture.moved = true;
+            }
+        };
+
+        const onTouchEnd = (e) => {
+            if (gesture.mode === "pinch") {
+                if (e.touches.length >= 2) return;
+                if (e.touches.length === 1 && zoomRef.current > ZOOM_MIN && !paintEnabled) {
+                    const t = e.touches[0];
+                    gesture.mode = "pan";
+                    gesture.moved = true;
+                    gesture.pinchArmed = false;
+                    gesture.startX = t.clientX;
+                    gesture.startY = t.clientY;
+                    gesture.startPanX = panRef.current.x;
+                    gesture.startPanY = panRef.current.y;
+                    commitZoomUi();
+                    return;
+                }
+                endGesture({ maybeTogglePlay: false });
+                return;
+            }
+
+            if ((gesture.mode === "pan" || gesture.mode === "tap") && e.touches.length === 0) {
+                endGesture({ maybeTogglePlay: true });
+            }
+        };
+
+        const onPointerDown = (e) => {
+            if (paintEnabled || e.pointerType === "touch") return;
+            if (e.button !== 0) return;
+
+            if (zoomRef.current > ZOOM_MIN) {
+                gesture.mode = "pan";
+                gesture.pointerId = e.pointerId;
+                gesture.moved = false;
+                gesture.startX = e.clientX;
+                gesture.startY = e.clientY;
+                gesture.startPanX = panRef.current.x;
+                gesture.startPanY = panRef.current.y;
+                try {
+                    el.setPointerCapture(e.pointerId);
+                } catch {
+                    // ignore
+                }
+                el.style.cursor = "grabbing";
+            } else {
+                gesture.mode = "tap";
+                gesture.pointerId = e.pointerId;
+                gesture.moved = false;
+                gesture.startX = e.clientX;
+                gesture.startY = e.clientY;
+            }
+        };
+
+        const onPointerMove = (e) => {
+            if (e.pointerType === "touch") return;
+            if (gesture.pointerId !== e.pointerId) return;
+
+            const dx = e.clientX - gesture.startX;
+            const dy = e.clientY - gesture.startY;
+            if (Math.hypot(dx, dy) > TAP_MOVE_PX) gesture.moved = true;
+
+            if (gesture.mode === "pan" && zoomRef.current > ZOOM_MIN) {
+                panRef.current = {
+                    x: gesture.startPanX + dx,
+                    y: gesture.startPanY + dy,
+                };
+                clampPan();
+                applyTransform();
+            }
+        };
+
+        const onPointerUp = (e) => {
+            if (e.pointerType === "touch") return;
+            if (gesture.pointerId !== e.pointerId) return;
+            if (el.hasPointerCapture?.(e.pointerId)) {
+                el.releasePointerCapture(e.pointerId);
+            }
+            endGesture({ maybeTogglePlay: true });
+        };
+
+        const onDoubleClick = (e) => {
+            if (paintEnabled) return;
+            e.preventDefault();
+            resetZoom();
+        };
+
+        el.addEventListener("touchstart", onTouchStart, { passive: true });
+        el.addEventListener("touchmove", onTouchMovePassive, { passive: true });
+        el.addEventListener("touchend", onTouchEnd);
+        el.addEventListener("touchcancel", onTouchEnd);
+        el.addEventListener("pointerdown", onPointerDown);
+        el.addEventListener("pointermove", onPointerMove);
+        el.addEventListener("pointerup", onPointerUp);
+        el.addEventListener("pointercancel", onPointerUp);
+        el.addEventListener("dblclick", onDoubleClick);
+
+        applyTransform();
+
+        return () => {
+            detachActiveTouchMove();
+            el.removeEventListener("touchstart", onTouchStart);
+            el.removeEventListener("touchmove", onTouchMovePassive);
+            el.removeEventListener("touchend", onTouchEnd);
+            el.removeEventListener("touchcancel", onTouchEnd);
+            el.removeEventListener("pointerdown", onPointerDown);
+            el.removeEventListener("pointermove", onPointerMove);
+            el.removeEventListener("pointerup", onPointerUp);
+            el.removeEventListener("pointercancel", onPointerUp);
+            el.removeEventListener("dblclick", onDoubleClick);
+        };
+    }, [
+        applyTransform,
+        clampPan,
+        commitZoomUi,
+        paintEnabled,
+        resetZoom,
+        setZoomLive,
+        togglePlayPause,
+    ]);
+
     const handleScrubPointerDown = useCallback((e) => {
         e.stopPropagation();
         scrubbingRef.current = true;
@@ -317,48 +634,85 @@ function VideoFrame({
         applySeek(pct);
     }, [applySeek]);
 
+    const zoomIn = useCallback(() => {
+        setZoomLive(ZOOM_DESKTOP, { syncUi: true });
+    }, [setZoomLive]);
+
+    const zoomOut = useCallback(() => {
+        setZoomLive(ZOOM_MIN, { syncUi: true });
+    }, [setZoomLive]);
+
     return (
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-black/40">
             <div
                 ref={containerRef}
-                className="relative aspect-video w-full bg-black"
+                className="relative aspect-video w-full overflow-hidden bg-black"
             >
-                <p className="absolute left-3 top-3 z-10 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
+                <p className="pointer-events-none absolute left-3 top-3 z-20 rounded-full bg-black/50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200">
                     {label}
                 </p>
-                {paintEnabled ? (
-                    <p className="absolute right-3 top-3 z-10 rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                        Modo dibujo
-                    </p>
-                ) : null}
-                <video
-                    key={videoKey || "empty"}
-                    ref={videoRef}
-                    src={src || undefined}
-                    className={`absolute inset-0 h-full w-full object-contain object-center ${paintEnabled ? "pointer-events-none" : "cursor-pointer"}`}
-                    muted
-                    playsInline
-                    preload="auto"
-                    onLoadedMetadata={() => {
-                        syncFrame();
-                    }}
-                    onClick={() => {
-                        if (paintEnabled) return;
-                        const v = videoRef.current;
-                        if (!v) return;
-                        if (v.paused) v.play().catch(() => {});
-                        else v.pause();
-                    }}
-                />
-                <canvas
-                    ref={canvasRef}
-                    className={`absolute inset-0 h-full w-full touch-none ${paintEnabled ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={stopDrawing}
-                    onPointerLeave={stopDrawing}
-                    onPointerCancel={stopDrawing}
-                />
+
+                <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
+                    {paintEnabled ? (
+                        <p className="rounded-full bg-orange-500/90 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                            Modo dibujo
+                        </p>
+                    ) : null}
+                    {zoomUi > ZOOM_MIN ? (
+                        <span className="rounded-full border border-cyan-400/40 bg-slate-950/80 px-2 py-0.5 text-[10px] font-bold tabular-nums text-cyan-200">
+                            {formatZoomBadge(zoomUi)}
+                        </span>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={zoomOut}
+                        disabled={zoomUi <= ZOOM_MIN}
+                        aria-label="Alejar"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/35 bg-slate-950/85 text-cyan-100 shadow-md backdrop-blur-sm transition hover:border-cyan-300/60 hover:bg-slate-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <ZoomOut className="h-4 w-4" aria-hidden />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={zoomIn}
+                        disabled={zoomUi >= ZOOM_DESKTOP}
+                        aria-label="Acercar"
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-400/35 bg-slate-950/85 text-cyan-100 shadow-md backdrop-blur-sm transition hover:border-cyan-300/60 hover:bg-slate-900 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <ZoomIn className="h-4 w-4" aria-hidden />
+                    </button>
+                </div>
+
+                <div
+                    ref={transformRef}
+                    className="absolute inset-0 will-change-transform"
+                    style={{ transformOrigin: "center center", touchAction: "pan-y" }}
+                >
+                    <video
+                        key={videoKey || "empty"}
+                        ref={videoRef}
+                        src={src || undefined}
+                        className="pointer-events-none absolute inset-0 h-full w-full object-contain object-center"
+                        muted
+                        playsInline
+                        preload="auto"
+                        disablePictureInPicture
+                        disableRemotePlayback
+                        controlsList="nodownload noremoteplayback nofullscreen noplaybackrate"
+                        onLoadedMetadata={() => {
+                            syncFrame();
+                        }}
+                    />
+                    <canvas
+                        ref={canvasRef}
+                        className={`absolute inset-0 h-full w-full touch-none ${paintEnabled ? "pointer-events-auto cursor-crosshair" : "pointer-events-none"}`}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={stopDrawing}
+                        onPointerLeave={stopDrawing}
+                        onPointerCancel={stopDrawing}
+                    />
+                </div>
             </div>
             <div className="border-t border-white/10 bg-slate-950/80 px-3 py-3">
                 <input
@@ -464,6 +818,9 @@ function UploadThumb({ url, name, onSelect, isSelected }) {
                     muted
                     playsInline
                     preload="metadata"
+                    disablePictureInPicture
+                    disableRemotePlayback
+                    controlsList="nodownload noremoteplayback nofullscreen noplaybackrate"
                 />
                 {isSelected ? (
                     <span className="pointer-events-none absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-cyan-400 via-teal-300 to-cyan-400" />

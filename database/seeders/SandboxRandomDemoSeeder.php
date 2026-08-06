@@ -14,6 +14,7 @@ use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\PackBono;
 use App\Models\PagoCuota;
+use App\Models\PaymentReceipt;
 use App\Models\Pedido;
 use App\Models\PlanTaquilla;
 use App\Models\Producto;
@@ -341,6 +342,43 @@ final class SandboxRandomDemoSeeder extends Seeder
                 'payment_method' => 'transferencia',
                 'periodo_inicio' => now()->startOfDay(),
                 'periodo_fin' => now()->addDays(30)->endOfDay(),
+            ]
+        );
+
+        // Pago histórico con tarjeta + recibo simulado: permite previsualizar el
+        // botón "Ver recibo" (abre en pestaña nueva) sin llamar a la API real de
+        // Stripe ni depender de credenciales. No solapa con el plan vigente del
+        // cliente (queda en el pasado, visible solo en su historial de pagos).
+        $cardClient = $clients[3];
+        $cardPlan = $plans[0];
+        $cardStart = Carbon::now()->subDays(200)->startOfDay();
+        $cardEnd = (clone $cardStart)->addDays((int) $cardPlan->duracion_dias - 1)->endOfDay();
+
+        $cardPago = PagoCuota::query()->updateOrCreate(
+            [
+                'user_id' => $cardClient->id,
+                'referencia_pago_externa' => 'SANDBOX-LOCKER-CARD-DEMO',
+            ],
+            [
+                'id_plan_pagado' => $cardPlan->id,
+                'monto_pagado_cents' => (int) $cardPlan->precio_total_cents,
+                'status' => PagoCuota::STATUS_CONFIRMED,
+                'is_checked' => true,
+                'payment_method' => 'card',
+                'periodo_inicio' => $cardStart,
+                'periodo_fin' => $cardEnd,
+                'fecha_pago' => $cardStart,
+            ]
+        );
+
+        PaymentReceipt::query()->updateOrCreate(
+            ['stripe_checkout_session_id' => 'cs_test_sandbox_demo_'.$cardPago->id],
+            [
+                'payable_type' => PagoCuota::class,
+                'payable_id' => $cardPago->id,
+                'stripe_payment_intent_id' => 'pi_sandbox_demo_'.$cardPago->id,
+                'receipt_url' => url('/demo/recibo-stripe-sandbox.html'),
+                'captured_at' => $cardStart->copy()->addMinutes(5),
             ]
         );
     }

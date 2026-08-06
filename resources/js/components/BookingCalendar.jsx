@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
 import { es } from "date-fns/locale";
+import { Loader2 } from "lucide-react";
 import "react-datepicker/dist/react-datepicker.css";
 import { priceForDayRange } from "../lib/rentalPricing";
 
@@ -88,8 +89,8 @@ const calendarShellClass = {
         [&_.react-datepicker__current-month]:text-sm
         [&_.react-datepicker__current-month]:font-bold
         [&_.react-datepicker__current-month]:capitalize
-        [&_.react-datepicker__current-month]:text-slate-100
-        [&_.react-datepicker__day-name]:text-slate-500
+        [&_.react-datepicker__current-month]:!text-slate-100
+        [&_.react-datepicker__day-name]:!text-slate-500
         [&_.react-datepicker__day-name]:!w-[14.28%]
         [&_.react-datepicker__day-name]:!m-0
         [&_.react-datepicker__day]:!text-slate-100
@@ -116,7 +117,7 @@ const calendarShellClass = {
         [&_.react-datepicker__day--disabled]:!cursor-not-allowed
         [&_.react-datepicker__day--excluded]:!text-slate-600
         [&_.react-datepicker__day--excluded]:!opacity-45
-        [&_.react-datepicker__navigation-icon::before]:border-slate-400
+        [&_.react-datepicker__navigation-icon::before]:!border-slate-400
         [&_.react-datepicker__month-container]:!float-none
         [&_.react-datepicker__month-container]:!w-full
         [&_.react-datepicker__month]:!m-0
@@ -141,11 +142,11 @@ const calendarShellClass = {
         [&_.react-datepicker__current-month]:text-sm
         [&_.react-datepicker__current-month]:font-bold
         [&_.react-datepicker__current-month]:capitalize
-        [&_.react-datepicker__current-month]:text-slate-900
-        [&_.react-datepicker__day-name]:text-slate-500
+        [&_.react-datepicker__current-month]:!text-slate-900
+        [&_.react-datepicker__day-name]:!text-slate-500
         [&_.react-datepicker__day-name]:!w-[14.28%]
         [&_.react-datepicker__day-name]:!m-0
-        [&_.react-datepicker__day]:text-slate-800
+        [&_.react-datepicker__day]:!text-slate-800
         [&_.react-datepicker__day]:!w-[14.28%]
         [&_.react-datepicker__day]:!m-0
         [&_.react-datepicker__day]:leading-9
@@ -217,10 +218,11 @@ export default function BookingCalendar({
         <div className="space-y-3">
             {isChecking ? (
                 <div
-                    className={`text-center text-xs ${
+                    className={`flex items-center justify-center gap-2 text-xs ${
                         palette === "dark" ? "text-slate-400" : "text-slate-600"
                     }`}
                 >
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     Verificando disponibilidad…
                 </div>
             ) : null}

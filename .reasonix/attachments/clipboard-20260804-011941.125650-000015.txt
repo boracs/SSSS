@@ -1,0 +1,105 @@
+Modo: Agent. Solo frontend del alquiler de tablas.
+
+OBJETIVO
+Aplicar hasta 6 parches de UI en el flujo público de alquiler. La tarea 1 es condicional: si el supuesto no se confirma, [SALTADA] sin penalización.
+
+ALCANCE
+- Solo los archivos del pre-vuelo.
+- No tocar backend, Stripe, rutas, migraciones, modelos.
+- No modificar RentalHourPicker (salvo que la tarea 0 lo lea para verificar usos de BookingCalendar).
+- No cambiar colores globales ni el theme de Tailwind; solo tokens ya existentes.
+- No tocar lógica de precios, disponibilidad ni pago.
+- No añadir navegación extra en Show.jsx (ya tiene BackButton + Breadcrumbs).
+
+PRE-VUELO (leer antes de tocar nada)
+1. `resources/js/components/SurfboardBookingSection.jsx`
+2. `resources/js/components/Rentals/SurfboardPublicDetail.jsx`
+3. `resources/js/Pages/Rentals/Surfboards/Index.jsx`
+4. `resources/js/Pages/Rentals/Surfboards/Show.jsx`
+5. `resources/js/components/BookingCalendar.jsx`
+6. `resources/js/lib/surfboardPublicDisplay.js`
+7. `tailwind.config.js` — confirmar token `s4` (DEFAULT `#0f5f74`)
+
+HECHOS DEL CÓDIGO (no contradecir)
+- `SurfboardPublicDetail` monta `SurfboardBookingSection` con `embedded` → `tone` siempre `"dark"` hoy.
+- Únicos call sites de `BookingCalendar`: `SurfboardBookingSection` (`tone={tone}`) y `RentalHourPicker` (`tone="dark"`).
+- Default del componente: `tone = "light"`, pero en runtime actual no hay call site light.
+- `Show.jsx`: fondo dark (`from-slate-950…`). Ya tiene vuelta al catálogo.
+- `formatRentalEur(value)` → string `"X,XX €"` o `null` (nunca `""`).
+- `catalogFromPriceLabel(priceSchema)` → string largo tipo `"desde 10,00 € / 1 día"` o `null`. Para badge corto NO pegar el string completo.
+
+TAREAS (en este orden)
+
+0) Gate de la tarea 1
+   Busca call sites de `<BookingCalendar`.
+   Criterio [SALTADA]: ningún call site pasa `tone="light"` literal, y el único path vivo de alquiler resuelve `tone` a `"dark"` porque `embedded` es siempre true.
+   Si se cumple → marca tarea 1 como [SALTADA] y pasa a la 2.
+   No “actives” la 1 solo porque el default del componente sea `"light"`.
+
+1) [CONDICIONAL] BookingCalendar — contraste light
+   Solo si la 0 encontró un call site light real.
+   En palette light (`day--in-range` y total estimado): si `text-s4` se lee bien, no tocar.
+   Si por herencia/variante no se ve → sustituir solo esas clases light por `text-cyan-700`.
+   No tocar palette dark. No asumas que falta `s4` en Tailwind.
+
+2) Mode tabs adaptativos — SurfboardBookingSection.jsx (parche preventivo)
+   Hoy solo se usa `embedded=true`; igual cierra el prop.
+   Extrae clases de MODE_TABS a `tabClass` / `tabActiveClass` (mismo patrón que `fieldClass` / `wrapperClass`):
+   - `embedded === true` → clases actuales (no cambiar look).
+   - `embedded === false` → inactivo `bg-white text-slate-700 ring-slate-200 hover:bg-slate-50`; activo `bg-cyan-600 text-white ring-cyan-500 shadow-md`.
+   No cambiar `handleModeChange` ni la data de `MODE_TABS`.
+
+3) Botones "Reservar" con precio — SurfboardBookingSection.jsx
+   `const reserveLabel = formatRentalEur(activeWindow?.totalPrice);`
+   Texto del botón:
+   - si `hasValidSelection && reserveLabel` → `Reservar por ${reserveLabel}`
+   - si no → `Reservar`
+   Aplica en AMBOS:
+   - botón principal que abre el formulario (`!formOpen`)
+   - botón sticky móvil (fixed bottom)
+   No inventes otro formateo.
+
+4) Ocultar "Ver ficha" en desktop — Index.jsx
+   En el `<Link>` "Ver ficha" de cada tarjeta: añade `lg:hidden` a className.
+   Visible en <lg; oculto en ≥lg.
+   PROHIBIDO `hidden lg:hidden` (oculta siempre).
+
+5) Badge "Desde X€" — SurfboardPublicDetail.jsx
+   Justo debajo del título "Tarifas", si `tariffs.length > 0`:
+   - Precio: reutiliza la misma fuente que el catálogo (`catalogFromPriceLabel` / packs visibles), pero muestra SOLO el importe corto, p. ej. `Desde {tariffs[0].formatted}` (primer pack visible de `buildVisibleTariffs`, coherente con el helper).
+   - No renderices el string completo de `catalogFromPriceLabel` (lleva " / 1 día").
+   - Estética: misma familia que las tarjetas de tarifa, más compacta (`text-xs`).
+
+6) Galería + tipografía — SurfboardPublicDetail.jsx
+   - Imagen principal: `object-cover` → `object-contain` (no thumbnails).
+   - Cabeceras "Especificaciones", "Tarifas" y "Cómo funciona": `text-[10px]` → `text-[11px]`.
+   - No toques otros `text-[10px]` del componente.
+
+FUERA DE ALCANCE
+- Lógica de precios/calendario/disponibilidad/Stripe/backend/rutas/migraciones.
+- RentalHourPicker (excepto lectura en tarea 0).
+- BookingCalendar salvo tarea 1 condicional.
+- Refactors cosméticos fuera de estas tareas.
+- Segundo link "Volver al catálogo" en Show.
+
+FORMATO DE SALIDA
+1. Por cada archivo tocado: ruta + diff mínimo.
+2. Sin prosa entre archivos.
+3. Al final, checklist (cumplido / no cumplido / saltada), una línea cada ítem.
+4. Si un supuesto del prompt choca con el código: prioriza el código y anótalo en 1 línea.
+
+CRITERIOS DE ACEPTACIÓN
+- [ ] Tarea 1: ejecutada solo con call site light real, o marcada [SALTADA].
+- [ ] Mode tabs: dark intacto con `embedded`; light definido para `embedded=false`.
+- [ ] Ambos "Reservar" muestran `Reservar por X,XX €` cuando hay selección válida y `formatRentalEur` ≠ null.
+- [ ] "Ver ficha" con `lg:hidden` (no `hidden lg:hidden`).
+- [ ] Badge corto `Desde …` bajo Tarifas; sin sufijo " / 1 día".
+- [ ] Imagen principal `object-contain`; cabeceras de sección a `text-[11px]`.
+- [ ] Show sin navegación duplicada.
+- [ ] Cero cambios backend / Stripe / rutas / lógica de reserva.
+
+AUTONOMÍA
+- Decide clases Tailwind concretas dentro de tokens ya usados en el archivo.
+- Si un número de línea no coincide, busca por patrón; no inventes archivos.
+- No preguntes para decisiones de estilo dentro de lo especificado.
+- Pregunta solo si un parche exige tocar algo fuera de alcance.

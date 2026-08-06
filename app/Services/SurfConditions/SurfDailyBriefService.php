@@ -36,6 +36,7 @@ final class SurfDailyBriefService
 
     public function __construct(
         private readonly OpenMeteoMarineClient $marineClient,
+        private readonly EuskalmetSeaForecastClient $euskalmet,
         private readonly SurfEnergyCalculator $energyCalculator,
         private readonly SurfLevelRecommender $levelRecommender,
         private readonly GoogleAIService $googleAI,
@@ -461,6 +462,16 @@ final class SurfDailyBriefService
         $lines = array_merge($lines, array_map($this->formatSlotForAI(...), $afternoon));
         $lines[] = '';
         $lines[] = $this->formatTideEventsForAI($day);
+        $euskalmetDay = $this->euskalmet->dayByDate($day->date);
+        if ($euskalmetDay?->forecastTextEs) {
+            $lines[] = 'Parte marítimo Euskalmet (costa vasca): '.$euskalmetDay->forecastTextEs;
+            if ($euskalmetDay->waveHeightM !== null) {
+                $lines[] = sprintf('Altura de ola diaria Euskalmet (orientativa): %.1f m.', $euskalmetDay->waveHeightM);
+            }
+            if ($euskalmetDay->waterTemperature !== null) {
+                $lines[] = 'Temperatura del agua Euskalmet: '.$euskalmetDay->waterTemperature.' °C.';
+            }
+        }
         $lines[] = '';
         $lines[] = sprintf(
             'Snapshot ahora mismo: ola %.1f m/%.1f s dirección %d°, viento %.0f km/h dirección %d°, energía interna "%s", nivel recomendado por el sistema (orientativo): %s.',
@@ -508,7 +519,7 @@ final class SurfDailyBriefService
             $day->tideEvents,
         );
 
-        return 'Marea hoy (estimada): '.implode(' · ', $parts).'.';
+        return 'Marea hoy (Euskalmet / Open Data Euskadi; fallback Open-Meteo): '.implode(' · ', $parts).'.';
     }
 
     private function formatSnapshotOnlyForAI(SurfConditionsSnapshotDto $snapshot, string $level, string $energyLabel): string

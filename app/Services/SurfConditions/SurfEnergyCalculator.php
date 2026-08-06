@@ -7,21 +7,19 @@ namespace App\Services\SurfConditions;
 use App\DTOs\SurfConditions\SurfConditionsSnapshotDto;
 
 /**
- * Energía / potencia de ola para surf (convención de apps de previsión):
+ * Energía / potencia de ola alineada con la convención Surf-Forecast / apps:
  *
- *   P ≈ 0.5 × Hs² × Tp     [kW/m]  (= kJ/s por metro de frente)
+ *   kJ ≈ factor × 0.5 × H_ft² × T
  *
- * con Hs en **metros**. Es la aproximación práctica de la potencia Airy
- * (ρg²Hs²Tp/(64π) ≈ 0.49·Hs²·Tp) que usan Surfline / Surf-Forecast.
+ * con H en pies. Con factor = 2.4 y los mismos H/T que publica SF, el kJ
+ * coincide en periodo corto (p. ej. 2.1 m / 6 s → 341). Ver
+ * docs/surf-conditions/SURFFORECAST_CALIBRATION_DIAG.md.
  *
- * El número entero de UI ({@see self::energyKj}), etiquetado "kJ" como en las
- * apps, indexa la misma forma pero con Hs en **pies**, multiplicado por
- * {@see config('services.zurriola_surf.energy_kj_calibration_factor')} (~2.4)
- * para acercar el orden de magnitud a la convención tipo Surf-Forecast en
- * periodo corto (ver docs/surf-conditions/SURFFORECAST_CALIBRATION_DIAG.md).
- * No es un dato oficial de Surf-Forecast: fuente de oleaje = Open-Meteo.
+ * Open-Meteo en Zurriola suele devolver Hs menor que SF: se aplica
+ * `energy_kj_height_scale` solo al cálculo de energía (no altera la columna
+ * de altura mostrada). En periodo largo SF suma más punch → `period_boost`.
  *
- * Además: índice verbal interno S4 ({@see self::indexForValues}).
+ * Potencia física (kW/m) sigue siendo 0.5 × Hs_m² × T, sin calibración UI.
  */
 final class SurfEnergyCalculator
 {
@@ -84,17 +82,43 @@ final class SurfEnergyCalculator
     }
 
     /**
-     * Índice UI "kJ" (convención tipo apps / SF): 0.5 × H_ft² × T × calibration_factor.
+     * Índice UI "kJ" alineado a Surf-Forecast:
+     * round(factor × periodBoost × 0.5 × (H_m×heightScale×3.28084)² × T).
      */
     public function energyKj(float $heightM, float $periodS): int
     {
         $heightM = max(0.0, $heightM);
         $periodS = max(0.0, $periodS);
-        $heightFt = $heightM * self::METERS_TO_FEET;
+
+        $heightScale = max(0.0, (float) config('services.zurriola_surf.energy_kj_height_scale', 1.52));
         $factor = max(0.0, (float) config('services.zurriola_surf.energy_kj_calibration_factor', 2.4));
+        $periodBoost = $this->periodBoost($periodS);
+
+        $heightFt = $heightM * $heightScale * self::METERS_TO_FEET;
         $raw = self::APP_POWER_COEFFICIENT * ($heightFt ** 2) * $periodS;
 
-        return (int) max(0, round($raw * $factor));
+        return (int) max(0, round($raw * $factor * $periodBoost));
+    }
+
+    /**
+     * Boost SF en periodo largo (diag: 1.6 m/10 s → SF 527 vs raw×2.4 ≈ 331).
+     * 1.0 si T ≤ 6 s; interpola hasta `period_boost_max` si T ≥ 10 s.
+     */
+    public function periodBoost(float $periodS): float
+    {
+        $periodS = max(0.0, $periodS);
+        $boostMax = max(1.0, (float) config('services.zurriola_surf.energy_kj_period_boost_max', 1.6));
+        $tShort = 6.0;
+        $tLong = 10.0;
+
+        if ($periodS <= $tShort) {
+            return 1.0;
+        }
+        if ($periodS >= $tLong) {
+            return $boostMax;
+        }
+
+        return 1.0 + ($boostMax - 1.0) * (($periodS - $tShort) / ($tLong - $tShort));
     }
 
     /**

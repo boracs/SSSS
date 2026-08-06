@@ -46,9 +46,24 @@ Añadir/actualizar una fila en **Estado actual**:
 
 | Fecha | Tarea | Quién | Estado | Archivos afectados |
 |---|---|---|---|---|
-| — | — | — | — | — |
+| 2026-08-06 | Distinguir "sin plan" (nunca pagó) de "vencido" en vigencia | Cursor | HECHO | `TaquillaMembershipService.php`, `Vigencia.jsx` |
+| 2026-08-06 | Fase 3 — labels estado pago admin (Pagado/Por revisar/No válido) | Cursor | HECHO | `resources/js/Pages/Admin/Taquillas/Vigencia.jsx` |
+| 2026-08-06 | Demo sandbox recibo Stripe (sin API real) | Cursor | HECHO | `SandboxRandomDemoSeeder.php`, `public/demo/recibo-stripe-sandbox.html` |
+| 2026-08-06 | Fase 1 — unificar recibos Stripe en historial admin taquilla | Cursor | HECHO | `TaquillaMembershipService.php`, `Vigencia.jsx` |
+| 2026-08-06 | Auditoría Fase 0 — recibos/justificantes taquilla | Cursor | HECHO (solo lectura) | ninguno (auditoría) |
+| 2026-08-06 | Fix semáforo rojo con días restantes positivos (vigencia) | Cursor | HECHO | `TaquillaMembershipService.php`, `Vigencia.jsx` |
+| 2026-08-06 | Refinar UI admin Vigencia taquillas (color/densidad) | Cursor | HECHO | `resources/js/Pages/Admin/Taquillas/Vigencia.jsx` |
 
 ## Última actividad
 
+- **2026-08-06** — Cursor: añadidos tests feature `tests/Feature/Taquilla/VigenciaPayloadTest.php` (7 casos: activo, vencido, activo por pago futuro, sin plan, pago pendiente/rechazado no cuenta, prepago tras vencido, exclusión sin taquilla). Suite completa: 142 passed. HECHO.
+- **2026-08-06** — Cursor: `buildVigenciaPayload()` distingue ahora `estado: 'sin plan'` (socio con taquilla asignada pero cero pagos confirmados nunca) de `estado: 'vencido'` (tuvo cobertura y caducó). En `Vigencia.jsx`: `rowUrgency` trata ambos como urgentes (mismo rojo/borde), pero `daysLabel` ya muestra "Sin plan" en vez de "Vencido"; también se ajustó el mensaje de WhatsApp y el tooltip de aviso de baja para no decir "ha vencido el sin fecha" en estos casos. Verificado contra BD real: 6 socios afectados (ej. Cesar Dopico, taquilla #0), antes mal etiquetados como "Vencido". HECHO.
+- **2026-08-06** — Cursor: Fase 3 — `paymentStatusLabel` en `Vigencia.jsx` (admin) ahora dice "Pagado / Por revisar / No válido" en vez de "Confirmado / Pendiente / Rechazado"; `paymentMethodLabel` simplificado para no duplicar/contradecir el estado (siempre muestra el método real, no un status). Cliente (`PlanesTaquillasClient.jsx`) no se toca: ya usa etiquetas contextuales propias (En vigor/Preparado/Finalizado). HECHO.
+- **2026-08-06** — Cursor: añadido pago demo (tarjeta) + `PaymentReceipt` simulado en `SandboxRandomDemoSeeder` para el cliente #4 (`$clients[3]`), con `receipt_url` apuntando a página estática `public/demo/recibo-stripe-sandbox.html`. Permite probar "Ver recibo" (abre en pestaña nueva) sin credenciales reales de Stripe. Requiere re-ejecutar `php artisan db:seed --class=SandboxRandomDemoSeeder`. HECHO.
+- **2026-08-06** — Cursor: Fase 1 recibos taquilla — `userPaymentHistory()` ahora mezcla recibo Stripe (`PaymentReceiptAccessService`) + justificante manual, igual que `buildClientIndex()`. En `Vigencia.jsx` (admin), "Ver recibo/Ver" abre el recibo Stripe en pestaña nueva (bloquea iframe por `X-Frame-Options`) y el justificante manual sigue en el modal embebido. HECHO.
+- **2026-08-06** — Cursor: auditoría Fase 0 de recibos/justificantes de taquilla (sin cambios de código). Gap encontrado: `TaquillaMembershipService::userPaymentHistory()` (usado por admin en `Vigencia.jsx`) no mezcla recibos Stripe vía `PaymentReceiptAccessService`, a diferencia de `buildClientIndex()` y `enrichRegistryRowsWithReceipts()` que sí lo hacen. Propuesta: Fase 1 = unificar ese método. Ver informe completo en el chat.
+- **2026-08-06** — Cursor: fix vigencia — no pintar rojo si `dias_restantes > 0`; backend ya no marca `vencido` cuando el fin del periodo (o prepago futuro) sigue vigente. HECHO.
+- **2026-08-06** — Cursor: refinamiento UI `Vigencia.jsx` (semáforo solo en urgentes, barras suaves, WhatsApp outline, densidad py-2, badges muted). HECHO.
+- **2026-08-04** — Reasonix: creado `docs/COMPETENCIA_SEO_DONOSTIA.md` (análisis competitivo de escuelas de surf de Donostia + oportunidades SEO + pendientes: análisis de keywords de la competencia y plan de rebrand/SEO). No toca código de la app. PENDIENTE para el dueño (recordatorio a 3 días: 2026-08-07).
 - **2026-06-18** — Reasonix: creada infraestructura del taller de prompts (`docs/taller-prompts/PROTOCOLO.md`, `REGISTRO.md`, `COORDINACION.md`) y actualizado `docs/PROJECT_TREE_FOR_GEMINI.md`. HECHO.
 - **2026-08-03** — Reasonix: configurado túnel Cloudflare (named + quick), creado túnel `masquesurf` con credenciales en `~/.cloudflared/`, config.yml apuntando a `sansebastiansurfschool.eu`, CNAME enrutado, nameservers cambiados en DonDominio (pendiente propagación DNS). Revertido a modo desarrollo normal. HECHO.

@@ -1,13 +1,13 @@
-import React, { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+    ArrowRight,
     ArrowUp,
     CalendarDays,
     ChevronLeft,
     ChevronRight,
     Clock,
     Gauge,
-    Info,
     Sparkles,
     TrendingDown,
     TrendingUp,
@@ -26,7 +26,7 @@ const TONE_TEXT = {
 };
 
 /** Escala energía/kJ: toneKey viene del backend (`energyTone`). Solo clases Tailwind. */
-const ENERGY_TONE_PILL = {
+export const ENERGY_TONE_PILL = {
     e0: "bg-transparent text-slate-400 ring-transparent",
     e1: "bg-emerald-500/10 text-emerald-200/80 ring-emerald-400/15",
     e2: "bg-emerald-500/15 text-emerald-200/90 ring-emerald-400/25",
@@ -44,7 +44,7 @@ const ENERGY_TONE_PILL = {
     e14: "bg-rose-600/65 text-white ring-rose-200/60",
 };
 
-function DirectionArrow({ degrees, className = "" }) {
+export function DirectionArrow({ degrees, className = "" }) {
     if (degrees === null || degrees === undefined) return null;
     return (
         <ArrowUp
@@ -61,11 +61,11 @@ const DEFAULT_METRIC_HELP = {
     periodo:
         "Qué es: segundos entre una ola y la siguiente.\n\nEn Zurriola: 6–9 s mar de viento (fofas); 10–13 s óptimo (mar de fondo ordenado); ≥14 s mucha energía de fondo y más riesgo de cerrazón en arena de verano.",
     energia:
-        "Qué es: índice de punch del oleaje (convención tipo apps), sobre Open-Meteo — no es un dato oficial de Surf-Forecast.\n\nFórmula: kJ ≈ factor × 0.5 × H² × T (H en pies; factor S4 ≈ 2.4). Usamos ola combinada (wave).\n\nUmbrales S4 (orientativos): <50 intermedio escaso / avanzado no merece la pena; ~70–80 avanzado ya posible; ≥100 pueden surfear todos.\n\nEl color del valor indica intensidad relativa del oleaje (kJ).",
+        "Qué es: índice de punch del oleaje alineado a Surf-Forecast, calculado sobre Open-Meteo (no es un feed oficial de SF).\n\nFórmula: kJ ≈ 2.4 × boost(T) × 0.5 × (H×1.52)² × T (H en pies). La escala 1.52 corrige Hs OM→SF en Zurriola; boost sube en periodo largo. La columna de altura sigue siendo Open-Meteo sin escalar.\n\nUmbrales S4 (orientativos): <50 intermedio escaso; ~70–80 avanzado posible; ≥100 pueden surfear todos.",
     viento:
         "Qué es: km/h + flecha (de dónde sopla).\n\nZurriola: sur = offshore (limpia); norte = onshore (pica). Colores: verde flojo, amarillo medio, rojo fuerte.",
     marea:
-        "Bajo cada día: ~2 altas y ~2 bajas con flecha, hora y altura. Entre paréntesis (+/− Xm) cuánto subió o bajó desde el extremo anterior.\n\nCoeficientes del día: Sube +Xm (media de llenados) y Baja −Xm (media de vaciados). Con poca energía cualquier marea; con más fuerza, media-alta o espigón.",
+        "Fuente preferente: Euskalmet (Open Data Euskadi) — pleamar/bajamar con minutos. Si falta, estimación Open-Meteo.\n\nBajo cada día: ~2 altas y ~2 bajas con flecha, hora y altura. Entre paréntesis (+/− Xm) cuánto subió o bajó desde el extremo anterior.\n\nCoeficientes del día: Sube +Xm (media de llenados) y Baja −Xm (media de vaciados).",
 };
 
 function HelpText({ text }) {
@@ -184,20 +184,14 @@ function MetricInfo({ label, icon: Icon, help, compact = false }) {
     }, [open]);
 
     return (
-        <span ref={wrapRef} className={`inline-flex min-w-0 items-center ${compact ? "gap-0.5 md:gap-1.5" : "gap-1 md:gap-1.5"}`}>
-            <Icon className={`shrink-0 text-cyan-400 ${compact ? "h-3 w-3 md:h-3.5 md:w-3.5" : "h-3.5 w-3.5"}`} />
-            <span className="min-w-0 truncate">{displayLabel}</span>
+        <span ref={wrapRef} className="block w-full min-w-0">
             <button
                 ref={buttonRef}
                 type="button"
-                className={`inline-flex shrink-0 items-center justify-center rounded-full border transition ${
-                    compact ? "h-3.5 w-3.5 md:h-4 md:w-4" : "h-4 w-4"
-                } ${
-                    open
-                        ? "border-cyan-300 bg-cyan-500/25 text-cyan-100"
-                        : "border-cyan-400/40 text-cyan-300 hover:border-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-100"
+                className={`group inline-flex w-full min-w-0 items-center text-left transition ${
+                    compact ? "gap-1" : "gap-1.5"
                 }`}
-                aria-label={`Qué es ${label}`}
+                aria-label={`Qué es ${label}. Pulsa para ver la explicación.`}
                 aria-expanded={open}
                 aria-controls={panelId}
                 onMouseEnter={openPanel}
@@ -214,7 +208,33 @@ function MetricInfo({ label, icon: Icon, help, compact = false }) {
                     }
                 }}
             >
-                <Info className={compact ? "h-2 w-2 md:h-2.5 md:w-2.5" : "h-2.5 w-2.5"} strokeWidth={2.5} />
+                <Icon
+                    className={`shrink-0 text-cyan-400 ${
+                        compact ? "h-3 w-3 md:h-3.5 md:w-3.5" : "h-3.5 w-3.5"
+                    }`}
+                    aria-hidden="true"
+                />
+                <span
+                    className={`min-w-0 flex-1 truncate font-medium tracking-tight underline decoration-cyan-400/40 underline-offset-2 transition group-hover:text-cyan-100 group-hover:decoration-cyan-300 ${
+                        open ? "text-cyan-100 decoration-cyan-300" : "text-slate-400"
+                    }`}
+                >
+                    {displayLabel}
+                </span>
+                <span
+                    className={`ml-auto inline-flex shrink-0 items-center justify-center rounded-full border font-semibold leading-none transition ${
+                        compact
+                            ? "h-4 w-4 text-[9px] md:h-[1.125rem] md:w-[1.125rem] md:text-[10px]"
+                            : "h-[1.125rem] w-[1.125rem] text-[10px]"
+                    } ${
+                        open
+                            ? "border-cyan-300 bg-cyan-500/30 text-cyan-50"
+                            : "border-cyan-400/55 bg-cyan-500/15 text-cyan-200 group-hover:border-cyan-300 group-hover:bg-cyan-500/25 group-hover:text-cyan-50"
+                    }`}
+                    aria-hidden="true"
+                >
+                    ?
+                </span>
             </button>
             {open && helpText
                 ? createPortal(
@@ -242,7 +262,7 @@ function MetricInfo({ label, icon: Icon, help, compact = false }) {
 function TideDayCell({ events, riseM, fallM, compact }) {
     if (!events?.length) {
         return (
-            <p className={compact ? "text-[9px] text-slate-500 md:text-[11px]" : "text-[11px] text-slate-500"}>
+            <p className={compact ? "text-[8px] text-slate-500 md:text-[11px]" : "text-xs text-slate-500 md:text-[11px]"}>
                 Sin datos de marea
             </p>
         );
@@ -257,7 +277,7 @@ function TideDayCell({ events, riseM, fallM, compact }) {
                         <div
                             key={`${event.hourLabel}-${idx}`}
                             className={`inline-flex min-w-0 items-center justify-center gap-0.5 whitespace-nowrap md:gap-1 ${
-                                compact ? "text-[9px] md:text-[11px]" : "text-[11px]"
+                                compact ? "text-[8px] md:text-[11px]" : "text-xs md:text-[11px]"
                             }`}
                         >
                             {isHigh ? (
@@ -271,13 +291,19 @@ function TideDayCell({ events, riseM, fallM, compact }) {
                                     aria-hidden
                                 />
                             )}
-                            <span className={`font-semibold ${isHigh ? "text-cyan-100" : "text-slate-300"}`}>
+                            <span className={`font-medium ${isHigh ? "text-cyan-200/90" : "text-slate-400"}`}>
                                 {isHigh ? "Alta" : "Baja"}
                             </span>
-                            <span className="tabular-nums text-slate-200">{event.hourLabel}</span>
-                            <span className="tabular-nums text-slate-500">
-                                {event.heightM > 0 ? "+" : ""}
-                                {event.heightM}m
+                            <span className="font-semibold tabular-nums text-slate-100">{event.hourLabel}</span>
+                            <span className="font-medium tabular-nums text-slate-500">
+                                {Number(event.heightM).toFixed(2)}m
+                                {event.deltaM != null && Number.isFinite(Number(event.deltaM)) ? (
+                                    <span className="text-slate-600">
+                                        {" "}
+                                        ({Number(event.deltaM) > 0 ? "+" : ""}
+                                        {Number(event.deltaM).toFixed(2)}m)
+                                    </span>
+                                ) : null}
                             </span>
                         </div>
                     );
@@ -286,8 +312,8 @@ function TideDayCell({ events, riseM, fallM, compact }) {
 
             {(riseM !== null && riseM !== undefined) || (fallM !== null && fallM !== undefined) ? (
                 <div
-                    className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-t border-white/10 font-semibold uppercase tracking-wide md:gap-x-3 ${
-                        compact ? "pt-1 text-[8px] md:pt-1.5 md:text-[10px]" : "pt-1.5 text-[10px]"
+                    className={`flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 border-t border-white/10 font-medium uppercase tracking-wide md:gap-x-3 ${
+                        compact ? "pt-1 text-[7px] md:pt-1.5 md:text-[10px]" : "pt-1.5 text-[11px] md:text-[10px]"
                     }`}
                 >
                     {riseM !== null && riseM !== undefined ? (
@@ -321,8 +347,18 @@ function SlotCells({ days, render, cellClass }) {
     );
 }
 
-function ForecastSlider({ children }) {
+/**
+ * Slider horizontal: drag-to-scroll, flechas y difuminado en bordes.
+ * Sin escala/fisheye — cards uniformes. Reutilizado por la tabla 9 días
+ * y por {@see ./SurfDetailedForecastSlider}.
+ *
+ * @param {((el: HTMLElement | null) => void) | { current: HTMLElement | null }} [scrollerRef]
+ * @param {(event: Event) => void} [onScroll]
+ */
+export function ForecastSlider({ children, scrollerRef: scrollerRefProp = null, onScroll = null }) {
     const scrollerRef = useRef(null);
+    const onScrollRef = useRef(onScroll);
+    onScrollRef.current = onScroll;
     const dragRef = useRef({
         active: false,
         moved: false,
@@ -333,6 +369,18 @@ function ForecastSlider({ children }) {
     const [canLeft, setCanLeft] = useState(false);
     const [canRight, setCanRight] = useState(false);
     const [dragging, setDragging] = useState(false);
+
+    const assignScrollerRef = useCallback(
+        (node) => {
+            scrollerRef.current = node;
+            if (typeof scrollerRefProp === "function") {
+                scrollerRefProp(node);
+            } else if (scrollerRefProp && typeof scrollerRefProp === "object") {
+                scrollerRefProp.current = node;
+            }
+        },
+        [scrollerRefProp]
+    );
 
     const updateEdges = () => {
         const el = scrollerRef.current;
@@ -346,8 +394,13 @@ function ForecastSlider({ children }) {
         const el = scrollerRef.current;
         if (!el) return undefined;
 
+        const handleScroll = (event) => {
+            updateEdges();
+            onScrollRef.current?.(event);
+        };
+
         updateEdges();
-        el.addEventListener("scroll", updateEdges, { passive: true });
+        el.addEventListener("scroll", handleScroll, { passive: true });
         window.addEventListener("resize", updateEdges);
 
         const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateEdges) : null;
@@ -407,7 +460,7 @@ function ForecastSlider({ children }) {
         el.addEventListener("click", onClickCapture, true);
 
         return () => {
-            el.removeEventListener("scroll", updateEdges);
+            el.removeEventListener("scroll", handleScroll);
             window.removeEventListener("resize", updateEdges);
             observer?.disconnect();
             el.removeEventListener("pointerdown", onPointerDown);
@@ -458,11 +511,14 @@ function ForecastSlider({ children }) {
             </button>
 
             <div
-                ref={scrollerRef}
+                ref={assignScrollerRef}
                 className={`forecast-slider-scroll overflow-x-auto rounded-2xl border border-white/10 select-none ${
                     dragging ? "cursor-grabbing" : "cursor-grab"
                 }`}
-                style={{ scrollBehavior: dragging ? "auto" : "smooth", touchAction: "pan-y" }}
+                style={{
+                    scrollBehavior: dragging ? "auto" : "smooth",
+                    touchAction: "pan-x",
+                }}
             >
                 {children}
             </div>
@@ -490,6 +546,8 @@ export default function SurfForecastTable({
     updatedAtHuman,
     signal = null,
     reactions = null,
+    onOpenFullForecast = null,
+    onOpenDetailedTimeline = null,
 }) {
     /** Solo afecta densidad en <md; en desktop se fuerza legibilidad vía clases md: */
     const [mobileDensity, setMobileDensity] = useState("compact");
@@ -529,69 +587,99 @@ export default function SurfForecastTable({
         ? "px-0.5 py-1.5 md:px-3 md:py-3"
         : "px-1.5 py-2 md:px-3 md:py-3";
     const slotMin = compact
-        ? "min-w-[1.65rem] md:min-w-[3.25rem]"
-        : "min-w-[2.35rem] md:min-w-[3.25rem]";
+        ? "min-w-[1.55rem] md:min-w-[3.25rem]"
+        : "min-w-[2.5rem] md:min-w-[3.25rem]";
     const tableMin = compact
-        ? "min-w-[520px] md:min-w-[920px]"
-        : "min-w-[680px] md:min-w-[920px]";
-    const labelPad = compact ? "p-1.5 md:p-3" : "p-2 md:p-3";
-    const metricText = compact ? "text-[10px] md:text-xs" : "text-[11px] md:text-xs";
-    const valueText = compact ? "text-[11px] md:text-sm" : "text-xs md:text-sm";
-    const iconSm = compact ? "h-3 w-3 md:h-4 md:w-4" : "h-3.5 w-3.5 md:h-4 md:w-4";
+        ? "min-w-[500px] md:min-w-[920px]"
+        : "min-w-[720px] md:min-w-[920px]";
+    const labelPad = compact ? "p-1 md:p-3" : "p-2.5 md:p-3";
+    // Móvil: Compacto un pelín más denso; Cómodo más legible. md+ igual en ambos.
+    const metricText = compact ? "text-[9px] md:text-xs" : "text-[12px] md:text-xs";
+    const valueText = compact
+        ? "text-[10px] font-semibold tabular-nums md:text-sm"
+        : "text-[13px] font-semibold tabular-nums md:text-sm";
+    const tableText = compact ? "text-[10px] md:text-sm" : "text-[13px] md:text-sm";
+    const dayHeadText = compact
+        ? "text-[9px] md:text-xs"
+        : "text-[11px] md:text-xs";
+    const hourHeadText = compact
+        ? "text-[8px] md:text-[11px]"
+        : "text-[11px] md:text-[11px]";
+    const labelHeadText = compact
+        ? "text-[9px] md:text-[11px]"
+        : "text-[11px] md:text-[11px]";
+    const iconSm = compact ? "h-2.5 w-2.5 md:h-4 md:w-4" : "h-3.5 w-3.5 md:h-4 md:w-4";
 
     return (
         <div className="rounded-3xl border border-cyan-500/20 bg-slate-900/60 p-3 shadow-xl backdrop-blur-sm sm:p-5 md:p-7">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-3 sm:mb-4">
-                <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-cyan-200">
-                        <CalendarDays className="h-3.5 w-3.5" />
-                        Previsión {days.length} días · Zurriola
+            <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                    <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200 sm:px-3 sm:text-xs">
+                        <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">Previsión {days.length} días · Zurriola</span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400 sm:text-sm">
-                        Flechas o desliza · pulsa la <span className="text-cyan-300">i</span> para el criterio del spot
-                    </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                    <div
-                        className="inline-flex rounded-lg border border-white/10 bg-slate-950/70 p-0.5 md:hidden"
-                        role="group"
-                        aria-label="Densidad de la previsión"
-                    >
+
+                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                         <button
                             type="button"
-                            aria-pressed={compact}
-                            onClick={() => setMobileDensity("compact")}
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                                compact
-                                    ? "bg-cyan-500/25 text-cyan-100"
-                                    : "text-slate-400 hover:text-slate-200"
-                            }`}
+                            onClick={() => onOpenDetailedTimeline?.()}
+                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-cyan-200 shadow-sm transition hover:bg-slate-900 sm:w-auto sm:px-3.5 sm:text-sm"
                         >
-                            Compacto
+                            <Clock className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                            <span className="truncate">Ver forecast al detalle</span>
                         </button>
                         <button
                             type="button"
-                            aria-pressed={!compact}
-                            onClick={() => setMobileDensity("comfy")}
-                            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                                !compact
-                                    ? "bg-cyan-500/25 text-cyan-100"
-                                    : "text-slate-400 hover:text-slate-200"
-                            }`}
+                            onClick={() => onOpenFullForecast?.()}
+                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-500 sm:w-auto sm:px-4 sm:text-sm"
                         >
-                            Cómodo
+                            <span className="truncate">Ver resumen por día</span>
+                            <ArrowRight className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
                         </button>
                     </div>
-                    <p className="text-[11px] text-slate-500">Horas de luz · cada 3h</p>
+                    <div className="flex items-center justify-between gap-2 md:hidden">
+                        <div
+                            className="inline-flex rounded-lg border border-white/10 bg-slate-950/70 p-0.5"
+                            role="group"
+                            aria-label="Densidad de la previsión"
+                        >
+                            <button
+                                type="button"
+                                aria-pressed={compact}
+                                onClick={() => setMobileDensity("compact")}
+                                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                                    compact
+                                        ? "bg-cyan-500/25 text-cyan-100"
+                                        : "text-slate-400 hover:text-slate-200"
+                                }`}
+                            >
+                                Compacto
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={!compact}
+                                onClick={() => setMobileDensity("comfy")}
+                                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                                    !compact
+                                        ? "bg-cyan-500/25 text-cyan-100"
+                                        : "text-slate-400 hover:text-slate-200"
+                                }`}
+                            >
+                                Cómodo
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <ForecastSlider>
-                <table className={`w-full border-collapse ${tableMin} ${compact ? "text-[11px] md:text-sm" : "text-xs md:text-sm"}`}>
+                <table className={`w-full border-collapse ${tableMin} ${tableText}`}>
                     <thead>
                         <tr>
                             <th
-                                className={`${labelSticky} z-30 bg-slate-950 ${labelPad} text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 md:text-[11px]`}
+                                className={`${labelSticky} z-30 bg-slate-950 ${labelPad} text-left font-medium uppercase tracking-wide text-slate-500 ${labelHeadText}`}
                             >
                                 &nbsp;
                             </th>
@@ -599,7 +687,7 @@ export default function SurfForecastTable({
                                 <th
                                     key={day.date}
                                     colSpan={day.slots.length}
-                                    className={`sticky top-0 z-20 border-l border-white/10 bg-slate-950 ${dayStickyLeft} px-1 py-1.5 text-center text-[10px] font-bold capitalize text-cyan-200 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:px-3 md:py-2 md:text-xs`}
+                                    className={`sticky top-0 z-20 border-l border-white/10 bg-slate-950 ${dayStickyLeft} px-1 py-1.5 text-center font-semibold capitalize tracking-tight text-cyan-200/90 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:px-3 md:py-2 ${dayHeadText}`}
                                 >
                                     {day.dayLabel}
                                 </th>
@@ -607,7 +695,7 @@ export default function SurfForecastTable({
                         </tr>
                         <tr>
                             <th
-                                className={`${labelSticky} z-30 bg-slate-950 ${labelPad} text-left text-[10px] font-semibold uppercase tracking-wide text-slate-500 md:text-[11px]`}
+                                className={`${labelSticky} z-30 bg-slate-950 ${labelPad} text-left font-medium uppercase tracking-wide text-slate-500 ${labelHeadText}`}
                             >
                                 Hora
                             </th>
@@ -615,7 +703,7 @@ export default function SurfForecastTable({
                                 day.slots.map((slot, idx) => (
                                     <th
                                         key={`${day.date}-${slot.time}`}
-                                        className={`bg-slate-950/90 ${cellPad} ${slotMin} text-center text-[9px] font-semibold tabular-nums text-slate-400 md:text-[11px] ${
+                                        className={`bg-slate-950/90 ${cellPad} ${slotMin} text-center font-medium tabular-nums text-slate-500 ${hourHeadText} ${
                                             idx === 0 ? "border-l border-white/10" : ""
                                         }`}
                                     >
@@ -627,7 +715,7 @@ export default function SurfForecastTable({
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         <tr>
-                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText} font-semibold text-slate-300`}>
+                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText}`}>
                                 <MetricInfo label="Oleaje" icon={Waves} help={help.oleaje} compact={compact} />
                             </td>
                             <SlotCells
@@ -636,25 +724,25 @@ export default function SurfForecastTable({
                                 render={(slot) => (
                                     <div className={`flex items-center justify-center gap-0.5 md:gap-1.5 ${valueText}`}>
                                         <DirectionArrow degrees={slot.waveDirectionDeg} className={`${iconSm} text-cyan-300`} />
-                                        <span className="font-bold tabular-nums text-white">{slot.waveHeightM}m</span>
+                                        <span className="text-white">{slot.waveHeightM}m</span>
                                     </div>
                                 )}
                             />
                         </tr>
                         <tr>
-                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText} font-semibold text-slate-300`}>
+                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText}`}>
                                 <MetricInfo label="Periodo" icon={Clock} help={help.periodo} compact={compact} />
                             </td>
                             <SlotCells
                                 days={days}
                                 cellClass={`${cellPad} ${slotMin}`}
                                 render={(slot) => (
-                                    <span className={`font-bold tabular-nums text-white ${valueText}`}>{slot.wavePeriodS}s</span>
+                                    <span className={`text-white ${valueText}`}>{slot.wavePeriodS}s</span>
                                 )}
                             />
                         </tr>
                         <tr>
-                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText} font-semibold text-slate-300`}>
+                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText}`}>
                                 <MetricInfo label="Energía/kJ" icon={Gauge} help={help.energia} compact={compact} />
                             </td>
                             <SlotCells
@@ -662,10 +750,10 @@ export default function SurfForecastTable({
                                 cellClass={`${cellPad} ${slotMin}`}
                                 render={(slot) => (
                                     <span
-                                        className={`inline-flex rounded-full font-bold ring-1 ${
+                                        className={`inline-flex rounded-full font-semibold tabular-nums ring-1 ${
                                             compact
-                                                ? "px-1 py-0 text-[9px] md:px-2.5 md:py-0.5 md:text-[12px]"
-                                                : "px-1.5 py-0.5 text-[10px] md:px-2.5 md:text-[12px]"
+                                                ? "px-1 py-0 text-[8px] md:px-2.5 md:py-0.5 md:text-[12px]"
+                                                : "px-1.5 py-0.5 text-[11px] md:px-2.5 md:py-0.5 md:text-[12px]"
                                         } ${ENERGY_TONE_PILL[slot.energyTone] || ENERGY_TONE_PILL.e0}`}
                                     >
                                         {slot.energyKj}
@@ -674,7 +762,7 @@ export default function SurfForecastTable({
                             />
                         </tr>
                         <tr>
-                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText} font-semibold text-slate-300`}>
+                            <td className={`${labelSticky} z-20 bg-slate-900 ${labelPad} ${metricText}`}>
                                 <MetricInfo label="Viento" icon={Wind} help={help.viento} compact={compact} />
                             </td>
                             <SlotCells
@@ -682,13 +770,19 @@ export default function SurfForecastTable({
                                 cellClass={`${cellPad} ${slotMin}`}
                                 render={(slot) => (
                                     <div
-                                        className={`flex items-center justify-center gap-0.5 font-bold md:gap-1 ${valueText} ${
+                                        className={`flex items-center justify-center gap-0.5 md:gap-1 ${valueText} ${
                                             TONE_TEXT[slot.windTone] || TONE_TEXT.green
                                         }`}
                                     >
                                         <DirectionArrow degrees={slot.windDirectionDeg} className={iconSm} />
-                                        <span className="tabular-nums">{slot.windSpeedKmh}</span>
-                                        <span className="text-[8px] font-medium opacity-70 md:text-[10px]">km/h</span>
+                                        <span>{slot.windSpeedKmh}</span>
+                                        <span
+                                            className={`font-normal opacity-60 ${
+                                                compact ? "text-[7px] md:text-[10px]" : "text-[9px] md:text-[10px]"
+                                            }`}
+                                        >
+                                            km/h
+                                        </span>
                                     </div>
                                 )}
                             />
@@ -697,7 +791,7 @@ export default function SurfForecastTable({
                     <tfoot>
                         <tr>
                             <td
-                                className={`${labelSticky} z-20 bg-slate-950 ${labelPad} text-[9px] font-semibold uppercase tracking-wide text-slate-500 md:text-[11px]`}
+                                className={`${labelSticky} z-20 bg-slate-950 ${labelPad} font-medium uppercase tracking-wide text-slate-500 ${labelHeadText}`}
                             >
                                 <MetricInfo label="Marea" icon={TrendingUp} help={help.marea} compact={compact} />
                             </td>
@@ -723,25 +817,28 @@ export default function SurfForecastTable({
             </ForecastSlider>
 
             {summary ? (
-                <div className={`mt-4 rounded-2xl border p-4 shadow-lg sm:mt-5 sm:p-5 md:p-6 ${signalMeta ? signalMeta.tableWrap : "border-transparent bg-white"}`}>
-                    <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-                        <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0f5f74]">
-                            <Sparkles className="h-3.5 w-3.5" />
-                            Parte S4 · Hoy
+                <div
+                    id="parte-s4-hoy"
+                    className={`mt-4 scroll-mt-24 rounded-2xl border p-4 shadow-lg sm:mt-5 sm:p-5 md:p-6 ${signalMeta ? signalMeta.tableWrap : "border-transparent bg-white"}`}
+                >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                        <div className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0f5f74]">
+                                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                                Parte S4 · Hoy
+                            </div>
+                            <span className="text-[11px] font-medium leading-none normal-case tracking-normal text-slate-500">
+                                (Actualizado {updatedAtHuman?.split(" ")[1] || "—"})
+                            </span>
                         </div>
-                        <div className="ml-auto flex max-w-[16rem] flex-col items-end gap-1.5 text-right sm:max-w-xs">
-                            <p className="text-[11px] leading-snug text-slate-500">
-                                Actualizado {updatedAtHuman?.split(" ")[1] || "—"} · Confirma con la webcam arriba antes de entrar
-                            </p>
-                            {signalMeta ? (
-                                <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}>
-                                    {signalMeta.badge}
-                                    {signal?.is_manual ? (
-                                        <span className="ml-1.5 opacity-80">· S4</span>
-                                    ) : null}
-                                </span>
-                            ) : null}
-                        </div>
+                        {signalMeta ? (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}>
+                                {signalMeta.badge}
+                                {signal?.is_manual ? (
+                                    <span className="ml-1.5 opacity-80">· S4</span>
+                                ) : null}
+                            </span>
+                        ) : null}
                     </div>
 
                     {signal?.note ? (
@@ -786,7 +883,10 @@ export default function SurfForecastTable({
                     <SurfBriefReactions initial={reactions} />
                 </div>
             ) : (
-                <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-slate-950/50 p-4 sm:mt-5 sm:p-5 md:p-6">
+                <div
+                    id="parte-s4-hoy"
+                    className="mt-4 scroll-mt-24 rounded-2xl border border-cyan-500/20 bg-slate-950/50 p-4 sm:mt-5 sm:p-5 md:p-6"
+                >
                     <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300/90">
                         <Sparkles className="h-3.5 w-3.5" />
                         Parte S4 · Hoy

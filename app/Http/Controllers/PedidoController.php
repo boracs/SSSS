@@ -101,19 +101,20 @@ class PedidoController extends Controller
 
             $pedido->update(['precio_total' => round($total, 2)]);
 
-            // Vaciar carrito del usuario
-            $user->carrito()->delete();
+            // El carrito se vacía solo tras crear la sesión Stripe (si falla, el cliente
+            // no pierde la cesta ni el stock queda “comido” sin pago).
 
             return $pedido;
         });
 
         // 2. Construir líneas para Stripe Checkout
+        $pedido->load('productos');
         $lineItems = $pedido->productos->map(function (Producto $prod) {
             $precioCents = (int) round((float) $prod->pivot->precio_pagado * 100);
 
             return new PaymentLineItemDto(
                 name: $prod->nombre,
-                description: '',
+                description: 'Compra tienda S4',
                 unitAmountCents: $precioCents,
                 quantity: (int) $prod->pivot->cantidad,
             );
@@ -138,12 +139,24 @@ class PedidoController extends Controller
                 'error'     => $e->getMessage(),
             ]);
 
-            // El pedido quedó creado; informar al usuario y no perder su compra
+            // Revertir stock + borrar pedido pendiente; el carrito sigue intacto.
+            DB::transaction(function () use ($pedido) {
+                $pedido->load('productos');
+                foreach ($pedido->productos as $prod) {
+                    $prod->increment('unidades', (int) $prod->pivot->cantidad);
+                }
+                $pedido->productos()->detach();
+                $pedido->delete();
+            });
+
             return back()->with(
                 'error',
-                'Tu pedido fue registrado pero hubo un problema al abrir el pago. Por favor, contáctanos.'
+                'No se pudo abrir el pago con tarjeta. Tu carrito sigue intacto; inténtalo de nuevo.'
             );
         }
+
+        // Stripe OK → vaciar carrito y redirigir
+        $user->carrito()->delete();
 
         return $this->redirectToStripeCheckout($checkoutUrl);
     }

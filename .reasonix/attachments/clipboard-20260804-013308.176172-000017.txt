@@ -1,0 +1,23 @@
+Lo que está bien
+Diagnóstico correcto: specs y tarifas hoy son rounded-xl border bg (líneas 137 y 162) y sí se confunden con CTAs.
+Scope cerrado: no galería, no reserva, no otros archivos.
+Clases de destino concretas en tarifas (menos ambigüedad).
+El badge Desde {tariffs[0].formatted} ya existe (155–157); pedir dejarlo intacto evita que lo “arreglen” de paso.
+Un roce real (tarea 1)
+Pedir border-b en cada celda de un grid grid-cols-2 sm:grid-cols-4 suele quedar raro: en la misma fila cada celda pinta su propio borde y no se lee como “fila de datos”, sino como 2/4 cajitas con raya abajo.
+
+Mejor instrucción:
+
+quitar rounded-xl border bg,
+dejar padding,
+sin border-b por celda; o un único contenedor con separadores (p. ej. divide-y en un layout que sea realmente filas).
+Si quieres mantener el grid 2×4, lo más limpio es: solo tipografía + padding, sin borde.
+
+Pequeña contradicción
+La verificación dice “cyan solo en precio y badge”, pero el badge sigue con rounded-lg border bg-cyan… (lenguaje de chip/botón). Está bien si lo aceptas a propósito; si no, dilo: “el badge puede quedar como chip; el grid/list no”.
+
+Detalle menor
+El prompt se corta en “AUTONOMÍA … est ees”. Cierra con una línea tipo: “si no coincide el número de línea, busca por rounded-xl en el dl/ul de specs/tarifas”.
+
+Veredicto
+Listo para ejecutar (~8/10). El único cambio que haría antes de pegarlo: suavizar/quitar el border-b por celda en specs. El resto está alineado con el archivo actual.

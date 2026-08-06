@@ -1,0 +1,50 @@
+Modo: Agent. Grok en Cursor. SOLO UI. Cumple EXACTAMENTE esto.
+
+OBJETIVO
+Rediseñar la vista del carrito CON productos para que visualmente combine
+con la vista vacía (EmptyCartView) y el resto de S4.
+La lógica de negocio NO cambia. El resultado debe verse simple y profesional,
+no “plantilla Bootstrap 2019”.
+
+ARCHIVO ÚNICO
+resources/js/Pages/Carrito.jsx
+
+PROHIBIDO (lista negra)
+- Cualquier otro archivo
+- Backend / PHP / rutas / Stripe / .env / tailwind.config.js
+- Inventar imagen, talla, stock, SKU
+- Controles +/- de cantidad
+- Cambiar firmas o cuerpos de: iniciarPagoStripe, eliminarProducto,
+  abrirModal, cerrarModal, useEffect de flash
+- Borrar o “limpiar” estado muerto (paymentModalOpen, abrirModalPagoPedido,
+  paymentIban, paymentBizumNumber, whatsappHelpUrl) — déjalos como están
+- Reescribir EmptyCartView
+- Añadir newsletter, upsell, urgencia, emojis nuevos
+- CTA primario en violet/purple/indigo
+- Total en text-red-*
+- Botón Eliminar de la LISTA en bg-red-500 sólido
+
+HECHOS DEL CÓDIGO (no contradecir)
+- Vista vacía (~líneas 181–194): shell bueno = `bg-slate-50` + `max-w-3xl` + H1
+  "Tu carrito" + subtítulo + EmptyCartView.
+- Vista llena (~196–309): shell malo = `bg-gray-100`, card estrecha `max-w-lg`,
+  gray/red/violet.
+- Cada producto trae SOLO: id, nombre, precio, cantidad, subtotal, descuento.
+- key actual usa `index` → cámbialo a `producto.id`.
+- Modal eliminar (~312–339) tiene emoji "⚠️" → quitarlo al retocar el modal.
+
+PRE-VUELO
+Lee Carrito.jsx entero. NO toques EmptyCartView. Identifica el bloque del
+ternario `productos.length === 0 ? (vacío) : (lleno)`.
+
+TAREAS (en orden)
+
+0) Helper local de dinero (dentro del mismo archivo, fuera del componente o dentro)
+   Crea UNA función:
+   `function formatCartEur(value) { return new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value)); }`
+   Úsala en precio, subtotal y total. Elimina los Intl duplicados de la vista llena.
+   No la uses para cambiar EmptyCartView.
+
+1) Unificar SHELL de la vista llena con la vacía
+   El branch `productos.length > 0` debe usar EXACTAMENTE este contenedor exterior
+   (mismo patrón que el vacío):

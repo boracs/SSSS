@@ -12,8 +12,10 @@ use Illuminate\Support\Carbon;
  * de `sea_level_height_msl` (Open-Meteo) y calcula cuánto sube/baja entre
  * extremos consecutivos (amplitud de cada semidiurno).
  *
- * En un día lunar típico hay ~2 altas y ~2 bajas. Resolución horaria: hora
- * y altura son una estimación, no el dato oficial de un puerto.
+ * Open-Meteo entrega nivel del mar a resolución horaria; el instante del
+ * extremo se refina con interpolación parabólica entre la muestra y sus
+ * vecinos (minutos realistas, no siempre :00). Sigue siendo una estimación,
+ * no el dato oficial de un puerto.
  */
 final class TideExtremaCalculator
 {
@@ -75,13 +77,49 @@ final class TideExtremaCalculator
             }
 
             if ($current > $prev && $current >= $next) {
-                $events[] = $this->buildEvent('alta', $times[$i], $current);
+                $events[] = $this->buildRefinedEvent('alta', $times[$i], $prev, $current, $next);
             } elseif ($current < $prev && $current <= $next) {
-                $events[] = $this->buildEvent('baja', $times[$i], $current);
+                $events[] = $this->buildRefinedEvent('baja', $times[$i], $prev, $current, $next);
             }
         }
 
         return $this->attachDeltas($events);
+    }
+
+    /**
+     * Ajusta hora/altura del extremo con parábola en (t=-1,0,1) → vecinos horarios.
+     * Así un máximo en la muestra de las 08:00 puede mostrarse p. ej. como 08:18.
+     */
+    private function buildRefinedEvent(
+        string $type,
+        string $sampleTime,
+        float $prev,
+        float $current,
+        float $next,
+    ): SurfTideEventDto {
+        $a = (($prev + $next) / 2.0) - $current;
+        $b = ($next - $prev) / 2.0;
+
+        $offsetHours = 0.0;
+        $height = $current;
+
+        if (abs($a) > 1.0e-6) {
+            $t = -$b / (2.0 * $a);
+            // El extremo continuo debe quedar cerca de la muestra que ya era el máx/mín discreto.
+            $t = max(-0.49, min(0.49, $t));
+            $offsetHours = $t;
+            $height = ($a * $t * $t) + ($b * $t) + $current;
+        }
+
+        $moment = Carbon::parse($sampleTime)->addMinutes((int) round($offsetHours * 60));
+
+        return new SurfTideEventDto(
+            type: $type,
+            time: $moment->format('Y-m-d\TH:i'),
+            hourLabel: $moment->format('H:i'),
+            heightM: round($height, 2),
+            deltaM: null,
+        );
     }
 
     /**
@@ -109,16 +147,5 @@ final class TideExtremaCalculator
         }
 
         return $withDelta;
-    }
-
-    private function buildEvent(string $type, string $time, float $heightM): SurfTideEventDto
-    {
-        return new SurfTideEventDto(
-            type: $type,
-            time: $time,
-            hourLabel: Carbon::parse($time)->format('H:i'),
-            heightM: round($heightM, 2),
-            deltaM: null,
-        );
     }
 }

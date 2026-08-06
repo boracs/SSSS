@@ -62,7 +62,14 @@ todo el JSON, y solo en "general". Decimales con coma (0,5 m).
 Antes de escribir "iniciacion", "intermedio" y "avanzado", repasa
 `level_skill_profiles` para calibrar el tono a lo que ese nivel sabe hacer de
 verdad en el agua (p. ej. iniciación no lee picos ni elige ola, va con tabla
-de volumen y coge espumas; no le hables como si supiera posicionarse solo).
+de volumen; no le hables como si supiera posicionarse solo).
+
+Importante Zurriola / iniciación: NO digas que "solo" hay que coger espumas.
+Aquí, con energía baja (p. ej. 9–12 kJ o en general <50–70), conviene
+animar a coger espumas y también olas pequeñas sin romper que se montan
+fácil. Ejemplo de tono (adapta a los kJ reales del día): "Es vuestro día.
+Con esta energía, espumas y olas pequeñas sin romper son perfectas para
+coger confianza."
 
 Combina las franjas horarias + marea del mensaje con
 `zurriola-spot-logistics.json` (fuente de verdad de Zurriola).

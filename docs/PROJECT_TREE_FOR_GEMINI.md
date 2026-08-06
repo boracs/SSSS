@@ -451,7 +451,7 @@ maider_0/
 ├── database/
 │   ├── factories/          (10) — … PriceSchemaFactory (tarifa Softboards de referencia + onlyPacks), SurfboardFactory, BookingFactory (hourWindow/dayWindow/depositPaid/fullyPaid para tests de alquiler)
 │   ├── migrations/         (79) — … payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions; restructure_price_schema_packs; split_hard_surfboard_categories; add_rental_window_fields_to_bookings
-│   └── seeders/            (26) — CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, PriceSchemaSeeder (3 esquemas canónicos + reasignación tablas por categoría), …
+│   └── seeders/            (27) — AuctionDemoSeeder (15 lotes: 4 live · 6 settled · 5 draft), CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, PriceSchemaSeeder (3 esquemas canónicos + reasignación tablas por categoría), …
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
@@ -462,7 +462,8 @@ maider_0/
 │   │   ├── informe-logica-negocio-s4.md        ← contexto de negocio; apunta al JSON editable
 │   │   └── CHATBOT-AGENT-BRIEF.md              ← briefing + prompt de arranque para chat dedicado al chatbot
 │   ├── payments/
-│   │   └── STRIPE-WEBHOOK.md                   ← webhook producción/local + comando sync-stripe-session
+│   │   ├── STRIPE-WEBHOOK.md                   ← webhook producción/local + comando sync-stripe-session
+│   │   └── CHECKOUT-CARRITO-STRIPE-MASTER-PROMPT.md  ← prompt Agent: sanear carrito→Stripe (stock lock, total, cancel, huérfanos)
 │   ├── invoicing/
 │   │   └── B2BROUTER-TICKETBAI.md              ← flujo PaymentConfirmed→B2BRouter, setup cuenta B2B, cómo probar en staging, TODO iteración 2
 │   ├── faq-architecture.md                     ← FAQ técnico dev (V3-ULTRA); incluye flujo chatbot híbrido regex+Gemini
@@ -551,9 +552,12 @@ maider_0/
 | `ProductDetailPageService` (`Services/Store/`) | Sync | Ficha `ProductoVer`: precios/stock/galería + relacionados + `seo` DTO. Controller delgado. |
 | `PublicSitemapService` (`Services/Seo/`) | Sync + Cache 1h | `robots.txt` (Allow/Disallow + Sitemap) y `sitemap.xml` (landings + taller + productos + 2ª mano available + alquiler activos). Rutas `seo.robots` / `seo.sitemap`. |
 | `ZurriolaGeoFactsService` (`Services/SurfConditions/`) | Sync, JSON local | Hechos GEO públicos (`zurriola-geo-facts.json`): lugar, 20 m escuela↔playa, temporada, kJ, material, FAQs. DTO `ZurriolaGeoFactsDto`; UI `ZurriolaGeoGuide.jsx` en webcams; FAQPage en SEO. Cancelación = null hasta redactar. |
-| `SurfDailyBriefService` (`Services/SurfConditions/`) | Cron cada 6 h + Gemini | "Parte S4 de Zurriola": Open-Meteo → energía/nivel → resumen Gemini (guía + logistics JSON) → 1 fila/día en `surf_daily_briefs`. Si no hay parte y alguien visita webcams/home, `publicPayload()` encola generación `afterResponse` (status `generating`) sin bloquear la request. Comando `surf:generate-daily-brief` (schedule `--force` cada 6 h; servidor necesita crontab `schedule:run` cada minuto). Ver `docs/surf-conditions/README.md`. |
+| `SurfDailyBriefService` (`Services/SurfConditions/`) | Cron cada 6 h + Gemini | "Parte S4 de Zurriola": Open-Meteo (ola/viento) + mareas/texto Euskalmet vía tabla → energía/nivel → Gemini. `afterResponse` si falta parte. Ver `docs/surf-conditions/README.md`. |
 | `SurfBriefReactionService` (`Services/SurfConditions/`) | Voto sesión + throttle | 👍/👎 del parte del día (`surf_brief_votes` + contadores en `surf_daily_briefs`). Un voto/sesión, toggle y cambio de sentido. Ruta `POST servicios.webcams.parte.reaccion`. |
-| `SurfForecastTableService` (`Services/SurfConditions/`) | Cache::remember 1h, sin BD | Tabla previsión 3 días × franjas 06-21h/3h (`config('services.zurriola_surf.forecast_days\|forecast_slot_hours')`) usando `OpenMeteoMarineClient::hourlySeries()`; energía vía `SurfEnergyCalculator::indexForValues()`, viento vía `SurfWindStateClassifier` (glassy/off/cross-off/cross-on/on), marea vía `TideExtremaCalculator` (máx/mín locales de `sea_level_height_msl` — estimación horaria, no dato oficial de puerto). Distinto de `SurfDailyBriefService` (ese persiste+IA, este es solo vista cacheada). Se invalida junto al parte diario en `SurfBriefController::regenerate()`. |
+| `EuskalmetSeaForecastClient` (`Services/SurfConditions/`) | Cache XML 30 min | Predicción marítima Euskalmet (Open Data Euskadi XML público, sin API key): pleamar/bajamar a minutos + texto/temp agua. DTO `EuskalmetSeaDayDto`. |
+| `SurfForecastTableService` (`Services/SurfConditions/`) | Cache::remember 1h (tabla) / 45 min (`detailedPayload()`) | Tabla previsión (compacta, `forecast_slot_hours` = diurno cada 2h): oleaje/viento horario Open-Meteo; **mareas preferente Euskalmet** (fallback `TideExtremaCalculator` sobre `sea_level_height_msl`). Energía/viento como antes. Distinto de `SurfDailyBriefService`. Se invalida junto al parte en `SurfBriefController::regenerate()` (`forget()` limpia también la caché del slider detallado). Cada slot lleva además `signal` (reusa `SurfLevelRecommender::recommendSignal()`, misma escala good/espigon/caution/closed que el badge de "hoy"); cada día expone `bestSignal`/`qualityStars`/`bestSlotTime` para el resumen fusionado "Ver forecast completo" (`SurfFullForecastOverlay.jsx`). `qualityStars` (día) usa `intermediateQualityStars()`: heurística para **nivel intermedio** (mayoría del alumnado), tamaño de ola (umbrales `level_thresholds`) + viento (`SurfWindStateClassifier`), tope 2★ si "closed" o tamaño > techo "avanzado". `detailedPayload()` (método nuevo) expone además el slider "cada 2h · todos los días" con `qualityStars` por FRANJA vía `surferQualityStars()` (nivel intermedio/avanzado: más tamaño = mejor nota si el viento acompaña). |
+| `ZurriolaWeatherForecastService` + `OpenMeteoWeatherClient` (`Services/SurfConditions/`) | Cache::remember 45 min, on-demand | Panel "Tiempo detallado" (horario 24/48h + 7 días) en `/servicios/webcams`: `OpenMeteoWeatherClient::fetchForecast()` (`api/forecast`, `Http::timeout(10)`, `wind_speed_unit=kmh`) → DTOs `ZurriolaWeatherHourDto`/`ZurriolaWeatherDayDto`/`ZurriolaWeatherForecastDto`. Flag `zurriola_surf.weather_detail_enabled`; fallo → `{ok:false,message}` + `Log::warning`, nunca 500. Controller fino `SurfConditions\ZurriolaWeatherController` → `GET servicios.webcams.weather`. Front: botón amber + fetch SOLO al primer clic (cero peso en carga inicial), `WeatherDetailPanel.jsx`. `OpenMeteoWeatherClient::fetchDetailedForecast(days)` es la variante SIN recorte desde "ahora" ni tope de puntos, usada por `SurfForecastTableService::detailedPayload()` (ver fila siguiente). |
+| `SurfDetailedForecastController` (`Http/Controllers/`) | Cache::remember 45 min (vía `SurfForecastTableService`), on-demand | Slider "Ver forecast al detalle" (cada 2h · todos los días): fusiona oleaje + tiempo franja a franja (`forecast_detailed_slot_hours`). DTOs `SurfDetailedSlotDto`/`SurfDetailedDayDto`. `GET servicios.webcams.forecast_detailed`. Front: `SurfDetailedForecastSlider.jsx` + `LevelStars.jsx` (3 filas Ini/Int/Ava). Estrellas: `starsForIniciacion` / `starsForIntermedio` / `starsForAvanzado` (`level_thresholds`); payload `qualityStarsIniciacion|Intermedio|Avanzado` (`qualityStars` = intermedio, compat). |
 | `VipStudentPerformanceService`                     | Read-heavy agregador      | Consultas amplias por mes bono; usar con `loadHistory` consciente en admin.                                                                                                                                               |
 | `LessonProofStorageService`                        | Filesystem                | Privado; no exponer URL directa sin policy.                                                                                                                                                                               |
 | `AutoCoachUploadService`                           | Upload + cuotas IP/disco | Throttle + MIME + duración (≤30s) + máx. 7/tanda; `config/autocoach.php`; `VideoDurationProbe`; uploads en `storage/app/public/autocoach/uploads` |
@@ -639,8 +643,9 @@ resources/
     │
     ├── components/
     │   ├── Header.jsx                ──► Shell: GlobalNav (sin OpcionesIntro)
-    │   ├── GlobalNav.jsx             ──► Navegación única; menú flyout por rol; admin Gestión/Extras; CTA Acceder/Salir
-    │   ├── OpcionesIntro.jsx         ──► Mosaico 2 filas accesos S4 (home); assets `/img/opciones/*.webp`
+    │   ├── GlobalNav.jsx             ──► Navegación única; menú flyout por rol; admin Gestión/Extras; CTA Acceder/Salir; PressRipple cyan al clic
+    │   ├── PressRipple.jsx           ──► Rail vertical izquierdo cyan (barra + flyout + móvil; sin fondo; reduced-motion)
+    │   ├── OpcionesIntro.jsx         ──► Mosaico accesos S4 (home); tile "Forecast al detalle" abre panel on-demand; assets `/img/opciones/*.webp`
     │   ├── S4Button.jsx              ──► CTA marca S4 (tokens .s4-btn* en app.css)
     │   ├── seo/
     │   │   └── SeoHead.jsx           ──► title/description/canonical/OG/JSON-LD desde prop `seo`
@@ -659,14 +664,23 @@ resources/
     │   │   ├── surfBriefOverride.js ──► Labels/tonos override: good | espigon | caution | closed
     │   │   ├── surfLevels.js ──► Textos fijos iniciación/intermedio/avanzado + clases de etiqueta del Parte S4
     │   │   ├── SurfLevelAccordion.jsx ──► Acordeón «¿Cuál es mi nivel?» (fila desktop / vertical móvil)
-    │   │   ├── SurfBriefMini.jsx ──► Parte S4 destacado en home (resumen expertos + métricas → webcams)
+    │   │   ├── SurfBriefMini.jsx ──► Parte S4 destacado en home (resumen expertos + métricas → webcams) + botón secundario "Ver forecast al detalle" (`DetailedForecastEntry`)
     │   │   ├── SurfBriefReactions.jsx ──► 👍/👎 + contadores bajo el texto del parte
-    │   │   ├── SurfForecastTable.jsx ──► Tabla previsión 3 días × franjas 06-21h/3h + marea + Parte S4 (general + 3 niveles + acordeón), en `/servicios/webcams`
+    │   │   ├── SurfForecastTable.jsx ──► Tabla previsión (slots diurnos cada 2h) + Parte S4; botones "Ver forecast al detalle" / "Ver resumen por día", en `/servicios/webcams`
+    │   │   ├── WeatherDetailPanel.jsx ──► Panel "Tiempo detallado" (horario 24/48h + 7 días) bajo demanda, amber; iconos Lucide por `weather_code` (lista blanca, sin emojis), en `/servicios/webcams`; exporta `weatherIconFor`/`formatClock`/`formatWeekdayShort` reutilizados por `SurfFullForecastOverlay.jsx`
+    │   │   ├── SurfFullForecastOverlay.jsx ──► "Ver resumen por día": oleaje + tiempo + estrellas; footer compartido `SurfForecastSheetFooter`
+    │   │   ├── SurfForecastSheetFooter.jsx ──► Footer sheets: Ver parte de hoy (modal) + Ver webcam; usado por detalle y resumen por día
+    │   │   ├── LevelStars.jsx ──► Fila/stack de estrellas por nivel (Ini emerald · Int sky · Ava rose)
+    │   │   ├── SurfDetailedForecastSlider.jsx ──► "Ver forecast al detalle": bottom-sheet al ras; estrellas por franja; footer `SurfForecastSheetFooter`
+    │   │   ├── useDetailedForecast.js ──► Hook fetch on-demand `servicios.webcams.forecast_detailed` (1 request tras éxito)
+    │   │   ├── DetailedForecastEntry.jsx ──► Botón+panel reutilizable (home `SurfBriefMini`, `OpcionesIntro` tile, Subastas, Taller artículo parte de olas)
     │   ├── BookingCalendar.jsx ──► selectionMode range (días 12:00→12:00 + total) | single (día suelto para el selector de horas)
     │   ├── SurfboardBookingSection.jsx   ──► Toggle horas/días + Collapsible + pago alquiler; POST con mode/pack/pickup_at
     │   ├── Rentals/
     │   │   ├── RentalHourPicker.jsx ──► Modo horas: chips de pack + día + slots de recogida (descarta los que pisan el buffer); devolución solo lectura
-    │   │   ├── RentalTariffTable.jsx ──► Tabla RENT en /tablas-alquiler (prop `tariffTable`; horas + días, scroll móvil, notas 12:00/±30/cortesía)
+    │   │   ├── TariffMatrix.jsx ──► Matriz compartida rate-card (tabs Horas|Días, sticky, Habitual); usada por RentalTariffTable + WetsuitPriceTables
+    │   │   ├── RentalTariffTable.jsx ──► Tarifario RENT en /tablas-alquiler (prop `tariffTable` + TariffMatrix; neopreno bloque aparte; notas política)
+    │   │   ├── WetsuitPriceTables.jsx ──► Precios orientativos neopreno (constantes; TariffMatrix 1 fila; modal + inline)
     │   │   └── SurfboardPublicDetail.jsx ──► Ficha compartida Index/Show (galería, specs, tarifas, booking embedded)
     │   ├── PaymentModal.jsx
     │   ├── Taquilla.jsx

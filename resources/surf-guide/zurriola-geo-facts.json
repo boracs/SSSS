@@ -50,13 +50,13 @@
   "energy_bands": [
     {
       "range_label": "< 50 kJ",
-      "iniciacion": "Sí — fuerza mínima / primer contacto",
+      "iniciacion": "Sí — espumas y olas pequeñas sin romper; primer contacto",
       "intermedio": "Escaso",
       "avanzado": "No suele merecer la pena"
     },
     {
       "range_label": "50–69 kJ",
-      "iniciacion": "Sí — espumas y ponerse de pie",
+      "iniciacion": "Sí — espumas y/o olas pequeñas sin romper; ponerse de pie",
       "intermedio": "Escaso",
       "avanzado": "Aún no, en general"
     },

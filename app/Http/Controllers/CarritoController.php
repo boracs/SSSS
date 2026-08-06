@@ -23,7 +23,14 @@ class CarritoController extends Controller
 
         $carrito = Carrito::where('user_id', $user->id)
             ->with(['productos' => function ($query) {
-                $query->select('productos.id', 'productos.nombre', 'productos.precio', 'productos.descuento')
+                $query->select(
+                    'productos.id',
+                    'productos.nombre',
+                    'productos.precio',
+                    'productos.descuento',
+                    'productos.unidades',
+                )
+                    ->with('imagenPrincipal')
                     ->withPivot('cantidad');
             }])
             ->get();
@@ -55,9 +62,15 @@ class CarritoController extends Controller
                     'id' => $producto->id,
                     'nombre' => $producto->nombre,
                     'precio' => $precioConDescuento,
+                    // Precio de catálogo sin descuento: el front lo muestra tachado
+                    // cuando hay oferta (anclaje de ahorro); no entra en el total.
+                    'precio_original' => round($precioBase, 2),
                     'cantidad' => $cantidad,
                     'subtotal' => round($subtotal, 2),
                     'descuento' => $descuento,
+                    'stock' => (int) $producto->unidades,
+                    // Ruta relativa de la imagen principal (o null); el front resuelve /storage/…
+                    'imagen' => $producto->imagenPrincipal?->ruta,
                 ];
             });
         });
@@ -152,5 +165,86 @@ class CarritoController extends Controller
         }
 
         return Redirect::back()->with('error', 'Producto no encontrado en el carrito.');
+    }
+
+    /**
+     * Cambia la cantidad de una línea. cantidad <= 0 descarta la línea.
+     */
+    public function actualizarCantidad(Request $request, int $productoId): \Illuminate\Http\RedirectResponse
+    {
+        $user = auth()->user();
+        $cantidad = (int) $request->input('cantidad', 0);
+
+        try {
+            return DB::transaction(function () use ($user, $productoId, $cantidad) {
+                $carrito = Carrito::query()
+                    ->where('user_id', $user->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $carrito) {
+                    return Redirect::back()->with('error', 'Carrito no encontrado.');
+                }
+
+                $enCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
+                if (! $enCarrito) {
+                    return Redirect::back()->with('error', 'Producto no encontrado en el carrito.');
+                }
+
+                if ($cantidad <= 0) {
+                    $nombre = $enCarrito->nombre;
+                    $carrito->productos()->detach($productoId);
+
+                    return Redirect::route('carrito')->with(
+                        'success',
+                        "El producto \"$nombre\" ha sido descartado del carrito."
+                    );
+                }
+
+                $producto = Producto::query()
+                    ->whereKey($productoId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $producto) {
+                    $carrito->productos()->detach($productoId);
+
+                    return Redirect::route('carrito')->with(
+                        'error',
+                        'Ese producto ya no está disponible y se ha quitado del carrito.'
+                    );
+                }
+
+                $stock = (int) $producto->unidades;
+                if ($stock <= 0) {
+                    $carrito->productos()->detach($productoId);
+
+                    return Redirect::route('carrito')->with(
+                        'error',
+                        '¡Agotado! No queda stock de '.$producto->nombre.'.'
+                    );
+                }
+
+                if ($cantidad > $stock) {
+                    return Redirect::back()->with(
+                        'error',
+                        'Solo quedan '.$stock.' unidades de '.$producto->nombre.'.'
+                    );
+                }
+
+                $carrito->productos()->updateExistingPivot($productoId, [
+                    'cantidad' => $cantidad,
+                ]);
+
+                return Redirect::route('carrito');
+            });
+        } catch (\Throwable $e) {
+            Log::error('Error al actualizar cantidad del carrito: '.$e->getMessage());
+
+            return Redirect::back()->with(
+                'error',
+                'Ocurrió un error inesperado. Inténtalo de nuevo.'
+            );
+        }
     }
 }

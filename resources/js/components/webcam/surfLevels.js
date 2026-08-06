@@ -45,3 +45,30 @@ export const SURF_LEVELS = [
 export function surfLevelMeta(level) {
     return SURF_LEVELS.find((l) => l.level === level) || null;
 }
+
+/** Tokens dark para pills de estrellas por nivel (slider / overlay). */
+export const LEVEL_STAR_STYLES = {
+    iniciacion: {
+        short: "Ini",
+        aria: "Iniciación",
+        pill: "bg-emerald-500/15 ring-emerald-500/30",
+        filled: "fill-emerald-300 text-emerald-300",
+        label: "text-emerald-300/90",
+    },
+    intermedio: {
+        short: "Int",
+        aria: "Intermedio",
+        pill: "bg-sky-500/15 ring-sky-500/30",
+        filled: "fill-sky-300 text-sky-300",
+        label: "text-sky-300/90",
+    },
+    avanzado: {
+        short: "Ava",
+        aria: "Avanzado",
+        pill: "bg-rose-500/15 ring-rose-500/30",
+        filled: "fill-rose-300 text-rose-300",
+        label: "text-rose-300/90",
+    },
+};
+
+export const LEVEL_STAR_ORDER = ["iniciacion", "intermedio", "avanzado"];

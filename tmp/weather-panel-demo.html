@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Layout weather panel slide</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#020617; color:#e2e8f0; font-family:Inter,system-ui,sans-serif; overflow:hidden; height:100vh; }
+
+/* ── STEP 1: sin panel ── */
+.page { display:flex; flex-direction:column; height:100vh; transition:all .6s cubic-bezier(.4,0,.2,1); }
+
+/* Hero */
+.hero { flex-shrink:0; padding:24px 32px 16px; }
+.hero h1 { font-size:2rem; font-weight:800; }
+.hero h1 span { background:linear-gradient(90deg,#67e8f9,#5eead4); -webkit-background-clip:text; color:transparent; }
+.hero p { color:#94a3b8; margin-top:4px; }
+
+/* Webcam placeholder */
+.webcam { flex:1; margin:0 32px; background:linear-gradient(135deg,#0f172a,#020617); border-radius:20px; border:1px solid #1e293b; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; min-height:200px; }
+.webcam::after { content:"🌊 WEBCAM ZURRIOLA · EN DIRECTO"; font-size:.85rem; color:#475569; letter-spacing:.1em; position:absolute; bottom:20px; }
+.webcam-overlay { position:absolute; top:16px; right:16px; background:#ef4444; color:#fff; font-size:.7rem; font-weight:700; padding:4px 10px; border-radius:6px; letter-spacing:.05em; }
+.webcam-overlay::before { content:"● "; }
+
+/* Forecast table placeholder */
+.forecast { flex-shrink:0; margin:24px 32px; padding:16px 20px; background:#0f172a; border-radius:16px; border:1px solid #1e293b; display:flex; gap:16px; overflow-x:auto; }
+.forecast-day { min-width:80px; text-align:center; padding:8px; }
+.forecast-day .label { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#67e8f9; }
+.forecast-day .wave { font-size:1.1rem; font-weight:700; margin-top:4px; }
+.forecast-day .sec { font-size:.65rem; color:#64748b; }
+
+/* Botón */
+.btn-row { flex-shrink:0; margin:0 32px 24px; }
+.btn { display:inline-flex; align-items:center; gap:6px; padding:8px 18px; border-radius:99px; font-size:.8rem; font-weight:600; cursor:pointer; border:1px solid rgba(245,158,11,.2); background:rgba(245,158,11,.08); color:#fcd34d; transition:all .2s; }
+.btn:hover { background:rgba(245,158,11,.15); }
+
+/* ── STEP 2: panel entra de derecha ── */
+.weather-panel {
+    position:fixed; bottom:0; right:0; width:25%; height:40%;
+    background:rgba(15,23,42,.92); backdrop-filter:blur(16px);
+    border-left:1px solid rgba(245,158,11,.15); border-top:1px solid rgba(245,158,11,.15);
+    border-radius:20px 0 0 0;
+    padding:24px 20px;
+    transform:translateX(100%);
+    transition:transform .55s cubic-bezier(.4,0,.2,1);
+    z-index:50;
+    display:flex; flex-direction:column; gap:16px;
+    overflow-y:auto;
+}
+.weather-panel.open { transform:translateX(0); }
+
+.panel-header { display:flex; justify-content:space-between; align-items:center; }
+.panel-header h3 { font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.15em; color:#fcd34d; }
+.panel-close { background:none; border:none; color:#94a3b8; cursor:pointer; font-size:1.1rem; padding:4px; border-radius:6px; }
+.panel-close:hover { color:#e2e8f0; background:rgba(255,255,255,.05); }
+
+/* Indicador de swipe en panel */
+.panel-handle { display:none; width:40px; height:4px; background:#334155; border-radius:2px; margin:0 auto 12px; }
+@media(max-width:768px) { .panel-handle { display:block; } }
+
+/* Contenido del panel */
+.hourly-strip { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; }
+.hour-card { min-width:64px; flex-shrink:0; background:rgba(255,255,255,.03); border-radius:10px; border:1px solid rgba(255,255,255,.04); padding:8px 6px; text-align:center; }
+.hour-card .time { font-size:.6rem; color:#64748b; }
+.hour-card .icon { font-size:1.2rem; margin:4px 0; }
+.hour-card .temp { font-size:.75rem; font-weight:700; }
+.hour-card .rain { font-size:.55rem; color:#67e8f9; }
+.hour-card .wind { font-size:.55rem; color:#64748b; }
+
+/* Overlay cuando panel abierto en móvil */
+.panel-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,.3); z-index:49; }
+@media(max-width:768px) { .panel-backdrop.show { display:block; } }
+</style>
+</head>
+<body>
+
+<div class="page">
+    <!-- HERO -->
+    <div class="hero">
+        <p style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.15em;color:#67e8f9;margin-bottom:8px;">Condiciones S4 · Zurriola</p>
+        <h1>Mira el mar <span>antes de salir</span></h1>
+        <p>Webcam en directo y previsión — a 20 metros de la escuela.</p>
+    </div>
+
+    <!-- WEBCAM -->
+    <div class="webcam">
+        <div class="webcam-overlay">EN VIVO</div>
+    </div>
+
+    <!-- FORECAST TABLE -->
+    <div class="forecast">
+        <div class="forecast-day"><div class="label">Hoy</div><div class="wave">2.3m</div><div class="sec">12s · NO</div></div>
+        <div class="forecast-day"><div class="label">Mañana</div><div class="wave">1.8m</div><div class="sec">10s · NE</div></div>
+        <div class="forecast-day"><div class="label">Pasado</div><div class="wave">3.1m</div><div class="sec">14s · N</div></div>
+        <div class="forecast-day"><div class="label">+3d</div><div class="wave">2.5m</div><div class="sec">11s · NO</div></div>
+        <div class="forecast-day"><div class="label">+4d</div><div class="wave">1.4m</div><div class="sec">8s · O</div></div>
+        <div class="forecast-day"><div class="label">+5d</div><div class="wave">2.0m</div><div class="sec">10s · N</div></div>
+    </div>
+
+    <!-- BOTONES -->
+    <div class="btn-row" style="display:flex;gap:12px;align-items:center;">
+        <button class="btn" id="toggle-btn" onclick="togglePanel()">
+            <span>☀️</span> <span id="btn-text">Tiempo detallado</span>
+        </button>
+        <span style="font-size:.65rem;color:#475569;">← el panel se desliza desde la derecha</span>
+    </div>
+</div>
+
+<!-- WEATHER PANEL -->
+<div class="panel-backdrop" id="backdrop" onclick="togglePanel()"></div>
+<div class="weather-panel" id="panel">
+    <div class="panel-handle"></div>
+    <div class="panel-header">
+        <h3>🕐 Horario</h3>
+        <button class="panel-close" onclick="togglePanel()">✕</button>
+    </div>
+    <div class="hourly-strip">
+        <div class="hour-card"><div class="time">12:00</div><div class="icon">☀️</div><div class="temp">18°</div><div class="rain">5%</div><div class="wind">12 km/h</div></div>
+        <div class="hour-card"><div class="time">13:00</div><div class="icon">⛅</div><div class="temp">19°</div><div class="rain">10%</div><div class="wind">14 km/h</div></div>
+        <div class="hour-card"><div class="time">14:00</div><div class="icon">☀️</div><div class="temp">20°</div><div class="rain">2%</div><div class="wind">10 km/h</div></div>
+        <div class="hour-card"><div class="time">15:00</div><div class="icon">⛅</div><div class="temp">19°</div><div class="rain">15%</div><div class="wind">16 km/h</div></div>
+        <div class="hour-card"><div class="time">16:00</div><div class="icon">☁️</div><div class="temp">18°</div><div class="rain">25%</div><div class="wind">18 km/h</div></div>
+        <div class="hour-card"><div class="time">17:00</div><div class="icon">🌧️</div><div class="temp">17°</div><div class="rain">45%</div><div class="wind">20 km/h</div></div>
+        <div class="hour-card"><div class="time">18:00</div><div class="icon">☁️</div><div class="temp">16°</div><div class="rain">30%</div><div class="wind">15 km/h</div></div>
+        <div class="hour-card"><div class="time">19:00</div><div class="icon">⛅</div><div class="temp">15°</div><div class="rain">10%</div><div class="wind">10 km/h</div></div>
+    </div>
+    <div style="font-size:.6rem;color:#fcd34d;cursor:pointer;text-align:right;">Ver 48 h →</div>
+
+    <div class="panel-header" style="margin-top:8px;">
+        <h3>📅 Próximos 7 días</h3>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+        <div style="background:rgba(245,158,11,.03);border-radius:8px;padding:8px 4px;text-align:center;font-size:.6rem;border:1px solid rgba(245,158,11,.06);">
+            <div style="color:#cbd5e1;">lun</div><div style="font-size:.9rem;margin:4px 0;">☀️</div>
+            <div style="font-weight:700;">18°/14°</div><div style="color:#67e8f9;">5%</div>
+        </div>
+        <div style="background:rgba(245,158,11,.03);border-radius:8px;padding:8px 4px;text-align:center;font-size:.6rem;border:1px solid rgba(245,158,11,.06);">
+            <div style="color:#cbd5e1;">mar</div><div style="font-size:.9rem;margin:4px 0;">⛅</div>
+            <div style="font-weight:700;">17°/13°</div><div style="color:#67e8f9;">25%</div>
+        </div>
+        <div style="background:rgba(245,158,11,.03);border-radius:8px;padding:8px 4px;text-align:center;font-size:.6rem;border:1px solid rgba(245,158,11,.06);">
+            <div style="color:#cbd5e1;">mié</div><div style="font-size:.9rem;margin:4px 0;">🌧️</div>
+            <div style="font-weight:700;">15°/12°</div><div style="color:#67e8f9;">80%</div>
+        </div>
+        <div style="background:rgba(245,158,11,.03);border-radius:8px;padding:8px 4px;text-align:center;font-size:.6rem;border:1px solid rgba(245,158,11,.06);">
+            <div style="color:#cbd5e1;">jue</div><div style="font-size:.9rem;margin:4px 0;">☀️</div>
+            <div style="font-weight:700;">19°/15°</div><div style="color:#67e8f9;">2%</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePanel() {
+    const panel = document.getElementById('panel');
+    const btn = document.getElementById('btn-text');
+    const backdrop = document.getElementById('backdrop');
+    const isOpen = panel.classList.toggle('open');
+    backdrop.classList.toggle('show', isOpen);
+    btn.textContent = isOpen ? 'Ocultar tiempo' : 'Tiempo detallado';
+}
+</script>
+</body>
+</html>

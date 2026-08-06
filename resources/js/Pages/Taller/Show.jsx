@@ -11,7 +11,10 @@ import {
     motion,
 } from "../../components/Taller/TallerShell";
 import { TallerRelatedArticles } from "../../components/Taller/TallerArticleCard";
-import { ArrowLeft, BookOpen, Clock3 } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarRange, Clock3, Waves } from "lucide-react";
+import DetailedForecastEntry from "../../components/webcam/DetailedForecastEntry";
+
+const FORECAST_ARTICLE_SLUG = "como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas";
 
 const ARTICLE_BODY_CLASS =
     "taller-article font-editorial text-[1.0625rem] leading-[1.9] text-slate-700 " +
@@ -128,6 +131,34 @@ export default function Show({
                                     __html: article.content,
                                 }}
                             />
+
+                            {article.slug === FORECAST_ARTICLE_SLUG ? (
+                                <div className="mt-10 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-50 to-white p-5 sm:p-6">
+                                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0f5f74] text-white">
+                                                <Waves className="h-5 w-5" aria-hidden />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900">
+                                                    Practica lo que acabas de leer
+                                                </p>
+                                                <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                                                    Abre el forecast al detalle de Zurriola: oleaje, energía,
+                                                    viento y tiempo cada 2 horas.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <DetailedForecastEntry
+                                            variant="button"
+                                            className="!border-transparent !bg-[#0f5f74] !text-white hover:!bg-[#0d4a5c]"
+                                        >
+                                            <CalendarRange className="h-4 w-4" aria-hidden />
+                                            Ver forecast al detalle
+                                        </DetailedForecastEntry>
+                                    </div>
+                                </div>
+                            ) : null}
                         </motion.div>
                     </motion.article>
 

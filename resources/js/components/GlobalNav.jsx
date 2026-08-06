@@ -1,7 +1,15 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
-import { ShoppingCart, Menu as MenuIcon, X as XIcon, ChevronDown, UserCircle } from "lucide-react";
+import {
+    ShoppingCart,
+    Menu as MenuIcon,
+    X as XIcon,
+    ChevronDown,
+    LogOut,
+    UserCircle,
+} from "lucide-react";
 import BrandLogo from "./BrandLogo";
+import PressRipple from "./PressRipple";
 
 const HOVER_CLOSE_DELAY_MS = 150;
 
@@ -13,28 +21,61 @@ function safeRoute(name, params, fallback = "#") {
     }
 }
 
-function AccountMenuIdentity({ user }) {
+function AccountMenuIdentity({ user, compact = false }) {
     if (!user) return null;
 
     const displayName =
-        [user.nombre, user.apellido].filter(Boolean).join(" ").trim() || String(user.name || "").trim();
+        [user.nombre, user.apellido].filter(Boolean).join(" ").trim() ||
+        String(user.name || "").trim();
 
     if (!displayName && !user.email) return null;
 
     return (
-        <div className="mb-1 border-b border-white/10 px-3 pb-2 pt-1">
-            {displayName ? <p className="truncate text-xs font-semibold text-white">{displayName}</p> : null}
-            {user.email ? <p className="truncate text-[10px] text-slate-500">{user.email}</p> : null}
+        <div
+            className={
+                compact
+                    ? "min-w-0"
+                    : "mb-1 border-b border-white/10 px-3 pb-2 pt-1"
+            }
+        >
+            {displayName ? (
+                <p className="truncate text-xs font-semibold text-white">
+                    {displayName}
+                </p>
+            ) : null}
+            {user.email ? (
+                <p className="truncate text-[10px] text-slate-500">
+                    {user.email}
+                </p>
+            ) : null}
         </div>
     );
 }
+
+/** En tablet (lg–xl): shortLabel si existe; en xl+ el label completo. Sin wrap. */
+function NavLabel({ label, shortLabel }) {
+    if (!shortLabel || shortLabel === label) {
+        return <span className="whitespace-nowrap">{label}</span>;
+    }
+    return (
+        <>
+            <span className="whitespace-nowrap xl:hidden">{shortLabel}</span>
+            <span className="hidden whitespace-nowrap xl:inline">{label}</span>
+        </>
+    );
+}
+
+const NAV_LINK_CLASS =
+    "inline-flex items-center rounded-lg px-2 py-2 text-xs font-medium text-slate-400 transition-colors hover:text-white xl:px-3 xl:text-sm";
+const NAV_FLYOUT_BTN_BASE =
+    "inline-flex items-center gap-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors xl:px-3 xl:text-sm";
 
 /**
  * Construye la navegacion segun el rol (middlewares).
  * - type "link": enlace directo en la barra.
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
-function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
+function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
     const forecastLink = {
         type: "link",
         id: "forecast",
@@ -42,16 +83,44 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
         href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
     };
     const publicTopLinks = [
-        { type: "link", id: "autocoach", label: "Comparador de maniobras", href: safeRoute("autocoach.index") },
-        { type: "link", id: "taller", label: "Taller de Surf", href: safeRoute("taller.index") },
-        { type: "link", id: "nosotros", label: "Sobre nosotros", href: safeRoute("nosotros") },
+        {
+            type: "link",
+            id: "autocoach",
+            label: "Comparador de maniobras",
+            shortLabel: "Comparador",
+            href: safeRoute("autocoach.index"),
+        },
+        {
+            type: "link",
+            id: "taller",
+            label: "Taller de Surf",
+            shortLabel: "Taller",
+            href: safeRoute("taller.index"),
+        },
+        {
+            type: "link",
+            id: "nosotros",
+            label: "Sobre nosotros",
+            shortLabel: "Nosotros",
+            href: safeRoute("nosotros"),
+        },
         forecastLink,
     ];
-    const contactoLink = { type: "link", id: "contacto", label: "Contacto", href: safeRoute("contacto") };
+    const contactoLink = {
+        type: "link",
+        id: "contacto",
+        label: "Contacto",
+        href: safeRoute("contacto"),
+    };
 
     if (isAdmin) {
         return [
-            { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
+            {
+                type: "link",
+                id: "inicio",
+                label: "Inicio",
+                href: safeRoute("Pag_principal"),
+            },
             forecastLink,
             {
                 type: "flyout",
@@ -61,56 +130,125 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
                     {
                         title: "Taquillas",
                         links: [
-                            { label: "Planes", href: safeRoute("taquilla.index.admin"), featured: true },
-                            { label: "Vigencia", href: safeRoute("taquilla.vigencia") },
-                            { label: "Registro de Pagos", href: safeRoute("taquilla.pagos.registro") },
-                            { label: "Asignador de Taquillas", href: safeRoute("asignar.taquilla.mostrar") },
-                            { label: "Candado de emergencia", href: safeRoute("admin.emergency-keys.index") },
+                            {
+                                label: "Planes",
+                                href: safeRoute("taquilla.index.admin"),
+                                featured: true,
+                            },
+                            {
+                                label: "Vigencia",
+                                href: safeRoute("taquilla.vigencia"),
+                            },
+                            {
+                                label: "Registro de Pagos",
+                                href: safeRoute("taquilla.pagos.registro"),
+                            },
+                            {
+                                label: "Asignador de Taquillas",
+                                href: safeRoute("asignar.taquilla.mostrar"),
+                            },
+                            {
+                                label: "Candado de emergencia",
+                                href: safeRoute("admin.emergency-keys.index"),
+                            },
                         ],
                     },
                     {
                         title: "Tienda",
                         links: [
-                            { label: "Gestor de Pedidos", href: safeRoute("gestor.pedidos"), featured: true },
-                            { label: "Gestor de Productos", href: safeRoute("mostrar.productos") },
+                            {
+                                label: "Gestor de Pedidos",
+                                href: safeRoute("gestor.pedidos"),
+                                featured: true,
+                            },
+                            {
+                                label: "Gestor de Productos",
+                                href: safeRoute("mostrar.productos"),
+                            },
                         ],
                     },
                     {
                         title: "Alquileres",
                         links: [
-                            { label: "Inventario de Tablas", href: safeRoute("admin.surfboards.index"), featured: true },
-                            { label: "Reservas de Alquiler", href: safeRoute("admin.bookings.index") },
-                            { label: "Segunda Mano", href: safeRoute("admin.second-hand.index") },
-                            { label: "Subastas", href: safeRoute("admin.auctions.index") },
+                            {
+                                label: "Inventario de Tablas",
+                                href: safeRoute("admin.surfboards.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Reservas de Alquiler",
+                                href: safeRoute("admin.bookings.index"),
+                            },
+                            {
+                                label: "Segunda Mano",
+                                href: safeRoute("admin.second-hand.index"),
+                            },
+                            {
+                                label: "Subastas",
+                                href: safeRoute("admin.auctions.index"),
+                            },
                         ],
                     },
                     {
                         title: "Clases",
                         links: [
-                            { label: "Gestor de Clases", href: safeRoute("admin.class-manager.index"), featured: true },
-                            { label: "Packs de Bonos", href: safeRoute("admin.bonos.index") },
+                            {
+                                label: "Gestor de Clases",
+                                href: safeRoute("admin.class-manager.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Packs de Bonos",
+                                href: safeRoute("admin.bonos.index"),
+                            },
                         ],
                     },
                     {
                         title: "Chatbot",
                         links: [
-                            { label: "Casos derivados", href: safeRoute("admin.chatbot.index"), featured: true },
+                            {
+                                label: "Casos derivados",
+                                href: safeRoute("admin.chatbot.index"),
+                                featured: true,
+                            },
                         ],
                     },
                     {
                         title: "Usuarios",
                         links: [
-                            { label: "Usuarios y VIP", href: safeRoute("admin.users.index"), featured: true },
-                            { label: "Seguimiento VIP", href: safeRoute("admin.vips.index") },
-                            { label: "Lista de Usuarios", href: safeRoute("listaUsuarios") },
+                            {
+                                label: "Usuarios y VIP",
+                                href: safeRoute("admin.users.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Seguimiento VIP",
+                                href: safeRoute("admin.vips.index"),
+                            },
+                            {
+                                label: "Lista de Usuarios",
+                                href: safeRoute("listaUsuarios"),
+                            },
                         ],
                     },
                     {
                         title: "Pagos",
                         links: [
-                            { label: "Dashboard Global", href: safeRoute("admin.payments.global"), featured: true },
-                            { label: "Clientes · Historial de pagos", href: safeRoute("admin.payments.clients.index") },
-                            { label: "Validacion de Bonos", href: safeRoute("admin.payment-validation.index") },
+                            {
+                                label: "Dashboard Global",
+                                href: safeRoute("admin.payments.global"),
+                                featured: true,
+                            },
+                            {
+                                label: "Clientes · Historial de pagos",
+                                href: safeRoute("admin.payments.clients.index"),
+                            },
+                            {
+                                label: "Validacion de Bonos",
+                                href: safeRoute(
+                                    "admin.payment-validation.index",
+                                ),
+                            },
                         ],
                     },
                 ],
@@ -123,8 +261,15 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
                     {
                         title: "Herramientas",
                         links: [
-                            { label: "Comparador de maniobras", href: safeRoute("autocoach.index"), featured: true },
-                            { label: "Webcams", href: safeRoute("servicios.webcams") },
+                            {
+                                label: "Comparador de maniobras",
+                                href: safeRoute("autocoach.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Webcams",
+                                href: safeRoute("servicios.webcams"),
+                            },
                             {
                                 label: "Parte / Forecast",
                                 href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
@@ -137,7 +282,8 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
         ];
     }
 
-    // Clases: reserva (transacción) arriba; landings informativas debajo. No fusionar rutas.
+    // Clases: reserva (transacción) arriba; landings informativas debajo.
+    // Guía surfskate va en Servicios (no es reserva de clase).
     const clasesLinks = [];
     clasesLinks.push({
         label: "Reservar clases",
@@ -152,13 +298,27 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     }
     clasesLinks.push(
         { label: "Info · Clases de surf", href: safeRoute("servicios.surf") },
-        { label: "Info · Clases surfskate", href: safeRoute("servicios.surfSkate") },
-        { label: "Guía surfskate", href: safeRoute("servicios.surfSkate.guia") },
+        {
+            label: "Info · Clases surfskate",
+            href: safeRoute("servicios.surfSkate"),
+        },
         { label: "Surftrips", href: safeRoute("servicios.surfTrips") },
     );
+    if (isAuth && !isVip) {
+        clasesLinks.push({
+            label: "Bonos VIP (solicitar acceso)",
+            href: safeRoute("bonos.index"),
+        });
+    }
+    if (isVip) {
+        clasesLinks.push({
+            label: "Mis Bonos VIP · Recargar",
+            href: safeRoute("bonos.index"),
+            featured: !hasLocker,
+        });
+    }
 
-    // Taquillas (zona dentro de Servicios)
-    // Invitado → Planes públicas; auth sin locker → área cliente; con locker → Mi Taquilla + sin llave (sin Planes duplicado).
+    // Taquillas: invitado/auth sin locker → Planes; con locker → Mi Taquilla + sin llave.
     const taquillasLinks = [];
     if (hasLocker) {
         taquillasLinks.push({
@@ -179,82 +339,111 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
             featured: true,
         });
     }
-    if (isAuth && !isVip) {
-        clasesLinks.push({ label: "Bonos VIP (solicitar acceso)", href: safeRoute("bonos.index") });
-    }
-    if (isVip) {
-        clasesLinks.push({ label: "Mis Bonos VIP · Recargar", href: safeRoute("bonos.index"), featured: !hasLocker });
-    }
-
-    const alquileresLinks = [
-        { label: "Tablas de alquiler", href: safeRoute("rentals.surfboards.index"), featured: true },
-    ];
-    if (isAuth && !isAdmin) {
-        alquileresLinks.push({ label: "Mis reservas · alquileres", href: `${safeRoute("my-reservations.index")}?tab=rentals` });
-    }
 
     const tiendaLinks = [
-        { label: "Tienda oficial S4", href: safeRoute("tienda"), featured: true },
-        { label: "Tablas de Segunda Mano", href: safeRoute("second-hand.index") },
-    ];
-    if (isAuth && !isAdmin) {
-        tiendaLinks.splice(1, 0, { label: "Mis Pedidos", href: safeRoute("pedidos") });
-    }
-
-    const serviciosLinks = [
-        { label: "Reparaciones", href: safeRoute("servicios"), featured: true },
         {
-            label: "Neoprenos",
-            href: safeRoute("servicios.reparacionNeoprenos", undefined, "/servicios/reparacion-neoprenos"),
+            label: "Tienda oficial S4",
+            href: safeRoute("tienda"),
+            featured: true,
+        },
+        {
+            label: "Tablas de Segunda Mano",
+            href: safeRoute("second-hand.index"),
+        },
+        {
+            label: "Subastas",
+            href: safeRoute("auctions.index"),
         },
     ];
-    if (canAccessAuctions) {
-        serviciosLinks.push({ label: "Subastas", href: safeRoute("auctions.index") });
+    if (isAuth && !isAdmin) {
+        tiendaLinks.splice(1, 0, {
+            label: "Mis Pedidos",
+            href: safeRoute("pedidos"),
+        });
     }
 
+    const reparacionesLinks = [
+        {
+            label: "Rep. tablas",
+            href: safeRoute("servicios"),
+            featured: true,
+        },
+        {
+            label: "Rep. neoprenos",
+            href: safeRoute(
+                "servicios.reparacionNeoprenos",
+                undefined,
+                "/servicios/reparacion-neoprenos",
+            ),
+        },
+    ];
+
+    const serviciosUtilLinks = [
+        {
+            label: "Alquiler de tablas",
+            href: safeRoute("rentals.surfboards.index"),
+            featured: true,
+        },
+        {
+            label: "Guía surfskate",
+            href: safeRoute("servicios.surfSkate.guia"),
+        },
+    ];
+    if (isAuth && !isAdmin) {
+        serviciosUtilLinks.push({
+            label: "Mis reservas · alquileres",
+            href: `${safeRoute("my-reservations.index")}?tab=rentals`,
+        });
+    }
+
+    // Fila 1 (cortas): Tienda · Reparaciones · Servicios · Taquillas · [Cuenta]
+    // Fila 2 (largas): Clases · Multimedia
     const serviciosGroups = [
-            {
-                title: "Tienda",
-                links: tiendaLinks,
-            },
-            {
-                title: "Servicios",
-                links: serviciosLinks,
-            },
-            {
-                title: "Alquileres",
-                links: alquileresLinks,
-            },
-            {
-                title: "Taquillas",
-                links: taquillasLinks,
-            },
-            {
-                title: "Clases",
-                links: clasesLinks,
-            },
+        { title: "Tienda", links: tiendaLinks },
+        { title: "Reparaciones", links: reparacionesLinks },
+        { title: "Servicios", links: serviciosUtilLinks },
+        { title: "Taquillas", links: taquillasLinks },
     ];
 
     if (isAuth && !isAdmin) {
         serviciosGroups.push({
-            title: "Mi Perfil",
-            links: [{ label: "Mi Perfil", href: safeRoute("my-profile.index"), featured: true }],
+            title: "Cuenta",
+            links: [
+                {
+                    label: "Mi Perfil",
+                    href: safeRoute("my-profile.index"),
+                    featured: true,
+                },
+            ],
         });
     }
 
-    serviciosGroups.push({
-                title: "Multimedia",
-                links: [
-                    { label: "Comparador de maniobras", href: safeRoute("autocoach.index"), featured: true },
-                    { label: "Fotografia", href: safeRoute("servicios.fotografia") },
-                    { label: "Videograbaciones", href: safeRoute("servicios.videograbaciones") },
-                    { label: "Webcams", href: safeRoute("servicios.webcams") },
-                    {
-                        label: "Parte / Forecast",
-                        href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
-                    },
-                ],
-            });
+    serviciosGroups.push(
+        { title: "Clases", links: clasesLinks },
+        {
+            title: "Multimedia",
+            links: [
+                {
+                    label: "Comparador de maniobras",
+                    href: safeRoute("autocoach.index"),
+                    featured: true,
+                },
+                {
+                    label: "Fotografia",
+                    href: safeRoute("servicios.fotografia"),
+                },
+                {
+                    label: "Videograbaciones",
+                    href: safeRoute("servicios.videograbaciones"),
+                },
+                { label: "Webcams", href: safeRoute("servicios.webcams") },
+                {
+                    label: "Parte / Forecast",
+                    href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+                },
+            ],
+        },
+    );
 
     const servicios = {
         type: "flyout",
@@ -264,7 +453,12 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
     };
 
     return [
-        { type: "link", id: "inicio", label: "Inicio", href: safeRoute("Pag_principal") },
+        {
+            type: "link",
+            id: "inicio",
+            label: "Inicio",
+            href: safeRoute("Pag_principal"),
+        },
         publicTopLinks[0],
         publicTopLinks[1],
         publicTopLinks[2],
@@ -274,7 +468,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions }) {
 }
 
 function scrollToHrefHash(href) {
-    const hash = typeof href === "string" && href.includes("#") ? href.split("#")[1] : "";
+    const hash =
+        typeof href === "string" && href.includes("#")
+            ? href.split("#")[1]
+            : "";
     if (!hash) {
         return;
     }
@@ -289,17 +486,20 @@ function scrollToHrefHash(href) {
 function FlyoutGroup({ group }) {
     return (
         <div className="min-w-[170px] max-w-[230px] flex-1">
-            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">{group.title}</h3>
+            <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">
+                {group.title}
+            </h3>
             <ul className="space-y-1.5">
                 {group.links.map((link) => (
                     <li key={link.label}>
-                        <Link
+                        <PressRipple
+                            as={Link}
                             href={link.href}
                             onClick={() => scrollToHrefHash(link.href)}
-                            className="block text-sm text-slate-200 transition-colors hover:text-cyan-300"
+                            className="block rounded-lg py-1.5 pl-3 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
                         >
                             {link.label}
-                        </Link>
+                        </PressRipple>
                     </li>
                 ))}
             </ul>
@@ -314,12 +514,16 @@ export default function GlobalNav() {
     const isAdmin = isAuth && String(user?.role) === "admin";
     const isVip = user?.is_vip === true || String(user?.is_vip) === "1";
     const hasLocker =
-        user?.has_physical_locker === true || String(user?.has_physical_locker) === "1";
-    const canAccessAuctions =
-        user?.can_access_auctions === true || String(user?.can_access_auctions) === "1";
+        user?.has_physical_locker === true ||
+        String(user?.has_physical_locker) === "1";
     const cartCount = Number(props?.cart?.count ?? props?.cartCount ?? 0);
 
-    const menus = buildMenus({ isAdmin, isAuth, isVip, hasLocker, canAccessAuctions });
+    const menus = buildMenus({
+        isAdmin,
+        isAuth,
+        isVip,
+        hasLocker,
+    });
 
     const baseId = useId();
     const closeTimerRef = useRef(null);
@@ -328,7 +532,8 @@ export default function GlobalNav() {
     const [mobileSection, setMobileSection] = useState(null);
     const [accountOpen, setAccountOpen] = useState(false);
 
-    const activeMenu = menus.find((m) => m.id === activeMenuId && m.type === "flyout") ?? null;
+    const activeMenu =
+        menus.find((m) => m.id === activeMenuId && m.type === "flyout") ?? null;
     const panelOpen = Boolean(activeMenu);
 
     const clearCloseTimer = useCallback(() => {
@@ -345,7 +550,10 @@ export default function GlobalNav() {
 
     const scheduleClose = useCallback(() => {
         clearCloseTimer();
-        closeTimerRef.current = window.setTimeout(() => setActiveMenuId(null), HOVER_CLOSE_DELAY_MS);
+        closeTimerRef.current = window.setTimeout(
+            () => setActiveMenuId(null),
+            HOVER_CLOSE_DELAY_MS,
+        );
     }, [clearCloseTimer]);
 
     const openMenu = useCallback(
@@ -369,16 +577,27 @@ export default function GlobalNav() {
 
     useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
 
-    const accountLinks = [{ label: "Editar mi cuenta", href: safeRoute("profile.edit") }];
+    const accountLinks = [
+        { label: "Editar mi cuenta", href: safeRoute("profile.edit") },
+    ];
     if (!isAdmin) {
         accountLinks.push(
-            { label: "Mis clases reservadas", href: `${safeRoute("my-reservations.index")}?tab=classes` },
-            { label: "Mis alquileres", href: `${safeRoute("my-reservations.index")}?tab=rentals` },
+            {
+                label: "Mis clases reservadas",
+                href: `${safeRoute("my-reservations.index")}?tab=classes`,
+            },
+            {
+                label: "Mis alquileres",
+                href: `${safeRoute("my-reservations.index")}?tab=rentals`,
+            },
             { label: "Mis Pedidos", href: safeRoute("pedidos") },
             { label: "Mis facturas", href: safeRoute("my-invoices.index") },
         );
         if (hasLocker) {
-            accountLinks.push({ label: "Me quedé sin llave", href: safeRoute("emergency-key.show") });
+            accountLinks.push({
+                label: "Me quedé sin llave",
+                href: safeRoute("emergency-key.show"),
+            });
         }
         if (isVip) {
             accountLinks.push(
@@ -389,42 +608,80 @@ export default function GlobalNav() {
     }
 
     return (
-        <div className="relative z-[600] w-full bg-[#071326] text-slate-100" onMouseLeave={scheduleClose}>
-            <nav aria-label="Navegacion global" className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-                <Link href={safeRoute("Pag_principal")} aria-label="San Sebastián Surf School — Inicio" className="inline-flex shrink-0 items-center gap-2.5">
-                    <BrandLogo variant="whiteNav" className="h-10 w-10 sm:h-11 sm:w-11" priority />
-                    <span className="hidden text-sm font-bold leading-tight text-white lg:inline">San Sebastian Surf School</span>
+        <div
+            className="relative z-[600] w-full bg-[#071326] text-slate-100"
+            onMouseLeave={scheduleClose}
+        >
+            <nav
+                aria-label="Navegacion global"
+                className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6"
+            >
+                <Link
+                    href={safeRoute("Pag_principal")}
+                    aria-label="San Sebastián Surf School — Inicio"
+                    className="inline-flex shrink-0 items-center gap-2.5"
+                >
+                    <BrandLogo
+                        variant="whiteNav"
+                        className="h-10 w-10 sm:h-11 sm:w-11"
+                        priority
+                    />
+                    {/* Nombre largo solo en desktop ancho; en tablet libera sitio al menú */}
+                    <span className="hidden text-sm font-bold leading-tight text-white xl:inline">
+                        San Sebastian Surf School
+                    </span>
                 </Link>
 
-                <ul className="hidden flex-1 items-center justify-center gap-1 lg:flex">
+                <ul className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 lg:flex xl:gap-1">
                     {menus.map((menu) => {
                         if (menu.type === "link") {
                             return (
-                                <li key={menu.id} className="list-none" onMouseEnter={closePanel}>
-                                    <Link
+                                <li
+                                    key={menu.id}
+                                    className="list-none"
+                                    onMouseEnter={closePanel}
+                                >
+                                    <PressRipple
+                                        as={Link}
                                         href={menu.href}
-                                        onClick={() => scrollToHrefHash(menu.href)}
-                                        className="rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white"
+                                        onClick={() =>
+                                            scrollToHrefHash(menu.href)
+                                        }
+                                        className={NAV_LINK_CLASS}
                                     >
-                                        {menu.label}
-                                    </Link>
+                                        <NavLabel
+                                            label={menu.label}
+                                            shortLabel={menu.shortLabel}
+                                        />
+                                    </PressRipple>
                                 </li>
                             );
                         }
                         const expanded = activeMenuId === menu.id;
                         return (
-                            <li key={menu.id} className="list-none" onMouseEnter={() => openMenu(menu.id)}>
-                                <button
+                            <li
+                                key={menu.id}
+                                className="list-none"
+                                onMouseEnter={() => openMenu(menu.id)}
+                            >
+                                <PressRipple
+                                    as="button"
                                     type="button"
                                     id={`${baseId}-trigger-${menu.id}`}
                                     aria-expanded={expanded}
                                     aria-haspopup="true"
+                                    active={expanded}
                                     onFocus={() => openMenu(menu.id)}
-                                    className={`inline-flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${expanded ? "text-white" : "text-slate-300 hover:text-white"}`}
+                                    className={`${NAV_FLYOUT_BTN_BASE} ${expanded ? "text-white" : "text-slate-400 hover:text-white"}`}
                                 >
-                                    {menu.label}
-                                    <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
-                                </button>
+                                    <NavLabel
+                                        label={menu.label}
+                                        shortLabel={menu.shortLabel}
+                                    />
+                                    <ChevronDown
+                                        className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`}
+                                    />
+                                </PressRipple>
                             </li>
                         );
                     })}
@@ -451,11 +708,15 @@ export default function GlobalNav() {
                             <button
                                 type="button"
                                 onClick={() => router.post(safeRoute("logout"))}
-                                className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10"
+                                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
                             >
+                                <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                 Salir
                             </button>
-                            <div className="relative" onMouseLeave={() => setAccountOpen(false)}>
+                            <div
+                                className="relative"
+                                onMouseLeave={() => setAccountOpen(false)}
+                            >
                                 <button
                                     type="button"
                                     aria-label="Mi cuenta"
@@ -468,28 +729,38 @@ export default function GlobalNav() {
                                 <div
                                     className={`absolute right-0 top-full z-[40] w-56 pt-2 transition-all ${accountOpen ? "opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}
                                 >
-                                    <div className="rounded-2xl border border-white/10 bg-[#0b1d33] p-2 shadow-xl">
+                                    <div className="rounded-2xl border border-white/10 bg-[#040b16] p-2 shadow-xl">
                                         <AccountMenuIdentity user={user} />
                                         {accountLinks.map((link) => (
-                                            <Link
+                                            <PressRipple
                                                 key={link.label}
+                                                as={Link}
                                                 href={link.href}
-                                                onClick={() => setAccountOpen(false)}
-                                                className="block rounded-xl px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
+                                                onClick={() =>
+                                                    setAccountOpen(false)
+                                                }
+                                                className="block rounded-xl py-2 pl-3 pr-3 text-sm font-medium text-slate-400 transition-colors hover:text-white"
                                             >
                                                 {link.label}
-                                            </Link>
+                                            </PressRipple>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     ) : (
-                        <div className="hidden items-center gap-2 lg:flex">
-                            <Link href={safeRoute("login")} className="rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10">
+                        <div className="hidden items-center gap-1.5 lg:flex">
+                            <PressRipple
+                                as={Link}
+                                href={safeRoute("login")}
+                                className="rounded-xl px-3 py-1.5 pl-3 text-xs font-semibold text-slate-400 transition-colors hover:text-white"
+                            >
                                 Acceder
-                            </Link>
-                            <Link href={safeRoute("register")} className="rounded-xl bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-400">
+                            </PressRipple>
+                            <Link
+                                href={safeRoute("register")}
+                                className="rounded-xl bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm shadow-cyan-950/40 transition-colors hover:bg-cyan-500"
+                            >
                                 Registrarse
                             </Link>
                         </div>
@@ -501,19 +772,27 @@ export default function GlobalNav() {
                         onClick={() => setMobileOpen((v) => !v)}
                         className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-200 hover:bg-white/10 lg:hidden"
                     >
-                        {mobileOpen ? <XIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+                        {mobileOpen ? (
+                            <XIcon className="h-5 w-5" />
+                        ) : (
+                            <MenuIcon className="h-5 w-5" />
+                        )}
                     </button>
                 </div>
             </nav>
 
             {/* Panel flyout a todo el ancho (desktop) - fondo solido azulado */}
             <div
-                className={`absolute left-0 right-0 top-full w-full overflow-hidden border-t border-white/10 bg-[#0b1d33] shadow-2xl transition-[max-height,opacity] duration-300 ease-out ${panelOpen ? "max-h-[560px] opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
+                className={`absolute left-0 right-0 top-full w-full overflow-hidden border-t border-white/10 bg-[#040b16] shadow-2xl transition-[max-height,opacity] duration-300 ease-out ${panelOpen ? "max-h-[560px] opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
                 onMouseEnter={clearCloseTimer}
                 onMouseLeave={scheduleClose}
             >
                 {activeMenu ? (
-                    <div role="region" aria-labelledby={`${baseId}-trigger-${activeMenu.id}`} className="mx-auto max-w-7xl px-6 py-8">
+                    <div
+                        role="region"
+                        aria-labelledby={`${baseId}-trigger-${activeMenu.id}`}
+                        className="mx-auto max-w-7xl px-6 py-8"
+                    >
                         <div className="flex flex-wrap gap-x-10 gap-y-8 lg:gap-x-14">
                             {activeMenu.groups.map((group) => (
                                 <FlyoutGroup key={group.title} group={group} />
@@ -523,54 +802,135 @@ export default function GlobalNav() {
                 ) : null}
             </div>
 
-            {/* Menu movil (acordeon) */}
+            {/* Menu movil (acordeon): auth arriba, navegación debajo */}
             {mobileOpen ? (
-                <div className="border-t border-white/10 bg-[#0b1d33] lg:hidden">
+                <div className="border-t border-white/10 bg-[#040b16] lg:hidden">
                     <div className="mx-auto max-w-7xl px-4 py-3">
+                        {isAuth ? (
+                            <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                                <div className="mb-2 flex items-start gap-2.5">
+                                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-400/25">
+                                        <UserCircle className="h-5 w-5" aria-hidden />
+                                    </div>
+                                    <div className="min-w-0 flex-1 pt-0.5">
+                                        <AccountMenuIdentity user={user} compact />
+                                    </div>
+                                </div>
+                                <div className="space-y-0.5 border-t border-white/5 pt-2">
+                                    {accountLinks.map((link) => (
+                                        <PressRipple
+                                            key={link.label}
+                                            as={Link}
+                                            href={link.href}
+                                            onClick={() => setMobileOpen(false)}
+                                            className="block w-full rounded-lg py-2 pl-3 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
+                                        >
+                                            {link.label}
+                                        </PressRipple>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setMobileOpen(false);
+                                        router.post(safeRoute("logout"));
+                                    }}
+                                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+                                >
+                                    <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                                    Salir
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="mb-3 rounded-2xl border border-cyan-400/20 bg-gradient-to-b from-cyan-500/10 to-transparent p-3">
+                                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300/80">
+                                    Tu cuenta
+                                </p>
+                                <div className="flex gap-2">
+                                    <PressRipple
+                                        as={Link}
+                                        href={safeRoute("login")}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex flex-1 items-center justify-center rounded-xl border border-white/15 bg-white/5 py-2.5 pl-3 pr-3 text-center text-sm font-semibold text-slate-200 transition-colors hover:border-white/25 hover:text-white"
+                                    >
+                                        Acceder
+                                    </PressRipple>
+                                    <Link
+                                        href={safeRoute("register")}
+                                        onClick={() => setMobileOpen(false)}
+                                        className="flex flex-1 items-center justify-center rounded-xl bg-cyan-600 px-3 py-2.5 text-center text-sm font-semibold text-white shadow-sm shadow-cyan-950/40 transition-colors hover:bg-cyan-500"
+                                    >
+                                        Registrarse
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
+
                         {menus.map((menu) => {
                             if (menu.type === "link") {
                                 return (
-                                    <Link
+                                    <PressRipple
                                         key={menu.id}
+                                        as={Link}
                                         href={menu.href}
                                         onClick={() => {
                                             setMobileOpen(false);
                                             scrollToHrefHash(menu.href);
                                         }}
-                                        className="block border-b border-white/5 py-3 text-sm font-semibold text-slate-100 last:border-0"
+                                        className="block w-full border-b border-white/5 py-3 pl-3 text-sm font-semibold text-slate-100 last:border-0"
                                     >
                                         {menu.label}
-                                    </Link>
+                                    </PressRipple>
                                 );
                             }
                             const open = mobileSection === menu.id;
                             return (
-                                <div key={menu.id} className="border-b border-white/5 last:border-0">
-                                    <button
+                                <div
+                                    key={menu.id}
+                                    className="border-b border-white/5 last:border-0"
+                                >
+                                    <PressRipple
+                                        as="button"
                                         type="button"
-                                        onClick={() => setMobileSection(open ? null : menu.id)}
-                                        className="flex w-full items-center justify-between py-3 text-left text-sm font-semibold text-slate-100"
+                                        onClick={() =>
+                                            setMobileSection(
+                                                open ? null : menu.id,
+                                            )
+                                        }
+                                        className="flex w-full items-center justify-between py-3 pl-3 text-left text-sm font-semibold text-slate-100"
                                     >
                                         {menu.label}
-                                        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
-                                    </button>
+                                        <ChevronDown
+                                            className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
+                                        />
+                                    </PressRipple>
                                     {open ? (
                                         <div className="pb-3">
                                             {menu.groups.map((group) => (
-                                                <div key={group.title} className="mb-2">
-                                                    <p className="mb-1 text-[11px] uppercase tracking-wider text-cyan-300/70">{group.title}</p>
+                                                <div
+                                                    key={group.title}
+                                                    className="mb-2"
+                                                >
+                                                    <p className="mb-1 text-[11px] uppercase tracking-wider text-cyan-300/70">
+                                                        {group.title}
+                                                    </p>
                                                     {group.links.map((link) => (
-                                                        <Link
+                                                        <PressRipple
                                                             key={link.label}
+                                                            as={Link}
                                                             href={link.href}
                                                             onClick={() => {
-                                                                setMobileOpen(false);
-                                                                scrollToHrefHash(link.href);
+                                                                setMobileOpen(
+                                                                    false,
+                                                                );
+                                                                scrollToHrefHash(
+                                                                    link.href,
+                                                                );
                                                             }}
-                                                            className="block rounded-lg px-2 py-2 text-sm text-slate-200 hover:bg-white/10 hover:text-cyan-300"
+                                                            className="block w-full rounded-lg py-2 pl-3 pr-2 text-sm text-slate-400 hover:text-white"
                                                         >
                                                             {link.label}
-                                                        </Link>
+                                                        </PressRipple>
                                                     ))}
                                                 </div>
                                             ))}
@@ -579,43 +939,6 @@ export default function GlobalNav() {
                                 </div>
                             );
                         })}
-
-                        <div className="mt-3 space-y-1">
-                            {isAuth ? (
-                                <>
-                                    <AccountMenuIdentity user={user} />
-                                    {accountLinks.map((link) => (
-                                        <Link
-                                            key={link.label}
-                                            href={link.href}
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block rounded-lg px-2 py-2 text-sm text-slate-200 hover:bg-white/10 hover:text-cyan-300"
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMobileOpen(false);
-                                            router.post(safeRoute("logout"));
-                                        }}
-                                        className="mt-1 w-full rounded-xl bg-rose-600 px-3 py-2 text-center text-sm font-semibold text-white"
-                                    >
-                                        Salir
-                                    </button>
-                                </>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <Link href={safeRoute("login")} onClick={() => setMobileOpen(false)} className="flex-1 rounded-xl border border-white/15 px-3 py-2 text-center text-sm font-medium text-slate-200">
-                                        Acceder
-                                    </Link>
-                                    <Link href={safeRoute("register")} onClick={() => setMobileOpen(false)} className="flex-1 rounded-xl bg-emerald-500 px-3 py-2 text-center text-sm font-semibold text-white">
-                                        Registrarse
-                                    </Link>
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
             ) : null}

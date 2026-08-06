@@ -1,7 +1,0 @@
-tunnel: 72e8c095-e86a-4bb3-b963-f26a5397d2df
-credentials-file: C:\Users\ASUS\.cloudflared\72e8c095-e86a-4bb3-b963-f26a5397d2df.json
-
-ingress:
-  - hostname: sansebastiansurfschool.eu
-    service: http://127.0.0.1:8000
-  - service: http_status:404

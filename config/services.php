@@ -46,6 +46,20 @@ return [
     ],
 
     /**
+     * Euskalmet — predicción marítima costa vasca (Open Data Euskadi).
+     * XML público (sin API key) para pleamar/bajamar. Oleaje horario sigue en Open-Meteo.
+     */
+    'euskalmet' => [
+        'enabled' => (bool) env('EUSKALMET_ENABLED', true),
+        'sea_forecast_xml_url' => env(
+            'EUSKALMET_SEA_FORECAST_XML_URL',
+            'https://opendata.euskadi.eus/contenidos/prevision_maritima/sea_forecast/opendata/sea_forecast.xml',
+        ),
+        'timeout_seconds' => (int) env('EUSKALMET_TIMEOUT_SECONDS', 10),
+        'cache_ttl_seconds' => (int) env('EUSKALMET_CACHE_TTL_SECONDS', 1800),
+    ],
+
+    /**
      * Parte S4 de Zurriola (oleaje/viento/energía + resumen diario por IA).
      *
      * ⚠️ ENTORNO DE PRUEBA: coordenadas y umbrales son un borrador de partida,
@@ -71,9 +85,13 @@ return [
             ['max' => PHP_FLOAT_MAX, 'label' => 'Muy fuerte'],
         ],
 
-        // Índice UI "kJ": 0.5 × H_ft² × T × factor (ver SURFFORECAST_CALIBRATION_DIAG.md).
-        // factor 2.4 ≈ alineación periodo corto con convención tipo Surf-Forecast cuando H/T coinciden.
+        // Índice UI "kJ" ≈ Surf-Forecast: factor × 0.5 × (H_m×height_scale en ft)² × T × period_boost.
+        // factor 2.4: con H/T idénticos a SF (periodo corto) → mismo kJ (2.1 m/6 s → 341).
         'energy_kj_calibration_factor' => (float) env('ZURRIOLA_ENERGY_KJ_FACTOR', 2.4),
+        // Open-Meteo Zurriola suele subestimar Hs vs SF (~×1.52 en el diag 2026-07-25). Solo energía.
+        'energy_kj_height_scale' => (float) env('ZURRIOLA_ENERGY_HEIGHT_SCALE', 1.52),
+        // Periodo largo SF suma más punch (1.0 si T≤6 s → boost_max si T≥10 s).
+        'energy_kj_period_boost_max' => (float) env('ZURRIOLA_ENERGY_PERIOD_BOOST_MAX', 1.6),
         // Qué altura/periodo alimentar el kJ: wave (combinada), swell, o max_energy (el par con más punch).
         'energy_kj_height_source' => env('ZURRIOLA_ENERGY_HEIGHT_SOURCE', 'wave'),
 
@@ -103,13 +121,21 @@ return [
         // Hechos GEO públicos (ubicación, temporada, material, FAQs citables). Editable sin deploy de lógica.
         'geo_facts_json_path' => env('ZURRIOLA_GEO_FACTS_PATH', resource_path('surf-guide/zurriola-geo-facts.json')),
 
+        // Panel "Tiempo detallado" (horario+7 días, Open-Meteo forecast) bajo demanda en webcams.
+        // false → ZurriolaWeatherForecastService devuelve ok:false sin tocar Open-Meteo.
+        'weather_detail_enabled' => env('ZURRIOLA_WEATHER_DETAIL_ENABLED', true),
+
         'generation_hour' => env('ZURRIOLA_SURF_GENERATION_HOUR', '07:00'),
 
         // Tabla de previsión multi-día (distinta del "parte de hoy" de arriba).
         // Open-Meteo marine + weather: forecast_days máximo documentado = 16 (probado 16 OK, 17 → 400).
         // Default de producto = tope API; UI horizontal/scroll ya soporta N días. Override con ZURRIOLA_FORECAST_DAYS.
         'forecast_days' => (int) env('ZURRIOLA_FORECAST_DAYS', 16),
-        'forecast_slot_hours' => [6, 9, 12, 15, 18, 21],
+        // Tabla compacta (arriba): franjas diurnas cada 2h.
+        'forecast_slot_hours' => [6, 8, 10, 12, 14, 16, 18, 20, 22],
+        // Slider "cada 2h · todos los días" (fusiona oleaje+tiempo): día completo cada 2h.
+        // Sin madrugada (0/2/4): nadie surfea; el slider empieza a las 06:00.
+        'forecast_detailed_slot_hours' => [6, 8, 10, 12, 14, 16, 18, 20, 22],
 
         // Viento por debajo de este umbral se considera "glassy" (sin apenas efecto),
         // sea cual sea su dirección.

@@ -1,7 +1,20 @@
-import React from "react";
+import React, { useId, useState } from "react";
 import { Link } from "@inertiajs/react";
-import { ArrowRight, BookOpenCheck, Gauge, Waves, Wind } from "lucide-react";
+import {
+    ArrowRight,
+    BookOpenCheck,
+    CalendarRange,
+    ChevronDown,
+    Gauge,
+    Loader2,
+    Waves,
+    Wind,
+} from "lucide-react";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
+import SurfLevelAccordion from "./SurfLevelAccordion";
+import { SURF_LEVELS } from "./surfLevels";
+import SurfDetailedForecastSlider from "./SurfDetailedForecastSlider";
+import useDetailedForecast from "./useDetailedForecast";
 
 function BriefShell({ children, className = "" }) {
     return (
@@ -27,7 +40,114 @@ function BriefShell({ children, className = "" }) {
     );
 }
 
+/** Miniatura decorativa de la tabla forecast (no es el componente real). */
+function ForecastMiniPreview({ waveM, onOpen, loading }) {
+    const hours = ["06", "08", "10", "12", "14"];
+    const waveHint =
+        typeof waveM === "number" && Number.isFinite(waveM)
+            ? waveM.toFixed(2)
+            : "0.4";
+
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            aria-label="Abrir forecast al detalle"
+            className="group relative w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left shadow-inner transition hover:border-cyan-500/40 hover:ring-1 hover:ring-cyan-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+        >
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent sm:w-20" />
+            <div className="px-2.5 py-2 sm:px-3">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-cyan-300/80">
+                        Forecast
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-cyan-200/90 opacity-90 transition group-hover:opacity-100">
+                        {loading ? (
+                            <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                        ) : (
+                            <CalendarRange className="h-3 w-3" aria-hidden />
+                        )}
+                        Abrir
+                    </span>
+                </div>
+                <div className="grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-x-1 gap-y-1 text-[8px] leading-none text-slate-400 sm:text-[9px]">
+                    <span className="pr-1 font-semibold text-slate-500">HORA</span>
+                    {hours.map((h) => (
+                        <span key={h} className="text-center font-medium text-slate-300">
+                            {h}
+                        </span>
+                    ))}
+                    <span className="pr-1 text-slate-500">Oleaje</span>
+                    {hours.map((h, i) => (
+                        <span key={`w-${h}`} className="text-center font-semibold text-white">
+                            {i === 0 ? `${waveHint}m` : "··"}
+                        </span>
+                    ))}
+                    <span className="pr-1 text-slate-500">Energía</span>
+                    {hours.map((h) => (
+                        <span
+                            key={`e-${h}`}
+                            className="mx-auto inline-flex h-3.5 min-w-[1.35rem] items-center justify-center rounded bg-emerald-500/25 px-0.5 font-bold text-emerald-200"
+                        >
+                            ·
+                        </span>
+                    ))}
+                    <span className="pr-1 text-slate-500">Viento</span>
+                    {hours.map((h) => (
+                        <span key={`v-${h}`} className="text-center text-emerald-300/90">
+                            ↗
+                        </span>
+                    ))}
+                </div>
+            </div>
+        </button>
+    );
+}
+
+function LevelParagraphs({ sections }) {
+    if (!sections) return null;
+
+    return (
+        <div className="mt-3 space-y-3">
+            {SURF_LEVELS.map((lvl) => {
+                const text = sections[lvl.level];
+                if (!text) return null;
+                return (
+                    <div key={lvl.level} className="space-y-1.5">
+                        <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${lvl.labelClass}`}
+                        >
+                            {lvl.label}
+                        </span>
+                        <p className="text-sm leading-relaxed text-slate-700">{text}</p>
+                    </div>
+                );
+            })}
+            {sections.aviso ? (
+                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
+                    {sections.aviso}
+                </p>
+            ) : null}
+        </div>
+    );
+}
+
 export default function SurfBriefMini({ brief }) {
+    const [expanded, setExpanded] = useState(false);
+    const expandId = useId();
+    const panelId = useId();
+
+    const {
+        open,
+        days,
+        loading,
+        error,
+        weatherOk,
+        weatherMessage,
+        openDetailed,
+        closeDetailed,
+    } = useDetailedForecast();
+
     if (brief?.status === "generating") {
         return (
             <BriefShell>
@@ -61,13 +181,15 @@ export default function SurfBriefMini({ brief }) {
     const signalMeta = brief.signal?.status ? surfBriefOverrideMeta(brief.signal.status) : null;
     const badgeTone = signalMeta?.miniTone || "bg-slate-50 text-slate-700 ring-slate-200";
     const badgeLabel = signalMeta?.badge || "Condiciones del día";
+    const sections = brief.summary_sections || null;
+    const generalText = sections?.general || brief.summary;
+    const hasLevels = Boolean(
+        sections?.iniciacion || sections?.intermedio || sections?.avanzado,
+    );
 
     return (
         <BriefShell>
-            <Link
-                href={route("servicios.webcams")}
-                className="group block overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-cyan-500/10 transition hover:-translate-y-0.5 hover:border-cyan-300 hover:shadow-lg"
-            >
+            <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-md ring-1 ring-cyan-500/10">
                 <div className="border-b border-cyan-100/80 bg-gradient-to-r from-[#0f5f74]/[0.07] via-cyan-50/60 to-transparent px-4 py-3 sm:px-5">
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-s4 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
@@ -89,24 +211,60 @@ export default function SurfBriefMini({ brief }) {
                     </p>
                 </div>
 
-                <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-5">
-                    <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#0f5f74] text-white shadow-sm">
-                            <Waves className="h-6 w-6" aria-hidden />
+                <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start sm:gap-5 sm:p-5">
+                    <div className="min-w-0">
+                        <div className="flex items-start gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0f5f74] text-white shadow-sm">
+                                <Waves className="h-5 w-5" aria-hidden />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                                    Hoy en Zurriola
+                                </p>
+                                <p
+                                    id={expandId}
+                                    className={`mt-1 text-sm leading-relaxed text-slate-700 sm:text-[15px] ${
+                                        expanded ? "" : "line-clamp-3 sm:line-clamp-2"
+                                    }`}
+                                >
+                                    {generalText}
+                                </p>
+                                {hasLevels || generalText ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setExpanded((v) => !v)}
+                                        aria-expanded={expanded}
+                                        aria-controls={expandId}
+                                        className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-s4 transition hover:text-cyan-800"
+                                    >
+                                        {expanded ? "Leer menos" : "Leer más"}
+                                        <ChevronDown
+                                            className={`h-3.5 w-3.5 transition ${expanded ? "rotate-180" : ""}`}
+                                            aria-hidden
+                                        />
+                                    </button>
+                                ) : null}
+                            </div>
                         </div>
-                        <div className="min-w-0">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                                Hoy en Zurriola
-                            </p>
-                            <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-slate-700 sm:line-clamp-2 sm:text-[15px]">
-                                {brief.summary}
-                            </p>
-                        </div>
-                    </div>
 
-                    <div className="flex shrink-0 items-center justify-between gap-3 border-t border-slate-100 pt-3 sm:border-t-0 sm:pt-0 sm:gap-5">
-                        <div className="flex items-center gap-3 sm:gap-4">
-                            <div className="flex flex-col items-center sm:items-start">
+                        {expanded ? (
+                            <div className="mt-1 border-t border-slate-100 pt-1">
+                                <LevelParagraphs sections={sections} />
+                                <SurfLevelAccordion />
+                                <p className="mt-3">
+                                    <Link
+                                        href={route("servicios.webcams")}
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 underline-offset-2 hover:text-s4 hover:underline"
+                                    >
+                                        Ver webcam y Parte S4 completo
+                                        <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                                    </Link>
+                                </p>
+                            </div>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap items-end gap-4 border-t border-slate-100 pt-3 sm:gap-5">
+                            <div className="flex flex-col">
                                 <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                     <Waves className="h-3 w-3 text-cyan-600" aria-hidden />
                                     Ola
@@ -115,7 +273,7 @@ export default function SurfBriefMini({ brief }) {
                                     {brief.wave.height_m} m
                                 </span>
                             </div>
-                            <div className="flex flex-col items-center sm:items-start">
+                            <div className="flex flex-col">
                                 <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                     <Wind className="h-3 w-3 text-cyan-600" aria-hidden />
                                     Viento
@@ -124,7 +282,7 @@ export default function SurfBriefMini({ brief }) {
                                     {brief.wind.speed_kmh} km/h
                                 </span>
                             </div>
-                            <div className="flex flex-col items-center sm:items-start">
+                            <div className="flex flex-col">
                                 <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                     <Gauge className="h-3 w-3 text-cyan-600" aria-hidden />
                                     Energía
@@ -134,13 +292,48 @@ export default function SurfBriefMini({ brief }) {
                                 </span>
                             </div>
                         </div>
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-s4">
-                            Ver parte
-                            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-                        </span>
                     </div>
+
+                    <ForecastMiniPreview
+                        waveM={brief.wave?.height_m}
+                        onOpen={openDetailed}
+                        loading={loading && open}
+                    />
                 </div>
-            </Link>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">
+                    <p className="text-[11px] text-slate-500">
+                        Oleaje + tiempo cada 2h · todos los días
+                    </p>
+                    <button
+                        type="button"
+                        onClick={openDetailed}
+                        aria-expanded={open}
+                        aria-controls={panelId}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#0f5f74] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0d4a5c]"
+                    >
+                        {loading && open ? (
+                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        ) : (
+                            <CalendarRange className="h-4 w-4" aria-hidden />
+                        )}
+                        Ver forecast al detalle
+                    </button>
+                </div>
+            </div>
+
+            <SurfDetailedForecastSlider
+                panelId={panelId}
+                open={open}
+                days={days}
+                loading={loading}
+                error={error}
+                weatherOk={weatherOk}
+                weatherMessage={weatherMessage}
+                onClose={closeDetailed}
+                webcamAnchorId="webcam-directo"
+                brief={brief}
+            />
         </BriefShell>
     );
 }

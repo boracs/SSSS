@@ -35,8 +35,8 @@ class PriceSchema extends Model
     /** Nombre canónico del esquema por categoría de tabla. */
     public const NAME_BY_CATEGORY = [
         Surfboard::CATEGORY_SOFT => 'Softboards',
-        Surfboard::CATEGORY_HARD_BASIC => 'Duras básicas',
-        Surfboard::CATEGORY_HARD_PRO => 'Duras pro boards',
+        Surfboard::CATEGORY_HARD_BASIC => 'Hard boards',
+        Surfboard::CATEGORY_HARD_PRO => 'Premium boards',
     ];
 
     protected $fillable = [

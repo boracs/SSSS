@@ -4,7 +4,7 @@ import { usePage } from "@inertiajs/react";
 import { postChatbotMessage, fetchChatbotHistory, registerChatbotContactPhone } from "../lib/chatbotApi";
 import { whatsappUrlWithMessage } from "../lib/whatsapp";
 import {
-    MessageCircle,
+    MessagesSquare,
     Send,
     Loader2,
     X,
@@ -23,13 +23,13 @@ const ANON_SESSION_TOKEN_KEY = "s4_anon_chat_token";
 const CHAT_Z = "z-[850]";
 
 const fieldShell =
-    "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-orange-400/80 focus-within:bg-white focus-within:ring-4 focus-within:ring-orange-500/10";
+    "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-s4/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-500/15";
 
 const fieldInput =
     "min-w-0 flex-1 border-0 bg-transparent py-1 text-[15px] text-slate-900 outline-none placeholder:text-slate-400";
 
 const panelShell =
-    "fixed bottom-6 right-6 flex w-[calc(100%-3rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-white/60 bg-white shadow-[0_24px_60px_-28px_rgba(15,23,42,0.35)] transition-all duration-300 " +
+    "fixed bottom-6 right-6 flex w-[calc(100%-3rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-cyan-900/10 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.28)] transition-all duration-300 " +
     CHAT_Z;
 
 const useChatbot = () => {
@@ -50,7 +50,6 @@ const useChatbot = () => {
     const [requiresHuman, setRequiresHuman] = useState(false);
     const [caseReference, setCaseReference] = useState(null);
     const [savedContactPhone, setSavedContactPhone] = useState(null);
-    const [phoneInput, setPhoneInput] = useState("");
     const [whatsappBusy, setWhatsappBusy] = useState(false);
     const [isPending, setIsPending] = useState(false);
 
@@ -232,60 +231,33 @@ const useChatbot = () => {
 
     const buildWhatsappMessage = () => {
         const parts = [`Hola, mi caso es ${caseReference ?? "sin número"}.`];
-        const phone = savedContactPhone ?? userTelefono ?? phoneInput.trim();
-        if (phone) {
-            parts.push(`Mi móvil es ${phone}.`);
-        }
         parts.push("Necesito ayuda con mi consulta al chatbot.");
-
         return parts.join(" ");
     };
 
-    const handleWhatsappContinue = async (e) => {
+    /** Abre WhatsApp al instante: el móvil del cliente ya se ve en el chat de WA. */
+    const handleWhatsappContinue = (e) => {
         e.preventDefault();
         if (!academyWhatsappUrl || whatsappBusy) {
             return;
-        }
-
-        const phoneToSave = userTelefono ?? phoneInput.trim();
-        if (!savedContactPhone && !userTelefono) {
-            if (!phoneToSave || phoneToSave.replace(/\D/g, "").length < 9) {
-                setApiError("Introduce un móvil válido (9 dígitos) para que podamos responderte.");
-                return;
-            }
         }
 
         setWhatsappBusy(true);
         setApiError(null);
 
         try {
-            if (!savedContactPhone) {
-                const result = await registerChatbotContactPhone({
-                    phone: phoneToSave,
-                    sessionToken: sessionTokenRef.current,
-                    caseReference,
-                });
-                if (!result.success) {
-                    setApiError(result.message || "No se pudo guardar el teléfono.");
-                    return;
-                }
-                if (result.contactPhone) {
-                    setSavedContactPhone(result.contactPhone);
-                }
-            }
-
             const url = whatsappUrlWithMessage(academyWhatsappUrl, buildWhatsappMessage());
             if (url) {
                 window.open(url, "_blank", "noopener,noreferrer");
+            } else {
+                setApiError("No hay un enlace de WhatsApp configurado ahora mismo.");
             }
         } catch {
-            setApiError("Error al conectar con WhatsApp. Inténtalo de nuevo.");
+            setApiError("Error al abrir WhatsApp. Inténtalo de nuevo.");
         } finally {
             setWhatsappBusy(false);
         }
     };
-
-    const needsPhoneInput = requiresHuman && !savedContactPhone && !userTelefono;
 
     const handleSend = (e) => {
         e.preventDefault();
@@ -308,13 +280,8 @@ const useChatbot = () => {
         isLoggedIn,
         requiresHuman,
         caseReference,
-        savedContactPhone,
-        phoneInput,
-        setPhoneInput,
-        needsPhoneInput,
         whatsappBusy,
         handleWhatsappContinue,
-        userTelefono,
         academyWhatsappUrl,
     };
 };
@@ -331,7 +298,7 @@ const Message = ({ message }) => {
             <div
                 className={
                     isUser
-                        ? "rounded-2xl rounded-br-md bg-slate-900 px-4 py-3 text-sm leading-relaxed text-white shadow-md shadow-slate-900/15"
+                        ? "rounded-2xl rounded-br-md bg-[#0f5f74] px-4 py-3 text-sm leading-relaxed text-white shadow-md shadow-cyan-900/20"
                         : "rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm"
                 }
             >
@@ -345,7 +312,7 @@ const Message = ({ message }) => {
                                 className={
                                     isUser
                                         ? "font-semibold underline decoration-white/50 underline-offset-2 hover:decoration-white"
-                                        : "font-semibold text-orange-600 underline decoration-orange-300 underline-offset-2 hover:text-orange-700"
+                                        : "font-semibold text-s4 underline decoration-cyan-300 underline-offset-2 hover:text-cyan-800"
                                 }
                                 target={href?.startsWith("http") ? "_blank" : undefined}
                                 rel={href?.startsWith("http") ? "noopener noreferrer" : undefined}
@@ -365,7 +332,7 @@ const Message = ({ message }) => {
 const TypingIndicator = () => (
     <div className="max-w-[88%] self-start rounded-2xl rounded-bl-md border border-slate-200/90 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Loader2 className="h-4 w-4 animate-spin text-orange-500" aria-hidden="true" />
+            <Loader2 className="h-4 w-4 animate-spin text-s4" aria-hidden="true" />
             <span>Consultando FAQ…</span>
         </div>
     </div>
@@ -387,13 +354,8 @@ const Chatbot = () => {
         isLoggedIn,
         requiresHuman,
         caseReference,
-        savedContactPhone,
-        phoneInput,
-        setPhoneInput,
-        needsPhoneInput,
         whatsappBusy,
         handleWhatsappContinue,
-        userTelefono,
         academyWhatsappUrl,
     } = useChatbot();
 
@@ -404,10 +366,10 @@ const Chatbot = () => {
         <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className={`fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/25 transition duration-300 hover:scale-110 hover:bg-slate-800 ${CHAT_Z}`}
+            className={`fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f5f74] text-white shadow-[0_12px_28px_-8px_rgba(15,95,116,0.55)] ring-1 ring-white/20 transition duration-300 hover:scale-105 hover:bg-[#0d5568] hover:shadow-[0_16px_32px_-8px_rgba(15,95,116,0.65)] ${CHAT_Z}`}
             aria-label="Abrir chat con Maider"
         >
-            <MessageCircle className="h-7 w-7" aria-hidden="true" />
+            <MessagesSquare className="h-6 w-6" strokeWidth={1.75} aria-hidden="true" />
         </button>
     );
 
@@ -421,7 +383,7 @@ const Chatbot = () => {
 
     const panel = (
         <div className={`${panelShell} h-[80vh] sm:h-[600px]`}>
-            <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-amber-400 to-cyan-500" aria-hidden="true" />
+            <div className="h-1.5 w-full bg-gradient-to-r from-[#0f5f74] via-cyan-500 to-cyan-300" aria-hidden="true" />
 
             <div className="border-b border-slate-100 px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
@@ -431,7 +393,7 @@ const Chatbot = () => {
                         </p>
                         <h3 className="mt-1 font-heading text-lg font-bold tracking-tight text-slate-900">
                             Maider{" "}
-                            <span className="bg-gradient-to-r from-orange-600 to-amber-500 bg-clip-text text-transparent">
+                            <span className="bg-gradient-to-r from-[#0f5f74] to-cyan-600 bg-clip-text text-transparent">
                                 Asistente
                             </span>
                         </h3>
@@ -442,7 +404,7 @@ const Chatbot = () => {
                     <button
                         type="button"
                         onClick={() => setIsOpen(false)}
-                        className="rounded-xl border border-slate-200/90 p-2 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
+                        className="rounded-xl border border-slate-200/90 p-2 text-slate-500 transition hover:border-cyan-200 hover:bg-cyan-50/60 hover:text-s4"
                         aria-label="Cerrar chat"
                     >
                         <X className="h-5 w-5" aria-hidden="true" />
@@ -450,7 +412,7 @@ const Chatbot = () => {
                 </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto bg-gradient-to-b from-slate-50/80 to-white p-4">
+            <div className="flex min-h-0 flex-1 flex-col space-y-3 overflow-y-auto bg-gradient-to-b from-cyan-50/40 via-slate-50/60 to-white p-4">
                 {apiError && !isRateLimited ? (
                     <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                         <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -469,15 +431,15 @@ const Chatbot = () => {
                     <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                         <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                         <span>
-                            Esta conversación tiene **revisión manual**
-                            {caseReference ? ` (caso ${caseReference})` : ""}. Puedes seguir preguntando cosas
-                            sencillas aquí o usar **WhatsApp** para tu caso concreto.
+                            Te pasamos con el equipo
+                            {caseReference ? ` (caso ${caseReference})` : ""}. Abre WhatsApp y te
+                            atendemos con el número de caso ya incluido.
                         </span>
                     </div>
                 ) : null}
                 {messages.length === 0 ? (
-                    <div className="mt-4 rounded-2xl border border-slate-200/90 bg-white p-5 text-center shadow-sm">
-                        <Sparkles className="mx-auto mb-3 h-8 w-8 text-orange-500" aria-hidden="true" />
+                    <div className="mt-4 rounded-2xl border border-cyan-100/80 bg-white p-5 text-center shadow-sm">
+                        <Sparkles className="mx-auto mb-3 h-8 w-8 text-s4" aria-hidden="true" />
                         <p className="font-heading text-base font-bold text-slate-900">¡Hola! Soy Maider</p>
                         <p className="mt-2 text-sm leading-relaxed text-slate-600">
                             Te ayudo con clases, bonos VIP, alquiler de tablas y dudas del día a día.
@@ -497,40 +459,21 @@ const Chatbot = () => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {requiresHuman ? (
+            {requiresHuman && academyWhatsappUrl ? (
                 <div className="border-t border-slate-100 bg-white p-4">
-                    {needsPhoneInput ? (
-                        <div className="mb-3">
-                            <label htmlFor="chatbot-contact-phone" className="mb-1.5 block text-xs font-semibold text-slate-600">
-                                Tu móvil (para que podamos responderte)
-                            </label>
-                            <input
-                                id="chatbot-contact-phone"
-                                type="tel"
-                                inputMode="tel"
-                                autoComplete="tel"
-                                value={phoneInput}
-                                onChange={(e) => setPhoneInput(e.target.value)}
-                                placeholder="600 000 000"
-                                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
-                            />
-                        </div>
-                    ) : savedContactPhone || userTelefono ? (
-                        <p className="mb-3 text-center text-xs text-slate-500">
-                            Móvil registrado:{" "}
-                            <span className="font-semibold text-slate-700">{savedContactPhone ?? userTelefono}</span>
-                        </p>
-                    ) : null}
+                    <p className="mb-3 text-center text-xs leading-relaxed text-slate-500">
+                        El número de caso ya va en el mensaje. Te atendemos al instante.
+                    </p>
                     <button
                         type="button"
                         onClick={handleWhatsappContinue}
-                        disabled={whatsappBusy || (needsPhoneInput && phoneInput.replace(/\D/g, "").length < 9)}
+                        disabled={whatsappBusy}
                         className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {whatsappBusy ? (
                             <Loader2 className="h-4.5 w-4.5 animate-spin" aria-hidden="true" />
                         ) : (
-                            <MessageCircle className="h-4.5 w-4.5" aria-hidden="true" />
+                            <MessageSquare className="h-4.5 w-4.5" aria-hidden="true" />
                         )}
                         Continuar por WhatsApp{caseReference ? ` · ${caseReference}` : ""}
                     </button>
@@ -541,7 +484,7 @@ const Chatbot = () => {
                 <div className="flex items-center gap-2">
                     <div className={fieldShell}>
                         <MessageSquare
-                            className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-focus-within:text-orange-500"
+                            className="h-5 w-5 shrink-0 text-slate-400 transition-colors group-focus-within:text-s4"
                             aria-hidden="true"
                         />
                         <input
@@ -562,7 +505,7 @@ const Chatbot = () => {
                     <button
                         type="submit"
                         disabled={isLoading || isRateLimited || !inputMessage.trim()}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-lg shadow-slate-900/20 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#0f5f74] text-white shadow-lg shadow-cyan-900/25 transition hover:bg-[#0d5568] disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label="Enviar mensaje"
                     >
                         {isLoading ? (

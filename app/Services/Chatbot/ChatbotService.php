@@ -73,7 +73,7 @@ final class ChatbotService
         [
             'pattern' => '/\b(primera\s+vez|principiante|nunca\s+he\s+surf|empezar|nivel\s+iniciacion|nuevo\s+en\s+surf)\b/u',
             'context' => 'classes.beginner',
-            'response' => '¡Bienvenido! 🏄 En **iniciación** te enseñamos desde cero: seguridad, coger olas de espuma y disfrutar en **Zurriola**. '
+            'response' => '¡Bienvenido! 🏄 En **iniciación** te enseñamos desde cero: seguridad, coger espumas y olas pequeñas sin romper en **Zurriola**. '
                 .'Reserva una **clase grupal** desde **Academia** — no hace falta traer tabla al principio, te orientamos con el material. '
                 .'Lleva **bañador**, **toalla** y muchas ganas. Si tienes dudas médicas o de edad mínima, pregúntanos por **WhatsApp**.',
         ],

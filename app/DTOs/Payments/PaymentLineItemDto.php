@@ -34,14 +34,21 @@ final readonly class PaymentLineItemDto
     /** @return array<string, mixed> */
     public function toStripeLineItem(): array
     {
+        $productData = [
+            'name' => $this->name,
+        ];
+
+        // Stripe rechaza description="" (parameter_invalid_empty).
+        $description = trim($this->description);
+        if ($description !== '') {
+            $productData['description'] = $description;
+        }
+
         return [
             'price_data' => [
                 'currency'     => config('services.stripe.currency', 'eur'),
                 'unit_amount'  => $this->unitAmountCents,
-                'product_data' => [
-                    'name'        => $this->name,
-                    'description' => $this->description,
-                ],
+                'product_data' => $productData,
             ],
             'quantity' => $this->quantity,
         ];

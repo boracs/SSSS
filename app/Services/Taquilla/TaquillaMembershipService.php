@@ -97,13 +97,13 @@ class TaquillaMembershipService
                 $prepaidExtraDays = 0;
 
                 if ($activeRow && $activeRow->periodo_fin) {
-                    $fechaFin = Carbon::parse($activeRow->periodo_fin);
-                    $diasRestantes = $today->diffInDays($fechaFin, false);
+                    $fechaFin = Carbon::parse($activeRow->periodo_fin)->startOfDay();
+                    $diasRestantes = (int) $today->diffInDays($fechaFin, false);
                     $estado = 'activo';
                     $ultimoPagoStr = optional($activeRow->periodo_inicio)->toDateString();
                     $fechaFinStr = optional($activeRow->periodo_fin)->toDateString();
                     $prepaidExtraDays = (int) $confirmedRows
-                        ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($fechaFin->copy()->startOfDay()))
+                        ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($fechaFin))
                         ->sum(function ($p): int {
                             if (! $p->periodo_inicio || ! $p->periodo_fin) {
                                 return 0;
@@ -114,16 +114,59 @@ class TaquillaMembershipService
                             return (int) ($start->diffInDays($end) + 1);
                         });
                 } else {
-                    $estado = 'vencido';
-                    $lastRow = $confirmedRows
-                        ->filter(fn ($p) => $p->periodo_fin !== null)
+                    // Sin cobertura hoy.
+                    // 1) Si hubo un periodo ya empezado y terminado → vencido (días negativos)
+                    //    + badge de prepago futuro si existe.
+                    // 2) Si solo hay periodos futuros confirmados → activo hasta su fin
+                    //    (evita rojo con "N días restantes").
+                    // 3) Si no hay ningún pago confirmado (nunca pagó) → 'sin plan',
+                    //    distinto de 'vencido' (una cuota que caducó sí tuvo cobertura antes).
+                    $lastStarted = $confirmedRows
+                        ->filter(fn ($p) => $p->periodo_inicio && $p->periodo_fin
+                            && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today))
                         ->sortByDesc(fn ($p) => Carbon::parse($p->periodo_fin)->timestamp)
                         ->first();
-                    if ($lastRow) {
-                        $fechaFin = Carbon::parse($lastRow->periodo_fin);
-                        $diasRestantes = $today->diffInDays($fechaFin, false);
-                        $ultimoPagoStr = optional($lastRow->periodo_inicio)->toDateString();
-                        $fechaFinStr = optional($lastRow->periodo_fin)->toDateString();
+
+                    $sumPrepaidAfter = function ($anchorEnd) use ($confirmedRows): int {
+                        return (int) $confirmedRows
+                            ->filter(fn ($p) => $p->periodo_inicio && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($anchorEnd))
+                            ->sum(function ($p): int {
+                                if (! $p->periodo_inicio || ! $p->periodo_fin) {
+                                    return 0;
+                                }
+                                $start = Carbon::parse($p->periodo_inicio)->startOfDay();
+                                $end = Carbon::parse($p->periodo_fin)->startOfDay();
+
+                                return (int) ($start->diffInDays($end) + 1);
+                            });
+                    };
+
+                    if ($lastStarted) {
+                        $fechaFin = Carbon::parse($lastStarted->periodo_fin)->startOfDay();
+                        $diasRestantes = (int) $today->diffInDays($fechaFin, false);
+                        $ultimoPagoStr = optional($lastStarted->periodo_inicio)->toDateString();
+                        $fechaFinStr = optional($lastStarted->periodo_fin)->toDateString();
+                        $estado = $diasRestantes >= 0 ? 'activo' : 'vencido';
+                        $prepaidExtraDays = $sumPrepaidAfter($fechaFin);
+                    } else {
+                        $futureRow = $confirmedRows
+                            ->filter(fn ($p) => $p->periodo_inicio && $p->periodo_fin
+                                && Carbon::parse($p->periodo_inicio)->startOfDay()->gt($today))
+                            ->sortBy(fn ($p) => Carbon::parse($p->periodo_inicio)->timestamp)
+                            ->first();
+
+                        if ($futureRow) {
+                            $fechaFin = Carbon::parse($futureRow->periodo_fin)->startOfDay();
+                            $diasRestantes = (int) $today->diffInDays($fechaFin, false);
+                            $ultimoPagoStr = optional($futureRow->periodo_inicio)->toDateString();
+                            $fechaFinStr = optional($futureRow->periodo_fin)->toDateString();
+                            $estado = $diasRestantes >= 0 ? 'activo' : 'vencido';
+                            // Solo periodos encadenados posteriores cuentan como prepago extra.
+                            $prepaidExtraDays = $sumPrepaidAfter($fechaFin);
+                        } else {
+                            // Nunca hubo un pago confirmado para esta taquilla.
+                            $estado = 'sin plan';
+                        }
                     }
                 }
 
@@ -924,22 +967,42 @@ class TaquillaMembershipService
      */
     public function userPaymentHistory(User $user): array
     {
-        return PagoCuota::query()
+        $rows = PagoCuota::query()
             ->with('plan:id,nombre,duracion_dias')
             ->where('user_id', $user->id)
             ->orderByDesc('periodo_inicio')
             ->limit(50)
-            ->get()
-            ->map(fn (PagoCuota $p) => [
-                'id' => $p->id,
-                'plan' => $p->plan?->nombre ?? 'Sin plan',
-                'periodo_inicio' => optional($p->periodo_inicio)->toDateString(),
-                'periodo_fin' => optional($p->periodo_fin)->toDateString(),
-                'status' => $p->status ?? PagoCuota::STATUS_PENDING,
-                'payment_method' => $p->payment_method,
-                'is_checked' => (bool) ($p->is_checked ?? false),
-                'proof_url' => $p->payment_proof_path ? route('taquilla.pagos.proof', $p->id) : null,
-            ])
+            ->get();
+
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
+            $rows->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])->all(),
+        );
+
+        return $rows
+            ->map(function (PagoCuota $p) use ($receiptMap): array {
+                $manualProofUrl = ! empty($p->payment_proof_path)
+                    ? route('taquilla.pagos.proof', $p->id)
+                    : null;
+                $proof = $this->paymentReceipts->proofFieldsForPayable(
+                    PagoCuota::class,
+                    (int) $p->id,
+                    ! empty($p->payment_proof_path),
+                    $manualProofUrl,
+                    $receiptMap,
+                );
+
+                return [
+                    'id' => $p->id,
+                    'plan' => $p->plan?->nombre ?? 'Sin plan',
+                    'periodo_inicio' => optional($p->periodo_inicio)->toDateString(),
+                    'periodo_fin' => optional($p->periodo_fin)->toDateString(),
+                    'status' => $p->status ?? PagoCuota::STATUS_PENDING,
+                    'payment_method' => $p->payment_method,
+                    'is_checked' => (bool) ($p->is_checked ?? false),
+                    'proof_url' => $proof['proof_url'],
+                    'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                ];
+            })
             ->values()
             ->all();
     }

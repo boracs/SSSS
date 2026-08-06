@@ -20,6 +20,25 @@ export function formatRentalEur(value) {
     return `${n.toFixed(2).replace(".", ",")} €`;
 }
 
+/**
+ * Formato rate-card del tarifario: enteros sin `,00` (`10 €`);
+ * con céntimos reales sí (`10,50 €`). No usar fuera de tablas de tarifas.
+ */
+export function formatTariffEur(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    const rounded = Math.round(n * 100) / 100;
+    if (Number.isInteger(rounded)) return `${rounded} €`;
+    return `${rounded.toFixed(2).replace(".", ",")} €`;
+}
+
+/** Precio en céntimos → formato tarifario (enteros limpios). */
+export function formatTariffEurFromCents(cents) {
+    const n = Number(cents);
+    if (!Number.isFinite(n) || n <= 0) return null;
+    return formatTariffEur(n / 100);
+}
+
 /** Anchura / grosor con pulgadas si el valor no trae unidad. */
 export function formatInchMeasure(raw) {
     if (raw === null || raw === undefined || raw === "") return null;
@@ -72,7 +91,11 @@ export function catalogFromPriceLabel(priceSchema) {
     return `desde ${first.formatted} / ${first.label}`;
 }
 
-export { BOARD_CATEGORIES, boardCategoryLabel } from "./surfboardCategories";
+export {
+    BOARD_CATEGORIES,
+    boardCategoryAccent,
+    boardCategoryLabel,
+} from "./surfboardCategories";
 
 export function boardDisplayDescription(board, name) {
     if (!board?.description) return null;
@@ -80,6 +103,21 @@ export function boardDisplayDescription(board, name) {
     if (!description) return null;
     if (description.toLowerCase() === String(name).trim().toLowerCase()) return null;
     return description;
+}
+
+/**
+ * "Alquiler desde X €/hora o Y €/día": se calcula en caliente desde el
+ * price_schema de la tabla, nunca se escribe a mano en la descripción, así
+ * que si cambia una tarifa esta frase se actualiza sola en todas las tablas
+ * de esa categoría/esquema.
+ */
+export function rentalPriceTeaser(priceSchema) {
+    const hour = formatRentalEur(priceSchema?.price_60m);
+    const day = formatRentalEur(priceSchema?.price_1d);
+    if (hour && day) return `Alquiler desde ${hour}/hora o ${day}/día.`;
+    if (hour) return `Alquiler desde ${hour}/hora.`;
+    if (day) return `Alquiler desde ${day}/día.`;
+    return null;
 }
 
 export function boardSpecs(board) {

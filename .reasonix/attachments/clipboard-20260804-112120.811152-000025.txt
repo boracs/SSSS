@@ -1,0 +1,113 @@
+Modo: Agent. Frontend + backend SurfConditions / webcams.
+No commits. Service + DTO readonly + controller fino.
+Actualiza solo la sección tocada de docs/PROJECT_TREE_FOR_GEMINI.md.
+
+OBJETIVO
+En /servicios/webcams, “Tiempo atmosférico detallado” (horario + 7 días)
+via Open-Meteo forecast, panel expandible. Fetch SOLO al primer clic
+(cero peso en carga inicial). Amber = meteo; cyan = mar/olas.
+
+PRE-VUELO
+1. OpenMeteoMarineClient.php (Http::, lat/lon/tz config)
+2. SurfForecastTableService.php (Cache::remember)
+3. Un DTO en app/DTOs/SurfConditions/
+4. Servicios_Webcams.jsx (section FORECAST_ANCHOR_ID)
+5. config/services.php → zurriola_surf
+6. routes/web.php (webcams)
+7. .env.example (para añadir la flag)
+
+HECHOS
+- Lat/lon/tz SOLO config('services.zurriola_surf.*') — no hardcode divergente.
+- HTTP = Http:: facade. Timeout FIJO: Http::timeout(10) (igual espíritu MarineClient).
+- DTO readonly → JSON; no arrays crudos entre capas.
+- Cache servidor obligatoria ~45 min (no “sin cache”).
+- SEO: NO JSON-LD WeatherForecast desde React tras el clic.
+- Iconos: SOLO Lucide de la lista blanca abajo (existen en lucide-react del proyecto).
+  PROHIBIDO inventar nombres de iconos. PROHIBIDO emojis en UI.
+
+LISTA BLANCA LUCIDE (únicos permitidos para weather_code):
+Sun, CloudSun, Cloud, CloudFog, CloudDrizzle, CloudRain, CloudSnow,
+CloudLightning, Sunrise, Sunset, Clock, CalendarDays, Loader2
+Mapa sugerido:
+0 → Sun
+1–3 → CloudSun
+45–48 → CloudFog
+51–55 → CloudDrizzle
+61–65, 80–82 → CloudRain
+71–77 → CloudSnow
+95–99 → CloudLightning
+default → Cloud
+
+════════════════════════════════════
+BACKEND
+════════════════════════════════════
+
+1) DTOs readonly en app/DTOs/SurfConditions/
+   ZurriolaWeatherHourDto, ZurriolaWeatherDayDto, ZurriolaWeatherForecastDto
+   (+ toArray()). Hourly/daily como listas de objetos, no columnas Open-Meteo.
+
+2) OpenMeteoWeatherClient.php (final)
+   - Http::timeout(10)->get(...)
+   - Endpoint forecast; params hourly/daily como en el plan (7 días)
+   - fetchForecast(): ZurriolaWeatherForecastDto
+   - Filtrar hourly desde ahora (TZ Madrid), máx 48 puntos
+
+3) ZurriolaWeatherForecastService.php
+   - Cache::remember('zurriola.weather.forecast.v1', now()->addMinutes(45), ...)
+   - Respetar config weather_detail_enabled
+   - try/catch: Log::warning('Zurriola weather detail fetch failed', [
+       'error' => $e->getMessage(),
+     ]);
+     Respuesta controlada { ok: false, message: '...' } (elige 503 o 200+ok:false
+     y sé consistente). Nunca silenciar sin log.
+
+4) Controller fino + ruta web.php:
+   GET /servicios/webcams/tiempo → name('servicios.webcams.weather')
+
+5) Config
+   En zurriola_surf:
+   'weather_detail_enabled' => env('ZURRIOLA_WEATHER_DETAIL_ENABLED', true),
+   Y en .env.example una línea comentada o activa:
+   ZURRIOLA_WEATHER_DETAIL_ENABLED=true
+
+════════════════════════════════════
+FRONTEND
+════════════════════════════════════
+
+6) Botón en section forecast (no huérfano bajo crédito Gipuzkoa):
+   amber, Lucide Sun/CloudSun, "Tiempo detallado" / "Ocultar tiempo"
+   aria-expanded; fetch SOLO primera apertura; Loader2 al cargar;
+   error text-rose-300; reabrir = memoria cliente.
+
+7) WeatherDetailPanel.jsx
+   Expand max-h/opacity (translate solo md+ si aporta).
+   Horario: 24h default + "Ver 48 h"; scroll-x; cards con iconos Lucide del mapa.
+   Diario: grid 2/4/7; Sunrise/Sunset Lucide o texto "Amanece"/"Oscurece".
+   Shell dark slate + border amber suave.
+
+8) PROJECT_TREE_FOR_GEMINI.md — sección SurfConditions/webcam.
+
+FUERA DE ALCANCE
+SurfForecastTable lógica, SurfBriefCard, ZurriolaWebcamPlayer (salvo insertar UI),
+JSON-LD lazy, fetch en carga Inertia de webcams, emojis, iconos Lucide no listados.
+
+CRITERIOS
+- [ ] Timeout 10s fijo; Log::warning en fallo
+- [ ] Flag en config + .env.example
+- [ ] DTO + cache 45 min + ruta nombrada
+- [ ] Cero fetch al mount; 1 request al primer clic
+- [ ] Solo iconos de la lista blanca (build no rompe)
+- [ ] Amber meteo; sin JSON-LD falso
+- [ ] PROJECT_TREE actualizado
+
+SALIDA
+Diffs + checklist + 5 líneas (endpoint, cache key, prueba Network).
+
+REGLA DE ORO
+On-demand + cache + log. DTO. Lucide whitelist. SEO honesto.
+
+ADDENDA (obligatoria)
+- Front: axios.get(route('servicios.webcams.weather')) — no fetch a path literal.
+- Open-Meteo query: incluir wind_speed_unit=kmh.
+- JSON éxito: { ok:true, fetched_at, hourly, daily }; fallo: HTTP 200 + { ok:false, message } + Log::warning.
+- GET público sin auth; no tocar Inertia payload inicial de webcams.

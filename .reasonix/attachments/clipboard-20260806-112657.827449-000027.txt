@@ -1,0 +1,56 @@
+Modo: Agent. Solo frontend AutoCoach. NO backend, NO API, NO sync (nudge/speeds/scrub). NO commits salvo que el usuario lo pida.
+
+## Rol
+FE senior React 19 + Tailwind. Touches/pointer cuidadosos en móvil.
+
+## Pre-vuelo (obligatorio)
+1. Lee resources/js/Pages/AutoCoach/Index.jsx completo.
+2. Fíjate en VideoFrame (~70–382): video + canvas overlay, canvasPoint (~217) usa getBoundingClientRect, paintEnabled es GLOBAL (un toggle para ambos paneles), canvas tiene touch-none cuando dibuja.
+3. No asumas APIs nuevas.
+
+## Objetivo
+Zoom + pan **independiente por panel** (pro / user) en VideoFrame:
+- Desktop: botón ZoomIn/ZoomOut (lucide-react, junto a Dibujar o en el panel) alterna 1x ↔ 2x; con zoom>1 arrastrar = pan (grab/grabbing); Reset o doble clic → 1x.
+- Móvil: pinch 2 dedos zoom 1x–3x; 1 dedo: sin zoom = play/pausa actual; con zoom>1 = pan. El scroll de página con 1 dedo NO debe romperse.
+- Indicador "2x" cuando zoom>1. aria-labels: Acercar / Alejar / Restablecer zoom. Hit-target ~44px en móvil.
+
+## Arquitectura de render (CRÍTICO — sigue esto)
+1. Envuelve **vídeo + canvas juntos** en un único wrapper con:
+   transform: translate(pan) scale(zoom); transform-origin: center center (o el centro del gesto en pinch si es viable sin complicar).
+2. overflow-hidden en el marco 16:9 exterior.
+3. **NO** reescribas canvasPoint con factores de zoom manuales salvo que demuestres que hace falta. getBoundingClientRect ya refleja el tamaño transformado; si video y canvas comparten el mismo transform, el mapeo actual (client → canvas.width/height) debe seguir alineado. Si tras probar no alinea, corrige el wrapper, no inventes una segunda matemática frágil.
+4. Clamp del pan para no dejar el frame vacío (límites en función de zoom y tamaño del contenedor).
+5. Al cambiar videoKey / src: reset zoom=1, pan={0,0}.
+
+## Interacción (prioridad explícita)
+Orden de prioridad en el panel:
+1. Si paintEnabled: pointer en canvas = dibujo (como ahora). Pan/zoom solo vía botones o pinch que no robe el stroke a mitad de trazo.
+2. Si !paintEnabled && zoom>1: drag = pan; click corto sin movimiento = play/pausa (umbral de movimiento pequeño, p.ej. 5px).
+3. Si !paintEnabled && zoom===1: click = play/pausa (comportamiento actual).
+
+Desktop botón: 1x↔2x centrado. Móvil pinch hasta 3x. Desktop puede permitir rueda con ctrl opcional; no obligatorio.
+
+## Móvil / scroll (CRÍTICO)
+- Detectar 2 dedos (touches.length===2) → pinch zoom; preventDefault solo en ese gesto.
+- 1 dedo: no capturar el scroll de página cuando zoom===1 (evitar touch-action:none en el contenedor exterior salvo en pinch activo o pan con zoom>1).
+- El scrubber (input range) sigue con su touch-none actual; no lo rompas.
+- Al llegar a 1x o 3x, no “secuestrar” el gesto indefinidamente; permite que el usuario haga scroll con 1 dedo.
+
+## UI
+- lucide-react: ZoomIn, ZoomOut (o un toggle). Estilo dark cyan coherente con Dibujar.
+- Badge zoom >1 en esquina del panel.
+- Design system actual; no rediseñar AutoCoach.
+
+## Fuera de alcance
+Backend, upload, sync entre paneles, cambiar SPEEDS/nudge, commits, docs.
+
+## Criterios
+- [ ] Desktop: 1x↔2x, pan, reset
+- [ ] Móvil: pinch 1–3x; scroll página OK con 1 dedo sin zoom
+- [ ] Play/pausa sin zoom intacto
+- [ ] Trazos alineados con vídeo cuando hay zoom (wrapper compartido)
+- [ ] Zoom independiente pro/user; reset al cambiar vídeo
+- [ ] npm run build OK (o vite build del proyecto)
+
+## Al terminar
+Resume: dónde vive el estado zoom/pan, cómo resolviste coords del canvas, cómo evitaste romper scroll, y prioridad dibujo vs pan.

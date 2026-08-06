@@ -24,5 +24,7 @@ final readonly class SurfForecastSlotDto
         public string $energyLabel,
         public int $energyKj,
         public string $windState,
+        /** Señal 4 colores (good|espigon|caution|closed) vía {@see \App\Services\SurfConditions\SurfLevelRecommender::recommendSignal()}, misma escala que el badge de "hoy". */
+        public string $signal,
     ) {}
 }

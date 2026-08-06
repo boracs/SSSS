@@ -236,6 +236,10 @@ Route::get('/servicios/webcams', function (
 Route::post('/servicios/webcams/parte/reaccion', [\App\Http\Controllers\SurfBriefReactionController::class, 'store'])
     ->middleware('throttle:30,1')
     ->name('servicios.webcams.parte.reaccion');
+Route::get('/servicios/webcams/tiempo', \App\Http\Controllers\ZurriolaWeatherController::class)
+    ->name('servicios.webcams.weather');
+Route::get('/servicios/webcams/forecast-detallado', \App\Http\Controllers\SurfDetailedForecastController::class)
+    ->name('servicios.webcams.forecast_detailed');
 Route::redirect('/webcams', '/servicios/webcams');
 // Enlaces legacy del carrusel home (OpcionesIntro)
 Route::redirect('/clases-de-surf', '/servicios/surf');
@@ -365,6 +369,7 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     Route::get('/carrito', [CarritoController::class, 'index'])->name('carrito');
     // Ruta para eliminar productos del carrito
     Route::delete('/carrito/eliminar/{productoId}', [CarritoController::class, 'eliminarProducto'])->name('carrito.eliminar');
+    Route::patch('/carrito/cantidad/{productoId}', [CarritoController::class, 'actualizarCantidad'])->name('carrito.cantidad');
 
     // Redirigir GET a la ruta del carrito para evitar errores al refrescar la página
     Route::get('/carrito/agregar/{id}', function ($id) {

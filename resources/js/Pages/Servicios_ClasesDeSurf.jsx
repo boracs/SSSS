@@ -104,7 +104,7 @@ const NIVELES_CLASE = [
         resumen: "Primeros pasos en el agua. Ideal tras el tutorial de primer día o una particular inicial.",
         requisitos: [
             "No es necesario haber surfeado antes (pero sí haber hecho primer día o equivalente)",
-            "Objetivo: puesta en pie, bajar la ola de frente y coger espumas con ayuda",
+            "Objetivo: puesta en pie, bajar la ola de frente y coger espumas u olas pequeñas sin romper con ayuda",
             "Saber escuchar indicaciones del monitor y moverse con ayuda en la orilla",
             "Condiciones suaves: zona controlada, sin presión de pico ni corrientes fuertes",
         ],

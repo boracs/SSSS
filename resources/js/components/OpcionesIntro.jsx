@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
+import { CalendarRange } from "lucide-react";
+import DetailedForecastEntry from "./webcam/DetailedForecastEntry";
 
 /** Fila 1 — oferta principal / día a día */
 const OPCIONES_PRINCIPALES = [
@@ -87,9 +89,48 @@ const OPCIONES_MAS = [
         imagen: "/img/opciones/opcion-guia-surfskate.webp",
         href: () => route("servicios.surfSkate.guia"),
     },
+    {
+        texto: "Forecast al detalle",
+        imagen: "/img/zurriola_webcam.webp",
+        action: "detailed-forecast",
+    },
 ];
 
+function TileShell({ imagen, texto, children }) {
+    return (
+        <div className="group relative min-h-[4.75rem] overflow-hidden bg-gray-900 sm:min-h-[5.5rem] md:h-full md:min-h-0 md:flex-1">
+            <div
+                className="absolute inset-0 scale-100 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
+                style={{ backgroundImage: `url(${imagen})` }}
+                aria-hidden
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25 transition-opacity duration-300 group-hover:from-black/70 group-hover:via-black/35" />
+            {children}
+            <span className="pointer-events-none absolute inset-0 flex items-end justify-center p-2 pb-2 text-center md:items-center md:p-2.5">
+                <span className="text-[9px] font-bold leading-tight tracking-wide text-white drop-shadow-sm sm:text-[10px] md:text-sm lg:text-base">
+                    {texto}
+                </span>
+            </span>
+        </div>
+    );
+}
+
 function OpcionTile({ opcion }) {
+    if (opcion.action === "detailed-forecast") {
+        return (
+            <TileShell imagen={opcion.imagen} texto={opcion.texto}>
+                <DetailedForecastEntry
+                    variant="tile"
+                    className="absolute inset-0 z-10 h-full w-full cursor-pointer border-0 bg-transparent p-0 text-transparent"
+                    label={opcion.texto}
+                >
+                    <span className="sr-only">{opcion.texto}</span>
+                    <CalendarRange className="sr-only" aria-hidden />
+                </DetailedForecastEntry>
+            </TileShell>
+        );
+    }
+
     return (
         <Link
             href={opcion.href()}

@@ -25,8 +25,8 @@ class Surfboard extends Model
 
     private const CATEGORY_LABELS = [
         self::CATEGORY_SOFT => 'Softboards',
-        self::CATEGORY_HARD_BASIC => 'Duras básicas',
-        self::CATEGORY_HARD_PRO => 'Duras pro boards',
+        self::CATEGORY_HARD_BASIC => 'Hard boards',
+        self::CATEGORY_HARD_PRO => 'Premium boards',
     ];
 
     public static function categoryLabel(?string $category): string

@@ -1,9 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { usePage } from "@inertiajs/react";
-import { ExternalLink, Radio } from "lucide-react";
+import axios from "axios";
+import { CloudSun, ExternalLink, Radio, Sun } from "lucide-react";
 import ZurriolaWebcamPlayer from "../components/webcam/ZurriolaWebcamPlayer";
 import SurfBriefCard from "../components/webcam/SurfBriefCard";
 import SurfForecastTable from "../components/webcam/SurfForecastTable";
+import SurfFullForecastOverlay from "../components/webcam/SurfFullForecastOverlay";
+import SurfDetailedForecastSlider from "../components/webcam/SurfDetailedForecastSlider";
+import useDetailedForecast from "../components/webcam/useDetailedForecast";
+import WeatherDetailPanel from "../components/webcam/WeatherDetailPanel";
 import ZurriolaGeoGuide from "../components/webcam/ZurriolaGeoGuide";
 import SeoHead from "../components/seo/SeoHead";
 
@@ -11,6 +16,9 @@ const GIPUZKOA_WEBCAM_URL =
     "https://www.gipuzkoa.eus/es/web/hondartzak/webcams/zurriola";
 
 const FORECAST_ANCHOR_ID = "prevision-forecast";
+const WEATHER_PANEL_ID = "weather-detail-panel";
+const FULL_FORECAST_PANEL_ID = "full-forecast-panel";
+const DETAILED_TIMELINE_PANEL_ID = "detailed-timeline-panel";
 
 export default function ServiciosWebcams({
     surfBrief,
@@ -19,10 +27,75 @@ export default function ServiciosWebcams({
     seo = null,
 }) {
     const { url } = usePage();
+    const surfDays = Array.isArray(surfForecast?.days)
+        ? surfForecast.days
+        : Array.isArray(surfForecast)
+          ? surfForecast
+          : [];
     const schoolMeters = zurriolaGeo?.school_to_beach?.meters ?? 20;
     const schoolLabel =
         zurriolaGeo?.school_to_beach?.label ??
         `A pie de playa, a unos ${schoolMeters} metros de la Zurriola.`;
+
+    const [weatherOpen, setWeatherOpen] = useState(false);
+    const [weatherData, setWeatherData] = useState(null);
+    const [weatherLoading, setWeatherLoading] = useState(false);
+    const [weatherError, setWeatherError] = useState("");
+    const weatherFetchedRef = useRef(false);
+
+    const setWeatherOpenAndFetch = async (nextOpen) => {
+        setWeatherOpen(nextOpen);
+
+        if (!nextOpen || weatherFetchedRef.current) {
+            return;
+        }
+
+        setWeatherLoading(true);
+        setWeatherError("");
+
+        try {
+            const { data } = await axios.get(route("servicios.webcams.weather"));
+            if (data?.ok) {
+                weatherFetchedRef.current = true;
+                setWeatherData(data);
+            } else {
+                weatherFetchedRef.current = false;
+                setWeatherError(data?.message || "No se pudo cargar el tiempo detallado.");
+            }
+        } catch {
+            weatherFetchedRef.current = false;
+            setWeatherError("No se pudo cargar el tiempo detallado. Prueba otra vez.");
+        } finally {
+            setWeatherLoading(false);
+        }
+    };
+
+    const toggleWeatherDetail = () => setWeatherOpenAndFetch(!weatherOpen);
+    const openWeatherDetail = () => setWeatherOpenAndFetch(true);
+
+    const [fullForecastOpen, setFullForecastOpen] = useState(false);
+
+    const {
+        open: detailedOpen,
+        days: detailedDays,
+        loading: detailedLoading,
+        error: detailedError,
+        weatherOk: detailedWeatherOk,
+        weatherMessage: detailedWeatherMessage,
+        openDetailed: openDetailedTimelineRaw,
+        closeDetailed: closeDetailedTimeline,
+    } = useDetailedForecast();
+
+    const openFullForecast = () => {
+        closeDetailedTimeline();
+        setFullForecastOpen(true);
+        openWeatherDetail();
+    };
+
+    const openDetailedTimeline = () => {
+        setFullForecastOpen(false);
+        openDetailedTimelineRaw();
+    };
 
     useEffect(() => {
         const scrollToForecast = () => {
@@ -103,7 +176,7 @@ export default function ServiciosWebcams({
                 className="mx-auto max-w-6xl scroll-mt-24 space-y-4 px-4 py-8 sm:px-6 sm:py-10"
             >
                 <SurfForecastTable
-                    days={Array.isArray(surfForecast?.days) ? surfForecast.days : Array.isArray(surfForecast) ? surfForecast : []}
+                    days={surfDays}
                     metricHelp={surfForecast?.metricHelp ?? {}}
                     summary={surfBrief?.summary}
                     summarySections={surfBrief?.summary_sections ?? null}
@@ -112,7 +185,60 @@ export default function ServiciosWebcams({
                     updatedAtHuman={surfBrief?.generated_at_human}
                     signal={surfBrief?.signal ?? null}
                     reactions={surfBrief?.reactions ?? null}
+                    onOpenFullForecast={openFullForecast}
+                    onOpenDetailedTimeline={openDetailedTimeline}
                 />
+
+                <SurfFullForecastOverlay
+                    panelId={FULL_FORECAST_PANEL_ID}
+                    open={fullForecastOpen}
+                    days={surfDays}
+                    weatherDaily={weatherData?.daily ?? []}
+                    weatherLoading={weatherLoading}
+                    weatherError={weatherError}
+                    onClose={() => setFullForecastOpen(false)}
+                    brief={surfBrief}
+                    webcamAnchorId="webcam-directo"
+                />
+
+                <SurfDetailedForecastSlider
+                    panelId={DETAILED_TIMELINE_PANEL_ID}
+                    open={detailedOpen}
+                    days={detailedDays}
+                    loading={detailedLoading}
+                    error={detailedError}
+                    weatherOk={detailedWeatherOk}
+                    weatherMessage={detailedWeatherMessage}
+                    onClose={closeDetailedTimeline}
+                    webcamAnchorId="webcam-directo"
+                    brief={surfBrief}
+                />
+
+                <div>
+                    <button
+                        type="button"
+                        onClick={toggleWeatherDetail}
+                        aria-expanded={weatherOpen}
+                        aria-controls={WEATHER_PANEL_ID}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20"
+                    >
+                        {weatherOpen ? (
+                            <CloudSun className="h-4 w-4" aria-hidden />
+                        ) : (
+                            <Sun className="h-4 w-4" aria-hidden />
+                        )}
+                        {weatherOpen ? "Ocultar tiempo" : "Tiempo detallado"}
+                    </button>
+
+                    <WeatherDetailPanel
+                        panelId={WEATHER_PANEL_ID}
+                        open={weatherOpen}
+                        data={weatherData}
+                        loading={weatherLoading}
+                        error={weatherError}
+                    />
+                </div>
+
                 <SurfBriefCard brief={surfBrief} />
             </section>
 

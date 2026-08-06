@@ -66,3 +66,21 @@ Fórmula: `round(2.4 × 0.5 × H_ft² × T)` con **wave** H/T. Caché `forecast_
 
 Sanity con H/T de SF (no OM): sáb 2.1 m/6 s → **342** (≈341 SF); lun 1.6 m/10 s → **331** (SF 527 — factor 2.4 no cubre el boost de periodo largo de SF).
 
+## 6) Recalibración 2026-08-04 (FASE 3)
+
+Objetivo: kJ S4 ≈ kJ Surf-Forecast en web, sin inventar metros en la columna de altura.
+
+| Pieza | Valor | Rol |
+|-------|-------|-----|
+| `energy_kj_calibration_factor` | **2.4** | Igual que FASE 2: con H/T de SF y T corto → kJ SF exacto |
+| `energy_kj_height_scale` | **1.52** | Solo en `energyKj()`: corrige Hs Open-Meteo Zurriola vs SF (1.38→~2.1) |
+| `energy_kj_period_boost_max` | **1.6** | Interpola 1.0 (T≤6) → 1.6 (T≥10) para el boost de periodo largo SF |
+
+Comprobaciones unitarias (`SurfEnergyCalculatorTest`):
+
+- SF 2.1 m / 6 s, scale=1 → **341**
+- OM 1.38 m / 5.5 s, scale=1.52 → ~**300–360** (SF ref 341)
+- OM 1.26 m / 8.1 s, scale=1.52 + boost → ~**450–560** (SF ref 527)
+
+Caché tabla: `forecast_table.v7`. Ajuste fino: `ZURRIOLA_ENERGY_HEIGHT_SCALE` / `ZURRIOLA_ENERGY_PERIOD_BOOST_MAX` en `.env`.
+

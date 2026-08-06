@@ -1,0 +1,58 @@
+Modo: Agent. Solo frontend — un archivo: `resources/js/components/Rentals/SurfboardPublicDetail.jsx`.
+
+OBJETIVO
+Quitar el aspecto de "botón/tarjeta" de especificaciones y tarifas. Hoy usan `rounded-xl border bg` (mismo lenguaje que CTAs) y parecen clicables. Deben leerse como DATOS, no como acciones.
+
+PRE-VUELO
+Leer el archivo entero. Localiza por patrón, no por número de línea:
+- specs: `<dl className="mt-2 grid …">` con hijos `rounded-xl border … bg-slate-950/40`
+- tarifas: `<ul className="mt-2 grid …">` con hijos `rounded-xl border … bg-cyan-500/[0.07]`
+- badge "Desde …" justo bajo el título "Tarifas" (dejar intacto)
+- párrafo "El total exacto se calcula…" (dejar intacto)
+
+HECHOS
+- CTAs reales: `rounded-xl|rounded-2xl` + `bg-cyan-*|bg-slate-*` (+ a menudo `ring`).
+- Specs y tarifas comparten ese vocabulario → confunden.
+- El badge "Desde" puede seguir siendo chip (`rounded-lg border bg-cyan…`). Eso es excepción deliberada; no lo “planes” ni lo toques.
+
+TAREAS
+
+1) Especificaciones → celdas planas (sin chrome de tarjeta)
+   Mantén el layout: `grid grid-cols-2 gap-2 sm:grid-cols-4`.
+   En el `<div>` de cada spec:
+   - QUITA: `rounded-xl`, `border`, `border-slate-700/80`, `bg-slate-950/40` (y cualquier `bg-`/`ring`).
+   - DEJA: solo espaciado, p. ej. `px-1 py-2` o `px-3 py-2`.
+   - NO añadas `border-b` por celda (en grid 2/4 cols queda fragmentado y sigue pareciendo cajita).
+   - NO toques tipografía de `<dt>` / `<dd>`.
+
+2) Tarifas → lista vertical label | precio
+   Sustituye el `<ul>` grid de tarjetas por lista vertical:
+   - `<ul className="mt-2">` (sin grid).
+   - Cada `<li>`: `flex items-center justify-between gap-3 py-2 border-b border-slate-800 last:border-0`
+   - Izquierda: `<span className="text-sm text-slate-300">{label}</span>`
+   - Derecha: `<span className="font-heading text-base font-bold tabular-nums text-cyan-300">{formatted}</span>`
+   - Sin `rounded-*`, sin `bg-*`, sin borde perimetral en el `<li>`.
+   - Badge "Desde …" y el `<p>` del total exacto: intactos (posición y clases).
+
+3) Autochequeo antes de cerrar
+   En specs y en el nuevo listado de tarifas:
+   - no debe quedar `rounded-xl` ni `bg-*` (salvo el badge "Desde", intocable).
+   - cyan solo en: texto del precio de cada fila + badge "Desde".
+
+FUERA DE ALCANCE
+- Galería, cabeceras de sección, "Cómo funciona", `SurfboardBookingSection`.
+- Badge "Desde X€".
+- Cualquier otro archivo.
+- No cambies el grid 2/4 de specs; solo el estilo de celda.
+
+FORMATO DE SALIDA
+1. Diff único de `SurfboardPublicDetail.jsx`.
+2. Checklist:
+   - [ ] Specs sin aspecto de botón/tarjeta
+   - [ ] Tarifas sin aspecto de botón/tarjeta (lista label|precio)
+   - [ ] Badge "Desde" y nota del total intactos
+
+AUTONOMÍA
+- Elige padding concreto dentro de tokens ya usados en el archivo.
+- Si el markup no coincide al 100 %, busca por `rounded-xl` + `bg-` dentro del bloque de specs/tarifas y aplica el mismo criterio.
+- No preguntes por estilo si está cubierto arriba.

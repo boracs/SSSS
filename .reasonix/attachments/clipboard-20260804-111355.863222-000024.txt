@@ -1,0 +1,186 @@
+Modo: Agent. Frontend + backend del dominio SurfConditions / webcams.
+No commits. Respeta arquitectura S4: Service + DTO readonly + controller fino.
+No inventes directorios fuera del mapa; actualiza solo la sección tocada de
+docs/PROJECT_TREE_FOR_GEMINI.md.
+
+OBJETIVO
+En /servicios/webcams, añadir “Tiempo atmosférico detallado” (horario + 7 días)
+con Open-Meteo forecast, en panel expandible. Fetch SOLO al primer clic del
+usuario (cero peso en carga inicial). Amber = meteo; cyan = mar/olas (no mezclar).
+
+PRE-VUELO (obligatorio)
+1. app/Services/SurfConditions/OpenMeteoMarineClient.php
+   — patrón Http::timeout, endpoints, lat/lon/tz vía config('services.zurriola_surf')
+2. app/Services/SurfConditions/SurfForecastTableService.php — patrón Cache::remember
+3. Un DTO existente en app/DTOs/SurfConditions/ (estilo readonly)
+4. resources/js/Pages/Servicios_Webcams.jsx (ancla forecast ~líneas 100–117)
+5. resources/js/components/webcam/SurfForecastTable.jsx (tono visual dark)
+6. config/services.php → zurriola_surf (latitude, longitude, timezone)
+7. routes/web.php (rutas webcams / parte)
+
+HECHOS (no contradecir)
+- OpenMeteoMarineClient YA llama api.open-meteo.com/v1/forecast para viento.
+  El nuevo cliente es para variables atmosféricas extra (temp, precip, UV, etc.),
+  NO dupliques lat/lon: usa config('services.zurriola_surf.*').
+- HTTP client = Illuminate\Support\Facades\Http (no “new Guzzle”).
+- Prohibido pasar arrays asociativos entre Controller ↔ Service ↔ front:
+  DTO readonly → toArray() / JSON estable.
+- External API: en este caso on-demand está permitido SI hay cache servidor
+  (30–60 min) para no martillar Open-Meteo en cada clic.
+- SEO: NO inyectar JSON-LD WeatherForecast desde React tras el fetch.
+  Los crawlers no abren el panel. Deja SeoHead como está.
+
+════════════════════════════════════
+BACKEND
+════════════════════════════════════
+
+1) DTO readonly
+app/DTOs/SurfConditions/ZurriolaWeatherForecastDto.php
+Campos mínimos (ajusta nombres al estilo del dominio):
+- fetchedAt: string ISO
+- hourly: list<ZurriolaWeatherHourDto>  (o array de readonly DTOs anidados)
+- daily: list<ZurriolaWeatherDayDto>
+Cada hour: time, temperatureC, precipProbabilityPct, cloudCoverPct,
+  windSpeedKmh, windDirectionDeg, windGustsKmh, uvIndex, weatherCode
+Cada day: date, tempMaxC, tempMinC, precipProbabilityMaxPct,
+  sunrise, sunset, weatherCode
+Método toArray() para JSON limpio (listas de objetos, NO columnas Open-Meteo crudas).
+
+2) Client
+app/Services/SurfConditions/OpenMeteoWeatherClient.php (final)
+- Replica estilo OpenMeteoMarineClient (Http::timeout(8|10), Log::warning, excepción
+  de dominio si falla — reutiliza SurfConditionsUnavailableException si encaja).
+- Endpoint: https://api.open-meteo.com/v1/forecast
+- lat/lon/timezone SOLO desde config('services.zurriola_surf')
+- Params:
+  hourly: temperature_2m,precipitation_probability,cloud_cover,
+          wind_speed_10m,wind_direction_10m,wind_gusts_10m,uv_index,weather_code
+          (visibility opcional; omítela si complica unidades)
+  daily: temperature_2m_max,temperature_2m_min,precipitation_probability_max,
+         sunrise,sunset,weather_code
+  forecast_days: 7
+  timezone: config timezone
+- Método: fetchForecast(): ZurriolaWeatherForecastDto
+  Normaliza el payload columnar de Open-Meteo → listas de horas/días en el DTO.
+  Filtra hourly a desde la hora actual (timezone Madrid) hacia adelante
+  (máx. 48 entradas; el front puede mostrar 24 por defecto).
+
+3) Service (orquestación + cache)
+app/Services/SurfConditions/ZurriolaWeatherForecastService.php
+- publicPayload(): array
+- Cache::remember('zurriola.weather.forecast.v1', now()->addMinutes(45), fn () => ...)
+- Si config weather deshabilitado → array vacío o flag enabled:false
+- try/catch: si Open-Meteo cae, no 500 HTML; respuesta JSON controlada
+  { ok: false, message: '...' } con 503 o 200+ok:false (elige uno y documenta).
+
+4) Controller fino
+app/Http/Controllers/SurfConditions/ZurriolaWeatherController.php
+  (o SurfBrief/ si prefieres colocalizar con webcams — una sola carpeta coherente)
+- __invoke o show(): return response()->json($service->publicPayload())
+- Cero lógica de parseo aquí.
+
+5) Ruta
+En routes/web.php junto a webcams (Ziggy-friendly), nombre sugerido:
+  Route::get('/servicios/webcams/tiempo', ...)->name('servicios.webcams.weather');
+Pública, GET, sin auth.
+No hace falta api.php salvo que el proyecto ya exponga este tipo ahí.
+
+6) Config
+En config/services.php dentro de zurriola_surf:
+  'weather_detail_enabled' => env('ZURRIOLA_WEATHER_DETAIL_ENABLED', true),
+No hardcodees coordenadas nuevas.
+
+════════════════════════════════════
+FRONTEND
+════════════════════════════════════
+
+7) Botón en Servicios_Webcams.jsx
+Colócalo en la section del forecast (id FORECAST_ANCHOR_ID), DEBAJO de
+SurfForecastTable o entre tabla y SurfBriefCard — el tiempo atmosférico
+complementa la previsión de olas, no el crédito Gipuzkoa del hero.
+(Si ya hay un sitio mejor visualmente, OK; no lo pongas solo bajo “Fuente oficial”
+si queda huérfano del forecast.)
+
+- Lucide: Sun / CloudSun (NO emoji en el botón)
+- Estilo amber (meteo), no cyan:
+  rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-1.5
+  text-sm font-medium text-amber-300 hover:bg-amber-500/20
+- Texto: "Tiempo detallado" / "Ocultar tiempo"
+- Estado: open, loading, error, data, fetchedOnce
+- Al abrir la PRIMERA vez: fetch(route('servicios.webcams.weather')) o URL Ziggy
+- Reaperturas: reutiliza data en memoria (cache cliente); opcional revalidar si >45 min
+- Loading: Loader2 animate-spin inline
+- Error: una línea text-sm text-rose-300, sin romper la página
+
+8) resources/js/components/webcam/WeatherDetailPanel.jsx (nuevo)
+Props: open, data, loading, error, onClose (onClose opcional)
+
+Animación (expandir, no “slide de página”):
+- Contenedor: overflow-hidden transition-all duration-500 ease-out
+- open: max-h-[640px] opacity-100
+- closed: max-h-0 opacity-0
+- Evita translate-x en móvil (layout shift raro bajo el botón).
+  Si quieres motion extra solo en md+: translate-x-0 / translate-x-4 OK.
+
+Shell:
+bg-slate-900/80 backdrop-blur-sm border border-white/10 rounded-2xl p-4 sm:p-5
+
+A) Horario
+- Título amber + Clock (Lucide)
+- Mostrar por defecto las próximas 24h; si data trae más, botón texto
+  "Ver 48 h" que expande (menos DOM inicial)
+- Scroll horizontal: flex gap-2 overflow-x-auto pb-2 scrollbar-hide
+- Card min-w-[4.5rem] rounded-xl border border-white/5 bg-white/5 p-2 text-center
+- Hora, icono Lucide según weather_code, temp °C (font-heading tabular-nums),
+  precip % (text-sky-300), viento km/h (text-slate-400)
+- PROHIBIDO emojis ☀️🌧️ como iconos principales — mapa weather_code → Lucide
+  (Sun, CloudSun, Cloud, CloudFog, CloudRain, CloudSnow, CloudLightning)
+
+B) Diario (7 días)
+- Título + CalendarDays
+- grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2
+- Card: border-amber-500/10 bg-amber-500/[0.04]
+- Día semana corto (es-ES), icono Lucide, max/min, lluvia %,
+  sunrise/sunset en text-[10px] text-slate-500 (formato HH:mm local)
+  Sin emojis de sol en el copy de amanecer/atardecer — texto “Amanece” / “Oscurece”
+  o iconos Lucide Sunrise/Sunset si existen en la versión del paquete.
+
+9) Accesibilidad
+- Botón type="button", aria-expanded={open}
+- Panel id + aria-controls
+- Cards horarias: no focus trap innecesario
+
+10) Mapa docs
+Actualiza docs/PROJECT_TREE_FOR_GEMINI.md solo con OpenMeteoWeatherClient +
+ZurriolaWeatherForecastService + WeatherDetailPanel + ruta.
+
+════════════════════════════════════
+FUERA DE ALCANCE
+════════════════════════════════════
+- SurfForecastTable lógica/oleaje, SurfBriefCard, ZurriolaWebcamPlayer (salvo
+  insertar el botón/panel alrededor)
+- Chatbot, alquiler, tarifas
+- JSON-LD WeatherForecast inventado en el cliente
+- Llamar Open-Meteo en el controller Inertia de webcams (carga inicial)
+
+════════════════════════════════════
+CRITERIOS
+════════════════════════════════════
+- [ ] GET servicios.webcams.weather JSON vía DTO/Service + cache ~45 min
+- [ ] Lat/lon/tz desde config, no hardcode divergente
+- [ ] Cero fetch en mount de la página
+- [ ] Primer clic → fetch; siguientes → cache memoria
+- [ ] Panel expandible; franja horaria swipe; 7 días
+- [ ] Amber meteo / cyan no usurpado
+- [ ] Iconos Lucide (no emoji) para weather_code
+- [ ] Sin JSON-LD lazy falso-SEO
+- [ ] PROJECT_TREE actualizado (sección SurfConditions / webcam)
+
+SALIDA
+1) Diff por archivo
+2) Checklist
+3) 5 líneas: endpoint exacto, clave de cache, y cómo probar
+   (abrir webcams → Network sin weather → clic → 1 request → cerrar/abrir sin 2ª)
+
+REGLA DE ORO
+On-demand + cache servidor. DTO, no arrays. Lucide, no emoji. SEO honesto.

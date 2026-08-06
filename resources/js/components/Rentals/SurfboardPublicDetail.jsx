@@ -3,15 +3,18 @@ import { Plus } from "lucide-react";
 import SafeImage from "../SafeImage";
 import SurfboardBookingSection from "../SurfboardBookingSection";
 import {
+    boardDisplayDescription,
     boardSpecs,
-    buildVisibleTariffs,
     imageListFor,
     imageUrlFor,
+    rentalPriceTeaser,
 } from "../../lib/surfboardPublicDisplay";
 
 /**
  * Ficha pública de alquiler (catálogo Index + página Show).
- * Galería, specs, tarifas y bloque de reserva embedded (tone dark).
+ * Galería, specs, descripción y bloque de reserva embedded (tone dark).
+ * Las tarifas detalladas viven en el selector de reserva y en /tablas-alquiler,
+ * así que aquí no se duplican.
  */
 export default function SurfboardPublicDetail({
     board,
@@ -49,11 +52,8 @@ export default function SurfboardPublicDetail({
         [board.image_alt, name, onImageClick],
     );
 
-    const tariffs = useMemo(
-        () => buildVisibleTariffs(board.price_schema),
-        [board.price_schema],
-    );
-
+    const description = boardDisplayDescription(board, name);
+    const priceTeaser = rentalPriceTeaser(board.price_schema);
     const specs = boardSpecs(board);
 
     return (
@@ -76,7 +76,7 @@ export default function SurfboardPublicDetail({
                             <SafeImage
                                 src={activeSrc}
                                 alt={board.image_alt || name}
-                                className="pointer-events-none h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                                className="pointer-events-none h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03]"
                                 placeholderClassName="rounded-none"
                             />
                         </div>
@@ -127,15 +127,12 @@ export default function SurfboardPublicDetail({
             </div>
 
             <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     Especificaciones
                 </p>
                 <dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {specs.map(({ label, value }) => (
-                        <div
-                            key={label}
-                            className="rounded-xl border border-slate-700/80 bg-slate-950/40 px-3 py-2.5"
-                        >
+                        <div key={label} className="px-1 py-2">
                             <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                                 {label}
                             </dt>
@@ -147,45 +144,24 @@ export default function SurfboardPublicDetail({
                 </dl>
             </div>
 
-            {tariffs.length > 0 ? (
-                <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Tarifas
+            {description || priceTeaser ? (
+                <div className="border-t border-white/10 pt-4">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        Descripción
                     </p>
-                    <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {tariffs.map(({ label, formatted }) => (
-                            <li
-                                key={label}
-                                className="rounded-xl border border-cyan-500/20 bg-cyan-500/[0.07] px-3 py-2.5"
-                            >
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-cyan-300/80">
-                                    {label}
-                                </p>
-                                <p className="mt-0.5 font-heading text-lg font-extrabold tabular-nums text-cyan-300 sm:text-xl">
-                                    {formatted}
-                                </p>
-                            </li>
-                        ))}
-                    </ul>
-                    <p className="mt-2 text-[11px] leading-snug text-slate-500">
-                        El total exacto se calcula al elegir fechas en el calendario.
+                    <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                        {description}
+                        {description && priceTeaser ? " " : ""}
+                        {priceTeaser ? (
+                            <span className="font-semibold text-cyan-300">{priceTeaser}</span>
+                        ) : null}
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                        Recogida y devolución en la escuela S4 (Zurriola); la hora de devolución se
+                        calcula sola según la duración elegida.
                     </p>
                 </div>
             ) : null}
-
-            <div className="border-t border-white/10 pt-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Cómo funciona
-                </p>
-                <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-slate-400">
-                    <li>Elige horas o días, la hora de recogida y confirma con el pago.</li>
-                    <li>La recogida y devolución se hacen en la escuela S4 (Zurriola).</li>
-                    <li>La hora de devolución se calcula sola a partir de la duración elegida.</li>
-                </ul>
-                {/* CTA de WhatsApp retirado a propósito: el flujo ya es autoservicio
-                    (calendario + pago) y este botón invitaba a preguntar por cada
-                    tabla en vez de reservar directamente. */}
-            </div>
 
             <SurfboardBookingSection
                 key={board.id}

@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services\SurfConditions;
 
+use App\DTOs\SurfConditions\SurfConditionsSnapshotDto;
+use App\DTOs\SurfConditions\SurfDetailedDayDto;
+use App\DTOs\SurfConditions\SurfDetailedSlotDto;
 use App\DTOs\SurfConditions\SurfForecastDayDto;
 use App\DTOs\SurfConditions\SurfForecastSlotDto;
 use App\DTOs\SurfConditions\SurfHourlySeriesDto;
+use App\DTOs\SurfConditions\ZurriolaWeatherDayDto;
+use App\DTOs\SurfConditions\ZurriolaWeatherHourDto;
+use App\Models\SurfDailyBrief;
 use App\Support\CompassDirection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -14,10 +20,9 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Construye la tabla de previsión de varios días (estilo Surfforecast) a
- * partir de la serie horaria cruda de Open-Meteo: agrupa por día, filtra a
- * las franjas diurnas configuradas y calcula energía/estado del viento por
- * franja + picos de marea estimados por día.
+ * Construye la tabla de previsión de varios días (estilo Surfforecast):
+ * oleaje/viento horario vía Open-Meteo; mareas preferentemente Euskalmet
+ * (pleamar/bajamar oficiales) con fallback a extremos de sea_level Open-Meteo.
  *
  * Es un servicio DISTINTO de {@see SurfDailyBriefService}: aquel persiste en
  * BD el "parte de hoy" con texto de Gemini; este solo cachea una vista de
@@ -26,15 +31,35 @@ use Throwable;
 final class SurfForecastTableService
 {
     /** Incluye versión para invalidar cachés antiguas al cambiar forecast_days / shape. */
-    private const CACHE_KEY = 'surf_conditions.forecast_table.v5';
+    private const CACHE_KEY = 'surf_conditions.forecast_table.v10';
 
     private const CACHE_TTL_SECONDS = 3600;
 
+    /** Slider "cada 2h · todos los días" (fusiona oleaje+tiempo); TTL corto porque depende del tiempo atmosférico. */
+    private const CACHE_KEY_DETAILED = 'surf_conditions.detailed_timeline.v3';
+
+    private const CACHE_TTL_DETAILED_SECONDS = 2700;
+
+    /**
+     * Puntuación de viento para estrellas por nivel: sin viento u offshore es
+     * lo mejor para cualquier nivel; onshore empeora el mar para todos.
+     */
+    private const WIND_STATE_SCORE = [
+        SurfWindStateClassifier::GLASSY => 5,
+        SurfWindStateClassifier::OFFSHORE => 5,
+        SurfWindStateClassifier::CROSS_OFFSHORE => 4,
+        SurfWindStateClassifier::CROSS_ONSHORE => 2,
+        SurfWindStateClassifier::ONSHORE => 1,
+    ];
+
     public function __construct(
         private readonly OpenMeteoMarineClient $client,
+        private readonly OpenMeteoWeatherClient $weatherClient,
+        private readonly EuskalmetSeaForecastClient $euskalmet,
         private readonly SurfEnergyCalculator $energy,
         private readonly SurfWindStateClassifier $windState,
         private readonly TideExtremaCalculator $tides,
+        private readonly SurfLevelRecommender $levelRecommender,
     ) {}
 
     /** @return array{days: list<array<string, mixed>>, metricHelp: array<string, string>} */
@@ -62,6 +87,273 @@ final class SurfForecastTableService
     public function forget(): void
     {
         Cache::forget(self::CACHE_KEY);
+        Cache::forget(self::CACHE_KEY_DETAILED);
+        $this->euskalmet->forget();
+    }
+
+    /**
+     * Slider "cada 2h · todos los días": fusiona TODOS los días de oleaje
+     * (mismo cliente marine que la tabla compacta) con el tiempo atmosférico
+     * de {@see OpenMeteoWeatherClient::fetchDetailedForecast()}, franja a
+     * franja. Si el tiempo falla, se degrada a `weatherOk:false` pero el
+     * oleaje se sirve igual (nunca se inventa tiempo, nunca se rompe la tabla
+     * por un fallo ajeno).
+     *
+     * @return array{ok: bool, message?: string, weatherOk?: bool, weatherMessage?: ?string, days: list<array<string, mixed>>, metricHelp: array<string, string>}
+     */
+    public function detailedPayload(): array
+    {
+        try {
+            $result = Cache::remember(
+                self::CACHE_KEY_DETAILED,
+                self::CACHE_TTL_DETAILED_SECONDS,
+                fn () => $this->buildDetailed(),
+            );
+        } catch (Throwable $e) {
+            Log::warning('SurfForecastTableService: no se pudo construir el slider detallado.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'ok' => false,
+                'message' => 'No se pudo cargar el detalle cada 2h. Inténtalo de nuevo en unos minutos.',
+                'days' => [],
+                'metricHelp' => $this->metricHelp(),
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'weatherOk' => $result['weatherOk'],
+            'weatherMessage' => $result['weatherMessage'],
+            'days' => array_map($this->serializeDetailedDay(...), $result['days']),
+            'metricHelp' => $this->metricHelp(),
+        ];
+    }
+
+    /** @return array{days: list<SurfDetailedDayDto>, weatherOk: bool, weatherMessage: ?string} */
+    private function buildDetailed(): array
+    {
+        $daysAhead = (int) config('services.zurriola_surf.forecast_days', OpenMeteoMarineClient::MAX_FORECAST_DAYS);
+        $daysAhead = max(1, min($daysAhead, OpenMeteoMarineClient::MAX_FORECAST_DAYS));
+        $slotHours = (array) config('services.zurriola_surf.forecast_detailed_slot_hours', [6, 8, 10, 12, 14, 16, 18, 20, 22]);
+        $timezone = (string) config('services.zurriola_surf.timezone', 'Europe/Madrid');
+
+        $series = $this->client->hourlySeries($daysAhead);
+        $weather = $this->fetchWeatherLookup($daysAhead);
+
+        $dates = [];
+        for ($i = 0; $i < $daysAhead; $i++) {
+            $dates[] = Carbon::now($timezone)->addDays($i)->format('Y-m-d');
+        }
+
+        $days = array_map(
+            fn (string $date) => $this->buildDetailedDay($series, $date, $slotHours, $weather['hourByTime'], $weather['dayByDate'][$date] ?? null),
+            $dates,
+        );
+
+        // Mismo criterio que la tabla compacta: días sin ola/periodo reales (relleno null→0 de Open-Meteo) no se muestran.
+        $days = array_values(array_filter(
+            $days,
+            fn (SurfDetailedDayDto $day) => $this->detailedDayHasUsableForceData($day)
+        ));
+
+        return [
+            'days' => $days,
+            'weatherOk' => $weather['ok'],
+            'weatherMessage' => $weather['message'],
+        ];
+    }
+
+    private function detailedDayHasUsableForceData(SurfDetailedDayDto $day): bool
+    {
+        foreach ($day->slots as $slot) {
+            if ($slot->waveHeightM > 0.0 && $slot->wavePeriodS > 0.0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array{hourByTime: array<string, ZurriolaWeatherHourDto>, dayByDate: array<string, ZurriolaWeatherDayDto>, ok: bool, message: ?string}
+     */
+    private function fetchWeatherLookup(int $days): array
+    {
+        if (! (bool) config('services.zurriola_surf.weather_detail_enabled', true)) {
+            return ['hourByTime' => [], 'dayByDate' => [], 'ok' => false, 'message' => 'El tiempo detallado no está disponible ahora mismo.'];
+        }
+
+        try {
+            $forecast = $this->weatherClient->fetchDetailedForecast($days);
+        } catch (Throwable $e) {
+            Log::warning('SurfForecastTableService: no se pudo fusionar el tiempo atmosférico en el slider detallado.', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['hourByTime' => [], 'dayByDate' => [], 'ok' => false, 'message' => 'No se pudo cargar el tiempo atmosférico; se muestra solo el oleaje.'];
+        }
+
+        $hourByTime = [];
+        foreach ($forecast->hourly as $hour) {
+            $hourByTime[$hour->time] = $hour;
+        }
+
+        $dayByDate = [];
+        foreach ($forecast->daily as $day) {
+            $dayByDate[$day->date] = $day;
+        }
+
+        return ['hourByTime' => $hourByTime, 'dayByDate' => $dayByDate, 'ok' => true, 'message' => null];
+    }
+
+    /**
+     * @param  list<int>  $slotHours
+     * @param  array<string, ZurriolaWeatherHourDto>  $weatherHourByTime
+     */
+    private function buildDetailedDay(
+        SurfHourlySeriesDto $series,
+        string $date,
+        array $slotHours,
+        array $weatherHourByTime,
+        ?ZurriolaWeatherDayDto $weatherDay,
+    ): SurfDetailedDayDto {
+        $slots = [];
+
+        foreach ($series->times as $index => $time) {
+            if (! str_starts_with($time, $date)) {
+                continue;
+            }
+
+            $hour = (int) Carbon::parse($time)->format('H');
+            if (! in_array($hour, $slotHours, true)) {
+                continue;
+            }
+
+            $slots[] = $this->buildDetailedSlot($series, $index, $time, $weatherHourByTime[$time] ?? null);
+        }
+
+        $tide = $this->resolveTides($series, $date);
+
+        return new SurfDetailedDayDto(
+            date: $date,
+            dayLabel: Carbon::parse($date)->locale('es')->isoFormat('dddd D MMM'),
+            slots: $slots,
+            tideEvents: $tide['events'],
+            tideRiseM: $tide['rise_m'],
+            tideFallM: $tide['fall_m'],
+            tempMaxC: $weatherDay?->tempMaxC,
+            tempMinC: $weatherDay?->tempMinC,
+            sunrise: $weatherDay?->sunrise,
+            sunset: $weatherDay?->sunset,
+        );
+    }
+
+    private function buildDetailedSlot(
+        SurfHourlySeriesDto $series,
+        int $index,
+        string $time,
+        ?ZurriolaWeatherHourDto $weatherHour,
+    ): SurfDetailedSlotDto {
+        $waveHeight = $series->waveHeight[$index];
+        $wavePeriod = $series->wavePeriod[$index];
+        $windSpeed = $series->windSpeed[$index];
+        $windDirection = $series->windDirection[$index];
+
+        [$energyHeight, $energyPeriod] = $this->energy->resolveHeightPeriod(
+            $waveHeight,
+            $wavePeriod,
+            $series->swellHeight[$index],
+            $series->swellPeriod[$index],
+        );
+        $energyIndex = $this->energy->indexForValues($energyHeight, $energyPeriod);
+
+        $signal = $this->levelRecommender->recommendSignal(new SurfConditionsSnapshotDto(
+            waveHeightM: $waveHeight,
+            wavePeriodS: $wavePeriod,
+            waveDirectionDeg: $series->waveDirection[$index],
+            swellHeightM: $series->swellHeight[$index],
+            swellPeriodS: $series->swellPeriod[$index],
+            swellDirectionDeg: $series->swellDirection[$index],
+            windSpeedKmh: $windSpeed,
+            windDirectionDeg: $windDirection,
+            fetchedAt: Carbon::parse($time),
+        ));
+
+        $windState = $this->windState->classify($windSpeed, $windDirection);
+        $starsIni = $this->starsForIniciacion($waveHeight, $windState, $signal);
+        $starsInt = $this->starsForIntermedio($waveHeight, $windState, $signal);
+        $starsAva = $this->starsForAvanzado($waveHeight, $windState, $signal);
+
+        return new SurfDetailedSlotDto(
+            time: $time,
+            hourLabel: Carbon::parse($time)->format('H:i'),
+            waveHeightM: round($waveHeight, 2),
+            wavePeriodS: round($wavePeriod, 1),
+            waveDirectionDeg: $series->waveDirection[$index],
+            windSpeedKmh: round($windSpeed, 1),
+            windDirectionDeg: $windDirection,
+            energyIndex: $energyIndex,
+            energyLabel: $this->energy->labelFor($energyIndex),
+            energyKj: $this->energy->energyKj($energyHeight, $energyPeriod),
+            windState: $windState,
+            signal: $signal,
+            qualityStars: $starsInt,
+            qualityStarsIniciacion: $starsIni,
+            qualityStarsIntermedio: $starsInt,
+            qualityStarsAvanzado: $starsAva,
+            weatherCode: $weatherHour?->weatherCode,
+            tempC: $weatherHour?->temperatureC,
+            precipProbabilityPct: $weatherHour?->precipProbabilityPct,
+        );
+    }
+
+    /** @return array<string, mixed> */
+    private function serializeDetailedDay(SurfDetailedDayDto $day): array
+    {
+        return [
+            'date' => $day->date,
+            'dayLabel' => $day->dayLabel,
+            'tempMaxC' => $day->tempMaxC,
+            'tempMinC' => $day->tempMinC,
+            'sunrise' => $day->sunrise,
+            'sunset' => $day->sunset,
+            'slots' => array_map(fn (SurfDetailedSlotDto $slot) => [
+                'time' => $slot->time,
+                'hourLabel' => $slot->hourLabel,
+                'waveHeightM' => $slot->waveHeightM,
+                'wavePeriodS' => $slot->wavePeriodS,
+                'waveDirectionDeg' => $slot->waveDirectionDeg,
+                'waveDirectionLabel' => CompassDirection::label($slot->waveDirectionDeg),
+                'windSpeedKmh' => $slot->windSpeedKmh,
+                'windDirectionDeg' => $slot->windDirectionDeg,
+                'windDirectionLabel' => CompassDirection::label($slot->windDirectionDeg),
+                'energyIndex' => $slot->energyIndex,
+                'energyLabel' => $slot->energyLabel,
+                'energyKj' => $slot->energyKj,
+                'energyTone' => $this->energyTone($slot->energyKj),
+                'windState' => $slot->windState,
+                'windStateLabel' => $this->windState->label($slot->windState),
+                'windTone' => $this->windTone($slot->windSpeedKmh),
+                'signal' => $slot->signal,
+                'qualityStars' => $slot->qualityStars,
+                'qualityStarsIniciacion' => $slot->qualityStarsIniciacion,
+                'qualityStarsIntermedio' => $slot->qualityStarsIntermedio,
+                'qualityStarsAvanzado' => $slot->qualityStarsAvanzado,
+                'weatherCode' => $slot->weatherCode,
+                'tempC' => $slot->tempC,
+                'precipProbabilityPct' => $slot->precipProbabilityPct,
+            ], $day->slots),
+            'tideEvents' => array_map(fn ($event) => [
+                'type' => $event->type,
+                'hourLabel' => $event->hourLabel,
+                'heightM' => $event->heightM,
+                'deltaM' => $event->deltaM,
+            ], $day->tideEvents),
+            'tideRiseM' => $day->tideRiseM,
+            'tideFallM' => $day->tideFallM,
+        ];
     }
 
     /**
@@ -139,7 +431,8 @@ final class SurfForecastTableService
             $slots[] = $this->buildSlot($series, $index, $time);
         }
 
-        $tide = $this->tides->extremaForDate($series->times, $series->seaLevel, $date);
+        $tide = $this->resolveTides($series, $date);
+        $best = $this->pickBestSlot($slots);
 
         return new SurfForecastDayDto(
             date: $date,
@@ -148,7 +441,218 @@ final class SurfForecastTableService
             tideEvents: $tide['events'],
             tideRiseM: $tide['rise_m'],
             tideFallM: $tide['fall_m'],
+            bestSignal: $best['signal'],
+            qualityStars: $best['starsIntermedio'],
+            qualityStarsIniciacion: $best['starsIniciacion'],
+            qualityStarsIntermedio: $best['starsIntermedio'],
+            qualityStarsAvanzado: $best['starsAvanzado'],
+            bestSlotTime: $best['time'],
         );
+    }
+
+    /**
+     * Slot con más estrellas intermedio del día; en empate, el más temprano.
+     * Las tres puntuaciones se calculan para ese mismo "mejor momento".
+     *
+     * @param  list<SurfForecastSlotDto>  $slots
+     * @return array{signal: string, time: ?string, starsIniciacion: int, starsIntermedio: int, starsAvanzado: int}
+     */
+    private function pickBestSlot(array $slots): array
+    {
+        if ($slots === []) {
+            return [
+                'signal' => SurfDailyBrief::OVERRIDE_CLOSED,
+                'time' => null,
+                'starsIniciacion' => 1,
+                'starsIntermedio' => 1,
+                'starsAvanzado' => 1,
+            ];
+        }
+
+        $best = null;
+        foreach ($slots as $slot) {
+            $starsInt = $this->starsForIntermedio($slot->waveHeightM, $slot->windState, $slot->signal);
+            if ($best === null || $starsInt > $best['starsIntermedio']) {
+                $best = [
+                    'starsIniciacion' => $this->starsForIniciacion($slot->waveHeightM, $slot->windState, $slot->signal),
+                    'starsIntermedio' => $starsInt,
+                    'starsAvanzado' => $this->starsForAvanzado($slot->waveHeightM, $slot->windState, $slot->signal),
+                    'signal' => $slot->signal,
+                    'time' => $slot->time,
+                ];
+            }
+        }
+
+        return $best;
+    }
+
+    /**
+     * @return array{iniciacion: float, intermedio: float, avanzado: float}
+     */
+    private function levelWaveCeilingsM(): array
+    {
+        $thresholds = (array) config('services.zurriola_surf.level_thresholds', []);
+
+        return [
+            'iniciacion' => (float) ($thresholds['iniciacion']['max_wave_height_m'] ?? 0.8),
+            'intermedio' => (float) ($thresholds['intermedio']['max_wave_height_m'] ?? 1.6),
+            'avanzado' => (float) ($thresholds['avanzado']['max_wave_height_m'] ?? 3.5),
+        ];
+    }
+
+    private function clampStars(int $stars): int
+    {
+        return max(1, min(5, $stars));
+    }
+
+    /**
+     * Señal closed → nunca vender el día (máx. 2★ en cualquier nivel).
+     */
+    private function applyClosedCap(int $stars, string $signal): int
+    {
+        if ($signal === SurfDailyBrief::OVERRIDE_CLOSED) {
+            return min($stars, 2);
+        }
+
+        return $stars;
+    }
+
+    /**
+     * Iniciación: olas pequeñas + viento manejable = alto.
+     * Curva distinta a CALIBRACION_ESTRELLAS.csv (esa calibra “surfista real”).
+     * Ancla: techo `level_thresholds.iniciacion`.
+     */
+    private function starsForIniciacion(float $waveHeightM, string $windState, string $signal): int
+    {
+        $ceil = $this->levelWaveCeilingsM();
+        $iniciacionMax = $ceil['iniciacion'];
+        $intermedioMax = $ceil['intermedio'];
+        $avanzadoMax = $ceil['avanzado'];
+
+        $sizeScore = match (true) {
+            $waveHeightM <= $iniciacionMax * 0.35 => 3,
+            $waveHeightM <= $iniciacionMax * 0.75 => 5,
+            $waveHeightM <= $iniciacionMax => 4,
+            $waveHeightM <= ($iniciacionMax + $intermedioMax) / 2 => 3,
+            $waveHeightM <= $intermedioMax => 2,
+            $waveHeightM <= $avanzadoMax => 1,
+            default => 1,
+        };
+
+        $windScore = self::WIND_STATE_SCORE[$windState] ?? 3;
+        $stars = (int) round(($sizeScore + $windScore) / 2);
+
+        $roughWind = in_array($windState, [
+            SurfWindStateClassifier::ONSHORE,
+            SurfWindStateClassifier::CROSS_ONSHORE,
+        ], true);
+        if ($roughWind) {
+            $stars = min($stars, 2);
+        }
+
+        if ($signal === SurfDailyBrief::OVERRIDE_CAUTION && $waveHeightM > $iniciacionMax) {
+            $stars = min($stars, 2);
+        }
+
+        return $this->clampStars($this->applyClosedCap($stars, $signal));
+    }
+
+    /**
+     * Intermedio: sweet spot entre techo iniciación e intermedio = alto.
+     * Antes {@see intermediateQualityStars()} (alias interno).
+     */
+    private function starsForIntermedio(float $waveHeightM, string $windState, string $signal): int
+    {
+        return $this->intermediateQualityStars($waveHeightM, $windState, $signal);
+    }
+
+    /**
+     * Estrellas 1-5 para nivel intermedio (mayoría del alumnado).
+     * Conservada como implementación de {@see starsForIntermedio()}.
+     */
+    private function intermediateQualityStars(float $waveHeightM, string $windState, string $signal): int
+    {
+        $ceil = $this->levelWaveCeilingsM();
+        $iniciacionMax = $ceil['iniciacion'];
+        $intermedioMax = $ceil['intermedio'];
+        $avanzadoMax = $ceil['avanzado'];
+
+        $sizeScore = match (true) {
+            $waveHeightM < $iniciacionMax * 0.5 => 1,
+            $waveHeightM < $iniciacionMax => 3,
+            $waveHeightM <= $intermedioMax => 5,
+            $waveHeightM <= $intermedioMax * 1.3 => 4,
+            $waveHeightM <= $avanzadoMax => 2,
+            default => 1,
+        };
+
+        $windScore = self::WIND_STATE_SCORE[$windState] ?? 3;
+        $stars = (int) round(($sizeScore + $windScore) / 2);
+
+        if ($waveHeightM > $avanzadoMax) {
+            $stars = min($stars, 2);
+        }
+
+        return $this->clampStars($this->applyClosedCap($stars, $signal));
+    }
+
+    /**
+     * Avanzado: olas mayores (hacia techo avanzado) puntúan alto si viento/señal
+     * lo permiten; flat / muy pequeño = bajo. Antes {@see surferQualityStars()}.
+     */
+    private function starsForAvanzado(float $waveHeightM, string $windState, string $signal): int
+    {
+        return $this->surferQualityStars($waveHeightM, $windState, $signal);
+    }
+
+    /**
+     * Estrellas 1-5 para nivel avanzado (“surfista real”).
+     * Conservada como implementación de {@see starsForAvanzado()}.
+     */
+    private function surferQualityStars(float $waveHeightM, string $windState, string $signal): int
+    {
+        $ceil = $this->levelWaveCeilingsM();
+        $iniciacionMax = $ceil['iniciacion'];
+        $intermedioMax = $ceil['intermedio'];
+        $avanzadoMax = $ceil['avanzado'];
+
+        // Más ola = más disfrute; flat / orilla de iniciación = bajo para avanzado
+        // (aunque el viento sea perfecto: no se “rescata” con offshore).
+        $sizeScore = match (true) {
+            $waveHeightM < $iniciacionMax * 0.5 => 1,
+            $waveHeightM < $iniciacionMax => 1,
+            $waveHeightM <= $intermedioMax => 3,
+            $waveHeightM <= $avanzadoMax * 0.75 => 4,
+            $waveHeightM <= $avanzadoMax => 5,
+            default => 3,
+        };
+
+        $windScore = self::WIND_STATE_SCORE[$windState] ?? 3;
+        $stars = (int) round(($sizeScore * 2 + $windScore) / 3);
+
+        if ($waveHeightM < $iniciacionMax * 0.5) {
+            $stars = min($stars, 1);
+        } elseif ($waveHeightM < $iniciacionMax) {
+            $stars = min($stars, 2);
+        }
+
+        return $this->clampStars($this->applyClosedCap($stars, $signal));
+    }
+
+    /**
+     * Preferir Euskalmet (minutos reales, costa vasca). Si falta el día o falla
+     * la fuente, estimar extremos desde la curva horaria Open-Meteo.
+     *
+     * @return array{events: list<\App\DTOs\SurfConditions\SurfTideEventDto>, rise_m: float|null, fall_m: float|null}
+     */
+    private function resolveTides(SurfHourlySeriesDto $series, string $date): array
+    {
+        $euskalmet = $this->euskalmet->tidesForDate($date);
+        if ($euskalmet !== null && $euskalmet['events'] !== []) {
+            return $euskalmet;
+        }
+
+        return $this->tides->extremaForDate($series->times, $series->seaLevel, $date);
     }
 
     private function buildSlot(SurfHourlySeriesDto $series, int $index, string $time): SurfForecastSlotDto
@@ -166,6 +670,18 @@ final class SurfForecastTableService
         );
         $energyIndex = $this->energy->indexForValues($energyHeight, $energyPeriod);
 
+        $signal = $this->levelRecommender->recommendSignal(new SurfConditionsSnapshotDto(
+            waveHeightM: $waveHeight,
+            wavePeriodS: $wavePeriod,
+            waveDirectionDeg: $series->waveDirection[$index],
+            swellHeightM: $series->swellHeight[$index],
+            swellPeriodS: $series->swellPeriod[$index],
+            swellDirectionDeg: $series->swellDirection[$index],
+            windSpeedKmh: $windSpeed,
+            windDirectionDeg: $windDirection,
+            fetchedAt: Carbon::parse($time),
+        ));
+
         return new SurfForecastSlotDto(
             time: $time,
             hourLabel: Carbon::parse($time)->format('H:i'),
@@ -181,6 +697,7 @@ final class SurfForecastTableService
             energyLabel: $this->energy->labelFor($energyIndex),
             energyKj: $this->energy->energyKj($energyHeight, $energyPeriod),
             windState: $this->windState->classify($windSpeed, $windDirection),
+            signal: $signal,
         );
     }
 
@@ -211,6 +728,7 @@ final class SurfForecastTableService
                 'windState' => $slot->windState,
                 'windStateLabel' => $this->windState->label($slot->windState),
                 'windTone' => $this->windTone($slot->windSpeedKmh),
+                'signal' => $slot->signal,
             ], $day->slots),
             'tideEvents' => array_map(fn ($event) => [
                 'type' => $event->type,
@@ -220,6 +738,12 @@ final class SurfForecastTableService
             ], $day->tideEvents),
             'tideRiseM' => $day->tideRiseM,
             'tideFallM' => $day->tideFallM,
+            'bestSignal' => $day->bestSignal,
+            'qualityStars' => $day->qualityStars,
+            'qualityStarsIniciacion' => $day->qualityStarsIniciacion,
+            'qualityStarsIntermedio' => $day->qualityStarsIntermedio,
+            'qualityStarsAvanzado' => $day->qualityStarsAvanzado,
+            'bestSlotTime' => $day->bestSlotTime,
         ];
     }
 

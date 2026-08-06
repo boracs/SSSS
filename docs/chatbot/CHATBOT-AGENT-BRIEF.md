@@ -92,7 +92,7 @@ Empieza por Fase 1.1 y dime qué vas a cambiar antes de editar muchos archivos.
 
 ### Explícitamente fuera de alcance
 - ❌ Refactor embudo 3 niveles (ya hecho)
-- ❌ Firestore / memoria LTP
+- ❌ persistencia en memoria (sin base de datos externa para el chatbot)
 - ❌ Hardcodear 170/240/380 € en FAQ
 
 ## Archivos clave (globs de la rule)

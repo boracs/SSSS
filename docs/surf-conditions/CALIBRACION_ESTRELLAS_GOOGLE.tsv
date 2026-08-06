@@ -1,0 +1,49 @@
+﻿seccion	id	descripcion_escenario	energia_kj	viento	periodo	marea	swell_direccion	estrellas_1_a_5	nota_opcional
+INSTRUCCIONES		Rellena SOLO la columna estrellas_1_a_5 (numero entero 1-5). Publico objetivo: quien REALMENTE surfea (nivel intermedio y avanzado, la mayoria del alumnado) - NO valores para iniciacion ni para 'es seguro para banarse'. En cada fila el resto de variables ya estan fijadas: solo evalua esa combinacion concreta. nota_opcional es libre. IMPORTANTE: las preguntas abiertas de referencia estan en docs/surf-conditions/CALIBRACION_PREGUNTAS.md (no en esta hoja).						
+A - SOLO ENERGIA (resto perfecto: viento sur/offshore <=15 km/h o sin viento	 periodo 10-13s optimo	 marea neutra/no determinante	 swell NW directo)	A1	Energia minuscula	<50 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A2	Energia muy pequena	50-99 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A3	Energia pequena-media baja	100-199 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A4	Energia pequena-media alta	200-399 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A5	Energia media-considerable baja	400-699 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A6	Energia media-considerable alta (tu ejemplo 300-1000)	700-999 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A7	Energia fuerte	1000-1500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A8	Energia muy fuerte	1500-2500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+A - SOLO ENERGIA	A9	Energia desfasada (segun JSON: evitar Zurriola)	>2500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO (energia fija ~500 kJ = 'media-considerable'	periodo optimo	marea neutra	swell NW)	B1	Sin viento	500 kJ	Glassy (<=8 km/h cualquier direccion)	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B2	Sur (offshore) suave	500 kJ	Sur (offshore) 9-15 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B3	Sur (offshore) moderado	500 kJ	Sur (offshore) 16-25 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B4	Sur (offshore) fuerte - aqui esta tu duda del tope	500 kJ	Sur (offshore) 26-35 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B5	Sur (offshore) muy fuerte	500 kJ	Sur (offshore) >35 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B6	Norte (onshore) suave - 'Mediocre' en el JSON	500 kJ	Norte (onshore) 9-19 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B7	Norte (onshore) fuerte - 'Bad' en el JSON	500 kJ	Norte (onshore) 20-28 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B8	Norte (onshore) muy fuerte - 'Unrideable' en el JSON	500 kJ	Norte (onshore) >28 km/h	10-13s (optimo)	Neutra	NW (directo)		
+B - SOLO VIENTO	B9	Cruzado (Este/Oeste ni sur ni norte claro)	500 kJ	Cruzado 15-25 km/h	10-13s (optimo)	Neutra	NW (directo)		
+C - SOLO PERIODO (energia fija ~500 kJ	viento perfecto	marea neutra	swell NW)	C1	Periodo bajo - mar de viento	500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	6-9s (bajo/mar de viento)	Neutra	NW (directo)		
+C - SOLO PERIODO	C2	Periodo optimo	500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo)		
+C - SOLO PERIODO	C3	Periodo alto	500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	14-17s (alto)	Neutra	NW (directo)		
+C - SOLO PERIODO	C4	Periodo muy alto - riesgo cierre en barra	500 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	>17s (muy alto)	Neutra	NW (directo)		
+D - SOLO MAREA (segun tide_strategy del JSON	solo importa de verdad en 100-400 kJ; por encima de 600-700 dice que 'deja de ser determinante')	D1	100-400kJ + marea VIVA + ALTA (riesgo orillera segun JSON)	250 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Viva (rango >=3m) + Alta	NW (directo)		
+D - SOLO MAREA	D2	100-400kJ + marea VIVA + BAJA/MEDIA	250 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Viva (rango >=3m) + Baja/Media	NW (directo)		
+D - SOLO MAREA	D3	100-400kJ + marea MUERTA + ALTA	250 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Muerta (rango <=2m) + Alta	NW (directo)		
+D - SOLO MAREA	D4	100-400kJ + marea MUERTA + BAJA/MEDIA	250 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Muerta (rango <=2m) + Baja/Media	NW (directo)		
+D - SOLO MAREA	D5	700kJ (por encima del umbral) + marea VIVA + ALTA	700 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Viva (rango >=3m) + Alta	NW (directo)		
+D - SOLO MAREA	D6	700kJ (por encima del umbral) + marea MUERTA + BAJA	700 kJ	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Muerta (rango <=2m) + Baja/Media	NW (directo)		
+E - SOLO DIRECCION DE SWELL (energia fija ~500 kJ 'nominal' ANTES de aplicar la direccion	viento perfecto	periodo optimo	marea neutra). Aqui en vez de estrellas indica que % de esos 500 kJ crees que llega realmente a la playa	E1	Swell NW directo	500 kJ (nominal)	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NW (directo - eficiencia 1.0 en JSON)		PON EL % EN estrellas_1_a_5 (ej: 100)
+E - SOLO DIRECCION DE SWELL	E2	Swell NNW/N (algo rotado)	500 kJ (nominal)	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	NNW/N (parcialmente rotado)		PON EL % (0-100)
+E - SOLO DIRECCION DE SWELL	E3	Swell W/SW	500 kJ (nominal)	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	W/SW		PON EL % (0-100)
+E - SOLO DIRECCION DE SWELL	E4	Swell S u otras (bloqueado - eficiencia 0.3 en JSON)	500 kJ (nominal)	Sur <=15 km/h o sin viento (offshore/glassy)	10-13s (optimo)	Neutra	S u otras		PON EL % (0-100)
+F - VALIDACION (combos reales completos - mezclan variables a la vez para comprobar que todo es coherente)	F1	Tu ejemplo: poca fuerza pero viento perfecto no debe ser 'increible'	60 kJ	Sur 8 km/h (offshore)	10-13s (optimo)	Muerta + Alta	NW (directo)		
+F - VALIDACION	F2	Tu ejemplo: 300-1000 kJ + sur hasta 15 = 5 estrellas	600 kJ	Sur 12 km/h (offshore)	10-13s (optimo)	Neutra (>700 no determinante)	NW (directo)		
+F - VALIDACION	F3	Energia fuerte pero viento onshore fuerte	1200 kJ	Norte 25 km/h (onshore)	8-10s	Neutra	NW (directo)		
+F - VALIDACION	F4	Energia fuerte + viento sur excesivo (prueba el tope de la seccion B)	1200 kJ	Sur 40 km/h (offshore)	10-13s (optimo)	Neutra	NW (directo)		
+F - VALIDACION	F5	Muy fuerte/desfasado - JSON dice evitar Zurriola	2800 kJ	Sur 15 km/h (offshore)	10-13s (optimo)	Neutra	NW (directo)		
+F - VALIDACION	F6	Fuerte + corriente de retorno peligrosa (rip_current_safety del JSON dispara a partir de 1800 kJ en Espigon)	1900 kJ	Sur 12 km/h (offshore)	11s	Neutra	NW (directo)		
+F - VALIDACION	F7	Energia perfecta pero swell mal orientado (poca llega)	500 kJ (nominal)	Sur 10 km/h (offshore)	11s	Neutra	S (bloqueado - poca energia real llega)		
+F - VALIDACION	F8	Pequeno pero periodo muy largo (verano - riesgo cierre en barra)	150 kJ	Sin viento (glassy)	18s (muy alto)	Neutra	NW (directo)		Contexto: es verano (jun-sep), doc dice que el riesgo de cierre en barra se duplica con periodo largo en fondos de verano
+F - VALIDACION	F9	Todo perfecto en el punto dulce exacto	550 kJ	Sur 10 km/h (offshore)	11s (optimo)	Muerta + Alta (favorable en este rango)	NW (directo)		
+G - PREGUNTAS ABIERTAS (responde en la columna nota_opcional; deja estrellas_1_a_5 en blanco en estas filas)	G1	¿Existe un viento SUR (offshore) tan fuerte que deje de 'limpiar' y pase a molestar/ser peligroso? Si es que si: ¿a partir de cuantos km/h?						
+G - PREGUNTAS ABIERTAS	G2	La corriente de retorno peligrosa (rip_current_safety >=1800 kJ en Espigon) ¿debe FORZAR siempre un tope bajo de estrellas (ej. maximo 2) aunque el resto de variables sean perfectas, o depende de si el surfista es avanzado?						
+G - PREGUNTAS ABIERTAS	G3	¿La franja 'Desfasado' (>2500 kJ, el JSON dice evitar Zurriola e ir a La Concha) debe ser SIEMPRE 1 estrella sin excepcion, o un avanzado experto la valoraria distinto?						
+G - PREGUNTAS ABIERTAS	G4	¿En verano (jun-sep) hay que penalizar mas el periodo largo (>12-14s) que en invierno, tal y como sugiere seasonal_bathymetry del JSON (mas riesgo de cierre en barra)? ¿O no hace falta reflejarlo en las estrellas?						
+G - PREGUNTAS ABIERTAS	G5	¿Debe haber alguna diferencia de estrellas entre nivel intermedio y avanzado para el MISMO escenario grande/potente, o una sola escala vale para los dos (que es como esta montado ahora)?						
+G - PREGUNTAS ABIERTAS	G6	Cuando dos variables tiran en direcciones opuestas (ej: energia perfecta pero viento pesimo, o energia floja pero viento perfecto) ¿cual pesa MAS en tu cabeza para decidir la nota final: energia, viento, periodo o marea? Ordena de mas a menos importante.						

@@ -1,0 +1,138 @@
+Veredicto: bueno como lista de tickets, flojo como prompt de Agent. El alcance, el orden y los “no tocar” están claros; el problema es que varias tareas chocan con el código real y un agente puede “cumplir” el prompt haciendo cosas incorrectas o inútiles.
+
+Fallos reales (no de estilo)
+Tarea 1 (text-s4) está mal diagnosticada. s4 sí está en tailwind.config.js (#0f5f74), y las líneas 157 y 288 ya usan text-s4. La instrucción “cámbialo a text-s4 si existe” es un no-op. Si el total no se ve, el bug es otro (contraste, variante anidada, etc.), no “falta el color en Tailwind”.
+
+Tarea 4: hidden lg:hidden es un error de Tailwind. Eso oculta el enlace siempre. Lo correcto es lg:hidden (visible en móvil, oculto en desktop).
+
+Tarea 6 es redundante. Show.jsx ya tiene BackButton → rentals.surfboards.index (“Volver a tablas”) y breadcrumbs. Pedir otro “← Volver al catálogo” duplica navegación.
+
+Criterio de mode tabs vs realidad. SurfboardBookingSection solo se usa con embedded (siempre dark), y el Show es fondo dark (slate-950). El criterio “tabs legibles en ficha Show tema claro” no describe el estado actual. La tarea 2 tiene sentido como defensa del prop embedded, pero el criterio de aceptación está mal planteado.
+
+Tarea 3 incompleta. El sticky móvil (≈ línea 525) también dice solo “Reservar”; el prompt solo mira 381–390. Ya existe stickyTotal / formatRentalEur(activeWindow?.totalPrice).
+
+Tarea 5: tariffs[0] ≠ “precio más bajo” garantizado. Es el primer pack horario visible (price_60m…). Ya hay catalogFromPriceLabel en surfboardPublicDisplay.js; el prompt debería pedir reutilizar eso, no reinventar.
+
+Lo que sí está bien
+Alcance cerrado (solo frontend alquiler), pre-vuelo con rutas, orden de tareas, fuera de alcance, checklist. Para un humano es usable.
+
+Lo que falta como prompt de Agent
+Formato de salida (diff por archivo, sin refactor de paso).
+Autonomía (qué decide solo vs qué pregunta).
+Orden de leer → verificar hipótesis → parchear en la tarea 1 (hoy asume la causa).
+Anti-invención: no tocar líneas de número si el archivo se movió; buscar por patrón.
+
+
+
+
+Modo: Agent. Solo frontend del alquiler de tablas.
+
+OBJETIVO: Aplicar 7 parches de UI en el flujo público de alquiler, sin cambiar lógica de precios, disponibilidad ni pago.
+
+ALCANCE
+- Solo los archivos listados abajo.
+- No tocar backend, Stripe, rutas, migraciones, modelos, ni lógica de precios/calendario/disponibilidad.
+- No modificar RentalHourPicker.
+- BookingCalendar.jsx: solo el bug de contraste del total/rango en tema claro (tarea 1).
+- No cambiar colores globales ni el theme de Tailwind (salvo usar tokens ya existentes).
+
+PRE-VUELO (leer antes de tocar nada)
+1. `resources/js/components/SurfboardBookingSection.jsx`
+2. `resources/js/components/Rentals/SurfboardPublicDetail.jsx`
+3. `resources/js/Pages/Rentals/Surfboards/Index.jsx`
+4. `resources/js/Pages/Rentals/Surfboards/Show.jsx`
+5. `resources/js/components/BookingCalendar.jsx`
+6. `resources/js/lib/surfboardPublicDisplay.js` — `formatRentalEur`, `catalogFromPriceLabel`, `buildVisibleTariffs`
+7. `tailwind.config.js` — token `s4` (ya existe: DEFAULT `#0f5f74`)
+
+HECHOS DEL CÓDIGO (no contradecirlos)
+- `SurfboardBookingSection` solo se monta desde `SurfboardPublicDetail` con `embedded` → tone dark.
+- `Show.jsx` ya es dark y ya tiene `BackButton` + `Breadcrumbs` al catálogo. No añadir otro link de vuelta.
+- `s4` ya está definido en Tailwind. No asumas que `text-s4` “no existe”.
+- El sticky móvil también tiene un botón "Reservar" (no solo el de ~381–390).
+
+TAREAS (en este orden)
+
+1) BookingCalendar — contraste tema claro
+   - Revisar usos de `text-s4` (~línea del rango `day--in-range` y el total estimado).
+   - Si en palette light el total/rango no se lee bien, cambia SOLO esas clases light a un token ya existente con mejor contraste (`text-s4-deep`, `text-cyan-700`, o el equivalente coherente con el resto del componente).
+   - No toques la rama dark si ya usa `text-cyan-300` y se lee bien.
+   - No “arregles” inventando que falta `s4` en el config.
+
+2) Mode tabs adaptativos en SurfboardBookingSection.jsx
+   - Los tabs (~MODE_TABS) hoy están hardcodeados a estética dark (`bg-slate-950/60`, etc.).
+   - Crea `tabClass` / `tabActiveClass` (o equivalente) condicionados por `embedded`, igual que `fieldClass` / `wrapperClass` / `labelText`.
+   - embedded=true → mantener look dark actual.
+   - embedded=false → look light legible (fondo claro, texto oscuro, active cyan).
+   - No cambies el comportamiento de `handleModeChange`.
+
+3) Botón "Reservar" con precio
+   - Cuando `hasValidSelection` y `formatRentalEur(activeWindow?.totalPrice)` no sea null, el texto debe ser:
+     `Reservar por {precio}`
+   - Aplica en AMBOS botones que abren el formulario: el principal (~formOpen false) y el sticky móvil.
+   - Reutiliza `formatRentalEur`; no inventes otro formateo.
+   - Si no hay precio formateable, deja "Reservar".
+
+4) Ocultar "Ver ficha" en desktop (Index.jsx)
+   - En el Link "Ver ficha" de cada tarjeta, usa `lg:hidden` (visible <lg, oculto ≥lg).
+   - PROHIBIDO `hidden lg:hidden` (eso lo oculta siempre).
+
+5) Badge "Desde X€" en SurfboardPublicDetail.jsx
+   - Justo debajo del título "Tarifas", si hay tarifas visibles, muestra un badge pequeño (`text-xs`) con el precio “desde”.
+   - Reutiliza `catalogFromPriceLabel(board.price_schema)` (o el helper ya existente equivalente). No asumas a ciegas `tariffs[0]` como “más barato” si el helper ya define el criterio.
+   - Misma familia visual que las tarjetas de tarifa, más compacto.
+
+6) Galería: no recortar tablas
+   - En la imagen principal de `SurfboardPublicDetail.jsx`, cambia `object-cover` → `object-contain`.
+   - No cambies thumbnails ni otros object-cover fuera de esa imagen principal salvo que compartan el mismo problema evidente en la ficha.
+
+7) Tipografía de cabeceras de sección
+   - En `SurfboardPublicDetail.jsx`, cabeceras "Especificaciones", "Tarifas" y "Cómo funciona": `text-[10px]` → `text-[11px]`.
+   - No subas otros `text-[10px]` del componente.
+
+FUERA DE ALCANCE
+- No tocar lógica de precios, calendario, disponibilidad, Stripe, backend, rutas, migraciones.
+- No tocar RentalHourPicker.
+- No añadir navegación extra en Show.
+- No refactors cosméticos fuera de las 7 tareas.
+
+FORMATO DE SALIDA
+- Por cada archivo tocado: ruta + diff mínimo.
+- Sin explicaciones entre archivos.
+- Al final, checklist de criterios marcados cumplido/no cumplido (1 línea cada uno).
+
+CRITERIOS DE ACEPTACIÓN
+- [ ] Mode tabs: con `embedded` se ven bien en dark; con `embedded=false` serían legibles en light (aunque hoy solo se use embedded).
+- [ ] Total/rango del calendario en palette light es legible; dark intacto.
+- [ ] Ambos botones "Reservar" muestran precio cuando hay selección válida.
+- [ ] "Ver ficha" visible solo en <lg (`lg:hidden`, no `hidden lg:hidden`).
+- [ ] Badge "Desde …" bajo Tarifas usando el helper existente.
+- [ ] Imagen principal sin recorte (`object-contain`).
+- [ ] Cabeceras de sección a `text-[11px]`.
+- [ ] Show sin link duplicado de vuelta.
+- [ ] Cero cambios de backend / Stripe / rutas / lógica de reserva.
+
+AUTONOMÍA
+- Decide clases Tailwind concretas dentro de los tokens ya usados en el archivo.
+- Si una línea numerada no coincide, busca por patrón; no inventes el archivo.
+- Si un supuesto de este prompt choca con el código, prioriza el código y anótalo en 1 línea al final.
+
+
+
+esta aprte del ultimoa rchivo e sapra ti deepseek leelo y comportat eocmo tal : Actúa como auditor de prompts. No ejecutes el prompt: audítalo.
+
+PROMPT A AUDITAR:
+<<<PROMPT
+[pega aquí el prompt de arriba]
+PROMPT>>>
+
+CONTEXTO DE USO: Agent de Cursor con acceso al repo Laravel+React (alquiler de tablas). El prompt debe ser ejecutable sin alucinar rutas ni clases Tailwind.
+
+Devuelve exactamente:
+1. Fallos por eje (objetivo, contexto, verificabilidad, formato, restricciones, anti-alucinación, densidad, autonomía). Solo ejes con fallo real.
+2. Ambigüedades: frase literal + cómo puede malinterpretarse.
+3. Instrucciones que faltan y son necesarias.
+4. Versión reescrita completa.
+5. Qué recortarías sin perder precisión.
+
+Prohibido: elogios, resúmenes de lo que hace bien, preámbulos.
