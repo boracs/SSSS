@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Head, Link, useForm, usePage } from "@inertiajs/react";
 import { toast } from "react-toastify";
-import Layout1 from "../../../layouts/Layout1";
+import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 import BackButton from "../../../components/BackButton";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import { BOARD_CATEGORIES } from "../../../lib/surfboardCategories";
@@ -310,4 +310,4 @@ export default function Create({ priceSchemas }) {
     );
 }
 
-Create.layout = (page) => <Layout1>{page}</Layout1>;
+Create.layout = (page) => <AuthenticatedLayout>{page}</AuthenticatedLayout>;

@@ -125,8 +125,6 @@ export default function ClientBonosIndex({
     packs = [],
     myBonos = [],
     consumptionHistory = [],
-    paymentIban,
-    paymentBizumNumber,
     whatsappHelpUrl = null,
     vipActive = true,
 }) {

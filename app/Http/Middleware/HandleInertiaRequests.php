@@ -2,11 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Booking;
-use App\Models\LessonUser;
-use App\Models\PagoCuota;
-use App\Models\User;
-use App\Models\UserBono;
+use App\Services\Academy\PrivateLessonPricingService;
 use App\Support\AcademyContact;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -65,7 +61,10 @@ class HandleInertiaRequests extends Middleware
             ],
 
             'academyClassReservationDepositEur' => (float) config('services.academy.class_reservation_deposit_eur', 30),
-            'academyPrivateLessonDepositEur' => (float) config('services.academy.private_lesson_deposit_eur', 7),
+
+            // Tarifa de particulares: el frontend calcula total/señal en vivo
+            // con las mismas reglas que PrivateLessonPricingService.
+            'academyPrivateLesson' => $this->privateLessonPricing(),
 
             'sponsors' => collect(config('services.sponsors', []))
                 ->map(function (array $sponsor, string $id) {
@@ -91,43 +90,24 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => self::sanitizeFlashValue($request->session()->get('success')),
                 'error' => self::sanitizeFlashValue($request->session()->get('error')),
+                // Bloqueos de acceso (cuota/taquilla): modal rojo que el usuario debe cerrar
+                'access_alert' => self::sanitizeFlashValue($request->session()->get('access_alert')),
                 'payment_lesson_id' => $request->session()->get('payment_lesson_id'),
             ],
+        ];
+    }
 
-            'adminStats' => function () use ($request) {
-                $user = $request->user();
-                if (! $user || ($user->role ?? null) !== 'admin') {
-                    return null;
-                }
+    /**
+     * @return array{tariff_cents: array<int, int>, base_minutes: int, deposit_percentage: float}
+     */
+    private function privateLessonPricing(): array
+    {
+        $pricing = app(PrivateLessonPricingService::class);
 
-                $unreviewedLessons = LessonUser::query()
-                    ->whereNull('reviewed_at')
-                    ->count();
-                $unreviewedRentals = Booking::query()
-                    ->whereNull('reviewed_at')
-                    ->count();
-                $unreviewedBonos = UserBono::query()
-                    ->whereNull('reviewed_at')
-                    ->count();
-                $unreviewedPaymentsTotal = $unreviewedLessons + $unreviewedRentals + $unreviewedBonos;
-                $unreviewedLockersTotal = PagoCuota::query()
-                    ->whereNull('reviewed_at')
-                    ->count();
-                $pendingCuotas = User::query()
-                    ->whereNotNull('numeroTaquilla')
-                    ->whereNotNull('fecha_vencimiento_cuota')
-                    ->whereDate('fecha_vencimiento_cuota', '<', now()->toDateString())
-                    ->count();
-                $vipRenewalAlertCount = User::query()->needsRenewal()->count();
-
-                return [
-                    'unreviewed_payments_total' => $unreviewedPaymentsTotal,
-                    'unreviewed_rentals_count' => $unreviewedRentals,
-                    'unreviewed_lockers_total' => $unreviewedLockersTotal,
-                    'pendingCuotasCount' => $pendingCuotas,
-                    'vipRenewalAlertCount' => $vipRenewalAlertCount,
-                ];
-            },
+        return [
+            'tariff_cents' => $pricing->tariffTable(),
+            'base_minutes' => $pricing->baseMinutes(),
+            'deposit_percentage' => $pricing->depositPercentage(),
         ];
     }
 

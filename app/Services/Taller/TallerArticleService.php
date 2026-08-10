@@ -18,7 +18,7 @@ final class TallerArticleService
     public function listCards(): array
     {
         return Article::query()
-            ->select(['id', 'title', 'slug', 'excerpt'])
+            ->select(['id', 'title', 'slug', 'excerpt', 'cover_image'])
             ->orderBy('id')
             ->get()
             ->map(static fn (Article $article): array => ArticleCardDto::fromModel($article)->toArray())
@@ -32,7 +32,7 @@ final class TallerArticleService
         $offset = max(0, $offset);
 
         $base = Article::query()
-            ->select(['id', 'title', 'slug', 'excerpt'])
+            ->select(['id', 'title', 'slug', 'excerpt', 'cover_image'])
             ->where('id', '!=', $excludeArticleId)
             ->orderBy('id');
 

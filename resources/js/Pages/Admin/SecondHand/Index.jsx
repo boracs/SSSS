@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
 import {
     PlusCircle,
     Plus,
     Minus,
     Pencil,
     Trash2,
+    RotateCcw,
     TrendingUp,
     CheckCircle2,
     Clock,
@@ -47,12 +47,32 @@ const STATUS_CONFIG = {
         select: "border-rose-500/40 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20",
         dot:    "bg-rose-400",
     },
+    inactive: {
+        label:  "Desactivada",
+        select: "border-slate-500/40 bg-slate-500/10 text-slate-400",
+        dot:    "bg-slate-500",
+    },
 };
 
 // ── StatusSelect — dropdown estilizado con confirmación diferida ───────────────
 
 function StatusSelect({ board, onRequestChange }) {
-    const cfg = STATUS_CONFIG[board.status] ?? STATUS_CONFIG.sold;
+    const inactive = board.is_active === false;
+    const cfg = inactive
+        ? STATUS_CONFIG.inactive
+        : STATUS_CONFIG[board.status] ?? STATUS_CONFIG.sold;
+
+    if (inactive) {
+        return (
+            <span
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg.select}`}
+                title="Tabla retirada del catálogo (soft-delete)"
+            >
+                <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                {cfg.label}
+            </span>
+        );
+    }
 
     return (
         <div className="relative inline-flex items-center">
@@ -64,17 +84,19 @@ function StatusSelect({ board, onRequestChange }) {
                 <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
                 {cfg.label}
                 <ChevronDown className="h-3 w-3 opacity-60" />
-
-                {/* El select nativo invisible sobre el botón */}
                 <select
                     value={board.status}
                     onChange={(e) => onRequestChange(board, e.target.value)}
                     className="absolute inset-0 cursor-pointer opacity-0"
                     aria-label="Cambiar estado"
                 >
-                    {Object.entries(STATUS_CONFIG).map(([val, { label }]) => (
-                        <option key={val} value={val}>{label}</option>
-                    ))}
+                    {Object.entries(STATUS_CONFIG)
+                        .filter(([val]) => val !== "inactive")
+                        .map(([val, { label }]) => (
+                            <option key={val} value={val}>
+                                {label}
+                            </option>
+                        ))}
                 </select>
             </button>
         </div>
@@ -143,184 +165,304 @@ function ConfirmStatusModal({ pending, onCancel, onConfirm, processing }) {
     );
 }
 
-// ── Panel detalle (acordeón) ───────────────────────────────────────────────────
+// ── Panel detalle (acordeón) — denso, sin tarjetas ni estado duplicado ─────────
 
 function BoardDetailPanel({ board }) {
     const profit = board.profit_cents;
-    const cfg = STATUS_CONFIG[board.status] ?? STATUS_CONFIG.sold;
+    const rows = [
+        { label: "Alta", value: fmtDate(board.purchased_at || board.created_at) },
+        { label: "Venta", value: fmtDate(board.sold_at) },
+        { label: "Compra", value: fmt(board.purchase_price) },
+        { label: "PVP", value: fmt(board.sale_price) },
+        {
+            label: board.discount_pct > 0 ? `Final (−${board.discount_pct}%)` : "Final",
+            value: fmt(board.effective_price),
+            accent: board.discount_pct > 0 ? "text-orange-400" : "text-white",
+        },
+        {
+            label: "Margen",
+            value: profit != null ? fmt(profit) : "Al vender",
+            accent:
+                profit == null
+                    ? "text-slate-500"
+                    : profit >= 0
+                      ? "text-emerald-400"
+                      : "text-rose-400",
+        },
+    ];
 
     return (
-        <div className="grid gap-4 border-t border-white/5 bg-slate-950/60 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fechas</p>
-                <dl className="mt-2 space-y-1.5 text-sm">
-                    <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Compra / alta</dt>
-                        <dd className="font-medium text-white">{fmtDate(board.purchased_at || board.created_at)}</dd>
+        <div className="border-t border-white/5 bg-slate-950/70 px-3 py-2.5">
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3 lg:grid-cols-6">
+                {rows.map(({ label, value, accent }) => (
+                    <div key={label} className="min-w-0">
+                        <dt className="text-[9px] font-bold uppercase tracking-wider text-slate-500">
+                            {label}
+                        </dt>
+                        <dd
+                            className={`truncate text-xs font-semibold tabular-nums ${accent || "text-white"}`}
+                        >
+                            {value}
+                        </dd>
                     </div>
-                    <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Venta</dt>
-                        <dd className="font-medium text-white">{fmtDate(board.sold_at)}</dd>
-                    </div>
-                </dl>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Precios</p>
-                <dl className="mt-2 space-y-1.5 text-sm">
-                    <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Compra</dt>
-                        <dd className="font-medium text-slate-300">{fmt(board.purchase_price)}</dd>
-                    </div>
-                    <div className="flex justify-between gap-2">
-                        <dt className="text-slate-500">Venta PVP</dt>
-                        <dd className="font-semibold text-white">{fmt(board.sale_price)}</dd>
-                    </div>
-                    {board.discount_pct > 0 ? (
-                        <div className="flex justify-between gap-2">
-                            <dt className="text-slate-500">Con descuento</dt>
-                            <dd className="font-semibold text-orange-400">
-                                -{board.discount_pct}% · {fmt(board.effective_price)}
-                            </dd>
-                        </div>
-                    ) : (
-                        <div className="flex justify-between gap-2">
-                            <dt className="text-slate-500">Precio final</dt>
-                            <dd className="font-semibold text-white">{fmt(board.effective_price)}</dd>
-                        </div>
-                    )}
-                </dl>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estado</p>
-                <p className="mt-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${cfg.select}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                        {cfg.label}
-                    </span>
-                </p>
-                {profit != null ? (
-                    <p className={`mt-3 text-sm font-bold ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        Margen: {fmt(profit)}
-                    </p>
-                ) : (
-                    <p className="mt-3 text-xs text-slate-500">Margen al cerrar venta</p>
-                )}
-            </div>
+                ))}
+            </dl>
             {board.description ? (
-                <div className="rounded-xl border border-white/10 bg-white/5 p-3 sm:col-span-2 lg:col-span-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Notas</p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-400">{board.description}</p>
-                </div>
+                <p className="mt-2 line-clamp-2 text-[11px] leading-snug text-slate-400">
+                    <span className="font-semibold text-slate-500">Notas · </span>
+                    {board.description}
+                </p>
             ) : null}
         </div>
     );
 }
 
-// ── Fila de tabla ──────────────────────────────────────────────────────────────
+function ExpandToggle({ expanded, onClick }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Ocultar detalle" : "Ver detalle"}
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
+                expanded
+                    ? "border-orange-500/40 bg-orange-500/15 text-orange-300"
+                    : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
+            }`}
+        >
+            {expanded ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
+        </button>
+    );
+}
 
-function BoardRow({ board, expanded, onToggleExpand, onDelete, onRequestStatusChange }) {
+function BoardActions({ board, onDeactivate, onRestore }) {
+    const inactive = board.is_active === false;
+    const sold = board.status === "sold";
+    // Vendida = historial contable: no se retira. Desactivar solo si sigue en venta
+    // (nos la quedamos, regalo, etc.). Reactivar solo aplica a las ya soft-deleted.
+    const canDeactivate = !inactive && !sold;
+
+    return (
+        <div className="flex shrink-0 items-center gap-1">
+            {!inactive ? (
+                <button
+                    type="button"
+                    onClick={() => router.get(route("admin.second-hand.edit", board.id))}
+                    className="rounded-md border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+                    title="Editar"
+                >
+                    <Pencil className="h-3.5 w-3.5" />
+                </button>
+            ) : null}
+            {inactive ? (
+                <button
+                    type="button"
+                    onClick={() => onRestore(board)}
+                    className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-1.5 text-emerald-400 hover:bg-emerald-500/20"
+                    title="Reactivar"
+                >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                </button>
+            ) : canDeactivate ? (
+                <button
+                    type="button"
+                    onClick={() => onDeactivate(board)}
+                    className="rounded-md border border-rose-500/20 bg-rose-500/10 p-1.5 text-rose-400 hover:bg-rose-500/20"
+                    title="Retirar del catálogo (no vendida)"
+                >
+                    <Trash2 className="h-3.5 w-3.5" />
+                </button>
+            ) : null}
+        </div>
+    );
+}
+
+function BoardThumb({ board, size = "md" }) {
+    const box = size === "sm" ? "h-11 w-11" : "h-12 w-12";
+    if (board.first_image) {
+        return (
+            <img
+                src={board.first_image}
+                alt={board.name}
+                className={`${box} shrink-0 rounded-lg object-cover`}
+            />
+        );
+    }
+    return (
+        <div
+            className={`flex ${box} shrink-0 items-center justify-center rounded-lg bg-slate-800 text-slate-600`}
+        >
+            <Ruler className="h-4 w-4" />
+        </div>
+    );
+}
+
+/** Tarjeta compacta para móvil (sin scroll horizontal de tabla). */
+function BoardMobileCard({
+    board,
+    expanded,
+    onToggleExpand,
+    onDeactivate,
+    onRestore,
+    onRequestStatusChange,
+}) {
+    const inactive = board.is_active === false;
+
+    return (
+        <article
+            className={`overflow-hidden rounded-xl border ${
+                inactive
+                    ? "border-white/5 bg-white/[0.02] opacity-80"
+                    : expanded
+                      ? "border-orange-500/25 bg-white/[0.06]"
+                      : "border-white/10 bg-white/[0.03]"
+            }`}
+        >
+            <div className="flex gap-2.5 p-2.5">
+                <ExpandToggle expanded={expanded} onClick={() => onToggleExpand(board.id)} />
+                <BoardThumb board={board} size="sm" />
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                            {board.brand ? (
+                                <p className="truncate text-[10px] font-bold uppercase tracking-wider text-orange-400">
+                                    {board.brand}
+                                    {board.model ? (
+                                        <span className="font-medium normal-case tracking-normal text-slate-500">
+                                            {" · "}
+                                            {board.model}
+                                        </span>
+                                    ) : null}
+                                </p>
+                            ) : null}
+                            <p className="truncate text-sm font-semibold leading-tight text-white">
+                                {board.name}
+                            </p>
+                        </div>
+                        <BoardActions
+                            board={board}
+                            onDeactivate={onDeactivate}
+                            onRestore={onRestore}
+                        />
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] tabular-nums text-slate-500">
+                        {board.height}&apos; × {board.width}&quot; × {board.thickness}&quot;
+                        <span className="mx-1 text-slate-700">·</span>
+                        {board.volume} L
+                        <span className="mx-1 text-slate-700">·</span>
+                        #SH-{board.id}
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                        <StatusSelect board={board} onRequestChange={onRequestStatusChange} />
+                        <p className="text-sm font-bold tabular-nums text-white">
+                            {fmt(board.effective_price ?? board.sale_price)}
+                            {board.discount_pct > 0 ? (
+                                <span className="ml-1 text-[10px] font-semibold text-orange-400">
+                                    −{board.discount_pct}%
+                                </span>
+                            ) : null}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {expanded ? <BoardDetailPanel board={board} /> : null}
+        </article>
+    );
+}
+
+// ── Fila de tabla (desktop) ────────────────────────────────────────────────────
+
+function BoardRow({
+    board,
+    expanded,
+    onToggleExpand,
+    onDeactivate,
+    onRestore,
+    onRequestStatusChange,
+}) {
     const profit = board.profit_cents;
+    const inactive = board.is_active === false;
 
     return (
         <>
-        <tr className={`border-t border-white/5 ${expanded ? "bg-white/[0.07]" : "hover:bg-white/5"}`}>
-            <td className="w-12 px-2 py-3">
-                <button
-                    type="button"
-                    onClick={() => onToggleExpand(board.id)}
-                    aria-expanded={expanded}
-                    aria-label={expanded ? "Ocultar detalle" : "Ver detalle"}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border transition ${
-                        expanded
-                            ? "border-orange-500/40 bg-orange-500/15 text-orange-300"
-                            : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
-                    }`}
-                >
-                    {expanded ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                </button>
-            </td>
-            <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                    {board.first_image ? (
-                        <img src={board.first_image} alt={board.name} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-                    ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-slate-600">
-                            <Ruler className="h-5 w-5" />
+            <tr
+                className={`border-t border-white/5 ${
+                    inactive
+                        ? "bg-white/[0.02] opacity-80"
+                        : expanded
+                          ? "bg-white/[0.07]"
+                          : "hover:bg-white/5"
+                }`}
+            >
+                <td className="w-10 px-2 py-2.5">
+                    <ExpandToggle expanded={expanded} onClick={() => onToggleExpand(board.id)} />
+                </td>
+                <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <BoardThumb board={board} size="sm" />
+                        <div className="min-w-0">
+                            {board.brand ? (
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-orange-400">
+                                    {board.brand}
+                                </p>
+                            ) : null}
+                            {board.model ? (
+                                <p className="truncate text-[10px] text-slate-400">{board.model}</p>
+                            ) : null}
+                            <p className="truncate text-sm font-semibold text-white">{board.name}</p>
+                            <p className="text-[10px] text-slate-500">#SH-{board.id}</p>
                         </div>
-                    )}
-                    <div>
-                        {board.brand && (
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-orange-400">{board.brand}</p>
-                        )}
-                        {board.model && (
-                            <p className="text-[10px] text-slate-400">{board.model}</p>
-                        )}
-                        {board.board_type_label && (
-                            <p className="text-[10px] text-slate-500">{board.board_type_label}</p>
-                        )}
-                        <p className="text-sm font-semibold text-white">{board.name}</p>
-                        <p className="text-[11px] text-slate-500">#SH-{board.id}</p>
                     </div>
-                </div>
-            </td>
-            <td className="px-4 py-3 text-xs text-slate-400">
-                <div className="space-y-0.5">
-                    <p>{board.height}&apos; ✕ {board.width}&quot; ✕ {board.thickness}&quot;</p>
-                    <p className="flex items-center gap-1">
-                        <Droplets className="h-3 w-3" />{board.volume} L
+                </td>
+                <td className="px-3 py-2.5 text-xs tabular-nums text-slate-400">
+                    <p>
+                        {board.height}&apos; × {board.width}&quot; × {board.thickness}&quot;
                     </p>
-                </div>
-            </td>
-
-            {/* ── ESTADO: selector interactivo ── */}
-            <td className="px-4 py-3">
-                <StatusSelect board={board} onRequestChange={onRequestStatusChange} />
-            </td>
-
-            <td className="px-4 py-3">
-                <p className="text-sm font-bold text-white">{fmt(board.effective_price ?? board.sale_price)}</p>
-                {board.discount_pct > 0 ? (
-                    <p className="text-[11px] text-orange-400">-{board.discount_pct}%</p>
-                ) : null}
-            </td>
-            <td className="px-4 py-3">
-                {profit != null ? (
-                    <div className={`flex items-center gap-1 text-sm font-bold ${profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                        <TrendingUp className="h-3.5 w-3.5" />
-                        {fmt(profit)}
-                    </div>
-                ) : (
-                    <span className="text-xs text-slate-600">-</span>
-                )}
-            </td>
-            <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                    <button
-                        type="button"
-                        onClick={() => router.get(route("admin.second-hand.edit", board.id))}
-                        className="rounded-lg border border-white/10 bg-white/5 p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
-                        title="Editar"
-                    >
-                        <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onDelete(board)}
-                        className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-1.5 text-rose-400 hover:bg-rose-500/20"
-                        title="Eliminar"
-                    >
-                        <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                </div>
-            </td>
-        </tr>
-        {expanded ? (
-            <tr>
-                <td colSpan={7} className="p-0">
-                    <BoardDetailPanel board={board} />
+                    <p className="mt-0.5 flex items-center gap-1 text-[11px]">
+                        <Droplets className="h-3 w-3" />
+                        {board.volume} L
+                    </p>
+                </td>
+                <td className="px-3 py-2.5">
+                    <StatusSelect board={board} onRequestChange={onRequestStatusChange} />
+                </td>
+                <td className="px-3 py-2.5">
+                    <p className="text-sm font-bold tabular-nums text-white">
+                        {fmt(board.effective_price ?? board.sale_price)}
+                    </p>
+                    {board.discount_pct > 0 ? (
+                        <p className="text-[11px] text-orange-400">−{board.discount_pct}%</p>
+                    ) : null}
+                </td>
+                <td className="px-3 py-2.5">
+                    {profit != null ? (
+                        <div
+                            className={`flex items-center gap-1 text-sm font-bold tabular-nums ${
+                                profit >= 0 ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                        >
+                            <TrendingUp className="h-3.5 w-3.5" />
+                            {fmt(profit)}
+                        </div>
+                    ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                    )}
+                </td>
+                <td className="px-3 py-2.5">
+                    <BoardActions
+                        board={board}
+                        onDeactivate={onDeactivate}
+                        onRestore={onRestore}
+                    />
                 </td>
             </tr>
-        ) : null}
+            {expanded ? (
+                <tr>
+                    <td colSpan={7} className="p-0">
+                        <BoardDetailPanel board={board} />
+                    </td>
+                </tr>
+            ) : null}
         </>
     );
 }
@@ -385,8 +527,8 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
         search || status || boardType || dateFrom || dateTo || dateType !== "created"
     );
 
-    // Modal borrado
-    const [confirmDelete, setConfirmDelete] = useState(null);
+    // Modal desactivar (soft-delete)
+    const [confirmDeactivate, setConfirmDeactivate] = useState(null);
 
     // Modal cambio de estado
     const [pendingStatus, setPendingStatus] = useState(null); // { board, newStatus }
@@ -397,12 +539,17 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
         setExpandedId((prev) => (prev === id ? null : id));
     };
 
-    /* ── Borrado ── */
-    const handleDelete    = (board) => setConfirmDelete(board);
-    const doDelete        = () => {
-        if (!confirmDelete) return;
-        router.delete(route("admin.second-hand.destroy", confirmDelete.id), {
-            onFinish: () => setConfirmDelete(null),
+    const handleDeactivate = (board) => setConfirmDeactivate(board);
+    const doDeactivate = () => {
+        if (!confirmDeactivate) return;
+        router.delete(route("admin.second-hand.destroy", confirmDeactivate.id), {
+            onFinish: () => setConfirmDeactivate(null),
+        });
+    };
+
+    const handleRestore = (board) => {
+        router.patch(route("admin.second-hand.restore", board.id), {}, {
+            preserveScroll: true,
         });
     };
 
@@ -440,58 +587,76 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
         revenue:   boards.filter((b) => b.status === "sold").reduce((acc, b) => acc + (b.effective_price ?? 0), 0),
     };
 
-    return (
-        <Layout1>
-            <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    const emptyMessage = hasActiveFilters
+        ? "No hay tablas que coincidan con los filtros aplicados."
+        : "No hay tablas registradas aún.";
 
-                {/* Flash */}
+    return (
+        <>
+            <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-6 sm:py-8 lg:px-8">
+
                 {flash?.success && (
-                    <div className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+                    <div className="mb-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300 sm:mb-4 sm:px-4 sm:py-3">
                         {flash.success}
                     </div>
                 )}
+                {flash?.error && (
+                    <div className="mb-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300 sm:mb-4 sm:px-4 sm:py-3">
+                        {flash.error}
+                    </div>
+                )}
 
-                {/* Cabecera */}
-                <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-extrabold text-white">Gestión Segunda Mano</h1>
-                        <p className="mt-0.5 text-xs text-slate-500">{boards.length} tablas registradas</p>
+                <div className="mb-3 flex items-center justify-between gap-3 sm:mb-6 sm:gap-4">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-lg font-extrabold text-white sm:text-2xl">
+                            Gestión Segunda Mano
+                        </h1>
+                        <p className="mt-0.5 text-[11px] text-slate-500 sm:text-xs">
+                            {boards.length} tablas registradas
+                        </p>
                     </div>
                     <button
                         type="button"
                         onClick={() => router.get(route("admin.second-hand.create"))}
-                        className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg transition hover:bg-orange-600"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-orange-500 px-3 py-2 text-xs font-bold text-white shadow-lg transition hover:bg-orange-600 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm"
                     >
                         <PlusCircle className="h-4 w-4" />
-                        Nueva tabla
+                        <span className="sm:hidden">Nueva</span>
+                        <span className="hidden sm:inline">Nueva tabla</span>
                     </button>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="mb-3 grid grid-cols-4 gap-1.5 sm:mb-6 sm:gap-3">
                     {[
-                        { label: "Disponibles", value: stats.available, icon: CheckCircle2, color: "text-emerald-400" },
-                        { label: "Reservadas",  value: stats.reserved,  icon: Clock,        color: "text-amber-400"  },
-                        { label: "Vendidas",    value: stats.sold,      icon: Archive,      color: "text-slate-400"  },
-                        { label: "Ingresos",    value: fmt(stats.revenue), icon: TrendingUp, color: "text-cyan-400"  },
-                    ].map(({ label, value, icon: Icon, color }) => (
-                        <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                            <Icon className={`mb-1.5 h-5 w-5 ${color}`} />
-                            <p className="text-2xl font-extrabold text-white">{value}</p>
-                            <p className="text-xs text-slate-500">{label}</p>
+                        { label: "Disponibles", short: "Disp.", value: stats.available, icon: CheckCircle2, color: "text-emerald-400" },
+                        { label: "Reservadas", short: "Res.", value: stats.reserved, icon: Clock, color: "text-amber-400" },
+                        { label: "Vendidas", short: "Vend.", value: stats.sold, icon: Archive, color: "text-slate-400" },
+                        { label: "Ingresos", short: "Ing.", value: fmt(stats.revenue), icon: TrendingUp, color: "text-cyan-400" },
+                    ].map(({ label, short, value, icon: Icon, color }) => (
+                        <div
+                            key={label}
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-2 sm:rounded-2xl sm:p-4"
+                        >
+                            <Icon className={`mb-0.5 h-3.5 w-3.5 sm:mb-1.5 sm:h-5 sm:w-5 ${color}`} />
+                            <p className="truncate text-sm font-extrabold tabular-nums text-white sm:text-2xl">
+                                {value}
+                            </p>
+                            <p className="truncate text-[9px] text-slate-500 sm:text-xs">
+                                <span className="sm:hidden">{short}</span>
+                                <span className="hidden sm:inline">{label}</span>
+                            </p>
                         </div>
                     ))}
                 </div>
 
-                {/* Filtros */}
-                <div className="mb-6 rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-sm">
-                    <div className="mb-4 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                <div className="mb-3 rounded-xl border border-white/10 bg-slate-900/60 p-3 backdrop-blur-sm sm:mb-6 sm:rounded-2xl sm:p-4">
+                    <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:mb-4 sm:text-xs">
                         <Filter className="h-3.5 w-3.5" />
                         Filtros
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-                        <div>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
+                        <div className="col-span-2 sm:col-span-1">
                             <label htmlFor="sh-filter-search" className={FILTER_LABEL}>
                                 Buscar
                             </label>
@@ -504,7 +669,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                     onChange={(e) => setSearch(e.target.value)}
                                     onKeyDown={(e) => e.key === "Enter" && applyFilters()}
                                     placeholder="Marca o modelo…"
-                                    className={`${FILTER_CONTROL} pl-9`}
+                                    className={`${FILTER_CONTROL} h-9 pl-9 sm:h-10`}
                                 />
                             </div>
                         </div>
@@ -517,12 +682,13 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                 id="sh-filter-status"
                                 value={status}
                                 onChange={(e) => setStatus(e.target.value)}
-                                className={FILTER_CONTROL}
+                                className={`${FILTER_CONTROL} h-9 sm:h-10`}
                             >
                                 <option value="" className="bg-slate-900">Todos</option>
                                 <option value="available" className="bg-slate-900">Disponible</option>
                                 <option value="reserved" className="bg-slate-900">Reservada</option>
                                 <option value="sold" className="bg-slate-900">Vendida</option>
+                                <option value="inactive" className="bg-slate-900">Desactivadas</option>
                             </select>
                         </div>
 
@@ -534,7 +700,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                 id="sh-filter-board-type"
                                 value={boardType}
                                 onChange={(e) => setBoardType(e.target.value)}
-                                className={FILTER_CONTROL}
+                                className={`${FILTER_CONTROL} h-9 sm:h-10`}
                             >
                                 <option value="" className="bg-slate-900">Todos</option>
                                 {boardTypes.map((t) => (
@@ -553,7 +719,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                 id="sh-filter-date-type"
                                 value={dateType}
                                 onChange={(e) => setDateType(e.target.value)}
-                                className={FILTER_CONTROL}
+                                className={`${FILTER_CONTROL} h-9 sm:h-10`}
                             >
                                 <option value="created" className="bg-slate-900">Alta / Compra</option>
                                 <option value="sold" className="bg-slate-900">Venta</option>
@@ -569,7 +735,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                 type="date"
                                 value={dateFrom}
                                 onChange={(e) => setDateFrom(e.target.value)}
-                                className={FILTER_CONTROL}
+                                className={`${FILTER_CONTROL} h-9 sm:h-10`}
                             />
                         </div>
 
@@ -582,17 +748,17 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                 type="date"
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
-                                className={FILTER_CONTROL}
+                                className={`${FILTER_CONTROL} h-9 sm:h-10`}
                             />
                         </div>
                     </div>
 
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="mt-2.5 flex justify-end gap-2 sm:mt-4">
                         {hasActiveFilters && (
                             <button
                                 type="button"
                                 onClick={clearFilters}
-                                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-300 transition hover:bg-white/10"
+                                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 text-xs font-medium text-slate-300 transition hover:bg-white/10 sm:h-10 sm:px-4 sm:text-sm"
                             >
                                 <X className="h-3.5 w-3.5" />
                                 Limpiar
@@ -601,7 +767,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                         <button
                             type="button"
                             onClick={() => applyFilters()}
-                            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-5 text-sm font-bold text-white transition hover:bg-orange-600"
+                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white transition hover:bg-orange-600 sm:h-10 sm:px-5 sm:text-sm"
                         >
                             <Filter className="h-3.5 w-3.5" />
                             Filtrar
@@ -609,14 +775,38 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                     </div>
                 </div>
 
-                {/* Tabla */}
-                <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                {/* Móvil: cards densas */}
+                <div className="space-y-2 md:hidden">
+                    {boards.length === 0 ? (
+                        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-10 text-center text-sm text-slate-500">
+                            {emptyMessage}
+                        </p>
+                    ) : (
+                        boards.map((board) => (
+                            <BoardMobileCard
+                                key={board.id}
+                                board={board}
+                                expanded={expandedId === board.id}
+                                onToggleExpand={toggleExpanded}
+                                onDeactivate={handleDeactivate}
+                                onRestore={handleRestore}
+                                onRequestStatusChange={handleRequestStatusChange}
+                            />
+                        ))
+                    )}
+                </div>
+
+                {/* Desktop: tabla */}
+                <div className="hidden overflow-x-auto rounded-2xl border border-white/10 bg-white/5 md:block">
                     <table className="w-full text-left">
                         <thead>
                             <tr className="border-b border-white/10">
-                                <th className="w-12 px-2 py-3" aria-label="Detalle" />
+                                <th className="w-10 px-2 py-2.5" aria-label="Detalle" />
                                 {["Tabla", "Medidas", "Estado", "Precios", "Margen", "Acciones"].map((h) => (
-                                    <th key={h} className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                                    <th
+                                        key={h}
+                                        className="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-slate-500"
+                                    >
                                         {h}
                                     </th>
                                 ))}
@@ -626,9 +816,7 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                             {boards.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-4 py-12 text-center text-sm text-slate-500">
-                                        {hasActiveFilters
-                                            ? "No hay tablas que coincidan con los filtros aplicados."
-                                            : "No hay tablas registradas aún."}
+                                        {emptyMessage}
                                     </td>
                                 </tr>
                             ) : (
@@ -638,7 +826,8 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                                         board={board}
                                         expanded={expandedId === board.id}
                                         onToggleExpand={toggleExpanded}
-                                        onDelete={handleDelete}
+                                        onDeactivate={handleDeactivate}
+                                        onRestore={handleRestore}
                                         onRequestStatusChange={handleRequestStatusChange}
                                     />
                                 ))
@@ -648,42 +837,42 @@ export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes 
                 </div>
             </div>
 
-            {/* Modal confirmación borrado */}
-            {confirmDelete && (
+            {confirmDeactivate && (
                 <div className="fixed inset-0 z-[800] flex items-center justify-center bg-black/70 px-4">
                     <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
-                        <h2 className="text-base font-bold text-white">¿Eliminar tabla?</h2>
+                        <h2 className="text-base font-bold text-white">¿Retirar del catálogo?</h2>
                         <p className="mt-1 text-sm text-slate-400">
-                            Se eliminará permanentemente{" "}
-                            <strong className="text-white">{confirmDelete.name}</strong> y sus imágenes.
+                            <strong className="text-white">{confirmDeactivate.name}</strong> dejará de
+                            mostrarse en venta (p. ej. te la quedas o la regalas). No se borra
+                            el registro; puedes reactivarla después. Si se vende, márcala como
+                            Vendida — esas no se retiran.
                         </p>
                         <div className="mt-5 flex gap-3">
                             <button
                                 type="button"
-                                onClick={() => setConfirmDelete(null)}
+                                onClick={() => setConfirmDeactivate(null)}
                                 className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2 text-sm font-medium text-slate-300 hover:bg-white/10"
                             >
                                 Cancelar
                             </button>
                             <button
                                 type="button"
-                                onClick={doDelete}
+                                onClick={doDeactivate}
                                 className="flex-1 rounded-xl bg-rose-600 py-2 text-sm font-bold text-white hover:bg-rose-700"
                             >
-                                Eliminar
+                                Retirar
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Modal confirmación cambio de estado */}
             <ConfirmStatusModal
                 pending={pendingStatus}
                 onCancel={cancelStatusChange}
                 onConfirm={confirmStatusChange}
                 processing={statusProcessing}
             />
-        </Layout1>
+        </>
     );
 }

@@ -32,11 +32,14 @@ final class PaymentReceiptController extends Controller
             && Storage::disk('local')->exists($paymentReceipt->storage_path)
         ) {
             $mime = Storage::disk('local')->mimeType($paymentReceipt->storage_path) ?: 'application/pdf';
+            $filename = basename($paymentReceipt->storage_path) ?: 'recibo-stripe.pdf';
+            $disposition = $request->boolean('download') ? 'attachment' : 'inline';
 
             return Storage::disk('local')->response(
                 $paymentReceipt->storage_path,
-                'recibo-stripe.pdf',
+                $filename,
                 ['Content-Type' => $mime],
+                $disposition,
             );
         }
 
@@ -64,6 +67,7 @@ final class PaymentReceiptController extends Controller
             $payable instanceof UserBono => (int) $payable->user_id === (int) $user->id,
             $payable instanceof PagoCuota => (int) $payable->user_id === (int) $user->id,
             $payable instanceof Pedido => (int) $payable->user_id === (int) $user->id,
+            $payable instanceof \App\Models\PhotoSessionBooking => (int) $payable->user_id === (int) $user->id,
             default => false,
         };
     }

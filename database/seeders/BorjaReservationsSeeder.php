@@ -119,7 +119,7 @@ class BorjaReservationsSeeder extends Seeder
                     'payment_status' => $def['confirmed']
                         ? PaymentStatus::Confirmed->value
                         : PaymentStatus::Pending->value,
-                    'payment_method' => $def['confirmed'] ? 'transferencia' : 'bizum',
+                    'payment_method' => $def['confirmed'] ? 'card' : null,
                     'confirmed_at' => $def['confirmed'] ? now()->subDay() : null,
                     'expires_at' => $def['confirmed'] ? null : now()->addDays(2),
                 ]
@@ -170,7 +170,7 @@ class BorjaReservationsSeeder extends Seeder
                     'payment_status' => $confirmed ? PaymentStatus::Confirmed->value : PaymentStatus::Pending->value,
                     'payment_proof_path' => $confirmed ? 'payment-proofs/rentals/borja-demo.jpg' : null,
                     'proof_uploaded_at' => $confirmed ? now()->subHours(6) : null,
-                    'payment_method' => $confirmed ? 'bizum' : null,
+                    'payment_method' => $confirmed ? 'card' : null,
                     'total_price' => $pricing['total_price'],
                     'deposit_amount' => $pricing['deposit_amount'],
                 ]

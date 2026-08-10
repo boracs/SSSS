@@ -45,7 +45,7 @@
       { "name": "Menú del día", "price_eur": 30 },
       { "name": "Menú sidrería", "price_eur": 50 }
     ],
-    "online_payment_note": "En la web, la reserva de clase suelta suele cobrar solo la señal (máximo según config, por defecto 30€). El resto se abona en la escuela. No confundir la señal online con el precio total de la clase.",
+    "online_payment_note": "En la web, la reserva de clase de grupo suele cobrar solo la señal (máximo según config, por defecto 30€). La clase particular cobra online un 30% del precio total del grupo y el resto se abona en la escuela el día de la clase. No confundir la señal online con el precio total de la clase.",
     "mal_mar_policy": "Si la escuela cancela por mal mar, temporal o seguridad: siempre se reprograma o se devuelve el importe / clase del bono. Nunca se penaliza al alumno.",
     "cancel_student_policy": "Cancelación online con devolución de clase/bono solo si avisas con al menos cancel_cutoff_hours de antelación (por defecto 4h). Con menos tiempo la cancelación online puede no estar disponible; contactar por WhatsApp.",
     "bono_credit_rules": [
@@ -82,7 +82,7 @@
       "one_shot": true,
       "note": "Al revelar el código de emergencia el candado queda inactivo hasta que admin reactive uno nuevo."
     },
-    "payment_queue_note": "La cola de taquillas en admin es de pagos pendientes de revisar (Bizum/transferencia), no una lista de espera de casilleros libres."
+    "payment_queue_note": "El registro de pagos de taquilla en admin es el historial de cuotas cobradas (pasarela o mostrador), no una lista de espera de casilleros libres."
   },
   "rentals": {
     "page_path": "/tablas-alquiler",

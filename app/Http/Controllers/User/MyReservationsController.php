@@ -42,8 +42,6 @@ class MyReservationsController extends Controller
             'isAdminView'         => false,
             'targetUser'          => null,
             'analysisNav'         => null,
-            'paymentIban'         => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber'  => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl'     => AcademyContact::whatsappBaseUrl(),
         ]);
     }
@@ -144,16 +142,6 @@ class MyReservationsController extends Controller
 
             return back()->with('error', 'No se pudo abrir la pasarela de pago.');
         }
-    }
-
-    public function uploadClassProof(Request $request, LessonUser $enrollment)
-    {
-        return back()->with('info', 'El pago se realiza ahora con tarjeta. Usa el botón «Pagar con tarjeta».');
-    }
-
-    public function uploadRentalProof(Request $request, Booking $booking)
-    {
-        return back()->with('info', 'El pago se realiza ahora con tarjeta. Usa el botón «Pagar con tarjeta».');
     }
 
     public function cancelClass(CancelLessonEnrollmentRequest $request, LessonUser $enrollment)

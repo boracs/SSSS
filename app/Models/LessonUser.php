@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\MoneyCents;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
@@ -28,6 +29,11 @@ class LessonUser extends Model
     public const REFUND_PENDING = 'pending';
     public const REFUND_COMPLETED = 'completed';
 
+    /** Resto pendiente de cobrar en mostrador tras la señal online de la particular. */
+    public const BALANCE_NONE = 'none';
+    public const BALANCE_PENDING = 'pending';
+    public const BALANCE_CONFIRMED = 'confirmed';
+
     protected $fillable = [
         'lesson_id',
         'user_id',
@@ -52,6 +58,10 @@ class LessonUser extends Model
         'payment_method',
         'admin_notes',
         'surf_trip_confirmed',
+        'deposit_amount_cents',
+        'balance_status',
+        'balance_payment_method',
+        'balance_paid_at',
     ];
 
     protected $casts = [
@@ -60,7 +70,9 @@ class LessonUser extends Model
         'expires_at' => 'datetime',
         'proof_uploaded_at' => 'datetime',
         'reviewed_at' => 'datetime',
+        'balance_paid_at' => 'datetime',
         'is_admin_guest' => 'boolean',
+        'deposit_amount_cents' => 'integer',
     ];
 
     public function lesson(): BelongsTo
@@ -76,6 +88,33 @@ class LessonUser extends Model
     public function attendanceNotes(): MorphMany
     {
         return $this->morphMany(AttendanceNote::class, 'reservation');
+    }
+
+    /**
+     * Precio total de la clase en céntimos (la particular tarifa el grupo en
+     * la propia Lesson; el resto de modalidades usan el precio por plaza).
+     */
+    public function totalPriceCents(): int
+    {
+        return MoneyCents::eurosToCents((float) ($this->lesson?->price ?? 0));
+    }
+
+    /**
+     * Importe que todavía queda por cobrar en mostrador tras la señal online.
+     * Nunca negativo.
+     */
+    public function remainingBalanceCents(): int
+    {
+        return max(0, $this->totalPriceCents() - (int) ($this->deposit_amount_cents ?? 0));
+    }
+
+    /**
+     * Fuente de verdad de si queda resto por cobrar. Se fija al confirmar la
+     * señal online y se resuelve al conciliar el resto en mostrador.
+     */
+    public function hasBalanceDue(): bool
+    {
+        return $this->balance_status === self::BALANCE_PENDING;
     }
 
     public function isOwnedBy(User $user): bool

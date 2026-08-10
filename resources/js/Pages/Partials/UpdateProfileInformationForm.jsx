@@ -25,7 +25,7 @@ export default function UpdateProfileInformation({
 
     const submit = (e) => {
         e.preventDefault();
-        patch(route("profile.update"));
+        patch(route("profile.update"), { preserveScroll: true });
     };
 
     return (
@@ -107,6 +107,15 @@ export default function UpdateProfileInformation({
                         <InputError className="mt-2" message={errors.email} />
                     </div>
                 </div>
+
+                {data.email !== user.email ? (
+                    <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+                        <p>
+                            Te enviaremos un enlace de verificación a tu nuevo email. Tu
+                            dirección solo cambiará cuando lo confirmes.
+                        </p>
+                    </div>
+                ) : null}
 
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Services\Chatbot;
 
 use Illuminate\Support\Facades\Log;
+use App\Services\Academy\PrivateLessonPricingService;
 use App\Support\AcademyContact;
+use App\Support\MoneyCents;
 
 /**
  * Carga y compila `resources/chatbot/s4-business-knowledge.json` a texto
@@ -16,6 +18,50 @@ final class S4BusinessKnowledgeService
 {
     /** @var array<string, mixed>|null */
     private ?array $decoded = null;
+
+    /**
+     * Tarifa viva de particulares (tabla editable en admin), con el JSON como
+     * respaldo si aún no hay tarifa en BD.
+     *
+     * @return list<array{people: int, total_eur: float, per_person_eur: float}>
+     */
+    private function privateLessonRows(): array
+    {
+        $tariff = app(PrivateLessonPricingService::class)->tariffTable();
+
+        if ($tariff !== []) {
+            $rows = [];
+            foreach ($tariff as $people => $totalCents) {
+                $rows[] = [
+                    'people' => (int) $people,
+                    'total_eur' => MoneyCents::centsToEuros((int) $totalCents),
+                    'per_person_eur' => MoneyCents::centsToEuros((int) round($totalCents / max(1, (int) $people))),
+                ];
+            }
+
+            return $rows;
+        }
+
+        $academy = is_array($this->document()['academy'] ?? null) ? $this->document()['academy'] : [];
+        $rows = [];
+        foreach ($academy['private_lessons'] ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+            $people = (int) ($row['people'] ?? 0);
+            $perPerson = (float) ($row['price_eur_per_person'] ?? 0);
+            if ($people < 1 || $perPerson <= 0) {
+                continue;
+            }
+            $rows[] = [
+                'people' => $people,
+                'total_eur' => $perPerson * $people,
+                'per_person_eur' => $perPerson,
+            ];
+        }
+
+        return $rows;
+    }
 
     /**
      * @return array<string, mixed>
@@ -108,23 +154,13 @@ final class S4BusinessKnowledgeService
             '**① Clases particulares** (1,5 h, tabla y neopreno incluidos; atención personalizada):',
         ];
 
-        foreach ($academy['private_lessons'] ?? [] as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-            $people = (int) ($row['people'] ?? 0);
-            $price = (float) ($row['price_eur_per_person'] ?? 0);
-            if ($people < 1 || $price <= 0) {
-                continue;
-            }
-            $note = trim((string) ($row['note'] ?? ''));
-            $suffix = $note === 'total' ? ' (total)' : ' por persona';
+        foreach ($this->privateLessonRows() as $row) {
             $lines[] = sprintf(
-                '- **%d persona%s** → **%s€**%s',
-                $people,
-                $people === 1 ? '' : 's',
-                $this->formatEuros($price),
-                $suffix,
+                '- **%d persona%s** → **%s€** en total%s',
+                $row['people'],
+                $row['people'] === 1 ? '' : 's',
+                $this->formatEuros($row['total_eur']),
+                $row['people'] === 1 ? '' : ' ('.$this->formatEuros($row['per_person_eur']).'€ por persona)',
             );
         }
 
@@ -462,22 +498,12 @@ final class S4BusinessKnowledgeService
             '### Tarifario comercial (puede estar pendiente de confirmación oficial)',
         ];
 
-        foreach ($academy['private_lessons'] ?? [] as $row) {
-            if (! is_array($row)) {
-                continue;
-            }
-            $people = (int) ($row['people'] ?? 0);
-            $price = (float) ($row['price_eur_per_person'] ?? 0);
-            if ($people < 1 || $price <= 0) {
-                continue;
-            }
-            $note = trim((string) ($row['note'] ?? ''));
+        foreach ($this->privateLessonRows() as $row) {
             $lines[] = sprintf(
-                '- Particular %d persona%s: %s€ %s.',
-                $people,
-                $people === 1 ? '' : 's',
-                $this->formatEuros($price),
-                $note === 'total' ? '(total)' : 'por persona',
+                '- Particular %d persona%s: %s€ en total.',
+                $row['people'],
+                $row['people'] === 1 ? '' : 's',
+                $this->formatEuros($row['total_eur']),
             );
         }
 

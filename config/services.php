@@ -170,8 +170,6 @@ return [
     ],
 
     'academy' => [
-        'bizum_number' => env('ACADEMY_BIZUM_NUMBER', '[BIZUM_NUMBER]'),
-        'iban' => env('ACADEMY_IBAN', '[IBAN]'),
         'whatsapp_number' => env('ACADEMY_WHATSAPP_NUMBER', '34600000000'),
         /** Texto mostrado en plantillas/UI (si vacío, se formatea whatsapp_number). */
         'whatsapp_display' => env('ACADEMY_WHATSAPP_DISPLAY'),
@@ -182,8 +180,10 @@ return [
         'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
         /** Señal máxima para formalizar reserva de clase (el resto puede pagarse en escuela). */
         'class_reservation_deposit_eur' => (float) env('ACADEMY_CLASS_RESERVATION_DEPOSIT_EUR', 30),
-        /** Señal online de clase particular (compromiso; el resto se abona después). */
-        'private_lesson_deposit_eur' => (float) env('ACADEMY_PRIVATE_LESSON_DEPOSIT_EUR', 7),
+        /** Duración base a la que está tarifada la clase particular; otras duraciones se prorratean. */
+        'private_lesson_base_minutes' => (int) env('ACADEMY_PRIVATE_LESSON_BASE_MINUTES', 90),
+        /** % del total que se cobra online como señal de clase particular (el resto, en la escuela). */
+        'private_lesson_deposit_percentage' => (float) env('ACADEMY_PRIVATE_LESSON_DEPOSIT_PERCENTAGE', 30),
         /** Hora de recogida/devolución por defecto en alquileres (reloj de pared Madrid) cuando solo llega Y-m-d. */
         'rental_handoff_hour' => (int) env('ACADEMY_RENTAL_HANDOFF_HOUR', 10),
         /** Cierre de inscripciones (minutos antes del inicio). */
@@ -239,6 +239,13 @@ return [
         'secret'          => env('STRIPE_SECRET'),
         'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
         'currency'        => env('STRIPE_CURRENCY', 'eur'),
+    ],
+
+    // ── Datáfono (ingesta TPV firmada HMAC → ledger datafono_payments) ──────
+    'datafono' => [
+        'ingest_secret'            => env('DATAFONO_INGEST_SECRET'),
+        'default_terminal_codigo' => env('DATAFONO_DEFAULT_TERMINAL_CODIGO', 'datafono1'),
+        'ingest_enabled'          => env('DATAFONO_INGEST_ENABLED', true),
     ],
 
     'sponsors' => [

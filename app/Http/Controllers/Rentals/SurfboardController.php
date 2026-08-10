@@ -39,8 +39,6 @@ class SurfboardController extends Controller
             'surfboards' => $surfboards,
             'tariffTable' => $tariffTable->build()->toArray(),
             'rentalPolicy' => $rentalPolicy->current()->toArray(),
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
             'seo' => $pageSeo->rentalsIndex($category)->toArray(),
         ]);
@@ -70,8 +68,6 @@ class SurfboardController extends Controller
         return Inertia::render('Rentals/Surfboards/Show', [
             'surfboard' => $surfboard,
             'rentalPolicy' => $rentalPolicy->current()->toArray(),
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
             'seo' => $pageSeo->rentalsShow($seoBoard)->toArray(),
         ]);

@@ -13,7 +13,6 @@ use App\Models\PriceSchema;
 use App\Models\Surfboard;
 use App\Services\Rentals\RentalPolicyService;
 use App\Support\BusinessDateTime;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -307,13 +306,12 @@ class BookingService
     }
 
     /**
-     * Crea reserva en estado pending + pago pending (pasarela o validación manual).
+     * Crea reserva en estado pending + pago pending.
      *
      * `$expiresInMinutes` es la caducidad corta del flujo público con Stripe
-     * ({@see pendingUnpaidExpirationMinutes()}). Sin él (creación manual en
-     * Admin, pago por transferencia/bizum) se mantiene la caducidad larga de
-     * `rentals.pending_expiration_days`, porque ahí el cliente sube el
-     * comprobante días después.
+     * ({@see pendingUnpaidExpirationMinutes()}). Sin él (reserva manual creada en
+     * Admin, que se cobra en mostrador) se mantiene la caducidad larga de
+     * `rentals.pending_expiration_days`.
      *
      * @param  array<string, mixed>  $clientData
      */
@@ -321,11 +319,10 @@ class BookingService
         Surfboard $surfboard,
         RentalWindowDto $window,
         array $clientData,
-        ?UploadedFile $proofFile = null,
         ?int $userId = null,
         ?int $expiresInMinutes = null,
     ): Booking {
-        return DB::transaction(function () use ($surfboard, $window, $clientData, $proofFile, $userId, $expiresInMinutes) {
+        return DB::transaction(function () use ($surfboard, $window, $clientData, $userId, $expiresInMinutes) {
             $locked = Surfboard::query()->whereKey($surfboard->id)->lockForUpdate()->firstOrFail();
 
             // Última barrera: aunque el formulario venga de una ficha cacheada,
@@ -344,20 +341,6 @@ class BookingService
             }
 
             $pricing = $this->resolvePricingForWindow($schema, $window);
-            $proofPath = null;
-            $proofUploadedAt = null;
-
-            if ($proofFile !== null) {
-                $proofPath = $proofFile->storeAs(
-                    'payment-proofs/rentals',
-                    Str::uuid()->toString().'.'.$proofFile->getClientOriginalExtension(),
-                    'local'
-                );
-                if ($proofPath === false || $proofPath === null) {
-                    throw new InvalidArgumentException('No se pudo almacenar el justificante de pago.');
-                }
-                $proofUploadedAt = now();
-            }
 
             return Booking::query()->create([
                 'surfboard_id' => $surfboard->id,
@@ -378,8 +361,6 @@ class BookingService
                     : Carbon::now()->addDays((int) config('rentals.pending_expiration_days', 7)),
                 'status' => Booking::STATUS_PENDING,
                 'payment_status' => PaymentStatus::Pending->value,
-                'payment_proof_path' => $proofPath,
-                'proof_uploaded_at' => $proofUploadedAt,
                 'payment_method' => $clientData['payment_method'] ?? null,
                 'total_price' => $pricing['total_price'],
                 'deposit_amount' => $pricing['deposit_amount'],
@@ -536,16 +517,19 @@ class BookingService
     /**
      * Marca la recogida efectiva (el mostrador entrega la tabla).
      *
-     * Guarda de integridad: no se entrega una tabla sin pago confirmado (ni la
+     * Guardas de integridad: no se entrega una tabla sin pago confirmado (ni la
      * señal online ni la validación manual del comprobante lo han registrado
-     * todavía). Esto es independiente de si cubre el 100 % del alquiler —esa
-     * decisión de producto (señal vs prepago íntegro) sigue pendiente y no
-     * afecta aquí: basta con que `payment_status` sea `confirmed`.
+     * todavía), y si la señal solo cubrió un depósito, tampoco se entrega con
+     * el resto (`balance_status`) aún pendiente de cobrar en mostrador.
      */
     public function markPickedUp(Booking $booking, ?\DateTimeInterface $at = null): Booking
     {
         if ($booking->payment_status !== Booking::PAYMENT_CONFIRMED) {
             throw new InvalidArgumentException('No se puede registrar la recogida sin el pago confirmado.');
+        }
+
+        if ($booking->hasBalanceDue()) {
+            throw new InvalidArgumentException('No se puede entregar la tabla con el resto del alquiler pendiente de cobro.');
         }
 
         $booking->forceFill([

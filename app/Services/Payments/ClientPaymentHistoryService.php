@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PhotoSessionBooking;
 use App\Models\User;
 use App\Models\UserBono;
 use App\Services\Invoicing\FiscalInvoiceAccessService;
@@ -48,6 +49,7 @@ final class ClientPaymentHistoryService
         $this->mergeCounts($counts, $this->countByUser(Booking::query()->whereIn('user_id', $userIds)->where('payment_status', Booking::PAYMENT_CONFIRMED)));
         $this->mergeCounts($counts, $this->countByUser(LessonUser::query()->whereIn('user_id', $userIds)->where('payment_status', LessonUser::PAYMENT_CONFIRMED)));
         $this->mergeCounts($counts, $this->countByUser(PagoCuota::query()->whereIn('user_id', $userIds)->where('status', PagoCuota::STATUS_CONFIRMED)));
+        $this->mergeCounts($counts, $this->countByUser(PhotoSessionBooking::query()->whereIn('user_id', $userIds)->where('payment_status', PhotoSessionBooking::PAYMENT_CONFIRMED)));
 
         return $counts;
     }
@@ -60,6 +62,7 @@ final class ClientPaymentHistoryService
         $bookings = Booking::query()->with('surfboard')->where('user_id', $user->id)->orderByDesc('created_at')->limit(100)->get();
         $enrollments = LessonUser::query()->with('lesson')->where('user_id', $user->id)->orderByDesc('created_at')->limit(100)->get();
         $pagosCuota = PagoCuota::query()->with('plan')->where('user_id', $user->id)->orderByDesc('created_at')->limit(100)->get();
+        $fotos = PhotoSessionBooking::query()->with('session')->where('user_id', $user->id)->orderByDesc('created_at')->limit(100)->get();
 
         $proofMap = $this->receipts->proofMetaMapForPayables([
             ...$pedidos->map(fn (Pedido $p) => ['type' => Pedido::class, 'id' => (int) $p->id])->all(),
@@ -67,6 +70,7 @@ final class ClientPaymentHistoryService
             ...$bookings->map(fn (Booking $b) => ['type' => Booking::class, 'id' => (int) $b->id])->all(),
             ...$enrollments->map(fn (LessonUser $e) => ['type' => LessonUser::class, 'id' => (int) $e->id])->all(),
             ...$pagosCuota->map(fn (PagoCuota $p) => ['type' => PagoCuota::class, 'id' => (int) $p->id])->all(),
+            ...$fotos->map(fn (PhotoSessionBooking $b) => ['type' => PhotoSessionBooking::class, 'id' => (int) $b->id])->all(),
         ]);
 
         $invoiceMap = $this->invoices->mapForPayables([
@@ -75,6 +79,7 @@ final class ClientPaymentHistoryService
             ...$bookings->map(fn (Booking $b) => ['type' => Booking::class, 'id' => (int) $b->id])->all(),
             ...$enrollments->map(fn (LessonUser $e) => ['type' => LessonUser::class, 'id' => (int) $e->id])->all(),
             ...$pagosCuota->map(fn (PagoCuota $p) => ['type' => PagoCuota::class, 'id' => (int) $p->id])->all(),
+            ...$fotos->map(fn (PhotoSessionBooking $b) => ['type' => PhotoSessionBooking::class, 'id' => (int) $b->id])->all(),
         ]);
 
         return collect()
@@ -83,6 +88,7 @@ final class ClientPaymentHistoryService
             ->concat($bookings->map(fn (Booking $b) => $this->bookingRow($b, $proofMap, $invoiceMap)))
             ->concat($enrollments->map(fn (LessonUser $e) => $this->lessonRow($e, $proofMap, $invoiceMap)))
             ->concat($pagosCuota->map(fn (PagoCuota $p) => $this->pagoCuotaRow($p, $proofMap, $invoiceMap)))
+            ->concat($fotos->map(fn (PhotoSessionBooking $b) => $this->fotoRow($b, $proofMap, $invoiceMap)))
             ->sortByDesc('created_at_raw')
             ->map(function (array $row): array {
                 unset($row['created_at_raw']);
@@ -215,6 +221,28 @@ final class ClientPaymentHistoryService
             payableId: (int) $pago->id,
             hasManualProof: ! empty($pago->payment_proof_path),
             manualProofUrl: ! empty($pago->payment_proof_path) ? route('taquilla.pagos.proof', $pago->id) : null,
+            proofMap: $proofMap,
+            invoiceMap: $invoiceMap,
+        );
+    }
+
+    private function fotoRow(PhotoSessionBooking $booking, array $proofMap, array $invoiceMap): array
+    {
+        $sessionName = $booking->session?->nombre ?? 'Sesión de fotos';
+        $range = $this->formatDateRange($booking->fecha_inicio, $booking->fecha_fin);
+
+        return $this->baseRow(
+            id: $booking->id,
+            entity: 'fotos',
+            entityLabel: 'Fotos',
+            description: "Fotos — {$sessionName}{$range}",
+            amountCents: (int) ($booking->precio_pagado_cents ?? 0),
+            status: $booking->payment_status ?? PhotoSessionBooking::PAYMENT_PENDING,
+            createdAt: $booking->created_at,
+            payableType: PhotoSessionBooking::class,
+            payableId: (int) $booking->id,
+            hasManualProof: ! empty($booking->payment_proof_path),
+            manualProofUrl: ! empty($booking->payment_proof_path) ? route('admin.photos.bookings.proof', $booking->id) : null,
             proofMap: $proofMap,
             invoiceMap: $invoiceMap,
         );

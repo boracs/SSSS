@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
 import { toast } from "react-toastify";
-import Layout1 from "../../../layouts/Layout1";
+import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import EmptyState from "../../../components/EmptyState";
 import SafeImage from "../../../components/SafeImage";
@@ -725,4 +725,4 @@ export default function Index({ surfboards }) {
     );
 }
 
-Index.layout = (page) => <Layout1>{page}</Layout1>;
+Index.layout = (page) => <AuthenticatedLayout>{page}</AuthenticatedLayout>;

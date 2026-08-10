@@ -55,8 +55,6 @@ export default function Index({
     category,
     tariffTable = null,
     rentalPolicy = null,
-    paymentIban = "[IBAN]",
-    paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
     seo = null,
 }) {
@@ -556,8 +554,6 @@ export default function Index({
                                                         <SurfboardPublicDetail
                                                             board={s}
                                                             onImageClick={setLightbox}
-                                                            paymentIban={paymentIban}
-                                                            paymentBizumNumber={paymentBizumNumber}
                                                             whatsappHelpUrl={whatsappHelpUrl}
                                                             rentalPolicy={rentalPolicy}
                                                             titleAs="h2"
@@ -591,8 +587,6 @@ export default function Index({
                                 <SurfboardPublicDetail
                                     board={selectedBoard}
                                     onImageClick={setLightbox}
-                                    paymentIban={paymentIban}
-                                    paymentBizumNumber={paymentBizumNumber}
                                     whatsappHelpUrl={whatsappHelpUrl}
                                     rentalPolicy={rentalPolicy}
                                     titleAs="h2"

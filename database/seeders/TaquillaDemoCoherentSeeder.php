@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\PagoCuota;
+use App\Models\PaymentReceipt;
 use App\Models\PlanTaquilla;
 use App\Models\User;
 use App\Support\MoneyCents;
@@ -261,7 +262,7 @@ class TaquillaDemoCoherentSeeder extends Seeder
                 $user,
                 $histPlan,
                 ['inicio' => $histStart, 'fin' => $histEnd],
-                ($slot % 5 === 0) ? 'bizum' : 'card',
+                ($slot % 5 === 0) ? 'datafono' : 'card',
                 $histStart->copy()->addDay(),
             );
         }
@@ -290,7 +291,7 @@ class TaquillaDemoCoherentSeeder extends Seeder
         string $method,
         Carbon $paidAt,
     ): void {
-        PagoCuota::query()->create([
+        $pago = PagoCuota::query()->create([
             'user_id' => $user->id,
             'id_plan_pagado' => $plan->id,
             'monto_pagado_cents' => (int) $plan->precio_total_cents,
@@ -303,6 +304,32 @@ class TaquillaDemoCoherentSeeder extends Seeder
             'reviewed_at' => $paidAt,
             'is_checked' => true,
         ]);
+
+        $this->attachDemoProof($pago, $method, $paidAt);
+    }
+
+    /**
+     * Simula el comprobante que este pago tendría en producción: recibo Stripe para
+     * "card". Sin esto, la columna "Recibo" del admin sale siempre "—" en el dataset
+     * demo aunque el pago figure como "Pagado". Un cobro en mostrador (datáfono) no
+     * genera recibo en la app: el justificante es el ticket del TPV.
+     */
+    private function attachDemoProof(PagoCuota $pago, string $method, Carbon $paidAt): void
+    {
+        if ($method !== 'card') {
+            return;
+        }
+
+        PaymentReceipt::query()->updateOrCreate(
+            ['stripe_checkout_session_id' => 'cs_test_demo_taquilla_'.$pago->id],
+            [
+                'payable_type' => PagoCuota::class,
+                'payable_id' => $pago->id,
+                'stripe_payment_intent_id' => 'pi_demo_taquilla_'.$pago->id,
+                'receipt_url' => url('/demo/recibo-stripe-sandbox.html'),
+                'captured_at' => $paidAt->copy()->addMinutes(5),
+            ]
+        );
     }
 
     private function syncUserCache(User $user): void

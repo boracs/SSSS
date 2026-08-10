@@ -25,11 +25,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            // Necesario para Auth::logoutOtherDevices() al cambiar la contraseña.
+            \Illuminate\Session\Middleware\AuthenticateSession::class,
         ]);
 
-        // El webhook de Stripe usa firma HMAC propia; no necesita (ni puede tener) token CSRF.
+        // Los webhooks (Stripe, Datáfono) usan firma HMAC propia; no necesitan (ni pueden tener) token CSRF.
         $middleware->validateCsrfTokens(except: [
             'webhooks/stripe',
+            'webhooks/datafono/ingest',
         ]);
 
         // Registramos el alias 'admin' para nuestro middleware de seguridad

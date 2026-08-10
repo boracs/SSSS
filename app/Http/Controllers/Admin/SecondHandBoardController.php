@@ -137,15 +137,39 @@ class SecondHandBoardController extends Controller
             ->with('success', 'Tabla actualizada correctamente.');
     }
 
+    /**
+     * Soft-delete: retira del catálogo una tabla que NO se vendió (nos la quedamos,
+     * regalo, etc.). Las vendidas son historial contable y no se pueden retirar.
+     */
     public function destroy(SecondHandBoard $secondHandBoard): RedirectResponse
     {
-        foreach ($secondHandBoard->images ?? [] as $path) {
-            Storage::disk('public')->delete($path);
+        if ($secondHandBoard->status === SecondHandStatus::SOLD) {
+            return redirect()->route('admin.second-hand.index')
+                ->with('error', 'Una tabla vendida no se puede retirar: forma parte del historial de ventas.');
         }
+
         $secondHandBoard->delete();
 
         return redirect()->route('admin.second-hand.index')
-            ->with('success', 'Tabla eliminada.');
+            ->with('success', "«{$secondHandBoard->name}» retirada del catálogo. Puedes reactivarla desde el filtro Desactivadas.");
+    }
+
+    /**
+     * Reactiva una tabla soft-deleted (vuelve al catálogo según su status).
+     */
+    public function restore(int $secondHandBoard): RedirectResponse
+    {
+        $board = SecondHandBoard::withTrashed()->findOrFail($secondHandBoard);
+
+        if (! $board->trashed()) {
+            return redirect()->route('admin.second-hand.index')
+                ->with('success', "«{$board->name}» ya estaba activa.");
+        }
+
+        $board->restore();
+
+        return redirect()->route('admin.second-hand.index')
+            ->with('success', "«{$board->name}» reactivada.");
     }
     /**
      * Actualiza únicamente el estado de una tabla (cambio rápido desde el listado admin).

@@ -72,11 +72,9 @@ export default function PaymentModal({
     const { props } = usePage();
     const {
         academyClassReservationDepositEur: depositCapRaw = 30,
-        academyPrivateLessonDepositEur: privateDepositRaw = 7,
         academyWhatsappUrl,
     } = props;
     const groupDepositCap = Math.max(0, Number(depositCapRaw) || 30);
-    const privateDepositCap = Math.max(0, Number(privateDepositRaw) || 7);
 
     const isPrivateFlow = lesson?.id === "PRIVATE_FLOW";
     const qty = isPrivateFlow
@@ -88,8 +86,15 @@ export default function PaymentModal({
         unit != null
             ? roundMoney(isPrivateFlow ? unit : unit * qty)
             : 0;
-    const depositCap = isPrivateFlow ? privateDepositCap : groupDepositCap;
-    const reservaEur = total > 0 ? roundMoney(Math.min(depositCap, total)) : depositCap;
+    // Particular: la señal es un % del total, ya calculado al pedir la clase.
+    // Grupal: señal fija con tope configurable.
+    const privateDepositEur =
+        lesson?.deposit_cents != null ? roundMoney(Number(lesson.deposit_cents) / 100) : null;
+    const reservaEur = isPrivateFlow
+        ? roundMoney(Math.min(privateDepositEur ?? total, total || privateDepositEur || 0))
+        : total > 0
+          ? roundMoney(Math.min(groupDepositCap, total))
+          : groupDepositCap;
     const restoEur = total > 0 ? roundMoney(Math.max(0, total - reservaEur)) : 0;
 
     const isNewRequest = Boolean(groupLessonRequestPayload && lesson?.id && !isPrivateFlow);
@@ -234,17 +239,17 @@ export default function PaymentModal({
                 <div className="mt-5 space-y-4">
                     <p className="text-sm leading-relaxed text-slate-400">
                         {isPrivateFlow
-                            ? `Señal de ${depositCap.toFixed(0)} € ahora. El resto de la clase se abona después.`
-                            : `Señal de ${depositCap.toFixed(0)} € para formalizar la reserva.`}
+                            ? `Señal de ${formatEur(reservaEur)} € ahora. El resto se abona en la escuela el día de la clase.`
+                            : `Señal de ${groupDepositCap.toFixed(0)} € para formalizar la reserva.`}
                     </p>
 
                     {total > 0 ? (
                         <div className="rounded-xl border border-white/[0.08] bg-slate-950/50 px-4 py-3.5 text-sm">
-                            {isPrivateFlow && lesson?.price_per_person != null ? (
+                            {isPrivateFlow ? (
                                 <div className="flex justify-between gap-3 text-slate-500">
                                     <span>Tarifa</span>
                                     <span className="tabular-nums text-slate-400">
-                                        {Number(lesson.price_per_person)} € × {participantCount}{" "}
+                                        {participantCount}{" "}
                                         {participantCount === 1 ? "persona" : "personas"}
                                     </span>
                                 </div>
@@ -252,9 +257,7 @@ export default function PaymentModal({
                             <div
                                 className={[
                                     "flex justify-between gap-3",
-                                    isPrivateFlow && lesson?.price_per_person != null
-                                        ? "mt-2"
-                                        : "",
+                                    isPrivateFlow ? "mt-2" : "",
                                 ].join(" ")}
                             >
                                 <span className="text-slate-400">Precio de la clase</span>

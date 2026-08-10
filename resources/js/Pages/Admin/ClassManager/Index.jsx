@@ -21,6 +21,7 @@ import LessonStaffAssignFields from "../../../components/Academy/LessonStaffAssi
 import StaffConflictAlert from "../../../components/Academy/StaffConflictAlert";
 import { emptyGuestForm } from "../../../lib/guestEnrollment";
 import { getStaffAssignConflict } from "../../../lib/staffAssignValidation";
+import CatalogOfferTabs from "../../../components/admin/CatalogOfferTabs";
 
 /** Recarga suave tras mutaciones: solo clases y stats, sin resetear filtros ni UI local. */
 const CALENDAR_PARTIAL_RELOAD = {
@@ -795,6 +796,7 @@ export default function ClassManagerIndex({
         <>
             <Head title="Admin · Gestor de clases" />
             <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
+                <CatalogOfferTabs active="clases" />
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-400">Admin · Academia S4</p>
@@ -802,6 +804,18 @@ export default function ClassManagerIndex({
                         <p className="mt-1 max-w-xl text-sm text-gray-500">
                             Calendario unificado: VIP, grupales, semanales y particulares.
                         </p>
+                        <button
+                            type="button"
+                            onClick={() =>
+                                goAcademyConsole(
+                                    selectedDate ||
+                                        new Date().toISOString().slice(0, 10),
+                                )
+                            }
+                            className="mt-3 inline-flex items-center rounded-xl border border-cyan-400/35 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-500/20"
+                        >
+                            Consola del día
+                        </button>
                     </div>
                     <div className="flex flex-wrap gap-2 text-center">
                         {[

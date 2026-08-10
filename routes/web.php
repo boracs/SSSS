@@ -5,15 +5,16 @@ use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\Admin\AuctionController as AdminAuctionController;
 use App\Http\Controllers\AutoCoachController;
+use App\Http\Controllers\Payments\DatafonoIngestWebhookController;
 use App\Http\Controllers\Payments\PaymentWebhookController;
 use App\Http\Controllers\Payments\PaymentSuccessController;
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
-use App\Http\Controllers\Admin\PaymentValidationController;
 use App\Http\Controllers\Admin\EmergencyKeyController as AdminEmergencyKeyController;
 use App\Http\Controllers\Admin\SecondHandBoardController as AdminSecondHandBoardController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\CatalogHubController;
 use App\Http\Controllers\Admin\ClassManagerController;
 use App\Http\Controllers\Admin\VipClassManagerController;
 use App\Http\Controllers\Admin\VipController;
@@ -96,6 +97,10 @@ Route::post('/contacto', [ContactMessageController::class, 'store'])
 // ── Stripe Webhooks (sin CSRF, sin auth — la seguridad la da la firma HMAC) ──
 Route::post('/webhooks/stripe', [PaymentWebhookController::class, 'handle'])
     ->name('webhooks.stripe');
+
+// ── Datáfono TPV Webhook (sin CSRF, sin auth — firma HMAC propia) ──────────
+Route::post('/webhooks/datafono/ingest', [DatafonoIngestWebhookController::class, 'handle'])
+    ->name('webhooks.datafono.ingest');
 
 // ── Retorno desde Stripe Checkout (público: alquiler/particular guest no tienen sesión) ──
 Route::get('/pago/exito', [PaymentSuccessController::class, 'show'])
@@ -209,11 +214,11 @@ Route::get('/servicios/surf-trips', function (PublicPageSeoService $pageSeo) {
         'seo' => $pageSeo->serviciosSurfTrips()->toArray(),
     ]);
 })->name('servicios.surfTrips');
-Route::get('/servicios/fotos', function (PublicPageSeoService $pageSeo) {
-    return Inertia::render('Servicios_Fotos', [
-        'seo' => $pageSeo->serviciosFotos()->toArray(),
-    ]);
-})->name('servicios.fotografia');
+Route::get('/servicios/fotos', [\App\Http\Controllers\Photos\PhotoSessionController::class, 'index'])
+    ->name('servicios.fotografia');
+Route::post('/servicios/fotos/reservar', [\App\Http\Controllers\Photos\PhotoSessionController::class, 'book'])
+    ->middleware('throttle:20,1')
+    ->name('servicios.fotos.book');
 Route::get('/servicios/videograbaciones', function (PublicPageSeoService $pageSeo) {
     return Inertia::render('Servicios_Videograbaciones', [
         'seo' => $pageSeo->serviciosVideograbaciones()->toArray(),
@@ -300,7 +305,6 @@ Route::prefix('academia')->name('academy.')->group(function () {
 // Acciones de alumno autenticado (VIP, pagar pendiente, cancelar, justificantes…)
 Route::middleware('auth')->prefix('academia')->name('academy.')->group(function () {
     Route::post('/lessons/{lesson}/pay', [\App\Http\Controllers\Academy\LessonController::class, 'payPendingEnrollment'])->name('lessons.pay');
-    Route::post('/lessons/{lesson}/upload-proof', [\App\Http\Controllers\Academy\LessonController::class, 'uploadProof'])->name('lessons.upload-proof');
     Route::post('/lessons/{lesson}/manual-confirm-payment', [\App\Http\Controllers\Academy\LessonController::class, 'confirmManualPayment'])->name('lessons.manual-confirm-payment');
     Route::post('/lessons/{lesson}/enroll', [\App\Http\Controllers\Academy\LessonController::class, 'enroll'])->name('lessons.enroll');
     Route::post('/lessons/{lesson}/cancel', [\App\Http\Controllers\Academy\LessonController::class, 'cancel'])->name('lessons.cancel');
@@ -348,8 +352,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/mi-perfil', [MyProfileController::class, 'index'])->name('my-profile.index');
     Route::post('/mis-reservas/clases/{enrollment}/pagar', [MyReservationsController::class, 'payClassEnrollment'])->name('my-reservations.class.pay');
     Route::post('/mis-reservas/alquileres/{booking}/pagar', [MyReservationsController::class, 'payRentalBooking'])->name('my-reservations.rental.pay');
-    Route::post('/mis-reservas/clases/{enrollment}/upload-proof', [MyReservationsController::class, 'uploadClassProof'])->name('my-reservations.class.upload-proof');
-    Route::post('/mis-reservas/alquileres/{booking}/upload-proof', [MyReservationsController::class, 'uploadRentalProof'])->name('my-reservations.rental.upload-proof');
+
     Route::post('/mis-reservas/clases/{enrollment}/cancel', [MyReservationsController::class, 'cancelClass'])->name('my-reservations.class.cancel');
     Route::post('/mis-reservas/alquileres/{booking}/cancel', [MyReservationsController::class, 'cancelRental'])->name('my-reservations.rental.cancel');
 
@@ -390,9 +393,6 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     Route::post('/taquilla/pagos/{pago}/pagar', [PlanesTaquillasController::class, 'payPendingPago'])
         ->middleware('throttle:10,1')
         ->name('taquillas.pago.pay');
-    Route::post('/taquilla/pagos/{pago}/subir-justificante', [PlanesTaquillasController::class, 'subirJustificante'])
-        ->middleware('throttle:10,1')
-        ->name('taquillas.pago.upload-proof');
     Route::get('/taquilla/pagos/{pago}/justificante', [PlanesTaquillasController::class, 'showProof'])
         ->name('taquillas.pago.proof');
     Route::get('/taquilla/usuario-datos', [PlanesTaquillasController::class, 'obtenerDatosUsuario'])->name('taquillas.usuario.datos');
@@ -435,16 +435,12 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
     Route::get('/gestor-pedidos', [PedidoController::class, 'index'])->name('gestor.pedidos');
     Route::get('/gestor/pedidos/filtrar', [PedidoController::class, 'applyFilter'])->name('gestor.pedidos.filtrar');
     // rutas de lso toiogles pagado y entregado
-    Route::patch('/pedido/{id}/toggle-pagado', [PedidoController::class, 'togglePagado'])->name('pedido.togglePagado');
     Route::patch('/pedido/{id}/toggle-entregado', [PedidoController::class, 'toggleEntregado'])->name('pedido.toggleEntregado');
-
-    // USUARIOS
-    Route::get('/listaUsuarios', [TaquillaController::class, 'listaUsuarios'])->name('listaUsuarios');
-    //
 
     // ADMINPANEL  DE TAQUILLAS Y PLANES
     // 1. Ruta principaPLANES TAQUILLASl: Muestra la lista de planes y el estado de lso usuarios si estana ctivo ....m uestra el panel de admin
     Route::get('/taquilla/admin/index', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
+    Route::get('/taquilla/admin/esquema', [PlanesTaquillasController::class, 'esquemaIndex'])->name('taquilla.esquema');
     Route::get('/taquilla/admin/vigencia', [PlanesTaquillasController::class, 'vigenciaIndex'])->name('taquilla.vigencia');
     Route::patch('/taquilla/admin/usuarios/{user}/baja-solicitada', [PlanesTaquillasController::class, 'toggleBajaSolicitada'])
         ->name('taquilla.usuarios.baja-solicitada');
@@ -455,11 +451,6 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
     Route::patch('/taquilla/admin/planes/{plan}/toggle-active', [PlanesTaquillasController::class, 'togglePlanActive'])->name('taquilla.planes.toggle-active');
     Route::get('/taquilla/admin/pagos/registro', [PlanesTaquillasController::class, 'registroPagos'])->name('taquilla.pagos.registro');
     Route::redirect('/taquilla/admin/pagos/cola', '/taquilla/admin/pagos/registro');
-    Route::patch('/taquilla/admin/pagos/{pago}/reviewed', [PlanesTaquillasController::class, 'markPagoTaquillaReviewed'])->name('taquilla.pagos.reviewed');
-    Route::patch('/taquilla/admin/pagos/{pago}/payment-state', [PlanesTaquillasController::class, 'updatePagoTaquillaPaymentState'])->name('taquilla.pagos.payment-state');
-    Route::patch('/taquilla/admin/pagos/{pago}/checked-state', [PlanesTaquillasController::class, 'updatePagoTaquillaCheckedState'])->name('taquilla.pagos.checked-state');
-    Route::post('/taquilla/admin/pagos/{pago}/confirmar', [PlanesTaquillasController::class, 'confirmarPagoTaquilla'])->name('taquilla.pagos.confirm');
-    Route::post('/taquilla/admin/pagos/{pago}/rechazar', [PlanesTaquillasController::class, 'rechazarPagoTaquilla'])->name('taquilla.pagos.reject');
     Route::get('/taquilla/admin/pagos/{pago}/proof', [PlanesTaquillasController::class, 'showProof'])->name('taquilla.pagos.proof');
     Route::post('/taquilla/admin/usuarios/{user}/reasignar', [PlanesTaquillasController::class, 'reassignLocker'])->name('taquilla.users.reassign');
     Route::get('/taquilla/admin/usuarios/{user}/pagos', [PlanesTaquillasController::class, 'userPaymentHistory'])->name('taquilla.users.payments');
@@ -479,6 +470,8 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         // Cambio de estado rápido (inline desde el listado admin)
         Route::patch('second-hand/{secondHandBoard}/status', [AdminSecondHandBoardController::class, 'updateStatus'])
             ->name('second-hand.update-status');
+        Route::patch('second-hand/{secondHandBoard}/restore', [AdminSecondHandBoardController::class, 'restore'])
+            ->name('second-hand.restore');
 
         Route::resource('auctions', AdminAuctionController::class)->except(['show']);
         Route::patch('auctions/{auction}/publish', [AdminAuctionController::class, 'publish'])->name('auctions.publish');
@@ -493,32 +486,41 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::patch('bookings/{booking}/cancel', [AdminBookingController::class, 'cancel'])->name('bookings.cancel');
         // Mostrador: registra la entrega real de la tabla (picked_up_at).
         Route::patch('bookings/{booking}/mark-picked-up', [AdminBookingController::class, 'markPickedUp'])->name('bookings.mark-picked-up');
-        Route::post('bookings/{booking}/approve-proof', [AdminBookingController::class, 'approveProof'])->name('bookings.approve-proof');
-        Route::post('bookings/{booking}/reject-proof', [AdminBookingController::class, 'rejectProof'])->name('bookings.reject-proof');
+        // Mostrador: cobra en efectivo el resto pendiente (depósito ya confirmado).
+        Route::patch('bookings/{booking}/charge-balance-cash', [AdminBookingController::class, 'chargeBalanceCash'])->name('bookings.charge-balance-cash');
+        // Solo lectura: comprobantes de filas históricas anteriores a la pasarela.
         Route::get('bookings/{booking}/proof', [AdminBookingController::class, 'showProof'])->name('bookings.proof');
         Route::get('chatbot', [\App\Http\Controllers\Admin\ChatbotInteractionController::class, 'index'])->name('chatbot.index');
         Route::patch('chatbot/{chatbotInteraction}/resolve', [\App\Http\Controllers\Admin\ChatbotInteractionController::class, 'resolve'])->name('chatbot.resolve');
-        Route::get('check-manager', [\App\Http\Controllers\Admin\AcademyController::class, 'checkManager'])->name('check-manager');
         Route::get('payments/global-dashboard', [\App\Http\Controllers\Admin\AcademyController::class, 'globalPaymentsDashboard'])->name('payments.global');
         Route::patch('surf-brief/override', [\App\Http\Controllers\Admin\SurfBriefController::class, 'override'])->name('surf-brief.override');
         Route::post('surf-brief/regenerate', [\App\Http\Controllers\Admin\SurfBriefController::class, 'regenerate'])->name('surf-brief.regenerate');
         Route::get('payments/clients', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'index'])->name('payments.clients.index');
         Route::get('payments/clients/{user}/history', [\App\Http\Controllers\Admin\ClientPaymentsController::class, 'history'])->name('payments.clients.history');
-        Route::patch('payments/reviewed', [\App\Http\Controllers\Admin\AcademyController::class, 'markPaymentReviewed'])->name('payments.reviewed');
-        Route::patch('payments/refund-status', [\App\Http\Controllers\Admin\AcademyController::class, 'updateRefundStatus'])->name('payments.refund-status');
-        Route::get('payment-validation', [PaymentValidationController::class, 'index'])->name('payment-validation.index');
-        Route::post('payment-validation/{userBonoId}/confirm', [PaymentValidationController::class, 'confirm'])->name('payment-validation.confirm');
-        Route::post('payment-validation/{userBonoId}/reject', [PaymentValidationController::class, 'reject'])->name('payment-validation.reject');
+        Route::get('payments/datafono', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'index'])->name('payments.datafono.index');
+        Route::post('payments/datafono', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'store'])->name('payments.datafono.store');
+        Route::get('payments/datafono/users/{user}/pending', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'pendingForUser'])->name('payments.datafono.pending');
+        Route::post('payments/datafono/lessons', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'storeLesson'])->name('payments.datafono.lessons.store');
+        Route::post('payments/datafono/{datafonoPayment}/assign', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'assign'])->name('payments.datafono.assign');
+        Route::post('payments/datafono/{datafonoPayment}/ignore', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'ignore'])->name('payments.datafono.ignore');
+        Route::get('photos', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'index'])->name('photos.index');
+        Route::post('photos/sessions', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'storeSession'])->name('photos.sessions.store');
+        Route::patch('photos/sessions/{photoSession}', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'updateSession'])->name('photos.sessions.update');
+        Route::post('photos/bookings/{booking}/confirm', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'confirmBooking'])->name('photos.bookings.confirm');
+        Route::post('photos/bookings/{booking}/reject', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'rejectBooking'])->name('photos.bookings.reject');
+        Route::get('photos/bookings/{booking}/proof', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'showProof'])->name('photos.bookings.proof');
         Route::get('bonos', [AdminBonoController::class, 'index'])->name('bonos.index');
         Route::post('bonos', [AdminBonoController::class, 'store'])->name('bonos.store');
         Route::patch('bonos/{packBono}/toggle-active', [AdminBonoController::class, 'toggleActive'])->name('bonos.toggle-active');
-        Route::post('bonos/assign-manual', [AdminBonoController::class, 'assignManual'])->name('bonos.assign-manual');
         Route::get('users', [AdminUserController::class, 'index'])->name('users.index');
         Route::patch('users/{user}/toggle-vip', [AdminUserController::class, 'toggleVip'])->name('users.toggle-vip');
-        Route::get('vips', [VipController::class, 'index'])->name('vips.index');
         Route::post('vips/attendance-notes', [VipController::class, 'storeNote'])->name('vips.attendance-notes.store');
         Route::get('vips/{user}/analisis', [VipController::class, 'analysis'])->name('vips.analysis');
         Route::get('vips/{user}/whatsapp', [VipController::class, 'whatsapp'])->name('vips.whatsapp');
+        Route::get('catalogo', [CatalogHubController::class, 'index'])->name('catalog.index');
+        Route::get('catalogo/surfskate', [CatalogHubController::class, 'surfskate'])->name('catalog.surfskate');
+        Route::get('catalogo/clases-particulares', [\App\Http\Controllers\Admin\PrivateLessonTariffController::class, 'index'])->name('catalog.private-lessons');
+        Route::put('catalogo/clases-particulares', [\App\Http\Controllers\Admin\PrivateLessonTariffController::class, 'update'])->name('catalog.private-lessons.update');
         Route::get('class-manager', [ClassManagerController::class, 'index'])->name('class-manager.index');
         Route::post('class-manager/lessons/{lesson}/guest-enrollments', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'store'])->name('class-manager.guest-enrollments.store');
         Route::patch('class-manager/guest-enrollments/{enrollment}', [\App\Http\Controllers\Admin\ClassManagerEnrollmentController::class, 'update'])->name('class-manager.guest-enrollments.update');

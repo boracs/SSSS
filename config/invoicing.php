@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PhotoSessionBooking;
 use App\Models\UserBono;
 
 return [
@@ -74,11 +75,12 @@ return [
     |
     */
     'payable_types' => [
-        Pedido::class     => true,
-        UserBono::class   => true,
-        Booking::class    => true,
+        Pedido::class => true,
+        UserBono::class => true,
+        Booking::class => true,
         LessonUser::class => true,
-        PagoCuota::class  => true,
+        PagoCuota::class => true,
+        PhotoSessionBooking::class => true,
     ],
 
     /*

@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PhotoSessionBooking;
 use App\Models\UserBono;
 
 /**
@@ -18,8 +19,8 @@ use App\Models\UserBono;
  *    prueba, ninguna factura real se envía a B2BRouter/Hacienda Foral).
  * 2. `config('invoicing.payable_types.<FQCN>')` — whitelist por dominio.
  *
- * Los 5 dominios (Pedido, UserBono, Booking, LessonUser, PagoCuota) ya tienen
- * su rama implementada en {@see \App\Services\Invoicing\FiscalInvoiceBuilderService}.
+ * Los dominios (Pedido, UserBono, Booking, LessonUser, PagoCuota, PhotoSessionBooking)
+ * tienen rama en {@see \App\Services\Invoicing\FiscalInvoiceBuilderService}.
  * El único gate que falta para pasar a producción real es activar
  * `INVOICING_ENABLED=true` tras confirmar precios/políticas con el cliente.
  */
@@ -30,6 +31,7 @@ enum FiscalInvoiceCategory: string
     case BonosTaquilla = 'bonos_taquilla';
     case Alquileres = 'alquileres';
     case Clases = 'clases';
+    case Fotos = 'fotos';
 
     public function label(): string
     {
@@ -39,6 +41,7 @@ enum FiscalInvoiceCategory: string
             self::BonosTaquilla => 'Taquillas',
             self::Alquileres => 'Alquiler de tablas',
             self::Clases => 'Clases sueltas',
+            self::Fotos => 'Fotos',
         };
     }
 
@@ -51,6 +54,7 @@ enum FiscalInvoiceCategory: string
             self::BonosTaquilla => PagoCuota::class,
             self::Alquileres => Booking::class,
             self::Clases => LessonUser::class,
+            self::Fotos => PhotoSessionBooking::class,
         };
     }
 

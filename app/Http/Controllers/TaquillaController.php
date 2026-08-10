@@ -110,25 +110,4 @@ class TaquillaController extends Controller
 
         return back()->with('success', $message);
     }
-
-    public function listaUsuarios()
-    {
-        $usuarios = User::query()
-            ->orderByRaw('numeroTaquilla IS NULL')
-            ->orderBy('numeroTaquilla')
-            ->orderBy('nombre')
-            ->orderBy('apellido')
-            ->get([
-                'id',
-                'nombre',
-                'apellido',
-                'email',
-                'telefono',
-                'numeroTaquilla',
-            ]);
-
-        return Inertia::render('ListaUsuarios', [
-            'usuarios' => $usuarios,
-        ]);
-    }
 }

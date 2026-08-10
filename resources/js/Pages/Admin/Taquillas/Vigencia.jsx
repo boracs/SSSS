@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Head, router } from "@inertiajs/react";
-import { LogOut, TriangleAlert } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, FileText, LogOut, TriangleAlert, X } from "lucide-react";
 import Layout1 from "@/layouts/Layout1";
-import Breadcrumbs from "@/components/Breadcrumbs";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { SortableTh, compareRows } from "@/components/SortableTable";
 import { whatsappUrlFromPhone } from "@/lib/whatsapp";
@@ -31,11 +30,14 @@ const COLUMN_DEFAULT_SORT_DIR = {
     baja: "desc",
 };
 
+/** Misma semántica que las columnas ordenables del escritorio (incl. ambas dirs). */
 const MOBILE_SORT_OPTIONS = [
-    { value: "progreso:asc", label: "Más urgentes primero" },
-    { value: "baja:desc", label: "Avisos de baja primero" },
-    { value: "user:asc", label: "Nombre A-Z" },
-    { value: "user:desc", label: "Nombre Z-A" },
+    { value: "progreso:asc", label: "Progreso ↑ (urgentes)" },
+    { value: "progreso:desc", label: "Progreso ↓" },
+    { value: "baja:desc", label: "Baja ↓ (avisos)" },
+    { value: "baja:asc", label: "Baja ↑" },
+    { value: "user:asc", label: "Usuario A-Z" },
+    { value: "user:desc", label: "Usuario Z-A" },
     { value: "locker:asc", label: "Taquilla ↑" },
     { value: "locker:desc", label: "Taquilla ↓" },
 ];
@@ -413,15 +415,16 @@ function paymentStatusPill(status) {
 function paymentStatusLabel(status) {
     if (status === "confirmed") return "Pagado";
     if (status === "rejected") return "No válido";
-    return "Por revisar";
+    // Checkout Stripe abierto; si no paga, el pendiente se borra (no es revisión manual).
+    return "Pendiente de pago";
 }
 
 /** Método de pago (columna independiente del estado; el estado ya lo indica su propia pill). */
 function paymentMethodLabel(row) {
     const method = String(row?.payment_method || "").toLowerCase();
     if (method === "card") return "Online";
-    if (method === "transferencia" || method === "bizum")
-        return "Transferencia";
+    if (method === "datafono") return "Datáfono";
+    if (method === "efectivo" || method === "cash") return "Efectivo";
     if (method === "tienda") return "Cortesía";
     if (method === "domiciliado") return "Domiciliado";
     return "—";
@@ -454,22 +457,22 @@ function rowUrgency(u) {
     return "ok";
 }
 
+/**
+ * Escala fija de la barra: solo mira días restantes o de atraso.
+ * Misma cantidad de días ⇒ misma longitud (Mensual/Anual da igual).
+ * Llena al 100 % a los 90 días.
+ */
+const DAYS_BAR_SCALE = 90;
+
 function enrichUser(u) {
-    const duracion = Number(u?.plan_vigente?.duracion_dias || 0);
     const raw = u?.dias_restantes;
     const restantes = Number(raw);
     const urgency = rowUrgency(u);
-    // Escala = duración del plan (fallback 90 si no hay plan).
-    const scale = duracion > 0 ? duracion : 90;
 
     let pct = 0;
     if (raw !== null && raw !== undefined && raw !== "" && Number.isFinite(restantes)) {
-        if (restantes > 0) {
-            // Días que quedan → más días = barra más larga.
-            pct = Math.round((restantes / scale) * 100);
-        } else if (restantes < 0) {
-            // Días de retraso → más atraso = barra más larga (tope 100%).
-            pct = Math.round((Math.abs(restantes) / scale) * 100);
+        if (restantes !== 0) {
+            pct = Math.round((Math.abs(restantes) / DAYS_BAR_SCALE) * 100);
         }
         // restantes === 0 → Vence hoy → barra vacía.
         pct = Math.max(0, Math.min(100, pct));
@@ -541,8 +544,8 @@ function ProgressMeter({ user, barWidthClass = "w-40" }) {
                         neverPaid
                             ? "Sin pagos registrados"
                             : urgency === "expired"
-                              ? "Proporcional a días de retraso"
-                              : "Proporcional a días restantes"
+                              ? `Días de atraso (lleno a los ${DAYS_BAR_SCALE} días)`
+                              : `Días restantes (lleno a los ${DAYS_BAR_SCALE} días)`
                     }
                 />
             </div>
@@ -558,21 +561,30 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
     const [expandedUserId, setExpandedUserId] = useState(null);
     const [historyByUser, setHistoryByUser] = useState({});
     const [loadingHistoryUserId, setLoadingHistoryUserId] = useState(null);
-    const [proofModalUrl, setProofModalUrl] = useState(null);
+    const [proofModal, setProofModal] = useState(null);
     const [toast, setToast] = useState(flash?.success || flash?.error || null);
     const [bajaConfirmUser, setBajaConfirmUser] = useState(null);
     const [liberarConfirmUser, setLiberarConfirmUser] = useState(null);
     const [bajaBusy, setBajaBusy] = useState(false);
 
-    // Recibo Stripe: página alojada por Stripe, bloquea iframe (X-Frame-Options).
-    // Justificante manual: sí se puede embeber en el modal.
+    // Modal unificado: preview embebido para justificante local; Stripe
+    // (X-Frame-Options) solo ofrece "Abrir" en pestaña nueva + mensaje.
     const openProof = (row) => {
         if (!row?.proof_url) return;
-        if (row.proof_is_stripe_receipt) {
-            window.open(row.proof_url, "_blank", "noopener,noreferrer");
-            return;
+        setProofModal(row);
+    };
+
+    const closeProofModal = () => setProofModal(null);
+
+    const proofDownloadUrl = (url) => {
+        if (!url) return null;
+        try {
+            const u = new URL(url, window.location.origin);
+            u.searchParams.set("download", "1");
+            return u.toString();
+        } catch {
+            return `${url}${url.includes("?") ? "&" : "?"}download=1`;
         }
-        setProofModalUrl(row.proof_url);
     };
 
     const users = useMemo(() => (usuarios || []).map(enrichUser), [usuarios]);
@@ -693,31 +705,12 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
 
                 <div className="relative mx-auto max-w-7xl space-y-5">
                     <header>
-                        <Breadcrumbs
-                            items={[
-                                {
-                                    label: "Admin",
-                                    href: route("Pag_principal"),
-                                },
-                                {
-                                    label: "Taquillas",
-                                    href: route("taquilla.index.admin"),
-                                },
-                                { label: "Vigencia" },
-                            ]}
-                            variant="dark"
-                            className="mb-3 hidden sm:flex"
-                        />
                         <p className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-400">
                             Admin · Taquillas
                         </p>
-                        <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+                        <h1 className="mt-1.5 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
                             Vigencia
                         </h1>
-                        <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                            Estado de cuota de socios con taquilla. Pulsa un
-                            usuario para ver su historial de pagos.
-                        </p>
                     </header>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -735,13 +728,13 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                         (o) => o.value === mobileSortValue,
                                     )
                                         ? mobileSortValue
-                                        : "progreso:asc"
+                                        : `${sortKey}:${sortDir}`
                                 }
                                 onChange={(e) =>
                                     handleMobileSortChange(e.target.value)
                                 }
                                 className="rounded-xl border border-white/10 bg-slate-950/80 px-2.5 py-2.5 text-xs font-semibold text-slate-100 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-                                aria-label="Ordenar socios"
+                                aria-label="Ordenar socios (mismas columnas que escritorio)"
                             >
                                 {MOBILE_SORT_OPTIONS.map((opt) => (
                                     <option key={opt.value} value={opt.value}>
@@ -778,6 +771,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                 onClick={() =>
                                                     openUserHistory(u.id)
                                                 }
+                                                aria-expanded={isOpen}
                                                 className="min-w-0 flex-1 text-left"
                                             >
                                                 <div className="flex min-w-0 items-center gap-2">
@@ -794,7 +788,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                     {u.email || "sin email"}
                                                 </p>
                                             </button>
-                                            {/* Slots fijos: aviso | liberar | WhatsApp */}
+                                            {/* Slots fijos: aviso | liberar | WhatsApp | expandir */}
                                             <div className="flex shrink-0 items-center gap-1">
                                                 <div className="flex h-8 w-8 items-center justify-center">
                                                     <BajaNoticeButton
@@ -844,6 +838,23 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                         />
                                                     )}
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        openUserHistory(u.id)
+                                                    }
+                                                    aria-expanded={isOpen}
+                                                    aria-label={
+                                                        isOpen
+                                                            ? "Ocultar historial de pagos"
+                                                            : "Ver historial de pagos"
+                                                    }
+                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                                                >
+                                                    <ChevronDown
+                                                        className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                                                    />
+                                                </button>
                                             </div>
                                         </div>
                                         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-400">
@@ -909,47 +920,52 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                     key={row.id}
                                                                     className="rounded-xl border border-white/5 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"
                                                                 >
-                                                                    <div className="flex flex-wrap items-center justify-between gap-2">
-                                                                        <span className="font-semibold text-white">
-                                                                            {
-                                                                                row.plan
-                                                                            }
-                                                                        </span>
-                                                                        <span
-                                                                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${paymentStatusPill(row.status)}`}
-                                                                        >
-                                                                            {paymentStatusLabel(
-                                                                                row.status,
-                                                                            )}
-                                                                        </span>
-                                                                    </div>
-                                                                    <p className="mt-1 text-slate-400">
-                                                                        {fmtDate(
-                                                                            row.periodo_inicio,
-                                                                        )}{" "}
-                                                                        –{" "}
-                                                                        {fmtDate(
-                                                                            row.periodo_fin,
-                                                                        )}{" "}
-                                                                        ·{" "}
-                                                                        {paymentMethodLabel(
-                                                                            row,
-                                                                        )}
-                                                                    </p>
-                                                                    {row.proof_url ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            className="mt-1 text-cyan-300 underline-offset-2 hover:underline"
-                                                                            onClick={() =>
-                                                                                openProof(
+                                                                    <div className="flex items-start justify-between gap-3">
+                                                                        <div className="min-w-0 flex-1">
+                                                                            <span className="font-semibold text-white">
+                                                                                {
+                                                                                    row.plan
+                                                                                }
+                                                                            </span>
+                                                                            <p className="mt-1 text-slate-400">
+                                                                                {fmtDate(
+                                                                                    row.periodo_inicio,
+                                                                                )}{" "}
+                                                                                –{" "}
+                                                                                {fmtDate(
+                                                                                    row.periodo_fin,
+                                                                                )}{" "}
+                                                                                ·{" "}
+                                                                                {paymentMethodLabel(
                                                                                     row,
-                                                                                )
-                                                                            }
-                                                                        >
-                                                                            Ver
-                                                                            recibo
-                                                                        </button>
-                                                                    ) : null}
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                                                            <span
+                                                                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${paymentStatusPill(row.status)}`}
+                                                                            >
+                                                                                {paymentStatusLabel(
+                                                                                    row.status,
+                                                                                )}
+                                                                            </span>
+                                                                            {row.proof_url ? (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
+                                                                                    onClick={() =>
+                                                                                        openProof(
+                                                                                            row,
+                                                                                        )
+                                                                                    }
+                                                                                    aria-label="Ver recibo"
+                                                                                    title="Ver recibo"
+                                                                                >
+                                                                                    <FileText className="h-3.5 w-3.5" />
+                                                                                </button>
+                                                                            ) : null}
+                                                                        </div>
+                                                                    </div>
                                                                 </li>
                                                             ),
                                                         )}
@@ -1010,13 +1026,17 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             onSort={toggleSort}
                                             className="px-3 py-2 text-left text-xs tracking-wide"
                                         />
+                                        <th
+                                            className="w-10 px-2 py-2"
+                                            aria-label="Historial"
+                                        />
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {filtered.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={7}
+                                                colSpan={8}
                                                 className="px-3 py-10 text-center text-slate-400"
                                             >
                                                 Sin socios con taquilla.
@@ -1149,11 +1169,22 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                 />
                                                             </div>
                                                         </td>
+                                                        <td className="px-2 py-2 text-right">
+                                                            <ChevronDown
+                                                                className={`ml-auto h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-180 text-cyan-400" : ""}`}
+                                                                aria-hidden
+                                                            />
+                                                            <span className="sr-only">
+                                                                {isOpen
+                                                                    ? "Ocultar historial"
+                                                                    : "Ver historial de pagos"}
+                                                            </span>
+                                                        </td>
                                                     </tr>
                                                     {isOpen ? (
                                                         <tr className="border-t border-white/5 bg-slate-950/50">
                                                             <td
-                                                                colSpan={7}
+                                                                colSpan={8}
                                                                 className="px-3 py-2.5"
                                                             >
                                                                 {isLoading ? (
@@ -1165,7 +1196,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                     </p>
                                                                 ) : historyRows.length ===
                                                                   0 ? (
-                                                                    <p className="py-3 text-sm text-slate-400">
+                                                                    <p className="py-2 text-sm text-slate-400">
                                                                         Sin
                                                                         pagos
                                                                         registrados
@@ -1174,24 +1205,26 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                         usuario.
                                                                     </p>
                                                                 ) : (
-                                                                    <div className="overflow-auto rounded-xl border border-white/10 bg-slate-900/80">
-                                                                        <table className="min-w-full text-xs sm:text-sm">
-                                                                            <thead className="bg-slate-800 text-slate-300">
-                                                                                <tr>
-                                                                                    <th className="px-3 py-2 text-left">
+                                                                    <div className="overflow-auto">
+                                                                        <table className="min-w-full text-sm">
+                                                                            <thead className="text-slate-400">
+                                                                                <tr className="border-b border-white/5">
+                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
                                                                                         Plan
                                                                                     </th>
-                                                                                    <th className="px-3 py-2 text-left">
+                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
                                                                                         Periodo
                                                                                     </th>
-                                                                                    <th className="px-3 py-2 text-left">
+                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
                                                                                         Estado
                                                                                     </th>
-                                                                                    <th className="px-3 py-2 text-left">
+                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
                                                                                         Método
                                                                                     </th>
-                                                                                    <th className="px-3 py-2 text-left">
-                                                                                        Recibo
+                                                                                    <th className="w-10 px-2 py-1.5 text-right text-xs font-medium tracking-wide">
+                                                                                        <span className="sr-only">
+                                                                                            Recibo
+                                                                                        </span>
                                                                                     </th>
                                                                                 </tr>
                                                                             </thead>
@@ -1204,14 +1237,14 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                                             key={
                                                                                                 row.id
                                                                                             }
-                                                                                            className="border-t border-white/5 text-slate-200"
+                                                                                            className="border-t border-white/5 text-slate-300"
                                                                                         >
-                                                                                            <td className="px-3 py-2 font-medium">
+                                                                                            <td className="px-3 py-2 font-medium text-white">
                                                                                                 {
                                                                                                     row.plan
                                                                                                 }
                                                                                             </td>
-                                                                                            <td className="px-3 py-2">
+                                                                                            <td className="px-3 py-2 tabular-nums text-slate-400">
                                                                                                 {fmtDate(
                                                                                                     row.periodo_inicio,
                                                                                                 )}{" "}
@@ -1222,33 +1255,38 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                                             </td>
                                                                                             <td className="px-3 py-2">
                                                                                                 <span
-                                                                                                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${paymentStatusPill(row.status)}`}
+                                                                                                    className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentStatusPill(row.status)}`}
                                                                                                 >
                                                                                                     {paymentStatusLabel(
                                                                                                         row.status,
                                                                                                     )}
                                                                                                 </span>
                                                                                             </td>
-                                                                                            <td className="px-3 py-2">
+                                                                                            <td className="px-3 py-2 text-slate-400">
                                                                                                 {paymentMethodLabel(
                                                                                                     row,
                                                                                                 )}
                                                                                             </td>
-                                                                                            <td className="px-3 py-2">
+                                                                                            <td className="px-2 py-2 text-right">
                                                                                                 {row.proof_url ? (
                                                                                                     <button
                                                                                                         type="button"
-                                                                                                        className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-semibold text-cyan-200 ring-1 ring-cyan-500/30 hover:bg-slate-700"
-                                                                                                        onClick={() =>
+                                                                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
+                                                                                                        onClick={(
+                                                                                                            e,
+                                                                                                        ) => {
+                                                                                                            e.stopPropagation();
                                                                                                             openProof(
                                                                                                                 row,
-                                                                                                            )
-                                                                                                        }
+                                                                                                            );
+                                                                                                        }}
+                                                                                                        aria-label="Ver recibo"
+                                                                                                        title="Ver recibo"
                                                                                                     >
-                                                                                                        Ver
+                                                                                                        <FileText className="h-3.5 w-3.5" />
                                                                                                     </button>
                                                                                                 ) : (
-                                                                                                    <span className="text-xs text-slate-500">
+                                                                                                    <span className="text-xs text-slate-600">
                                                                                                         —
                                                                                                     </span>
                                                                                                 )}
@@ -1274,29 +1312,100 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                 </div>
             </div>
 
-            {proofModalUrl ? (
+            {proofModal ? (
                 <div
                     className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 p-4"
-                    onClick={() => setProofModalUrl(null)}
+                    onClick={closeProofModal}
                 >
                     <div
-                        className="w-full max-w-5xl rounded-2xl border border-white/10 bg-slate-900 p-4"
+                        className="w-full max-w-5xl rounded-2xl border border-white/10 bg-slate-900 p-4 shadow-2xl ring-1 ring-white/5"
                         onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="proof-modal-title"
                     >
-                        <div className="mb-2 flex justify-end">
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0">
+                                <h3
+                                    id="proof-modal-title"
+                                    className="font-heading text-lg font-bold text-white"
+                                >
+                                    Recibo / justificante
+                                </h3>
+                                <p className="mt-0.5 text-sm text-slate-400">
+                                    {proofModal.plan || "Pago"}
+                                    {proofModal.periodo_inicio
+                                        ? ` · ${fmtDate(proofModal.periodo_inicio)} – ${fmtDate(proofModal.periodo_fin)}`
+                                        : ""}
+                                    {" · "}
+                                    {paymentMethodLabel(proofModal)}
+                                </p>
+                            </div>
                             <button
                                 type="button"
-                                className="rounded-md bg-slate-700 px-3 py-1 text-slate-100"
-                                onClick={() => setProofModalUrl(null)}
+                                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white"
+                                onClick={closeProofModal}
+                                aria-label="Cerrar"
                             >
-                                Cerrar
+                                <X className="h-5 w-5" />
                             </button>
                         </div>
-                        <iframe
-                            title="Comprobante de pago"
-                            src={proofModalUrl}
-                            className="h-[75vh] w-full rounded-lg"
-                        />
+
+                        {proofModal.proof_is_stripe_receipt ? (
+                            <div className="rounded-xl border border-white/10 bg-slate-950/60 px-4 py-8 text-center">
+                                <p className="text-sm text-slate-300">
+                                    Este recibo está alojado en Stripe y no se
+                                    puede previsualizar aquí.
+                                </p>
+                                <p className="mt-1 text-xs text-slate-500">
+                                    Se abrirá en una pestaña nueva.
+                                </p>
+                                <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                                    <a
+                                        href={proofModal.proof_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
+                                    >
+                                        Abrir recibo
+                                        <ExternalLink className="h-4 w-4" />
+                                    </a>
+                                    <button
+                                        type="button"
+                                        className="rounded-lg bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-200 ring-1 ring-white/10 hover:bg-slate-700"
+                                        onClick={closeProofModal}
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <iframe
+                                    title="Comprobante de pago"
+                                    src={proofModal.proof_url}
+                                    className="h-[65vh] w-full rounded-lg border border-white/10 bg-white"
+                                />
+                                <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+                                    <a
+                                        href={proofDownloadUrl(
+                                            proofModal.proof_url,
+                                        )}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-100 ring-1 ring-white/10 hover:bg-slate-700"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Descargar
+                                    </a>
+                                    <button
+                                        type="button"
+                                        className="rounded-lg bg-slate-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-600"
+                                        onClick={closeProofModal}
+                                    >
+                                        Cerrar
+                                    </button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             ) : null}

@@ -26,9 +26,7 @@ final class AcademyLessonRequestMailService
         Mail::to($user->email)->send(new RequestReceivedMail(
             $enrollment,
             $lesson,
-            config('services.academy.iban', '[IBAN]'),
-            config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            url()->route('profile.edit')
+            url()->route('academy.lessons.index')
         ));
     }
 }

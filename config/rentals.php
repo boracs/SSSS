@@ -60,8 +60,8 @@ return [
     'deposit_percentage' => (float) env('RENTALS_DEPOSIT_PERCENTAGE', 30),
 
     /**
-     * Caducidad larga: reserva creada a mano en Admin (mostrador/teléfono), pago
-     * manual por transferencia/bizum que el cliente sube como comprobante.
+     * Caducidad larga: reserva creada a mano en Admin (mostrador/teléfono), que se
+     * cobra en persona cuando el cliente pasa a recoger la tabla.
      */
     'pending_expiration_days' => (int) env('RENTALS_PENDING_EXPIRATION_DAYS', 7),
 

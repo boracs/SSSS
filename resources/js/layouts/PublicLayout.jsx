@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { usePage } from "@inertiajs/react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import FlashErrorModal from "../components/FlashErrorModal";
 
 const Chatbot = lazy(() => import("../components/Chatbot.jsx"));
 
@@ -16,6 +17,7 @@ export default function PublicLayout({ children }) {
             <Header />
             <main className="flex flex-1 flex-col">{children}</main>
             <Footer />
+            <FlashErrorModal />
             {/* WhatsApp flotante retirado: experiencia centralizada en el widget del Chatbot. */}
             {shouldRenderChatbot && (
                 <Suspense fallback={null}>

@@ -988,7 +988,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                             onChange={(e) => setRejecting((s) => ({ ...s, notes: e.target.value }))}
                             className="input-focus-ring mt-4 w-full rounded-xl px-4 py-3 text-sm"
                             rows={4}
-                            placeholder="Ej: El importe del Bizum no coincide / Justificante ilegible…"
+                            placeholder="Ej: El importe cobrado no coincide / Comprobante ilegible…"
                         />
                         <div className="mt-4 flex flex-wrap justify-end gap-2">
                             <button type="button" onClick={() => setRejecting(null)} className="btn-secondary">

@@ -7,10 +7,12 @@ use App\Http\Requests\Admin\StoreBookingRequest;
 use App\Models\Booking;
 use App\Models\Surfboard;
 use App\Services\BookingService;
+use App\Services\Payments\DatafonoPaymentReconciliationService;
 use App\Support\BusinessDateTime;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,7 +21,8 @@ use InvalidArgumentException;
 class BookingController extends Controller
 {
     public function __construct(
-        private BookingService $bookingService
+        private BookingService $bookingService,
+        private DatafonoPaymentReconciliationService $reconciliation,
     ) {}
 
     public function index(Request $request): Response
@@ -62,6 +65,10 @@ class BookingController extends Controller
                 'expires_at' => $b->expires_at?->toIso8601String(),
                 'total_price' => (float) $b->total_price,
                 'deposit_amount' => (float) $b->deposit_amount,
+                // Resto pendiente de cobrar en mostrador (datáfono/efectivo).
+                'balance_status' => $b->balance_status,
+                'balance_payment_method' => $b->balance_payment_method,
+                'remaining_balance_cents' => $b->remainingBalanceCents(),
                 'created_at' => $b->created_at?->toIso8601String(),
             ]);
 
@@ -84,6 +91,12 @@ class BookingController extends Controller
         return $date !== null ? BusinessDateTime::toApi($date) : null;
     }
 
+    /**
+     * Reserva manual sin cobro inmediato (ej. por teléfono), que se cobra luego en
+     * mostrador vía confirmPayment(). Distinto del walk-in
+     * ({@see \App\Services\Payments\DatafonoPaymentReconciliationService::reconcile()}),
+     * que sí cobra el 100 % en el momento. Sin UI dedicada hoy.
+     */
     public function store(StoreBookingRequest $request): RedirectResponse|JsonResponse
     {
         $data = $request->validated();
@@ -99,8 +112,7 @@ class BookingController extends Controller
                     'client_phone' => $data['client_phone'] ?? null,
                     'payment_method' => $data['payment_method'] ?? null,
                 ],
-                null,
-                $request->user()?->id,
+                userId: $request->user()?->id,
             );
         } catch (InvalidArgumentException $e) {
             if ($request->wantsJson()) {
@@ -174,7 +186,7 @@ class BookingController extends Controller
     }
 
     /**
-     * Confirmar recepción de transferencia: pending -> confirmed.
+     * Cobro registrado en mostrador (efectivo/datáfono): pending -> confirmed.
      */
     public function confirmPayment(Booking $booking): RedirectResponse
     {
@@ -186,74 +198,14 @@ class BookingController extends Controller
             'status' => Booking::STATUS_CONFIRMED,
             'payment_status' => Booking::PAYMENT_CONFIRMED,
             'refund_status' => null,
+            // El admin cobra el importe íntegro en mano, no una señal:
+            // no queda resto pendiente en mostrador.
+            'deposit_amount' => $booking->total_price,
+            'balance_status' => Booking::BALANCE_NONE,
             'payment_proof_note' => $booking->payment_proof_note ?? 'Confirmado por admin '.now()->toDateTimeString(),
         ]);
 
         return redirect()->back()->with('success', 'Reserva confirmada. Pago verificado.');
-    }
-
-    /**
-     * Aprobar comprobante desde Gestor de Comprobaciones.
-     */
-    public function approveProof(Booking $booking): RedirectResponse
-    {
-        if (($booking->payment_status ?? Booking::PAYMENT_PENDING) === Booking::PAYMENT_CONFIRMED) {
-            return redirect()->back()->with('error', 'Este pago ya está confirmado.');
-        }
-
-        $booking->update([
-            'status' => Booking::STATUS_CONFIRMED,
-            'payment_status' => Booking::PAYMENT_CONFIRMED,
-            'refund_status' => null,
-            'reviewed_at' => null,
-        ]);
-
-        return redirect()->back()->with('success', 'Pago de alquiler confirmado.');
-    }
-
-    /**
-     * Rechazar comprobante desde Gestor de Comprobaciones.
-     */
-    public function rejectProof(Request $request, Booking $booking): RedirectResponse
-    {
-        $validated = $request->validate([
-            'admin_notes' => 'nullable|string|max:2000',
-        ]);
-
-        $note = trim((string) ($validated['admin_notes'] ?? '')) !== ''
-            ? trim((string) $validated['admin_notes'])
-            : 'Comprobante rechazado.';
-
-        if (($booking->payment_status ?? '') === Booking::PAYMENT_REJECTED) {
-            return redirect()->back()->with('error', 'Este pago ya está rechazado.');
-        }
-
-        if ($booking->status === Booking::STATUS_PENDING) {
-            $booking->update([
-                'payment_status' => Booking::PAYMENT_REJECTED,
-                'refund_status' => null,
-                'admin_notes' => $note,
-                'status' => Booking::STATUS_PENDING,
-                'reviewed_at' => null,
-            ]);
-
-            return redirect()->back()->with('success', 'Comprobante de alquiler rechazado.');
-        }
-
-        $bps = $booking->payment_status ?? '';
-        if (($bps === Booking::PAYMENT_CONFIRMED) || ($bps === Booking::PAYMENT_PENDING && ! empty($booking->payment_proof_path))) {
-            $booking->update([
-                'payment_status' => Booking::PAYMENT_REJECTED,
-                'refund_status' => $bps === Booking::PAYMENT_CONFIRMED ? Booking::REFUND_PENDING : null,
-                'admin_notes' => $note,
-                'status' => $bps === Booking::PAYMENT_CONFIRMED ? Booking::STATUS_CANCELLED : $booking->status,
-                'reviewed_at' => null,
-            ]);
-
-            return redirect()->back()->with('success', 'Pago de alquiler marcado como rechazado.');
-        }
-
-        return redirect()->back()->with('error', 'No hay un pago enviado o confirmado que se pueda rechazar en este estado.');
     }
 
     /**
@@ -301,12 +253,35 @@ class BookingController extends Controller
             );
         }
 
+        if ($booking->hasBalanceDue()) {
+            return redirect()->back()->with(
+                'error',
+                'Queda un resto por cobrar en mostrador. Cóbralo antes de entregar la tabla.'
+            );
+        }
+
         $booking = $this->bookingService->markPickedUp($booking);
 
         return redirect()->back()->with(
             'success',
             'Recogida registrada a las '.$booking->picked_up_at->format('H:i').'.'
         );
+    }
+
+    /**
+     * Vía rápida de mostrador: cobra en efectivo el resto pendiente de un
+     * alquiler con depósito ya confirmado. Deja el mismo rastro auditable
+     * (ledger de datáfono) que un cobro por TPV desde el panel de Datáfono.
+     */
+    public function chargeBalanceCash(Booking $booking): RedirectResponse
+    {
+        if ($booking->payment_status !== Booking::PAYMENT_CONFIRMED || ! $booking->hasBalanceDue()) {
+            return redirect()->back()->with('error', 'Esta reserva no tiene resto pendiente de cobro.');
+        }
+
+        $this->reconciliation->chargeBookingBalanceCash($booking, Auth::id());
+
+        return redirect()->back()->with('success', 'Resto cobrado en efectivo y registrado.');
     }
 
     /**

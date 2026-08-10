@@ -8,145 +8,18 @@ use App\Models\AttendanceNote;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
-use App\Models\UserBono;
 use App\Services\VipLoyaltyService;
 use App\Services\VipStudentPerformanceService;
 use App\Support\AcademyContact;
 use App\Support\BusinessDateTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class VipController extends Controller
 {
-    public function index(Request $request, VipLoyaltyService $loyalty): Response
-    {
-        $health = (string) $request->query('health', 'all');
-        if (! in_array($health, ['all', 'active', 'drifting', 'inactive'], true)) {
-            $health = 'all';
-        }
-        $renewalOnly = $request->boolean('renewal_only');
-        $search = trim((string) $request->query('search', ''));
-
-        $maxTsBindings = [
-            LessonUser::PAYMENT_CONFIRMED,
-            LessonUser::STATUS_CANCELLED,
-            LessonUser::STATUS_REFUNDED,
-            LessonUser::STATUS_EXPIRED,
-        ];
-        $maxTsSql = '(SELECT MAX(COALESCE(lesson_user.confirmed_at, lesson_user.updated_at)) FROM lesson_user WHERE lesson_user.user_id = users.id AND lesson_user.payment_status = ? AND lesson_user.status NOT IN (?,?,?))';
-
-        $lastLessonSub = DB::table('lesson_user')
-            ->selectRaw('MAX(COALESCE(confirmed_at, updated_at))')
-            ->whereColumn('lesson_user.user_id', 'users.id')
-            ->where('payment_status', LessonUser::PAYMENT_CONFIRMED)
-            ->whereNotIn('status', [
-                LessonUser::STATUS_CANCELLED,
-                LessonUser::STATUS_REFUNDED,
-                LessonUser::STATUS_EXPIRED,
-            ]);
-
-        $minBonoSub = DB::table('user_bonos')
-            ->selectRaw('MIN(clases_restantes)')
-            ->whereColumn('user_bonos.user_id', 'users.id')
-            ->where('status', UserBono::STATUS_CONFIRMED);
-
-        $query = User::query()
-            ->where('is_vip', true)
-            ->select('users.*')
-            ->selectSub($lastLessonSub, 'last_confirmed_reservation_at')
-            ->selectSub($minBonoSub, 'min_remaining_classes')
-            ->with(['latestAttendanceNote' => function ($q) {
-                $q->select(['id', 'user_id', 'body', 'created_at', 'is_visible_to_student', 'admin_id']);
-            }]);
-
-        if ($search !== '') {
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('nombre', 'like', "%{$search}%")
-                    ->orWhere('apellido', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        if ($renewalOnly) {
-            $query->needsRenewal();
-        }
-
-        if ($health === 'active') {
-            $query->whereRaw("{$maxTsSql} IS NOT NULL AND DATEDIFF(NOW(), {$maxTsSql}) < 10", [
-                ...$maxTsBindings,
-                ...$maxTsBindings,
-            ]);
-        } elseif ($health === 'drifting') {
-            $query->whereRaw("{$maxTsSql} IS NOT NULL AND DATEDIFF(NOW(), {$maxTsSql}) >= 10 AND DATEDIFF(NOW(), {$maxTsSql}) <= 25", [
-                ...$maxTsBindings,
-                ...$maxTsBindings,
-                ...$maxTsBindings,
-            ]);
-        } elseif ($health === 'inactive') {
-            $query->where(function (Builder $q) use ($maxTsSql, $maxTsBindings) {
-                $q->whereRaw("{$maxTsSql} IS NULL", $maxTsBindings)
-                    ->orWhereRaw("DATEDIFF(NOW(), {$maxTsSql}) > 25", [...$maxTsBindings]);
-            });
-        }
-
-        $users = $query
-            ->orderBy('nombre')
-            ->orderBy('apellido')
-            ->limit(500)
-            ->get();
-
-        $vips = $users->map(function (User $u) use ($loyalty) {
-            $raw = $u->last_confirmed_reservation_at;
-            $lastAt = $raw ? BusinessDateTime::parseInAppTimezone((string) $raw) : null;
-            $minRem = $u->min_remaining_classes;
-
-            return [
-                'id' => $u->id,
-                'nombre' => $u->nombre,
-                'apellido' => $u->apellido,
-                'email' => $u->email,
-                'last_confirmed_reservation_at' => $lastAt ? BusinessDateTime::toApi($lastAt) : null,
-                'health' => $loyalty->healthFromLastActivity($lastAt),
-                'days_since_activity' => $loyalty->daysSinceLastActivity($lastAt),
-                'min_remaining_classes' => $minRem !== null ? (int) $minRem : null,
-                'needs_renewal' => $minRem !== null && (int) $minRem <= 3,
-                'whatsapp_action_url' => route('admin.vips.whatsapp', $u),
-                'latest_note' => $u->latestAttendanceNote
-                    ? [
-                        'body' => $u->latestAttendanceNote->body,
-                        'created_at' => $u->latestAttendanceNote->created_at?->toIso8601String(),
-                        'is_visible_to_student' => (bool) $u->latestAttendanceNote->is_visible_to_student,
-                    ]
-                    : null,
-            ];
-        })->values();
-
-        $baseVip = User::query()->where('is_vip', true);
-        $counts = [
-            'needsRenewal' => (clone $baseVip)->needsRenewal()->count(),
-            'health' => [
-                'active' => $this->countVipHealth($maxTsSql, $maxTsBindings, 'active'),
-                'drifting' => $this->countVipHealth($maxTsSql, $maxTsBindings, 'drifting'),
-                'inactive' => $this->countVipHealth($maxTsSql, $maxTsBindings, 'inactive'),
-            ],
-        ];
-
-        return Inertia::render('Admin/Vips/Index', [
-            'vips' => $vips,
-            'counts' => $counts,
-            'filters' => [
-                'health' => $health,
-                'renewal_only' => $renewalOnly,
-                'search' => $search,
-            ],
-        ]);
-    }
-
     public function analysis(Request $request, User $user): Response
     {
         abort_unless($user->is_vip, 404);
@@ -174,9 +47,6 @@ class VipController extends Controller
             'history_loaded' => (bool) ($performanceData['history_loaded'] ?? false),
         ]);
 
-        $from = (string) $request->query('from', 'vips');
-        $from = in_array($from, ['vips', 'users'], true) ? $from : 'vips';
-
         return Inertia::render('User/Dashboard/MyReservations', [
             'classRows' => $rows['classRows'],
             'rentalRows' => $rows['rentalRows'],
@@ -189,10 +59,8 @@ class VipController extends Controller
                 'apellido' => $user->apellido,
             ],
             'analysisNav' => [
-                'from' => $from,
+                'from' => 'users',
             ],
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
@@ -266,30 +134,5 @@ class VipController extends Controller
         abort_if(strlen($digits) < 9, 404);
 
         return redirect()->away('https://wa.me/'.$digits);
-    }
-
-    private function countVipHealth(string $maxTsSql, array $bindings, string $health): int
-    {
-        $q = User::query()->where('is_vip', true);
-
-        if ($health === 'active') {
-            $q->whereRaw("{$maxTsSql} IS NOT NULL AND DATEDIFF(NOW(), {$maxTsSql}) < 10", [
-                ...$bindings,
-                ...$bindings,
-            ]);
-        } elseif ($health === 'drifting') {
-            $q->whereRaw("{$maxTsSql} IS NOT NULL AND DATEDIFF(NOW(), {$maxTsSql}) >= 10 AND DATEDIFF(NOW(), {$maxTsSql}) <= 25", [
-                ...$bindings,
-                ...$bindings,
-                ...$bindings,
-            ]);
-        } else {
-            $q->where(function (Builder $sub) use ($maxTsSql, $bindings) {
-                $sub->whereRaw("{$maxTsSql} IS NULL", $bindings)
-                    ->orWhereRaw("DATEDIFF(NOW(), {$maxTsSql}) > 25", [...$bindings]);
-            });
-        }
-
-        return $q->count();
     }
 }

@@ -17,9 +17,7 @@ class RequestReceivedMail extends Mailable
     public function __construct(
         public LessonUser $enrollment,
         public Lesson $lesson,
-        public string $iban,
-        public string $bizumNumber,
-        public string $profileUrl
+        public string $payUrl
     ) {}
 
     public function envelope(): Envelope

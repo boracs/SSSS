@@ -27,27 +27,6 @@ class LessonUserPolicy
     }
 
     /**
-     * Subir o reemplazar comprobante: dueño y estado operativo "pendiente de pago / justificante".
-     */
-    public function uploadProof(User $user, LessonUser $enrollment): bool
-    {
-        if (! $enrollment->isOwnedBy($user)) {
-            return false;
-        }
-
-        if (! $enrollment->awaitingProofUpload()) {
-            return false;
-        }
-
-        $lesson = $enrollment->lesson;
-        if ($lesson && $lesson->starts_at && $lesson->starts_at->lt(BusinessDateTime::now())) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
      * Cancelar: alumno dueño (si la lección no ha pasado y el estado lo permite) o administrador.
      */
     public function cancel(User $user, LessonUser $enrollment): bool

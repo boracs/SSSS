@@ -97,12 +97,14 @@ function durationLabel(booking) {
     return days > 0 ? `${days} día(s)` : null;
 }
 
-/** Misma regla que BookingService::markPickedUp: sin pago confirmado no se entrega la tabla. */
+/** Misma regla que BookingService::markPickedUp: sin pago confirmado (o con
+ * el resto pendiente de cobrar) no se entrega la tabla. */
 function canMarkPickup(booking) {
     return (
         !booking.picked_up_at &&
         ["pending", "confirmed"].includes(booking.status) &&
-        booking.payment_status === "confirmed"
+        booking.payment_status === "confirmed" &&
+        booking.balance_status !== "pending"
     );
 }
 
@@ -110,8 +112,12 @@ function pickupBlockedByPayment(booking) {
     return (
         !booking.picked_up_at &&
         ["pending", "confirmed"].includes(booking.status) &&
-        booking.payment_status !== "confirmed"
+        (booking.payment_status !== "confirmed" || booking.balance_status === "pending")
     );
+}
+
+function hasBalanceDue(booking) {
+    return booking.payment_status === "confirmed" && booking.balance_status === "pending";
 }
 
 export default function Index({ surfboards, bookings, filters }) {
@@ -172,6 +178,17 @@ export default function Index({ surfboards, bookings, filters }) {
         router.patch(route("admin.bookings.mark-picked-up", booking.id), {}, {
             preserveScroll: true,
             onSuccess: () => toast.success("Recogida registrada."),
+        });
+    };
+
+    const chargeBalanceCash = (booking) => {
+        const remaining = money(Number(booking.remaining_balance_cents || 0) / 100);
+        if (!window.confirm(`¿Cobrar en efectivo el resto de ${booking.client_name} (${remaining})?`)) {
+            return;
+        }
+        router.patch(route("admin.bookings.charge-balance-cash", booking.id), {}, {
+            preserveScroll: true,
+            onSuccess: () => toast.success("Resto cobrado en efectivo."),
         });
     };
 
@@ -292,7 +309,9 @@ export default function Index({ surfboards, bookings, filters }) {
                                 <option value="all">Todos</option>
                                 <option value="pending">Pendiente</option>
                                 <option value="confirmed">Confirmada</option>
-                                <option value="completed">Completada</option>
+                                {/* "completed" no lo asigna ningún flujo hoy (Booking::STATUS_COMPLETED
+                                    queda para cuando se implemente "marcar tabla devuelta"); se omite
+                                    del filtro para no mostrar un estado inalcanzable. */}
                                 <option value="cancelled">Cancelada</option>
                             </select>
                         </label>
@@ -318,7 +337,7 @@ export default function Index({ surfboards, bookings, filters }) {
                             />
                         </div>
                         <div className="col-span-2">Recogida</div>
-                        <div className="col-span-2">Precio</div>
+                        <div className="col-span-2">Depósito / Resto</div>
                         <div className="col-span-3 text-right">Acciones</div>
                     </div>
 
@@ -366,7 +385,19 @@ export default function Index({ surfboards, bookings, filters }) {
                                         )}
                                     </div>
                                     <div className="col-span-2 text-sm text-slate-700">
-                                        {money(b.total_price)}
+                                        <div className="font-semibold tabular-nums">
+                                            {money(b.deposit_amount)}
+                                            <span className="ml-1 text-xs font-normal text-slate-400">
+                                                / {money(b.total_price)}
+                                            </span>
+                                        </div>
+                                        {hasBalanceDue(b) ? (
+                                            <Badge tone="red">
+                                                Resto {money(Number(b.remaining_balance_cents || 0) / 100)}
+                                            </Badge>
+                                        ) : b.balance_status === "confirmed" ? (
+                                            <Badge tone="green">Resto cobrado</Badge>
+                                        ) : null}
                                     </div>
                                     <div className="col-span-3 flex flex-wrap justify-end gap-2">
                                         {canMarkPickup(b) ? (
@@ -381,12 +412,26 @@ export default function Index({ surfboards, bookings, filters }) {
                                             </button>
                                         ) : pickupBlockedByPayment(b) ? (
                                             <span
-                                                title="Confirma el pago antes de entregar la tabla"
+                                                title={
+                                                    hasBalanceDue(b)
+                                                        ? "Cobra el resto antes de entregar la tabla"
+                                                        : "Confirma el pago antes de entregar la tabla"
+                                                }
                                                 className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-400"
                                             >
                                                 <PackageCheck className="h-3.5 w-3.5 opacity-40" aria-hidden />
-                                                Pago pendiente
+                                                {hasBalanceDue(b) ? "Resto pendiente" : "Pago pendiente"}
                                             </span>
+                                        ) : null}
+                                        {hasBalanceDue(b) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => chargeBalanceCash(b)}
+                                                title="Registrar el cobro del resto en efectivo"
+                                                className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-sm font-semibold text-rose-700 transition hover:bg-rose-50"
+                                            >
+                                                Cobrar resto (efectivo)
+                                            </button>
                                         ) : null}
                                         <Link
                                             href={route(

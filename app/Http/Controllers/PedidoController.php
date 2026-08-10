@@ -210,22 +210,13 @@ class PedidoController extends Controller
         return $this->renderGestorPedidos($request);
     }
 
-    public function togglePagado(int $id): RedirectResponse
-    {
-        $pedido         = Pedido::findOrFail($id);
-        $pedido->pagado = ! $pedido->pagado;
-        $pedido->save();
-
-        return back()->with('success', 'Estado de pago actualizado.');
-    }
-
     public function toggleEntregado(int $id): RedirectResponse
     {
-        $pedido           = Pedido::findOrFail($id);
+        $pedido = Pedido::findOrFail($id);
         $pedido->entregado = ! $pedido->entregado;
         $pedido->save();
 
-        return back()->with('success', 'Estado de entrega actualizado.');
+        return back()->with('success', "El pedido #{$pedido->id} fue actualizado.");
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -234,10 +225,11 @@ class PedidoController extends Controller
 
     private function renderGestorPedidos(Request $request): InertiaResponse
     {
-        $pagado    = (string) $request->input('pagado', '');
         $entregado = (string) $request->input('entregado', '');
 
+        // Solo pedidos cobrados (pasarela). El estado operativo es la entrega.
         $query = Pedido::query()
+            ->where('pagado', true)
             ->with([
                 'usuario:id,nombre,apellido,telefono,email',
                 'productos' => fn ($q) => $q
@@ -247,19 +239,13 @@ class PedidoController extends Controller
             ])
             ->latest('id');
 
-        if ($pagado === '1') {
-            $query->where('pagado', true);
-        } elseif ($pagado === '0') {
-            $query->where('pagado', false);
-        }
-
         if ($entregado === '1') {
             $query->where('entregado', true);
         } elseif ($entregado === '0') {
             $query->where('entregado', false);
         }
 
-        $paginator = $query->paginate(9)->withQueryString();
+        $paginator = $query->paginate(20)->withQueryString();
 
         return Inertia::render('GestorPedidos', [
             'pedidos'      => collect($paginator->items())
@@ -269,14 +255,11 @@ class PedidoController extends Controller
             'totalPedidos' => $paginator->total(),
             'currentPage'  => $paginator->currentPage(),
             'lastPage'     => max(1, $paginator->lastPage()),
-            'filters'      => ['pagado' => $pagado, 'entregado' => $entregado],
+            'filters'      => ['entregado' => $entregado],
             'stats'        => [
-                'total'               => Pedido::query()->count(),
-                'completos'           => Pedido::query()->where('pagado', true)->where('entregado', true)->count(),
-                'pagados'             => Pedido::query()->where('pagado', true)->count(),
-                'pendientes_pago'     => Pedido::query()->where('pagado', false)->count(),
-                'pendientes_entrega'  => Pedido::query()->where('pagado', true)->where('entregado', false)->count(),
-                'entregados_sin_pagar' => Pedido::query()->where('entregado', true)->where('pagado', false)->count(),
+                'total'              => Pedido::query()->where('pagado', true)->count(),
+                'pendientes_entrega' => Pedido::query()->where('pagado', true)->where('entregado', false)->count(),
+                'entregados'         => Pedido::query()->where('pagado', true)->where('entregado', true)->count(),
             ],
         ]);
     }
@@ -318,8 +301,6 @@ class PedidoController extends Controller
             'precio_total'      => (float) $pedido->precio_total,
             'subtotal'          => round($subtotalSinDescuento, 2),
             'descuentos'        => $totalDescuentos > 0 ? $totalDescuentos : 0.0,
-            'pagado'            => (bool) $pedido->pagado,
-            'payment_status'    => (bool) $pedido->pagado ? 'confirmed' : 'pending',
             'entregado'         => (bool) $pedido->entregado,
             'payment_method'    => $pedido->payment_method,
             'created_at'        => optional($pedido->created_at)->toIso8601String(),
@@ -344,8 +325,6 @@ class PedidoController extends Controller
         return [
             'id'              => $pedido->id,
             'precio_total'    => (float) $pedido->precio_total,
-            'pagado'          => (bool) $pedido->pagado,
-            'payment_status'  => (bool) $pedido->pagado ? 'confirmed' : 'pending',
             'entregado'       => (bool) $pedido->entregado,
             'payment_method'  => $pedido->payment_method,
             'created_at'      => optional($pedido->created_at)->toIso8601String(),
@@ -389,14 +368,9 @@ class PedidoController extends Controller
         return [
             'id'                 => $pedido->id,
             'precio_total'       => (float) $pedido->precio_total,
-            'pagado'             => (bool) $pedido->pagado,
-            'payment_status'     => (bool) $pedido->pagado ? 'confirmed' : 'pending',
             'entregado'          => (bool) $pedido->entregado,
             'payment_method'     => $pedido->payment_method,
-            'proof_uploaded_at'  => $pedido->proof_uploaded_at?->toIso8601String(),
             'created_at'         => $pedido->created_at?->toIso8601String(),
-            'total_articulos'    => (int) $productos->sum(fn ($p) => (int) $p->pivot->cantidad),
-            'productos_preview'  => $productos->take(3)->pluck('nombre')->values()->all(),
             'productos'          => $items,
             'usuario'            => [
                 'nombre'   => $pedido->usuario?->nombre,

@@ -95,8 +95,6 @@ const Carrito = () => {
         total = 0,
         flash,
         canCheckout = false,
-        paymentIban = "[IBAN]",
-        paymentBizumNumber = "[BIZUM_NUMBER]",
         whatsappHelpUrl = null,
     } = props;
 

@@ -4,8 +4,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\PackBono;
-use App\Models\User;
-use App\Models\UserBono;
 use App\Services\Chatbot\S4BusinessContextService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -21,11 +19,6 @@ class BonoController extends Controller
     {
         return Inertia::render('Admin/Bonos/Index', [
             'packs' => PackBono::query()->orderByDesc('id')->get(),
-            'vipUsers' => User::query()
-                ->where('is_vip', true)
-                ->orderBy('nombre')
-                ->orderBy('apellido')
-                ->get(['id', 'nombre', 'apellido', 'email']),
         ]);
     }
 
@@ -58,36 +51,6 @@ class BonoController extends Controller
     public function destroy(PackBono $packBono)
     {
         abort(403, 'Eliminación física deshabilitada para preservar la integridad histórica.');
-    }
-
-    public function assignManual(Request $request)
-    {
-        $validated = $request->validate([
-            'user_id' => 'required|integer|exists:users,id',
-            'pack_id' => 'required|integer|exists:pack_bonos,id',
-            'admin_notes' => 'nullable|string|max:2000',
-        ]);
-
-        $user = User::query()->findOrFail((int) $validated['user_id']);
-        if (! (bool) $user->is_vip) {
-            return back()->with('error', 'Solo se pueden asignar bonos manuales a usuarios VIP.');
-        }
-
-        $pack = PackBono::query()->findOrFail((int) $validated['pack_id']);
-        $isAdmin = (string) ($request->user()?->role ?? '') === 'admin';
-        if (! (bool) $pack->activo && ! $isAdmin) {
-            return back()->with('error', 'El pack seleccionado está inactivo.');
-        }
-
-        UserBono::create([
-            'user_id' => $user->id,
-            'pack_id' => $pack->id,
-            'clases_restantes' => (int) $pack->num_clases,
-            'status' => UserBono::STATUS_CONFIRMED,
-            'admin_notes' => trim((string) ($validated['admin_notes'] ?? 'Asignación manual por admin')),
-        ]);
-
-        return back()->with('success', 'Bono asignado manualmente y confirmado.');
     }
 
     public function toggleActive(Request $request, PackBono $packBono)

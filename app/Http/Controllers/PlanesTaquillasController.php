@@ -7,14 +7,9 @@ namespace App\Http\Controllers;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\DTOs\Payments\PaymentLineItemDto;
-use App\Http\Requests\Taquilla\ConfirmarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\ReassignLockerRequest;
-use App\Http\Requests\Taquilla\RechazarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\RegistrarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\StorePlanTaquillaRequest;
-use App\Http\Requests\Taquilla\SubirJustificanteTaquillaRequest;
-use App\Http\Requests\Taquilla\UpdatePagoTaquillaCheckedStateRequest;
-use App\Http\Requests\Taquilla\UpdatePagoTaquillaPaymentStateRequest;
 use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
@@ -62,6 +57,26 @@ class PlanesTaquillasController extends Controller
                 'success' => session('success'),
                 'error' => session('error'),
             ],
+        ]);
+    }
+
+    public function esquemaIndex(): Response|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return redirect()->route('login')
+                ->with('error', 'Debes iniciar sesion para acceder al panel de administracion.');
+        }
+
+        $user = Auth::user();
+        if (($user->role ?? null) !== 'admin') {
+            return redirect()->route('taquillas.index.client')
+                ->with('error', 'No tienes permisos para acceder al panel de administracion.');
+        }
+
+        $lockerMap = $this->taquillaService->buildLockerOccupancyMap();
+
+        return Inertia::render('Admin/Taquillas/Esquema', [
+            'lockerMap' => $lockerMap->toArray(),
         ]);
     }
 
@@ -203,8 +218,6 @@ class PlanesTaquillasController extends Controller
         return Inertia::render('PlanesTaquillasClient', [
             'userData' => $payload['userData'],
             'planes' => $payload['planes'],
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
@@ -282,11 +295,19 @@ class PlanesTaquillasController extends Controller
             return back()->with('error', 'Este pago ya no está pendiente.');
         }
 
+        // Checkout abandonado hace rato: el pendiente ya no vale, se empieza de cero.
+        if ($pago->isExpiredPending()) {
+            $this->taquillaService->purgeExpiredPendingPayments($user);
+
+            return back()->with('error', 'Ese intento de pago caducó. Vuelve a elegir el plan para pagarlo.');
+        }
+
         try {
             $pago = $this->taquillaService->ensurePaymentReference(
                 $pago->load('plan'),
                 $user,
             );
+            $this->taquillaService->refreshPendingExpiration($pago);
 
             $checkoutUrl = $this->initiatePayment->execute(
                 $this->buildStripeDtoForPago($pago, $user),
@@ -349,17 +370,6 @@ class PlanesTaquillasController extends Controller
         }
     }
 
-    public function subirJustificante(SubirJustificanteTaquillaRequest $request, PagoCuota $pago): RedirectResponse
-    {
-        try {
-            $this->taquillaService->uploadProof(user: Auth::user(), pago: $pago, request: $request);
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo subir el justificante. Intentalo de nuevo.');
-        }
-
-        return back()->with('success', 'Justificante subido. Pendiente de validacion.');
-    }
-
     public function registroPagos(Request $request): Response|JsonResponse
     {
         $status = (string) $request->query('status', 'all');
@@ -379,76 +389,7 @@ class PlanesTaquillasController extends Controller
         ]);
     }
 
-    public function markPagoTaquillaReviewed(PagoCuota $pago): RedirectResponse
-    {
-        try {
-            $this->taquillaService->markReviewed($pago);
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo actualizar la marca de revision.');
-        }
-
-        return back()->with('success', 'Marca de pendiente retirada correctamente.');
-    }
-
-    public function updatePagoTaquillaPaymentState(
-        UpdatePagoTaquillaPaymentStateRequest $request,
-        PagoCuota $pago,
-    ): RedirectResponse {
-        try {
-            $this->taquillaService->updatePaymentState(pago: $pago, request: $request);
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo actualizar el estado del pago.');
-        }
-
-        return back()->with('success', 'Pago actualizado correctamente.');
-    }
-
-    public function updatePagoTaquillaCheckedState(
-        UpdatePagoTaquillaCheckedStateRequest $request,
-        PagoCuota $pago,
-    ): RedirectResponse {
-        try {
-            $this->taquillaService->updateCheckedState(pago: $pago, request: $request);
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo actualizar el estado de comprobacion.');
-        }
-
-        return back()->with('success', 'Estado de comprobacion actualizado.');
-    }
-
-    public function confirmarPagoTaquilla(ConfirmarPagoTaquillaRequest $request, PagoCuota $pago): RedirectResponse
-    {
-        try {
-            $this->taquillaService->confirmPayment(
-                pago: $pago,
-                admin: Auth::user(),
-                request: $request,
-            );
-        } catch (ValidationException $e) {
-            return back()->with('error', $e->getMessage());
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo confirmar el pago.');
-        }
-
-        return back()->with('success', 'Pago de taquilla confirmado.');
-    }
-
-    public function rechazarPagoTaquilla(RechazarPagoTaquillaRequest $request, PagoCuota $pago): RedirectResponse
-    {
-        try {
-            $this->taquillaService->rejectPayment(pago: $pago, request: $request);
-        } catch (ValidationException $e) {
-            return back()->with('error', $e->getMessage());
-        } catch (Throwable $e) {
-            return back()->with('error', 'No se pudo rechazar el pago.');
-        }
-
-        return back()->with('success', 'Comprobante de taquilla rechazado.');
-    }
-
-    public function showProof(PagoCuota $pago): StreamedResponse
+    public function showProof(Request $request, PagoCuota $pago): StreamedResponse
     {
         $viewer = Auth::user();
         if (! $viewer) {
@@ -466,8 +407,11 @@ class PlanesTaquillasController extends Controller
             abort(404);
         }
 
-        $mime = Storage::disk('local')->mimeType($pago->payment_proof_path);
-        $stream = Storage::disk('local')->readStream($pago->payment_proof_path);
+        $path = (string) $pago->payment_proof_path;
+        $mime = Storage::disk('local')->mimeType($path);
+        $stream = Storage::disk('local')->readStream($path);
+        $basename = basename($path);
+        $disposition = $request->boolean('download') ? 'attachment' : 'inline';
 
         return response()->stream(function () use ($stream): void {
             fpassthru($stream);
@@ -476,6 +420,7 @@ class PlanesTaquillasController extends Controller
             }
         }, 200, [
             'Content-Type' => $mime ?: 'application/octet-stream',
+            'Content-Disposition' => $disposition.'; filename="'.$basename.'"',
             'Cache-Control' => 'no-store, private',
         ]);
     }

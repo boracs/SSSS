@@ -9,10 +9,12 @@ use App\Enums\SecondHandBoardType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SecondHandBoard extends Model
 {
     use HasFactory;
+    use SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -103,7 +105,11 @@ class SecondHandBoard extends Model
                 });
             })
             ->when(
-                $status !== '' && SecondHandStatus::tryFrom($status) !== null,
+                $status === 'inactive',
+                fn (Builder $q) => $q->onlyTrashed()
+            )
+            ->when(
+                $status !== '' && $status !== 'inactive' && SecondHandStatus::tryFrom($status) !== null,
                 fn (Builder $q) => $q->where('status', $status)
             )
             ->when(
@@ -172,7 +178,8 @@ class SecondHandBoard extends Model
             'discount_pct'    => $this->discount_pct,
             'effective_price' => $this->effectiveSalePrice(),
             'status'          => $this->status->value,
-            'status_label'    => $this->status->label(),
+            'status_label'    => $this->trashed() ? 'Desactivada' : $this->status->label(),
+            'is_active'       => ! $this->trashed(),
             'images'          => array_map(
                 fn (string $p) => self::publicImageUrl($p),
                 $this->images ?? []

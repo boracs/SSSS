@@ -82,7 +82,6 @@ final class PublicSitemapService
             'Disallow: /subastas',
             'Disallow: /webhooks',
             'Disallow: /asignar-taquilla',
-            'Disallow: /listaUsuarios',
             'Disallow: /gestor',
             'Disallow: /productos',
             'Disallow: /producto-crear',

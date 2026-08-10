@@ -51,8 +51,6 @@ export default function AcademyIndex({
     myEnrollmentIdByLesson = {},
     myEnrollmentAdminNotesByLesson = {},
     pendingSurfTripLesson = null,
-    paymentBizumNumber = "[BIZUM_NUMBER]",
-    paymentIban = "[IBAN]",
     whatsappHelpUrl = null,
 }) {
     const [date, setDate] = useState(() => {
@@ -545,8 +543,6 @@ export default function AcademyIndex({
                         ? myEnrollmentIdByLesson[paymentModalLesson.id]
                         : null
                 }
-                bizumNumber={paymentBizumNumber}
-                iban={paymentIban}
                 whatsappHelpUrl={whatsappHelpUrl}
                 isAdmin={isAdmin}
                 currentUserId={currentUser?.id ?? null}
@@ -598,8 +594,8 @@ export default function AcademyIndex({
                             start,
                             duration_minutes,
                             participants,
-                            price,
-                            price_per_person,
+                            price_cents,
+                            deposit_cents,
                             guest_first_name,
                             guest_last_name,
                             guest_email,
@@ -610,8 +606,8 @@ export default function AcademyIndex({
                                 date: d,
                                 start,
                                 duration_minutes,
-                                price: Number(price) || 0,
-                                price_per_person: Number(price_per_person) || null,
+                                price: (Number(price_cents) || 0) / 100,
+                                deposit_cents: Number(deposit_cents) || 0,
                                 starts_at: `${d}T${start}`,
                                 currency: "EUR",
                                 participants: Array.isArray(participants) ? participants : [],

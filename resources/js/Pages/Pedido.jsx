@@ -26,20 +26,9 @@ const formatDate = (value) => {
     });
 };
 
-const formatDateTime = (value) => {
-    if (!value) return null;
-    return new Date(value).toLocaleString("es-ES", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
-};
-
 const paymentLabel = (method) => {
     if (!method) return "No especificado";
-    const map = { bizum: "Bizum", transferencia: "Transferencia bancaria" };
+    const map = { card: "Tarjeta", datafono: "Datáfono", cash: "Efectivo" };
     return map[method] ?? method;
 };
 
@@ -108,7 +97,6 @@ const ConfirmacionPedido = () => {
 
     const productos = pedido.productos || [];
     const fechaPedido = formatDate(pedido.created_at) || "Pendiente";
-    const justificante = formatDateTime(pedido.proof_uploaded_at);
 
     return (
         <Layout1>
@@ -151,12 +139,6 @@ const ConfirmacionPedido = () => {
                             </p>
                             <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
                                 <StatusPill
-                                    active={pedido.pagado}
-                                    activeLabel="Pagado"
-                                    inactiveLabel="Pago pendiente"
-                                    icon={CreditCard}
-                                />
-                                <StatusPill
                                     active={pedido.entregado}
                                     activeLabel="Entregado"
                                     inactiveLabel="Pendiente de envío"
@@ -192,15 +174,6 @@ const ConfirmacionPedido = () => {
                                 icon={CreditCard}
                                 label="Método de pago"
                                 value={paymentLabel(pedido.payment_method)}
-                            />
-                            <InfoRow
-                                icon={FileCheck2}
-                                label="Justificante"
-                                value={
-                                    justificante
-                                        ? `Subido el ${justificante}`
-                                        : "Pendiente"
-                                }
                             />
                         </div>
                     </div>
@@ -274,20 +247,20 @@ const ConfirmacionPedido = () => {
                         </div>
                     </div>
 
-                    {/* Aviso de validación de pago manual */}
+                    {/* Aviso de seguimiento del pedido */}
                     <div className="mt-6 flex items-start gap-3 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4">
                         <ReceiptText className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
                         <p className="text-sm text-sky-900">
                             {isAdmin ? (
                                 <>
-                                    Revisa el justificante y actualiza el estado de pago o entrega desde el{" "}
+                                    Actualiza el estado de entrega desde el{" "}
                                     <span className="font-semibold">gestor de pedidos</span>. Referencia:{" "}
                                     <span className="font-semibold">#{pedido.id}</span>.
                                 </>
                             ) : (
                                 <>
-                                    Hemos recibido tu justificante de pago. Nuestro equipo lo verificará y
-                                    actualizará el estado del pedido. Para cualquier consulta, indícanos el
+                                    Tu pago está confirmado. Te avisaremos cuando el pedido esté listo para
+                                    recoger en el club. Para cualquier consulta, indícanos el
                                     identificador <span className="font-semibold">#{pedido.id}</span>.
                                 </>
                             )}

@@ -9,6 +9,7 @@ return [
     [
         'title' => 'El Kit del Surfista: Guía Esencial de Equipamiento',
         'slug' => 'el-kit-del-surfista-guia-esencial-de-equipamiento',
+        'cover_image' => null,
         'excerpt' => 'Para entrar al agua a disfrutar de una sesión de surf, existen ciertos elementos indispensables que todo surfista debe tener en su equipamiento básico: Tabla de surf Neopreno…',
         'content' => <<<'HTML'
 <p>Para entrar al agua a disfrutar de una sesión de surf, existen ciertos elementos indispensables que todo surfista debe tener en su equipamiento básico:</p>
@@ -30,6 +31,7 @@ HTML,
     [
         'title' => 'Guía Práctica: Cómo Reparar una Tabla de Surf',
         'slug' => 'guia-practica-como-reparar-una-tabla-de-surf',
+        'cover_image' => '/img/taller/reparar-tabla-surf-solarez-paso-a-paso.webp',
         'excerpt' => 'Toques pequeños con resina UV (Solarez), tipos según material y cuándo dejar la reparación en un taller profesional como Edy.',
         'content' => <<<'HTML'
 <figure>
@@ -76,6 +78,7 @@ HTML,
     [
         'title' => 'Manual de Surf: Seguridad, Convivencia y Localismo',
         'slug' => 'manual-de-surf-seguridad-convivencia-y-localismo',
+        'cover_image' => '/img/taller/normas-prioridad-surf-lineup.webp',
         'excerpt' => 'Normas de prioridad en el pico, distancia de seguridad, convivencia y localismo explicados con sentido común para compartir el agua.',
         'content' => <<<'HTML'
 <figure>
@@ -118,6 +121,7 @@ HTML,
     [
         'title' => '¿Cuál es la Tabla de Surf Ideal para Aprender?',
         'slug' => 'cual-es-la-tabla-de-surf-ideal-para-aprender',
+        'cover_image' => '/img/taller/softboard-tabla-principiantes-espuma.webp',
         'excerpt' => 'Para empezar, prioriza softboard (espuma): más estable y mucho más segura que una tabla de fibra. Aquí el tipo de tabla, no los litros.',
         'content' => <<<'HTML'
 <figure>
@@ -156,6 +160,7 @@ HTML,
     [
         'title' => '¿Cómo saber si tu Tabla de Surf se ha quedado Pequeña?',
         'slug' => 'como-saber-si-tu-tabla-de-surf-se-ha-quedado-pequena',
+        'cover_image' => '/img/taller/progresion-cambiar-tabla-surf.webp',
         'excerpt' => 'Señales claras de que tu tabla se quedó pequeña o de que bajaste de volumen demasiado pronto. Guía de progresión, no de primera compra.',
         'content' => <<<'HTML'
 <figure>
@@ -197,6 +202,7 @@ HTML,
     [
         'title' => '¿Qué Debo Tener en Cuenta al Reservar una Clase de Surf?',
         'slug' => 'que-debo-tener-en-cuenta-al-reservar-una-clase-de-surf',
+        'cover_image' => '/img/taller/reservar-clase-surf-checklist.webp',
         'excerpt' => 'Checklist antes de reservar: ratio instructor/alumnos, material, playa, seguro y cancelación. Útil si vas a elegir escuela en Zurriola u otra costa.',
         'content' => <<<'HTML'
 <figure>
@@ -237,6 +243,7 @@ HTML,
     [
         'title' => 'Guía de Corrientes en la Playa: Cómo Detectarlas, Utilizarlas y Surfear Seguro',
         'slug' => 'guia-de-corrientes-en-la-playa-como-detectarlas-utilizarlas-y-surfear-seguro',
+        'cover_image' => '/img/taller/corrientes-resaca-playa-senales.webp',
         'excerpt' => 'Cómo detectar corrientes de resaca, qué hacer si te atrapan y cómo las usan los surfistas con seguridad en playas abiertas.',
         'content' => <<<'HTML'
 <figure>
@@ -281,6 +288,7 @@ HTML,
     [
         'title' => '¿Qué Aprenderé en mi Primera Clase de Surf? (Y Guía de Preguntas Frecuentes)',
         'slug' => 'que-aprendere-en-mi-primera-clase-de-surf-y-guia-de-preguntas-frecuentes',
+        'cover_image' => '/img/taller/primera-clase-surf-teoria-arena.webp',
         'excerpt' => 'Teoría, práctica en arena, remada y primeras espumas: estructura típica de tu primera clase de surf y FAQ para llegar con menos nervios.',
         'content' => <<<'HTML'
 <figure>
@@ -326,6 +334,7 @@ HTML,
     [
         'title' => '¿De Qué Materiales Está Hecha una Tabla de Surf? Guía de Componentes',
         'slug' => 'de-que-materiales-esta-hecha-una-tabla-de-surf-guia-de-componentes',
+        'cover_image' => '/img/taller/materiales-tabla-surf-epoxi-poliester.webp',
         'excerpt' => 'Foam, resina epoxi o poliéster y fibra de vidrio: de qué está hecha una tabla y por qué importa al elegir y reparar.',
         'content' => <<<'HTML'
 <figure>
@@ -365,6 +374,7 @@ HTML,
     [
         'title' => '¿A Qué Edad Puede un Niño Comenzar a Surfear? Etapas y Consejos',
         'slug' => 'a-que-edad-puede-un-nino-comenzar-a-surfear-etapas-y-consejos',
+        'cover_image' => '/img/taller/ninos-iniciacion-surf-playa.webp',
         'excerpt' => 'Etapas por edad para empezar a surfear, enfoque lúdico vs técnico y consejos de seguridad para familias en la playa.',
         'content' => <<<'HTML'
 <figure>
@@ -409,6 +419,7 @@ HTML,
     [
         'title' => 'Guía Completa: Partes de una Tabla de Surf y sus Funciones',
         'slug' => 'guia-completa-partes-de-una-tabla-de-surf-y-sus-funciones',
+        'cover_image' => '/img/taller/partes-tabla-surf-diagrama-etiquetado.webp',
         'excerpt' => 'Nose, rocker, rails, deck, bottom, tail y quillas: anatomía clara de una tabla de surf para entender para qué sirve cada parte.',
         'content' => <<<'HTML'
 <figure>
@@ -451,6 +462,7 @@ HTML,
     [
         'title' => 'Medidas de las Tablas de Surf: La Guía Definitiva para Elegir tu Tabla',
         'slug' => 'medidas-de-las-tablas-de-surf-la-guia-definitiva-para-elegir-tu-tabla',
+        'cover_image' => '/img/taller/volumen-litros-tabla-surf-guia.webp',
         'excerpt' => 'Longitud, ancho, grosor y volumen en litros: cómo leer las medidas de una tabla según peso y nivel sin quedarte corto de flotación.',
         'content' => <<<'HTML'
 <figure>
@@ -498,6 +510,7 @@ HTML,
     [
         'title' => 'Guía de Olas y Rompientes: Tipos, Fondos y Factores que Influyen en el Surf',
         'slug' => 'guia-de-olas-y-rompientes-tipos-fondos-y-factores-que-influyen-en-el-surf',
+        'cover_image' => '/img/taller/tipos-rompientes-beach-reef-point.webp',
         'excerpt' => 'Beach break, reef y point break: cómo cambia la ola según el fondo y qué implica para nivel y seguridad.',
         'content' => <<<'HTML'
 <figure>
@@ -531,6 +544,7 @@ HTML,
     [
         'title' => '¿Dónde Colocarse en el Agua para Coger Más Olas? Guía de Posicionamiento',
         'slug' => 'donde-colocarse-en-el-agua-para-coger-mas-olas-guia-de-posicionamiento',
+        'cover_image' => '/img/taller/posicionamiento-pico-surf-referencias.webp',
         'excerpt' => 'Observar desde tierra, fijar referencias y mantenerse en el pico: táctica de posicionamiento para coger más olas.',
         'content' => <<<'HTML'
 <figure>
@@ -573,6 +587,7 @@ HTML,
     [
         'title' => '¿Qué Titulación se Necesita para Impartir Clases de Surf en España',
         'slug' => 'que-titulacion-se-necesita-para-impartir-clases-de-surf-en-espana',
+        'cover_image' => null,
         'excerpt' => 'Si estás pensando en formarte para trabajar como instructor de surf, es muy probable que te asalten las dudas ante la variedad de opciones: ¿TD1 de la Federación Española? ¿El…',
         'content' => <<<'HTML'
 <p>Si estás pensando en formarte para trabajar como instructor de surf, es muy probable que te asalten las dudas ante la variedad de opciones: ¿TD1 de la Federación Española? ¿El título de la ISA? ¿Las certificaciones de las federaciones autonómicas (Vasca, Cántabra, Gallega...)? Elegir correctamente es vital, ya que una mala decisión te puede impedir ejercer legalmente en el mercado laboral. En España el marco formativo se divide principalmente en tres vertientes. A continuación, analizamos detalladamente la validez, ventajas e inconvenientes de cada una de ellas.</p>
@@ -595,6 +610,7 @@ HTML,
     [
         'title' => '¿Cómo hacer el pato en surf? (Duck Dive)',
         'slug' => 'como-hacer-el-pato-en-surf-duck-dive',
+        'cover_image' => '/img/taller/duck-dive-pato-surf-tecnica.webp',
         'excerpt' => 'Cómo hacer el pato (duck dive): pasos, timing, errores habituales y alternativa tipo tortuga en tablas con mucho volumen.',
         'content' => <<<'HTML'
 <figure>
@@ -637,6 +653,7 @@ HTML,
     [
         'title' => 'Cómo interpretar el parte de olas: Guía avanzada para surfistas',
         'slug' => 'como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas',
+        'cover_image' => '/img/taller/interpretar-parte-olas-periodo-swell.webp',
         'excerpt' => 'Altura, período, dirección y viento: qué mirar primero en un forecast para no engañarte solo con el tamaño de ola.',
         'content' => <<<'HTML'
 <figure>
@@ -675,6 +692,7 @@ HTML,
     [
         'title' => '¿Cómo saber en qué dirección rompe una ola?',
         'slug' => 'como-saber-en-que-direccion-rompe-una-ola',
+        'cover_image' => '/img/taller/ola-derecha-izquierda-explicacion.webp',
         'excerpt' => 'Regla del punto de vista del surfista: cómo saber si una ola es de derecha o de izquierda sin confundirte desde la playa.',
         'content' => <<<'HTML'
 <figure>

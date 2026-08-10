@@ -34,7 +34,7 @@ final class BookingController extends Controller
         $data      = $request->validated();
         $surfboard = Surfboard::query()->findOrFail($data['surfboard_id']);
 
-        // 1. Crear la reserva (estado pending) — sin proof file
+        // 1. Crear la reserva (estado pending)
         try {
             $window = $this->bookingService->buildWindow($request->toRentalRequest());
 
@@ -47,7 +47,6 @@ final class BookingController extends Controller
                     'client_phone'   => $data['client_phone'] ?? null,
                     'payment_method' => 'card',
                 ],
-                proofFile: null,
                 userId: $request->user()?->id,
                 // Va directa a Stripe Checkout: si el cliente abandona el pago,
                 // la tabla se libera en minutos, no tras 7 días de gracia.

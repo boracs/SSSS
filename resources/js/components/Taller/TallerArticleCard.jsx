@@ -17,8 +17,25 @@ function accentForIndex(index) {
     return CARD_ACCENTS[index % CARD_ACCENTS.length];
 }
 
+function CoverThumb({ src, alt, className = "" }) {
+    if (!src) return null;
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            width={128}
+            height={96}
+            loading="lazy"
+            decoding="async"
+            className={`object-cover ${className}`}
+        />
+    );
+}
+
 export function TallerArticleCard({ article, index = 0, featured = false }) {
     const accent = accentForIndex(index);
+    const cover = article?.cover_image || null;
 
     if (featured) {
         return (
@@ -41,27 +58,39 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
                     }}
                 />
 
-                <div className="relative flex min-h-[280px] flex-col justify-between p-7 sm:p-9 lg:min-h-[320px]">
-                    <div>
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/95 backdrop-blur-sm">
-                            <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
-                            Destacado
-                        </span>
-                        <h2 className="mt-5 font-heading text-2xl font-extrabold leading-tight text-white sm:text-3xl lg:max-w-xl">
-                            {article.title}
-                        </h2>
-                        <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/85 sm:text-base">
-                            {article.excerpt}
-                        </p>
-                    </div>
+                <div className="relative flex min-h-[280px] flex-col lg:min-h-[300px] lg:flex-row lg:items-stretch">
+                    {cover ? (
+                        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden border-b border-white/15 lg:aspect-auto lg:w-[42%] lg:border-b-0 lg:border-l lg:border-white/15 lg:order-2">
+                            <CoverThumb
+                                src={cover}
+                                alt=""
+                                className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-105"
+                            />
+                        </div>
+                    ) : null}
 
-                    <Link
-                        href={route("taller.show", article.slug)}
-                        className="mt-8 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#0f5f74] shadow-lg transition hover:scale-[1.02] hover:shadow-xl"
-                    >
-                        Leer ahora
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-                    </Link>
+                    <div className="flex min-w-0 flex-1 flex-col justify-between p-6 sm:p-8 lg:p-9">
+                        <div>
+                            <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/95 backdrop-blur-sm">
+                                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                                Destacado
+                            </span>
+                            <h2 className="mt-4 font-heading text-2xl font-extrabold leading-tight text-white sm:mt-5 sm:text-3xl">
+                                {article.title}
+                            </h2>
+                            <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/85 sm:mt-4 sm:text-base">
+                                {article.excerpt}
+                            </p>
+                        </div>
+
+                        <Link
+                            href={route("taller.show", article.slug)}
+                            className="mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#0f5f74] shadow-lg transition hover:scale-[1.02] hover:shadow-xl sm:mt-8"
+                        >
+                            Leer ahora
+                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                        </Link>
+                    </div>
                 </div>
             </motion.article>
         );
@@ -80,30 +109,52 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
         >
             <div className={`h-1.5 w-full bg-gradient-to-r ${accent}`} aria-hidden />
 
-            <div className="flex flex-1 flex-col p-6 sm:p-7">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f5f74]/10 to-cyan-500/15 text-[#0f5f74]">
-                        <BookOpen className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                        Guía #{String(index + 1).padStart(2, "0")}
-                    </span>
+            {cover ? (
+                <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 sm:hidden">
+                    <CoverThumb
+                        src={cover}
+                        alt=""
+                        className="h-full w-full transition duration-500 group-hover:scale-105"
+                    />
+                </div>
+            ) : null}
+
+            <div className="flex flex-1 items-start gap-4 p-5 sm:gap-5 sm:p-6">
+                <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f5f74]/10 to-cyan-500/15 text-[#0f5f74]">
+                            <BookOpen className="h-4 w-4" aria-hidden="true" />
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                            Guía #{String(index + 1).padStart(2, "0")}
+                        </span>
+                    </div>
+
+                    <h2 className="line-clamp-3 font-heading text-lg font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#0f5f74] sm:text-xl">
+                        {article.title}
+                    </h2>
+                    <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-slate-600 sm:line-clamp-3">
+                        {article.excerpt}
+                    </p>
+
+                    <Link
+                        href={route("taller.show", article.slug)}
+                        className="mt-auto inline-flex items-center gap-2 pt-4 text-sm font-semibold text-cyan-700 transition-colors group-hover:text-[#0f5f74] sm:pt-5"
+                    >
+                        Ver más
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                    </Link>
                 </div>
 
-                <h2 className="line-clamp-3 min-h-[4.5rem] font-heading text-lg font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#0f5f74] sm:min-h-[5.25rem] sm:text-xl">
-                    {article.title}
-                </h2>
-                <p className="mt-3 line-clamp-3 flex-1 text-sm leading-relaxed text-slate-600">
-                    {article.excerpt}
-                </p>
-
-                <Link
-                    href={route("taller.show", article.slug)}
-                    className="mt-auto inline-flex items-center gap-2 pt-6 text-sm font-semibold text-cyan-700 transition-colors group-hover:text-[#0f5f74]"
-                >
-                    Ver más
-                    <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                </Link>
+                {cover ? (
+                    <div className="hidden w-[5.75rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:block md:w-28">
+                        <CoverThumb
+                            src={cover}
+                            alt=""
+                            className="aspect-square w-full transition duration-500 group-hover:scale-105"
+                        />
+                    </div>
+                ) : null}
             </div>
         </motion.article>
     );
@@ -183,21 +234,43 @@ export function TallerRelatedArticles({
                     >
                         <Link
                             href={route("taller.show", article.slug)}
-                            className="group flex h-full w-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:border-cyan-300/60 hover:shadow-md"
+                            className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition hover:border-cyan-300/60 hover:shadow-md"
                         >
-                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-700">
-                                Artículo
-                            </p>
-                            <h3 className="mt-2 line-clamp-3 min-h-[4.5rem] font-heading text-base font-bold leading-snug text-slate-900 group-hover:text-[#0f5f74]">
-                                {article.title}
-                            </h3>
-                            <p className="mt-2 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-slate-600">
-                                {article.excerpt}
-                            </p>
-                            <span className="mt-auto inline-flex items-center gap-1.5 pt-5 text-sm font-semibold text-cyan-700 transition group-hover:gap-2 group-hover:text-[#0f5f74]">
-                                Leer artículo
-                                <ArrowRight className="h-4 w-4" aria-hidden />
-                            </span>
+                            {article.cover_image ? (
+                                <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 sm:hidden">
+                                    <CoverThumb
+                                        src={article.cover_image}
+                                        alt=""
+                                        className="h-full w-full transition duration-500 group-hover:scale-105"
+                                    />
+                                </div>
+                            ) : null}
+                            <div className="flex flex-1 items-start gap-3 p-4 sm:p-5">
+                                <div className="flex min-w-0 flex-1 flex-col">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-700">
+                                        Artículo
+                                    </p>
+                                    <h3 className="mt-2 line-clamp-3 font-heading text-base font-bold leading-snug text-slate-900 group-hover:text-[#0f5f74]">
+                                        {article.title}
+                                    </h3>
+                                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-600">
+                                        {article.excerpt}
+                                    </p>
+                                    <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-sm font-semibold text-cyan-700 transition group-hover:gap-2 group-hover:text-[#0f5f74]">
+                                        Leer artículo
+                                        <ArrowRight className="h-4 w-4" aria-hidden />
+                                    </span>
+                                </div>
+                                {article.cover_image ? (
+                                    <div className="hidden w-[4.5rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:block">
+                                        <CoverThumb
+                                            src={article.cover_image}
+                                            alt=""
+                                            className="aspect-square w-full transition duration-500 group-hover:scale-105"
+                                        />
+                                    </div>
+                                ) : null}
+                            </div>
                         </Link>
                     </motion.div>
                 ))}

@@ -13,6 +13,7 @@ use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PhotoSessionBooking;
 use App\Models\User;
 use App\Models\UserBono;
 use Illuminate\Support\Carbon;
@@ -35,12 +36,13 @@ final class FiscalInvoiceBuilderService
         }
 
         return match ($payableType) {
-            Pedido::class     => $this->fromPedido($payableId, $amountCents, $stripeSessionId),
-            UserBono::class   => $this->fromUserBono($payableId, $amountCents, $stripeSessionId),
-            Booking::class    => $this->fromBooking($payableId, $amountCents, $stripeSessionId),
+            Pedido::class => $this->fromPedido($payableId, $amountCents, $stripeSessionId),
+            UserBono::class => $this->fromUserBono($payableId, $amountCents, $stripeSessionId),
+            Booking::class => $this->fromBooking($payableId, $amountCents, $stripeSessionId),
             LessonUser::class => $this->fromLessonUser($payableId, $amountCents, $stripeSessionId),
-            PagoCuota::class  => $this->fromPagoCuota($payableId, $amountCents, $stripeSessionId),
-            default           => throw new UnsupportedFiscalPayableException(
+            PagoCuota::class => $this->fromPagoCuota($payableId, $amountCents, $stripeSessionId),
+            PhotoSessionBooking::class => $this->fromPhotoSessionBooking($payableId, $amountCents, $stripeSessionId),
+            default => throw new UnsupportedFiscalPayableException(
                 "Tipo de payable no soportado por FiscalInvoiceBuilderService: {$payableType}"
             ),
         };
@@ -160,6 +162,34 @@ final class FiscalInvoiceBuilderService
             invoiceDate: Carbon::now()->toDateString(),
             contact: $this->buildContact($pago->user),
             lines: [$this->line("Taquilla — {$planName}{$range}", $amountCents)],
+        );
+    }
+
+    private function fromPhotoSessionBooking(int $bookingId, int $amountCents, string $stripeSessionId): FiscalInvoiceDraftDto
+    {
+        $booking = PhotoSessionBooking::query()->with(['user', 'session'])->find($bookingId);
+
+        if ($booking === null) {
+            throw new MissingFiscalDataException("Reserva de fotos #{$bookingId} no encontrada.");
+        }
+
+        $contact = $this->buildContactForUser(
+            user: $booking->user,
+            fallbackName: $booking->displayName(),
+            fallbackEmail: $booking->guest_email,
+            context: "Reserva de fotos #{$bookingId}",
+        );
+
+        $sessionName = $booking->session?->nombre ?? 'Sesión de fotos';
+        $range = $this->formatDateRange($booking->fecha_inicio, $booking->fecha_fin);
+
+        return new FiscalInvoiceDraftDto(
+            payableType: PhotoSessionBooking::class,
+            payableId: $booking->id,
+            stripeSessionId: $stripeSessionId,
+            invoiceDate: Carbon::now()->toDateString(),
+            contact: $contact,
+            lines: [$this->line("Fotos — {$sessionName}{$range}", $amountCents)],
         );
     }
 

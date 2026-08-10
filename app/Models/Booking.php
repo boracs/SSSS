@@ -15,6 +15,11 @@ class Booking extends Model
 
     public const STATUS_PENDING = 'pending';
     public const STATUS_CONFIRMED = 'confirmed';
+    /**
+     * Reservado para cuando exista una acción real de "marcar tabla devuelta".
+     * Ningún flujo actual lo asigna; solo vive en scopeBlocking() por si algún
+     * día se usa, y se omite del filtro de estado en Admin/Bookings/Index.jsx.
+     */
     public const STATUS_COMPLETED = 'completed';
     public const STATUS_CANCELLED = 'cancelled';
 
@@ -23,6 +28,11 @@ class Booking extends Model
     public const PAYMENT_REJECTED = 'rejected';
     public const REFUND_PENDING = 'pending';
     public const REFUND_COMPLETED = 'completed';
+
+    /** Resto pendiente de cobrar en mostrador tras la señal online del 30 %. */
+    public const BALANCE_NONE = 'none';
+    public const BALANCE_PENDING = 'pending';
+    public const BALANCE_CONFIRMED = 'confirmed';
 
     protected $fillable = [
         'surfboard_id',
@@ -52,6 +62,9 @@ class Booking extends Model
         'total_price',
         'deposit_amount',
         'payment_proof_note',
+        'balance_status',
+        'balance_payment_method',
+        'balance_paid_at',
     ];
 
     protected $casts = [
@@ -73,11 +86,22 @@ class Booking extends Model
         'reviewed_at' => 'datetime',
         'total_price' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
+        'balance_paid_at' => 'datetime',
     ];
 
     public function surfboard(): BelongsTo
     {
         return $this->belongsTo(Surfboard::class, 'surfboard_id');
+    }
+
+    public function displayName(): string
+    {
+        $client = trim((string) ($this->client_name ?? ''));
+        if ($client !== '') {
+            return $client;
+        }
+
+        return trim((string) (($this->user?->nombre ?? '').' '.($this->user?->apellido ?? '')));
     }
 
     public function user(): BelongsTo
@@ -164,6 +188,28 @@ class Booking extends Model
         }
 
         return $query;
+    }
+
+    /**
+     * Importe (en céntimos) que todavía queda por cobrar en mostrador. Nunca
+     * negativo: si el depósito ya cubre el total, no queda resto.
+     */
+    public function remainingBalanceCents(): int
+    {
+        $remainingEuros = round(((float) $this->total_price) - ((float) $this->deposit_amount), 2);
+
+        return $remainingEuros > 0 ? (int) round($remainingEuros * 100) : 0;
+    }
+
+    /**
+     * Fuente de verdad de si queda un resto por cobrar en mostrador (datáfono
+     * o efectivo). Se fija explícitamente al confirmar el depósito online
+     * ({@see \App\Services\Payments\PaymentGatewayService::confirmBookingPayment()})
+     * y se resuelve al conciliar el resto por datáfono/efectivo.
+     */
+    public function hasBalanceDue(): bool
+    {
+        return $this->balance_status === self::BALANCE_PENDING;
     }
 
     /**

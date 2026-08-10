@@ -1,18 +1,19 @@
 <?php
 
 use App\Services\AttendanceNoteRelinker;
-use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
 // Alquiler: devuelve al inventario las tablas no recogidas (margen en config/rentals.php).
 Schedule::command('rentals:release-no-shows')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
+// Fotos: cancela checkouts Stripe abandonados (expires_at).
+Schedule::command('photos:cancel-expired')->everyFiveMinutes();
+// Taquilla: borra cuotas pendientes cuyo checkout Stripe se abandonó.
+Schedule::command('taquilla:purge-expired-pending')->everyFiveMinutes();
+// Alquiler: cancela reservas pendientes si no se pagó el depósito online a tiempo.
+Schedule::command('rentals:expire-pending-unpaid')->everyFiveMinutes();
 // Parte Zurriola: cada 6 h. Requiere crontab `* * * * * php artisan schedule:run` en servidor.
 Schedule::command('surf:generate-daily-brief', ['--force' => true])->everySixHours();
 

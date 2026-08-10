@@ -26,6 +26,12 @@ final class CaptureStripeReceiptJob implements ShouldQueue
 
     public function handle(StripeReceiptCaptureService $capture): void
     {
+        // Conciliación datáfono reutiliza PaymentConfirmed con session_id sintético
+        // (`datafono-{id}`); no hay Checkout Session de Stripe que capturar.
+        if (! str_starts_with($this->stripeSessionId, 'cs_')) {
+            return;
+        }
+
         $receipt = $capture->capture(
             stripeSessionId: $this->stripeSessionId,
             payableType: $this->payableType,

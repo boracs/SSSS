@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Pedido;
 use App\Models\User;
-use App\Models\Producto;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class PedidoFactory extends Factory
@@ -14,10 +13,31 @@ class PedidoFactory extends Factory
     public function definition()
     {
         return [
-            'user_id' => User::factory(), // Relación con User, crea un usuario automáticamente
-            'precio_total' => $this->faker->randomFloat(2, 10, 100), // Precio aleatorio entre 10 y 100
-            'pagado' => $this->faker->boolean, // Estado aleatorio de si está pagado o no
-            'entregado' => $this->faker->boolean, // Estado aleatorio de si ha sido entregado
+            'user_id' => User::factory(),
+            'precio_total' => $this->faker->randomFloat(2, 10, 100),
+            // Cobro por pasarela: un pedido visible/operativo nace pagado.
+            'pagado' => true,
+            'entregado' => false,
+            'payment_method' => 'card',
         ];
+    }
+
+    /** Pedido aún no confirmado por la pasarela (checkout incompleto). */
+    public function unpaid(): static
+    {
+        return $this->state(fn () => [
+            'pagado' => false,
+            'entregado' => false,
+            'payment_method' => null,
+        ]);
+    }
+
+    public function delivered(): static
+    {
+        return $this->state(fn () => [
+            'pagado' => true,
+            'entregado' => true,
+            'payment_method' => 'card',
+        ]);
     }
 }

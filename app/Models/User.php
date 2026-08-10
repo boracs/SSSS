@@ -13,10 +13,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 use App\Support\VipVirtualLocker;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
+use Illuminate\Auth\MustVerifyEmail;
+use App\Notifications\VerifyEmail as VerifyEmailNotification;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, MustVerifyEmail;
+
+    /**
+     * Envía la notificación de verificación de email encolada.
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification());
+    }
 
     /**
      * Atributos asignables en masa.
@@ -143,18 +154,6 @@ class User extends Authenticatable
     public function latestAttendanceNote(): HasOne
     {
         return $this->hasOne(AttendanceNote::class, 'user_id')->latestOfMany();
-    }
-
-    /**
-     * VIP con bono confirmado y pocas clases restantes (alerta renovación).
-     */
-    public function scopeNeedsRenewal(Builder $query): void
-    {
-        $query->where('is_vip', true)
-            ->whereHas('userBonos', function (Builder $q) {
-                $q->where('status', UserBono::STATUS_CONFIRMED)
-                    ->where('clases_restantes', '<=', 3);
-            });
     }
 
     // ===================================

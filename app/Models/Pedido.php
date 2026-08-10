@@ -16,6 +16,8 @@ class Pedido extends Model
      */
     protected $fillable = [
         'user_id',
+        'guest_name',
+        'guest_email',
         'precio_total',
         'pagado',
         'entregado',
@@ -34,6 +36,18 @@ class Pedido extends Model
     public function usuario()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function displayName(): string
+    {
+        $guest = trim((string) ($this->guest_name ?? ''));
+        if ($guest !== '') {
+            return $guest;
+        }
+
+        $usuario = $this->usuario;
+
+        return trim((string) (($usuario?->nombre ?? '').' '.($usuario?->apellido ?? '')));
     }
 
     /**

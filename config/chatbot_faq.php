@@ -102,7 +102,7 @@ return [
                 '/\b(como\s+(renovo|pago|amplio))\b.*\b(taquilla|cuota)\b/u',
             ],
             'handler' => 'static',
-            'response' => 'Para **renovar o ampliar tu taquilla**, entra en **Taquillas** en la web, elige el plan y completa el pago (tarjeta o transferencia según el flujo). '
+            'response' => 'Para **renovar o ampliar tu taquilla**, entra en **Taquillas** en la web, elige el plan y paga con **tarjeta** en la pasarela (o en el mostrador del club). '
                 .'Si ya tienes periodo activo, los días **se apilan** al final. '
                 .'¿Dudas con tu caso concreto? **WhatsApp** o revisa **Mis reservas** con tu usuario.',
             'priority' => 12,

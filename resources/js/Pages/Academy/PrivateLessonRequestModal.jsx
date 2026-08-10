@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { formatMonthYearMadridFromYearMonth } from "../../lib/madridTime";
-import { quotePrivateLesson } from "../../lib/privateLessonPricing";
+import {
+    formatEurosFromCents,
+    quotePrivateLesson,
+} from "../../lib/privateLessonPricing";
 import { ymd, startOfMonth, addMonths } from "./StudentCalendar";
 
 const fieldClass =
@@ -21,11 +24,9 @@ export default function PrivateLessonRequestModal({
     todayStr,
     onContinueToPayment,
 }) {
-    const authUser = usePage().props.auth?.user || null;
-    const privateDepositEur = Math.max(
-        0,
-        Number(usePage().props.academyPrivateLessonDepositEur ?? 7) || 7,
-    );
+    const pageProps = usePage().props;
+    const authUser = pageProps.auth?.user || null;
+    const privateLessonPricing = pageProps.academyPrivateLesson ?? null;
     const [privateDate, setPrivateDate] = useState(initialDate);
     const [privateDurationMode, setPrivateDurationMode] = useState("preset");
     const [privateDurationMinutes, setPrivateDurationMinutes] = useState(90);
@@ -44,19 +45,22 @@ export default function PrivateLessonRequestModal({
 
     const needsGuestContact = !authUser;
 
-    const priceQuote = useMemo(
-        () => quotePrivateLesson(participants.length),
-        [participants.length],
-    );
-    const depositNowEur = Math.min(privateDepositEur, priceQuote.totalEur);
-    const remainingEur = Math.max(0, priceQuote.totalEur - depositNowEur);
-
     const privateEffectiveDurationMinutes = useMemo(
         () =>
             privateDurationMode === "manual"
                 ? Math.max(30, Number(privateManualMinutes || 90))
                 : Number(privateDurationMinutes || 90),
         [privateDurationMode, privateManualMinutes, privateDurationMinutes],
+    );
+
+    const priceQuote = useMemo(
+        () =>
+            quotePrivateLesson(
+                privateLessonPricing,
+                participants.length,
+                privateEffectiveDurationMinutes,
+            ),
+        [privateLessonPricing, participants.length, privateEffectiveDurationMinutes],
     );
 
     const privateDurationLabel = useMemo(() => {
@@ -209,8 +213,8 @@ export default function PrivateLessonRequestModal({
                 start: selectedPrivateSlot.start,
                 duration_minutes: privateEffectiveDurationMinutes,
                 participants: people,
-                price: priceQuote.totalEur,
-                price_per_person: priceQuote.perPersonEur,
+                price_cents: priceQuote.totalCents,
+                deposit_cents: priceQuote.depositCents,
                 guest_first_name: first,
                 guest_last_name: last,
                 guest_email: email,
@@ -224,8 +228,8 @@ export default function PrivateLessonRequestModal({
             start: selectedPrivateSlot.start,
             duration_minutes: privateEffectiveDurationMinutes,
             participants: people,
-            price: priceQuote.totalEur,
-            price_per_person: priceQuote.perPersonEur,
+            price_cents: priceQuote.totalCents,
+            deposit_cents: priceQuote.depositCents,
         });
     };
 
@@ -572,12 +576,12 @@ export default function PrivateLessonRequestModal({
                                         </p>
                                         <p className="mt-0.5 text-xs text-gray-400">
                                             {priceQuote.people === 1
-                                                ? "1 persona"
-                                                : `${priceQuote.perPersonEur} € × ${priceQuote.people} personas`}
+                                                ? `1 persona · ${privateDurationLabel}`
+                                                : `${priceQuote.people} personas · ${privateDurationLabel}`}
                                         </p>
                                     </div>
                                     <p className="shrink-0 text-lg font-bold tabular-nums text-white">
-                                        {priceQuote.totalEur} €
+                                        {formatEurosFromCents(priceQuote.totalCents)}
                                     </p>
                                 </div>
                                 <div className="flex items-baseline justify-between gap-3 border-t border-white/10 pt-1.5 text-xs">
@@ -585,13 +589,13 @@ export default function PrivateLessonRequestModal({
                                         Señal ahora
                                     </span>
                                     <span className="font-semibold tabular-nums text-emerald-200">
-                                        {depositNowEur} €
+                                        {formatEurosFromCents(priceQuote.depositCents)}
                                     </span>
                                 </div>
-                                {remainingEur > 0 ? (
+                                {priceQuote.remainingCents > 0 ? (
                                     <p className="text-[11px] leading-snug text-gray-500">
-                                        El resto ({remainingEur} €) lo pagas después, al
-                                        completar la clase.
+                                        El resto ({formatEurosFromCents(priceQuote.remainingCents)})
+                                        lo pagas en la escuela el día de la clase.
                                     </p>
                                 ) : null}
                             </div>

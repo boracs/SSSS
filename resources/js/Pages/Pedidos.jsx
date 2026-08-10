@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { Head, usePage, Link } from "@inertiajs/react";
 import {
     Package,
-    CreditCard,
     Truck,
     ChevronRight,
     ShoppingBag,
@@ -152,12 +151,6 @@ const MostrarPedidos = () => {
 
                                     {/* Pie con estados */}
                                     <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
-                                        <StatusPill
-                                            active={pedido.pagado}
-                                            activeLabel="Pagado"
-                                            inactiveLabel="Pago pendiente"
-                                            icon={CreditCard}
-                                        />
                                         <StatusPill
                                             active={pedido.entregado}
                                             activeLabel="Entregado"

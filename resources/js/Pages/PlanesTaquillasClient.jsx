@@ -201,16 +201,7 @@ function PlanTimelineRow({ row, kind, onProofClick, compact = false }) {
                 >
                     {badge.label}
                 </span>
-                {paymentMethodLabel(row) === "Transferencia" && row.proof_url ? (
-                    <button
-                        type="button"
-                        onClick={() => onProofClick(row.proof_url)}
-                        className="shrink-0 text-[9px] font-semibold text-cyan-400 hover:underline sm:text-[10px]"
-                        title="Ver justificante"
-                    >
-                        PDF
-                    </button>
-                ) : row.status === "confirmed" && row.proof_url ? (
+                {row.status === "confirmed" && row.proof_url ? (
                     <button
                         type="button"
                         onClick={() => {
@@ -317,10 +308,9 @@ function paymentMethodLabel(row) {
     if (row?.status === "rejected") return "Fallido";
     if (row?.status === "pending") return "Pendiente";
     const method = String(row?.payment_method || "").toLowerCase();
-    if (method === "transferencia" || method === "bizum") return "Transferencia";
-    if (method === "tienda") return "Cortesía";
-    if (method === "domiciliado") return "Domiciliado";
     if (method === "card") return "Tarjeta";
+    if (method === "datafono") return "Datáfono";
+    if (method === "tienda") return "Cortesía";
     return "Pendiente";
 }
 
@@ -354,8 +344,6 @@ function PaymentSummaryRow({ label, value, highlight = false }) {
 export default function PlanesTaquillasClient({
     planes = [],
     userData = {},
-    paymentIban = "[IBAN]",
-    paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
 }) {
     const { flash } = usePage().props;
@@ -691,9 +679,9 @@ export default function PlanesTaquillasClient({
                         <h2 className="text-lg font-bold text-white sm:text-xl">Elige y renueva tu plan</h2>
                         {hasLocker ? (
                             <p className="mt-1 text-sm text-slate-400">
-                                Selecciona un plan para renovar tu cuota y continúa con las instrucciones de pago para
-                                enviar tu justificante. Si tu plan actual aún no ha caducado, no te preocupes: el nuevo
-                                periodo solo empezará a consumirse cuando termine el que tienes en vigor.
+                                Selecciona un plan para renovar tu cuota y completa el pago con tarjeta de forma
+                                segura. Si tu plan actual aún no ha caducado, no te preocupes: el nuevo periodo solo
+                                empezará a consumirse cuando termine el que tienes en vigor.
                             </p>
                         ) : (
                             <p className="mt-1 text-sm text-slate-400">

@@ -19,8 +19,6 @@ import {
 export default function SurfboardPublicDetail({
     board,
     onImageClick,
-    paymentIban,
-    paymentBizumNumber,
     whatsappHelpUrl,
     rentalPolicy = null,
     initialStart = null,
@@ -166,8 +164,6 @@ export default function SurfboardPublicDetail({
             <SurfboardBookingSection
                 key={board.id}
                 surfboard={board}
-                paymentIban={paymentIban}
-                paymentBizumNumber={paymentBizumNumber}
                 whatsappHelpUrl={whatsappHelpUrl}
                 rentalPolicy={rentalPolicy}
                 initialStart={initialStart}

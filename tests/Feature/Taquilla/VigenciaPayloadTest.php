@@ -30,7 +30,7 @@ function crearPagoConfirmado(User $user, PlanTaquilla $plan, string $inicio, str
         'id_plan_pagado' => $plan->id,
         'monto_pagado_cents' => 5000,
         'status' => PagoCuota::STATUS_CONFIRMED,
-        'payment_method' => 'transferencia',
+        'payment_method' => 'datafono',
         'periodo_inicio' => $inicio,
         'periodo_fin' => $fin,
         'fecha_pago' => $inicio,

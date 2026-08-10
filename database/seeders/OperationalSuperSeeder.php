@@ -412,7 +412,7 @@ class OperationalSuperSeeder extends Seeder
                 'status' => $status,
                 'payment_proof_path' => ($status === PagoCuota::STATUS_CONFIRMED || $pendingWithProof) ? "taquilla-proofs/seed/{$student->id}.pdf" : null,
                 'proof_uploaded_at' => ($status === PagoCuota::STATUS_CONFIRMED || $pendingWithProof) ? Carbon::now()->subDays(random_int(0, 3)) : null,
-                'payment_method' => ($status === PagoCuota::STATUS_CONFIRMED || $pendingWithProof) ? 'bizum' : null,
+                'payment_method' => ($status === PagoCuota::STATUS_CONFIRMED || $pendingWithProof) ? 'datafono' : null,
                 'periodo_inicio' => $start,
                 'periodo_fin' => $end,
                 'fecha_pago' => Carbon::now()->subDays(random_int(0, 10)),
@@ -459,7 +459,7 @@ class OperationalSuperSeeder extends Seeder
                 'payment_status' => $status === Booking::STATUS_PENDING ? Booking::PAYMENT_PENDING : Booking::PAYMENT_CONFIRMED,
                 'payment_proof_path' => $status === Booking::STATUS_PENDING ? null : "bookings/seed/{$student->id}.pdf",
                 'proof_uploaded_at' => $status === Booking::STATUS_PENDING ? null : Carbon::now()->subDay(),
-                'payment_method' => $status === Booking::STATUS_PENDING ? null : 'bizum',
+                'payment_method' => $status === Booking::STATUS_PENDING ? null : 'datafono',
                 'total_price' => $total,
                 'deposit_amount' => $deposit,
             ]);

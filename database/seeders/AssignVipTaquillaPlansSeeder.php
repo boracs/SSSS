@@ -85,7 +85,7 @@ class AssignVipTaquillaPlansSeeder extends Seeder
             'referencia_pago_externa' => $ref,
             'status' => PagoCuota::STATUS_CONFIRMED,
             'is_checked' => true,
-            'payment_method' => 'transferencia',
+            'payment_method' => 'card',
             'payment_proof_path' => null,
             'proof_uploaded_at' => null,
             'reviewed_at' => Carbon::now(),

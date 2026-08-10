@@ -243,8 +243,6 @@ function MyReservationsView() {
         isAdminView: isAdminViewRaw = false,
         targetUser = null,
         analysisNav = null,
-        paymentIban = "[IBAN]",
-        paymentBizumNumber = "[BIZUM_NUMBER]",
         whatsappHelpUrl = null,
         flash = {},
     } = props;
@@ -362,22 +360,14 @@ function MyReservationsView() {
         });
     };
 
-    const analysisListFrom = analysisNav?.from === "users" ? "users" : "vips";
-
     const targetDisplayName =
         [targetUser?.nombre, targetUser?.apellido]
             .filter(Boolean)
             .join(" ")
             .trim() || "Alumno";
 
-    const listBackHref =
-        analysisListFrom === "users"
-            ? route("admin.users.index")
-            : route("admin.vips.index");
-    const listBackLabel =
-        analysisListFrom === "users"
-            ? "Volver al listado de usuarios"
-            : "Volver al listado VIP";
+    const listBackHref = route("admin.users.index");
+    const listBackLabel = "Volver al listado de usuarios";
 
     const showAdminSkeleton = false;
 
@@ -482,21 +472,12 @@ function MyReservationsView() {
                             <span className="text-slate-300" aria-hidden>
                                 /
                             </span>
-                            {analysisListFrom === "users" ? (
-                                <Link
-                                    href={route("admin.users.index")}
-                                    className="hover:text-slate-800"
-                                >
-                                    Usuarios
-                                </Link>
-                            ) : (
-                                <Link
-                                    href={route("admin.vips.index")}
-                                    className="hover:text-slate-800"
-                                >
-                                    Usuarios VIP
-                                </Link>
-                            )}
+                            <Link
+                                href={route("admin.users.index")}
+                                className="hover:text-slate-800"
+                            >
+                                Usuarios
+                            </Link>
                             <span className="text-slate-300" aria-hidden>
                                 /
                             </span>

@@ -6,22 +6,26 @@ import {
     X as XIcon,
     ChevronDown,
     LogOut,
+    Pencil,
     UserCircle,
 } from "lucide-react";
 import BrandLogo from "./BrandLogo";
 import PressRipple from "./PressRipple";
 
-const HOVER_CLOSE_DELAY_MS = 150;
+const HOVER_CLOSE_DELAY_MS = 220;
+/** Margen de error (~20px) entre trigger y panel para no cerrar al cruzar el hueco. */
+const HOVER_BRIDGE_PX = "1.25rem"; // 20px
 
 function safeRoute(name, params, fallback = "#") {
     try {
-        return route(name, params);
+        // Rutas relativas: evita que Ziggy apunte a APP_URL/túnel distinto del host actual.
+        return route(name, params, false);
     } catch (e) {
         return fallback;
     }
 }
 
-function AccountMenuIdentity({ user, compact = false }) {
+function AccountMenuIdentity({ user, compact = false, nameAside = null }) {
     if (!user) return null;
 
     const displayName =
@@ -39,10 +43,15 @@ function AccountMenuIdentity({ user, compact = false }) {
             }
         >
             {displayName ? (
-                <p className="truncate text-xs font-semibold text-white">
-                    {displayName}
-                </p>
-            ) : null}
+                <div className="flex min-w-0 items-center gap-1">
+                    <p className="truncate text-xs font-semibold text-white">
+                        {displayName}
+                    </p>
+                    {nameAside}
+                </div>
+            ) : (
+                nameAside
+            )}
             {user.email ? (
                 <p className="truncate text-[10px] text-slate-500">
                     {user.email}
@@ -131,8 +140,8 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                         title: "Taquillas",
                         links: [
                             {
-                                label: "Planes",
-                                href: safeRoute("taquilla.index.admin"),
+                                label: "Esquema taquillas",
+                                href: safeRoute("taquilla.esquema"),
                                 featured: true,
                             },
                             {
@@ -190,16 +199,28 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                         ],
                     },
                     {
-                        title: "Clases",
+                        title: "Servicios",
                         links: [
                             {
-                                label: "Gestor de Clases",
-                                href: safeRoute("admin.class-manager.index"),
+                                label: "Gestor de servicios",
+                                href: safeRoute("admin.catalog.index"),
                                 featured: true,
                             },
                             {
-                                label: "Packs de Bonos",
+                                label: "Planes taquillas",
+                                href: safeRoute("taquilla.index.admin"),
+                            },
+                            {
+                                label: "Packs de Bonos VIP",
                                 href: safeRoute("admin.bonos.index"),
+                            },
+                            {
+                                label: "Gestor de Clases",
+                                href: safeRoute("admin.class-manager.index"),
+                            },
+                            {
+                                label: "Packs de fotos",
+                                href: safeRoute("admin.photos.index"),
                             },
                         ],
                     },
@@ -221,33 +242,19 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 href: safeRoute("admin.users.index"),
                                 featured: true,
                             },
-                            {
-                                label: "Seguimiento VIP",
-                                href: safeRoute("admin.vips.index"),
-                            },
-                            {
-                                label: "Lista de Usuarios",
-                                href: safeRoute("listaUsuarios"),
-                            },
                         ],
                     },
                     {
                         title: "Pagos",
                         links: [
                             {
-                                label: "Dashboard Global",
-                                href: safeRoute("admin.payments.global"),
+                                label: "Pagos datáfono",
+                                href: safeRoute("admin.payments.datafono.index"),
                                 featured: true,
                             },
                             {
                                 label: "Clientes · Historial de pagos",
                                 href: safeRoute("admin.payments.clients.index"),
-                            },
-                            {
-                                label: "Validacion de Bonos",
-                                href: safeRoute(
-                                    "admin.payment-validation.index",
-                                ),
                             },
                         ],
                     },
@@ -485,7 +492,7 @@ function scrollToHrefHash(href) {
 
 function FlyoutGroup({ group }) {
     return (
-        <div className="min-w-[170px] max-w-[230px] flex-1">
+        <div className="min-w-0">
             <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-cyan-300/70">
                 {group.title}
             </h3>
@@ -496,7 +503,7 @@ function FlyoutGroup({ group }) {
                             as={Link}
                             href={link.href}
                             onClick={() => scrollToHrefHash(link.href)}
-                            className="block rounded-lg py-1.5 pl-3 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
+                            className="block rounded-lg py-1.5 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
                         >
                             {link.label}
                         </PressRipple>
@@ -530,7 +537,38 @@ export default function GlobalNav() {
     const [activeMenuId, setActiveMenuId] = useState(null);
     const [mobileOpen, setMobileOpen] = useState(false);
     const [mobileSection, setMobileSection] = useState(null);
+    const [mobileAccountOpen, setMobileAccountOpen] = useState(false);
     const [accountOpen, setAccountOpen] = useState(false);
+    const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+    const accountWrapRef = useRef(null);
+    const accountCloseTimerRef = useRef(null);
+
+    const clearAccountCloseTimer = useCallback(() => {
+        if (accountCloseTimerRef.current) {
+            window.clearTimeout(accountCloseTimerRef.current);
+            accountCloseTimerRef.current = null;
+        }
+    }, []);
+
+    const openAccountMenu = useCallback(() => {
+        clearAccountCloseTimer();
+        setAccountOpen(true);
+    }, [clearAccountCloseTimer]);
+
+    const scheduleAccountClose = useCallback(() => {
+        clearAccountCloseTimer();
+        accountCloseTimerRef.current = window.setTimeout(
+            () => setAccountOpen(false),
+            HOVER_CLOSE_DELAY_MS,
+        );
+    }, [clearAccountCloseTimer]);
+
+    const performLogout = useCallback(() => {
+        setLogoutConfirmOpen(false);
+        setMobileOpen(false);
+        setAccountOpen(false);
+        router.post(safeRoute("logout"));
+    }, []);
 
     const activeMenu =
         menus.find((m) => m.id === activeMenuId && m.type === "flyout") ?? null;
@@ -575,7 +613,40 @@ export default function GlobalNav() {
         return () => document.removeEventListener("keydown", onKeyDown);
     }, [closePanel]);
 
+    // Cerrar menú de cuenta al clic fuera (no al cruzar el hueco hacia el panel).
+    useEffect(() => {
+        if (!accountOpen) return;
+        const onPointerDown = (e) => {
+            const root = accountWrapRef.current;
+            if (root && !root.contains(e.target)) {
+                setAccountOpen(false);
+            }
+        };
+        document.addEventListener("pointerdown", onPointerDown);
+        return () => document.removeEventListener("pointerdown", onPointerDown);
+    }, [accountOpen]);
+
     useEffect(() => () => clearCloseTimer(), [clearCloseTimer]);
+    useEffect(() => () => clearAccountCloseTimer(), [clearAccountCloseTimer]);
+
+    // Diálogo de logout: Escape lo cierra y bloquea el scroll del body mientras está abierto.
+    useEffect(() => {
+        if (!logoutConfirmOpen) return;
+        const onKeyDown = (e) => {
+            if (e.key === "Escape") setLogoutConfirmOpen(false);
+        };
+        const prevOverflow = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        document.addEventListener("keydown", onKeyDown);
+        return () => {
+            document.body.style.overflow = prevOverflow;
+            document.removeEventListener("keydown", onKeyDown);
+        };
+    }, [logoutConfirmOpen]);
+
+    useEffect(() => {
+        if (!mobileOpen) setMobileAccountOpen(false);
+    }, [mobileOpen]);
 
     const accountLinks = [
         { label: "Editar mi cuenta", href: safeRoute("profile.edit") },
@@ -606,6 +677,11 @@ export default function GlobalNav() {
             );
         }
     }
+
+    /** Móvil «Mi espacio»: mismos links personales sin duplicar Editar mi cuenta. */
+    const mobileSpaceLinks = accountLinks.filter(
+        (link) => link.label !== "Editar mi cuenta",
+    );
 
     return (
         <div
@@ -690,8 +766,9 @@ export default function GlobalNav() {
                 <div className="flex shrink-0 items-center gap-2">
                     {isAuth && !isAdmin ? (
                         <Link
-                            href={safeRoute("carrito")}
+                            href={safeRoute("carrito", undefined, "/carrito")}
                             aria-label="Carrito"
+                            title="Ver carrito"
                             className="relative inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
                         >
                             <ShoppingCart className="h-5 w-5" />
@@ -707,27 +784,44 @@ export default function GlobalNav() {
                         <div className="hidden items-center gap-2 lg:flex">
                             <button
                                 type="button"
-                                onClick={() => router.post(safeRoute("logout"))}
-                                className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
+                                onClick={() => setLogoutConfirmOpen(true)}
+                                title="Cerrar sesión"
+                                className="group inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-red-400/30 hover:bg-red-500/10 hover:text-red-300"
                             >
-                                <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                 Salir
+                                <LogOut className="h-3.5 w-3.5 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" aria-hidden />
                             </button>
                             <div
+                                ref={accountWrapRef}
                                 className="relative"
-                                onMouseLeave={() => setAccountOpen(false)}
+                                onMouseEnter={openAccountMenu}
+                                onMouseLeave={scheduleAccountClose}
                             >
+                                {/* Hit-area ampliada ~20px alrededor del icono */}
+                                <div
+                                    className="absolute -inset-5 z-0"
+                                    aria-hidden
+                                />
                                 <button
                                     type="button"
                                     aria-label="Mi cuenta"
                                     aria-expanded={accountOpen}
-                                    onClick={() => setAccountOpen((v) => !v)}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
+                                    aria-haspopup="menu"
+                                    onClick={() =>
+                                        setAccountOpen((v) => !v)
+                                    }
+                                    className="relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
                                 >
                                     <UserCircle className="h-6 w-6" />
                                 </button>
                                 <div
-                                    className={`absolute right-0 top-full z-[40] w-56 pt-2 transition-all ${accountOpen ? "opacity-100" : "pointer-events-none -translate-y-1 opacity-0"}`}
+                                    role="menu"
+                                    className={`absolute right-0 top-full z-[40] w-56 transition-all ${
+                                        accountOpen
+                                            ? "pointer-events-auto opacity-100"
+                                            : "pointer-events-none -translate-y-1 opacity-0"
+                                    }`}
+                                    style={{ paddingTop: HOVER_BRIDGE_PX }}
                                 >
                                     <div className="rounded-2xl border border-white/10 bg-[#040b16] p-2 shadow-xl">
                                         <AccountMenuIdentity user={user} />
@@ -736,6 +830,7 @@ export default function GlobalNav() {
                                                 key={link.label}
                                                 as={Link}
                                                 href={link.href}
+                                                role="menuitem"
                                                 onClick={() =>
                                                     setAccountOpen(false)
                                                 }
@@ -781,9 +876,18 @@ export default function GlobalNav() {
                 </div>
             </nav>
 
+            {/* Puente invisible ~20px entre la barra y el flyout */}
+            {panelOpen ? (
+                <div
+                    className="absolute inset-x-0 top-full z-[39] h-5 -translate-y-full"
+                    onMouseEnter={clearCloseTimer}
+                    aria-hidden
+                />
+            ) : null}
+
             {/* Panel flyout a todo el ancho (desktop) - fondo solido azulado */}
             <div
-                className={`absolute left-0 right-0 top-full w-full overflow-hidden border-t border-white/10 bg-[#040b16] shadow-2xl transition-[max-height,opacity] duration-300 ease-out ${panelOpen ? "max-h-[560px] opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
+                className={`absolute left-0 right-0 top-full w-full overflow-hidden border-t border-white/10 bg-[#040b16] shadow-2xl transition-[max-height,opacity] duration-300 ease-out ${panelOpen ? "max-h-[min(70vh,520px)] opacity-100" : "pointer-events-none max-h-0 opacity-0"}`}
                 onMouseEnter={clearCloseTimer}
                 onMouseLeave={scheduleClose}
             >
@@ -791,9 +895,9 @@ export default function GlobalNav() {
                     <div
                         role="region"
                         aria-labelledby={`${baseId}-trigger-${activeMenu.id}`}
-                        className="mx-auto max-w-7xl px-6 py-8"
+                        className="mx-auto max-h-[min(70vh,520px)] max-w-7xl overflow-y-auto overscroll-contain px-6 py-5 sm:py-6"
                     >
-                        <div className="flex flex-wrap gap-x-10 gap-y-8 lg:gap-x-14">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 lg:gap-x-12 lg:gap-y-8">
                             {activeMenu.groups.map((group) => (
                                 <FlyoutGroup key={group.title} group={group} />
                             ))}
@@ -808,43 +912,49 @@ export default function GlobalNav() {
                     <div className="mx-auto max-w-7xl px-4 py-3">
                         {isAuth ? (
                             <div className="mb-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                                <div className="mb-2 flex items-start gap-2.5">
+                                <div className="flex items-center gap-2">
                                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-500/15 text-cyan-200 ring-1 ring-cyan-400/25">
                                         <UserCircle className="h-5 w-5" aria-hidden />
                                     </div>
                                     <div className="min-w-0 flex-1 pt-0.5">
-                                        <AccountMenuIdentity user={user} compact />
+                                        <AccountMenuIdentity
+                                            user={user}
+                                            compact
+                                            nameAside={
+                                                <Link
+                                                    href={safeRoute("profile.edit")}
+                                                    onClick={() => setMobileOpen(false)}
+                                                    aria-label="Editar mi cuenta"
+                                                    title="Editar mi cuenta"
+                                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                                                >
+                                                    <Pencil className="h-3.5 w-3.5" aria-hidden />
+                                                </Link>
+                                            }
+                                        />
                                     </div>
+                                    <PressRipple
+                                        as="button"
+                                        type="button"
+                                        onClick={() => setLogoutConfirmOpen(true)}
+                                        title="Cerrar sesión"
+                                        aria-label="Cerrar sesión"
+                                        className="group inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-red-500/10 hover:text-red-300 active:bg-red-500/10 active:text-red-300"
+                                    >
+                                        <LogOut
+                                            className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5"
+                                            aria-hidden
+                                        />
+                                    </PressRipple>
                                 </div>
-                                <div className="space-y-0.5 border-t border-white/5 pt-2">
-                                    {accountLinks.map((link) => (
-                                        <PressRipple
-                                            key={link.label}
-                                            as={Link}
-                                            href={link.href}
-                                            onClick={() => setMobileOpen(false)}
-                                            className="block w-full rounded-lg py-2 pl-3 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
-                                        >
-                                            {link.label}
-                                        </PressRipple>
-                                    ))}
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setMobileOpen(false);
-                                        router.post(safeRoute("logout"));
-                                    }}
-                                    className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
-                                >
-                                    <LogOut className="h-4 w-4 shrink-0" aria-hidden />
-                                    Salir
-                                </button>
                             </div>
                         ) : (
                             <div className="mb-3 rounded-2xl border border-cyan-400/20 bg-gradient-to-b from-cyan-500/10 to-transparent p-3">
-                                <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-cyan-300/80">
+                                <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-cyan-300/80">
                                     Tu cuenta
+                                </p>
+                                <p className="mb-2.5 text-[11px] leading-snug text-slate-400">
+                                    Reserva clases y gestiona tu bono desde tu cuenta.
                                 </p>
                                 <div className="flex gap-2">
                                     <PressRipple
@@ -939,6 +1049,103 @@ export default function GlobalNav() {
                                 </div>
                             );
                         })}
+
+                        {isAuth && mobileSpaceLinks.length > 0 ? (
+                            <div className="border-b border-white/5">
+                                <PressRipple
+                                    as="button"
+                                    type="button"
+                                    aria-expanded={mobileAccountOpen}
+                                    onClick={() =>
+                                        setMobileAccountOpen((v) => !v)
+                                    }
+                                    className="flex w-full items-center justify-between gap-2 py-3 pl-3 pr-2 text-left"
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block text-sm font-semibold text-slate-100">
+                                            Mi espacio
+                                        </span>
+                                        <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
+                                            Clases, pedidos, alquileres, bonos…
+                                        </span>
+                                    </span>
+                                    <ChevronDown
+                                        className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+                                            mobileAccountOpen ? "rotate-180" : ""
+                                        }`}
+                                        aria-hidden
+                                    />
+                                </PressRipple>
+                                {mobileAccountOpen ? (
+                                    <div className="space-y-0.5 pb-3">
+                                        {mobileSpaceLinks.map((link) => (
+                                            <PressRipple
+                                                key={link.label}
+                                                as={Link}
+                                                href={link.href}
+                                                onClick={() =>
+                                                    setMobileOpen(false)
+                                                }
+                                                className="block w-full rounded-lg py-2 pl-3 pr-2 text-sm text-slate-400 transition-colors hover:text-white"
+                                            >
+                                                {link.label}
+                                            </PressRipple>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
+
+            {/* Dialogo de confirmacion de cierre de sesion */}
+            {logoutConfirmOpen ? (
+                <div
+                    className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm"
+                    onClick={() => setLogoutConfirmOpen(false)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="logout-confirm-title"
+                >
+                    <div
+                        className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#040b16] p-6 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-red-300 ring-1 ring-red-400/25">
+                                <LogOut className="h-5 w-5" aria-hidden />
+                            </div>
+                            <div>
+                                <h3
+                                    id="logout-confirm-title"
+                                    className="text-sm font-bold text-white"
+                                >
+                                    ¿Cerrar sesión?
+                                </h3>
+                                <p className="text-xs text-slate-400">
+                                    Volverás a la zona pública de la tienda.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                autoFocus
+                                onClick={() => setLogoutConfirmOpen(false)}
+                                className="flex-1 rounded-xl border border-white/15 px-3 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={performLogout}
+                                className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-red-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-red-950/40 transition-colors hover:bg-red-500"
+                            >
+                                <LogOut className="h-4 w-4 shrink-0" aria-hidden />
+                                Salir
+                            </button>
+                        </div>
                     </div>
                 </div>
             ) : null}

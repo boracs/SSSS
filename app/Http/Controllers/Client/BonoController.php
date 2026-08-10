@@ -157,8 +157,6 @@ class BonoController extends Controller
             'packs' => $packs,
             'myBonos' => $myBonos,
             'consumptionHistory' => $consumptionHistory,
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
             'vipActive' => $vipActive,
         ]);

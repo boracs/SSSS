@@ -88,7 +88,9 @@ const Producto = ({
             >
                 <div
                     className={[
-                        "relative overflow-hidden rounded-t-[inherit] bg-slate-800/70",
+                        // Pozo claro suave: las fotos de catálogo suelen venir con fondo blanco
+                        // y sobre navy generan un "parche". El gris absorbe ese blanco.
+                        "relative overflow-hidden rounded-t-[inherit] bg-gradient-to-b from-slate-200 to-slate-300/90",
                         isCompact ? "aspect-[5/4]" : "aspect-[4/3]",
                     ].join(" ")}
                 >
@@ -99,7 +101,8 @@ const Producto = ({
                         decoding="async"
                         onError={() => setImageSrc(demoCatalogImage(producto?.id, nombre))}
                         className={[
-                            "h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]",
+                            "h-full w-full object-contain transition-transform duration-500 ease-out group-hover:scale-[1.03]",
+                            isCompact ? "p-2" : "p-2.5 sm:p-3",
                             agotado ? "opacity-40 grayscale" : "",
                         ].join(" ")}
                     />

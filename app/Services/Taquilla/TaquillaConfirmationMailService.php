@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services\Taquilla;
 
 use App\Mail\Taquilla\PagoTaquillaConfirmadoMail;
-use App\Mail\Taquilla\PagoTaquillaRechazadoMail;
 use App\Models\PagoCuota;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
@@ -27,21 +26,6 @@ final class TaquillaConfirmationMailService
             pago: $pago,
             usuario: $usuario,
             lockerNumber: $lockerNumber ?? $usuario->numeroTaquilla,
-        ));
-    }
-
-    public function sendPagoRechazado(PagoCuota $pago, User $usuario, string $motivo): void
-    {
-        if (empty($usuario->email)) {
-            return;
-        }
-
-        $pago->loadMissing('plan');
-
-        Mail::to($usuario->email)->send(new PagoTaquillaRechazadoMail(
-            pago: $pago,
-            usuario: $usuario,
-            motivo: $motivo,
         ));
     }
 }

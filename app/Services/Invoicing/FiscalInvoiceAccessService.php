@@ -78,6 +78,7 @@ final class FiscalInvoiceAccessService
             $payable instanceof UserBono => (int) $payable->user_id === (int) $user->id,
             $payable instanceof PagoCuota => (int) $payable->user_id === (int) $user->id,
             $payable instanceof Pedido => (int) $payable->user_id === (int) $user->id,
+            $payable instanceof \App\Models\PhotoSessionBooking => (int) $payable->user_id === (int) $user->id,
             default => false,
         };
     }

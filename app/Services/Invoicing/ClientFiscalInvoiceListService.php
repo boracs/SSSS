@@ -13,6 +13,7 @@ use App\Models\FiscalInvoice;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PhotoSessionBooking;
 use App\Models\User;
 use App\Models\UserBono;
 use Illuminate\Database\Eloquent\Builder;
@@ -68,11 +69,12 @@ final class ClientFiscalInvoiceListService
         /** @var LengthAwarePaginator<int, FiscalInvoice> $paginator */
         $paginator = $query->orderByDesc('id')->paginate(self::PER_PAGE, ['*'], 'page', max(1, $page));
         $paginator->getCollection()->loadMorph('payable', [
-            Pedido::class     => [],
-            UserBono::class   => ['pack'],
-            Booking::class    => ['surfboard'],
+            Pedido::class => [],
+            UserBono::class => ['pack'],
+            Booking::class => ['surfboard'],
             LessonUser::class => ['lesson'],
-            PagoCuota::class  => ['plan'],
+            PagoCuota::class => ['plan'],
+            PhotoSessionBooking::class => ['session'],
         ]);
 
         $items = $paginator->getCollection()
@@ -142,6 +144,7 @@ final class ClientFiscalInvoiceListService
             $payable instanceof Booking => 'Alquiler '.($payable->surfboard?->name ?? 'tabla de surf'),
             $payable instanceof LessonUser => $payable->lesson?->title ?: 'Clase de surf',
             $payable instanceof PagoCuota => 'Taquilla — '.($payable->plan?->nombre ?? 'Plan de taquilla'),
+            $payable instanceof PhotoSessionBooking => 'Fotos — '.($payable->session?->nombre ?? 'Sesión'),
             default => 'Compra #'.$invoice->payable_id,
         };
     }

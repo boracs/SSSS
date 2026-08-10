@@ -13,6 +13,7 @@ class Article extends Model
         'title',
         'slug',
         'excerpt',
+        'cover_image',
         'content',
         'meta_title',
         'meta_description',

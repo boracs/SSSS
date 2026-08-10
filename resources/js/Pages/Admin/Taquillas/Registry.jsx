@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ExternalLink, Mail, Users } from "lucide-react";
+import { Download, ExternalLink, Mail, Users } from "lucide-react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import WhatsAppIcon from "../../../components/icons/WhatsAppIcon";
 import { SortableTh, compareRows as compareRowsByValue } from "../../../components/SortableTable";
@@ -29,18 +29,14 @@ function pagoUi(row) {
     if (method === "card" || row?.is_stripe_card) return "online";
     if (method === "datafono") return "datafono";
     if (method === "tienda") return "metalico";
-    if (method === "domiciliado") return "domiciliado";
-    if (method === "transferencia" || method === "bizum") return "transferencia";
     return "unassigned";
 }
 
 function paymentMethodLabel(state) {
     const labels = {
         online: "Online",
-        transferencia: "Transferencia",
-        datafono: "Datafono",
+        datafono: "Datáfono",
         metalico: "Cortesía",
-        domiciliado: "Domiciliado",
         failed: "Fallido",
         unassigned: "Sin asignar",
     };
@@ -49,10 +45,8 @@ function paymentMethodLabel(state) {
 
 function paymentMethodBadgeClass(state) {
     if (state === "online") return "bg-violet-900/40 text-violet-100 ring-violet-500/30";
-    if (state === "transferencia") return "bg-sky-900/35 text-sky-100 ring-sky-600/30";
     if (state === "datafono") return "bg-indigo-900/35 text-indigo-100 ring-indigo-600/30";
     if (state === "metalico") return "bg-emerald-900/35 text-emerald-100 ring-emerald-600/30";
-    if (state === "domiciliado") return "bg-cyan-900/35 text-cyan-100 ring-cyan-600/30";
     if (state === "failed") return "bg-rose-900/40 text-rose-100 ring-rose-500/35";
     return "bg-gray-800/80 text-gray-400 ring-gray-600/40";
 }
@@ -164,73 +158,6 @@ Mas Que Surf`;
     return { subject, body };
 }
 
-function buildLockerUserContactMessage(u, adminName) {
-    const nombre = firstName(u?.name);
-    const admin = adminName || "el equipo de Mas Que Surf";
-    const locker = u?.locker ? ` nº ${u.locker}` : "";
-    const daysRemaining = typeof u?.days_remaining === "number" ? u.days_remaining : null;
-    const hasPendingDays = daysRemaining !== null && daysRemaining < 0;
-    const isOverdue = Boolean(u?.is_expired) || hasPendingDays;
-
-    if (isOverdue || u?.up_to_date === false) {
-        const subject = "Tu taquilla en Mas Que Surf — renovación de cuota";
-        const body = `Hola ${nombre}, soy ${admin}.
-
-Te escribo porque vemos que tu taquilla${locker} lleva unos días pendientes de renovar.
-
-Para nosotros, a nivel organizativo, ayuda mucho mantener las cuotas al día. Si puedes actualizarla cuanto antes, te lo agradecemos.
-
-Un saludo,
-${admin}`;
-        return { subject, body };
-    }
-
-    const disponibilidad = taquillaAvailabilityLabel(u);
-    const estado = u?.up_to_date ? "al día y activa" : "próxima a vencer — conviene planificar la renovación";
-    const subject = "Tu taquilla en Mas Que Surf — estado de la cuota";
-    const body = `Buenos días, ${nombre}.
-
-Soy ${admin}, del equipo de Mas Que Surf. Te escribo para comentarte el estado de tu taquilla${locker}.
-
-El estado actual es ${estado}.
-Actualmente, ${disponibilidad}.
-
-Si quieres renovar o tienes cualquier duda, aquí nos tienes. ¡Gracias, ${nombre}!
-
-Un saludo,
-${admin}
-Mas Que Surf`;
-
-    return { subject, body };
-}
-
-function lockerUserSortValue(u, key) {
-    switch (key) {
-        case "locker":
-            return Number(u?.locker) || 999999;
-        case "remaining":
-            return typeof u?.days_remaining === "number" ? u.days_remaining : 999999;
-        default:
-            return 0;
-    }
-}
-
-function compareLockerUsers(a, b, key, dir) {
-    const va = lockerUserSortValue(a, key);
-    const vb = lockerUserSortValue(b, key);
-    const cmp = va - vb;
-    return dir === "asc" ? cmp : -cmp;
-}
-
-function lockerDaysLabel(daysRemaining) {
-    if (typeof daysRemaining !== "number") return "—";
-    if (daysRemaining < 0) {
-        const abs = Math.abs(daysRemaining);
-        return `-${abs} día${abs === 1 ? "" : "s"}`;
-    }
-    return `${daysRemaining} día${daysRemaining === 1 ? "" : "s"}`;
-}
-
 function buildTaquillaWhatsappLink(row, adminName) {
     const { body } = buildTaquillaContactMessage(row, adminName);
     return whatsappUrlFromPhone(row?.phone, body);
@@ -240,18 +167,6 @@ function buildTaquillaMailtoLink(row, adminName) {
     const email = String(row?.email || "").trim();
     if (!email) return null;
     const { subject, body } = buildTaquillaContactMessage(row, adminName);
-    return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-}
-
-function buildLockerWhatsappLink(u, adminName) {
-    const { body } = buildLockerUserContactMessage(u, adminName);
-    return whatsappUrlFromPhone(u?.phone, body);
-}
-
-function buildLockerMailtoLink(u, adminName) {
-    const email = String(u?.email || "").trim();
-    if (!email) return null;
-    const { subject, body } = buildLockerUserContactMessage(u, adminName);
     return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -290,44 +205,6 @@ function rowSortValue(row, key) {
 
 function compareRows(a, b, key, dir) {
     return compareRowsByValue(a, b, key, dir, rowSortValue);
-}
-
-const TAB_PAGOS = "pagos";
-const TAB_REASIGNAR = "reasignar";
-
-function SectionTabs({ active, onChange, pagosCount, sociosCount }) {
-    return (
-        <div className="grid grid-cols-2 gap-2 rounded-xl border border-gray-700 bg-gray-900/80 p-1">
-            <button
-                type="button"
-                onClick={() => onChange(TAB_PAGOS)}
-                className={`rounded-lg px-2 py-2.5 text-left text-xs font-semibold transition sm:px-3 sm:text-sm ${
-                    active === TAB_PAGOS
-                        ? "bg-sky-600 text-white shadow-sm"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
-            >
-                <span className="block">Registro de pagos</span>
-                <span className={`text-[10px] sm:text-xs ${active === TAB_PAGOS ? "text-sky-100" : "text-gray-500"}`}>
-                    {pagosCount} registros
-                </span>
-            </button>
-            <button
-                type="button"
-                onClick={() => onChange(TAB_REASIGNAR)}
-                className={`rounded-lg px-2 py-2.5 text-left text-xs font-semibold transition sm:px-3 sm:text-sm ${
-                    active === TAB_REASIGNAR
-                        ? "bg-sky-600 text-white shadow-sm"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
-            >
-                <span className="block">Reasignar</span>
-                <span className={`text-[10px] sm:text-xs ${active === TAB_REASIGNAR ? "text-sky-100" : "text-gray-500"}`}>
-                    {sociosCount} socios · cambio rápido de taquilla
-                </span>
-            </button>
-        </div>
-    );
 }
 
 function PaymentMobileCard({ row, adminName, onOpenProof }) {
@@ -378,48 +255,6 @@ function PaymentMobileCard({ row, adminName, onOpenProof }) {
             </div>
 
             <div className="mt-3 flex justify-end gap-2 border-t border-gray-700/80 pt-3">
-                {waLink ? (
-                    <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white" aria-label="WhatsApp">
-                        <WhatsAppIcon className="h-4 w-4" />
-                    </a>
-                ) : null}
-                {mailLink ? (
-                    <a href={mailLink} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-white" aria-label="Email">
-                        <Mail className="h-4 w-4" />
-                    </a>
-                ) : null}
-            </div>
-        </article>
-    );
-}
-
-function LockerUserMobileCard({ u, adminName, onReassign, onViewPayments }) {
-    const waLink = buildLockerWhatsappLink(u, adminName);
-    const mailLink = buildLockerMailtoLink(u, adminName);
-
-    return (
-        <article className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
-            <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                    <p className="truncate font-semibold text-white">{u.name}</p>
-                    <p className="truncate text-xs text-gray-400">{u.email || "sin email"}</p>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => onReassign(u)}
-                    className="shrink-0 rounded-full bg-sky-900/40 px-2.5 py-1 text-xs font-semibold text-sky-100 ring-1 ring-sky-600/30"
-                >
-                    #{u.locker}
-                </button>
-            </div>
-            <div className="mt-3 flex justify-end gap-2 border-t border-gray-700/80 pt-3">
-                <button
-                    type="button"
-                    onClick={() => onViewPayments(u)}
-                    className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-xs font-semibold text-gray-200"
-                >
-                    Pagos
-                </button>
                 {waLink ? (
                     <a href={waLink} target="_blank" rel="noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white" aria-label="WhatsApp">
                         <WhatsAppIcon className="h-4 w-4" />
@@ -550,16 +385,9 @@ export default function Registry({ pagos }) {
     const [status, setStatus] = useState(pagos?.filters?.status || "all");
     const [sortKey, setSortKey] = useState("date");
     const [sortDir, setSortDir] = useState("desc");
-    const [showAllLockerUsers, setShowAllLockerUsers] = useState(false);
-    const [lockerSortKey, setLockerSortKey] = useState("locker");
-    const [lockerSortDir, setLockerSortDir] = useState("asc");
-    const [activeSection, setActiveSection] = useState(TAB_PAGOS);
-    const [processingId, setProcessingId] = useState(null);
     const [tableLoading, setTableLoading] = useState(false);
-    const [reassigning, setReassigning] = useState(null);
     const [toast, setToast] = useState(null);
     const [proofModal, setProofModal] = useState(null);
-    const [focusedUserPayments, setFocusedUserPayments] = useState(null);
 
     const toggleSort = (key) => {
         if (sortKey === key) {
@@ -570,27 +398,7 @@ export default function Registry({ pagos }) {
         setSortDir(COLUMN_DEFAULT_SORT_DIR[key] || "asc");
     };
 
-    const toggleLockerSort = (key) => {
-        if (lockerSortKey === key) {
-            setLockerSortDir((prev) => (prev === "asc" ? "desc" : "asc"));
-            return;
-        }
-        setLockerSortKey(key);
-        setLockerSortDir("asc");
-    };
 
-    const allLockerUsers = useMemo(() => {
-        const base = [...(pagos?.lockerUsers || [])];
-        base.sort((a, b) => compareLockerUsers(a, b, lockerSortKey, lockerSortDir));
-        return base;
-    }, [pagos?.lockerUsers, lockerSortKey, lockerSortDir]);
-
-    const visibleLockerUsers = useMemo(() => {
-        if (showAllLockerUsers) return allLockerUsers;
-        return allLockerUsers.slice(0, 10);
-    }, [allLockerUsers, showAllLockerUsers]);
-
-    const lockerUsersTotal = allLockerUsers.length;
 
     const rows = useMemo(() => {
         const base = [...(pagos?.rows || [])];
@@ -598,10 +406,7 @@ export default function Registry({ pagos }) {
         return base;
     }, [pagos?.rows, sortKey, sortDir]);
 
-    const visibleRows = useMemo(() => {
-        if (!focusedUserPayments?.id) return rows;
-        return rows.filter((row) => Number(row?.user_id) === Number(focusedUserPayments.id));
-    }, [rows, focusedUserPayments]);
+    const visibleRows = rows;
 
     const counts = pagos?.counts || {};
 
@@ -630,44 +435,23 @@ export default function Registry({ pagos }) {
         [counts],
     );
 
-    const lockerOccupiedSet = useMemo(
-        () => new Set((pagos?.lockerGrid?.occupied || []).map(Number)),
-        [pagos?.lockerGrid],
-    );
-    const lockerMax = Number(pagos?.lockerGrid?.max || 60);
-    const lockerCells = useMemo(() => Array.from({ length: lockerMax }, (_, i) => i + 1), [lockerMax]);
 
     const openProof = (row) => {
         if (!row?.proof_url) return;
-        if (row.proof_is_stripe_receipt) {
-            window.open(row.proof_url, "_blank", "noopener,noreferrer");
-            return;
-        }
         setProofModal(row);
     };
 
-    const saveReassign = () => {
-        if (!reassigning?.user_id || !reassigning?.locker_number) return;
-        setProcessingId(`reassign-${reassigning.user_id}`);
-        router.post(
-            route("taquilla.users.reassign", reassigning.user_id),
-            { locker_number: reassigning.locker_number },
-            {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setReassigning(null);
-                    setToast({ type: "success", message: "Taquilla reasignada correctamente." });
-                    setTimeout(() => setToast(null), 2200);
-                    router.reload({ only: ["pagos", "adminStats"], preserveState: true, preserveScroll: true });
-                },
-                onError: () => {
-                    setToast({ type: "error", message: "No se pudo reasignar la taquilla." });
-                    setTimeout(() => setToast(null), 2200);
-                },
-                onFinish: () => setProcessingId(null),
-            },
-        );
+    const proofDownloadUrl = (url) => {
+        if (!url) return null;
+        try {
+            const u = new URL(url, window.location.origin);
+            u.searchParams.set("download", "1");
+            return u.toString();
+        } catch {
+            return `${url}${url.includes("?") ? "&" : "?"}download=1`;
+        }
     };
+
 
     return (
         <>
@@ -685,20 +469,14 @@ export default function Registry({ pagos }) {
                     />
                     <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                         <h1 className="text-lg font-bold leading-tight text-white sm:text-xl lg:text-2xl">
-                            {focusedUserPayments?.name
-                                ? `Pagos de ${focusedUserPayments.name}`
-                                : "Registro de Pagos · Taquillas"}
+                            Registro de Pagos · Taquillas
                         </h1>
-                        {!focusedUserPayments ? (
-                            <>
-                                <div className="lg:hidden">
-                                    <ActivePlanSummary summary={pagos?.activePlanSummary} compact />
-                                </div>
-                                <div className="hidden lg:block lg:max-w-2xl">
-                                    <ActivePlanSummary summary={pagos?.activePlanSummary} />
-                                </div>
-                            </>
-                        ) : null}
+                        <div className="lg:hidden">
+                            <ActivePlanSummary summary={pagos?.activePlanSummary} compact />
+                        </div>
+                        <div className="hidden lg:block lg:max-w-2xl">
+                            <ActivePlanSummary summary={pagos?.activePlanSummary} />
+                        </div>
                     </div>
                 </header>
 
@@ -719,48 +497,27 @@ export default function Registry({ pagos }) {
                     >
                         Buscar
                     </button>
-                    {focusedUserPayments ? (
-                        <button
-                            type="button"
-                            onClick={() => setFocusedUserPayments(null)}
-                            className="rounded-xl border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-semibold text-gray-200"
-                        >
-                            Ver todos
-                        </button>
-                    ) : null}
                 </div>
 
-                {!focusedUserPayments ? (
-                    <SectionTabs
-                        active={activeSection}
-                        onChange={setActiveSection}
-                        pagosCount={counts.all || 0}
-                        sociosCount={lockerUsersTotal}
-                    />
-                ) : null}
 
                 <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-                    {activeSection === TAB_PAGOS || focusedUserPayments ? (
-                        <>
-                            {!focusedUserPayments ? (
-                                <div className="flex shrink-0 flex-wrap gap-1.5">
-                                    {statusOptions.map((opt) => (
-                                        <button
-                                            key={opt.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setStatus(opt.id);
-                                                applyFilters({ status: opt.id });
-                                            }}
-                                            className={`${filterPillBase} ${status === opt.id ? filterPillActive : filterPillIdle}`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : null}
+                    <div className="flex shrink-0 flex-wrap gap-1.5">
+                            {statusOptions.map((opt) => (
+                                <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => {
+                                        setStatus(opt.id);
+                                        applyFilters({ status: opt.id });
+                                    }}
+                                    className={`${filterPillBase} ${status === opt.id ? filterPillActive : filterPillIdle}`}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
 
-                            <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
+                    <div className="relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-gray-700 bg-gray-900">
                                 {tableLoading ? (
                                     <div className="absolute inset-0 z-10 grid place-items-center bg-gray-950/50">
                                         <p className="text-sm text-gray-300">Cargando…</p>
@@ -876,148 +633,7 @@ export default function Registry({ pagos }) {
                                         </tbody>
                                     </table>
                                 </div>
-                            </div>
-                        </>
-                    ) : null}
-
-                    {activeSection === TAB_REASIGNAR && !focusedUserPayments ? (
-                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-700 bg-gray-900 p-3 sm:p-4">
-                            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-                                <p className="text-xs text-gray-400">
-                                    Reasignación rápida ·{" "}
-                                    {showAllLockerUsers
-                                        ? `${lockerUsersTotal} socios`
-                                        : `Mostrando ${Math.min(10, lockerUsersTotal)} de ${lockerUsersTotal}`}
-                                </p>
-                                {lockerUsersTotal > 10 ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAllLockerUsers((prev) => !prev)}
-                                        className="rounded-lg border border-gray-600 bg-gray-800 px-2.5 py-1 text-xs font-semibold text-gray-200 hover:bg-gray-700"
-                                    >
-                                        {showAllLockerUsers ? "Ver menos" : "Ver todos"}
-                                    </button>
-                                ) : null}
-                            </div>
-
-                            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-                                <div className="space-y-2 md:hidden">
-                                    {visibleLockerUsers.length === 0 ? (
-                                        <p className="py-8 text-center text-sm text-gray-400">Sin socios con taquilla.</p>
-                                    ) : (
-                                        visibleLockerUsers.map((u) => (
-                                            <LockerUserMobileCard
-                                                key={u.id}
-                                                u={u}
-                                                adminName={adminName}
-                                                onReassign={(user) =>
-                                                    setReassigning({
-                                                        user_id: user.id,
-                                                        name: user.name,
-                                                        locker_number: Number(user.locker),
-                                                    })
-                                                }
-                                                onViewPayments={(user) => {
-                                                    setFocusedUserPayments({ id: user.id, name: user.name || "Usuario" });
-                                                    setActiveSection(TAB_PAGOS);
-                                                }}
-                                            />
-                                        ))
-                                    )}
-                                </div>
-
-                                <table className="hidden min-w-full text-sm md:table">
-                                    <thead className="bg-gray-800 text-gray-200">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left">Usuario</th>
-                                            <SortableTh
-                                                label="Taquilla"
-                                                sortKey="locker"
-                                                activeKey={lockerSortKey}
-                                                activeDir={lockerSortDir}
-                                                onSort={toggleLockerSort}
-                                            />
-                                            <th className="px-4 py-3 text-right">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {visibleLockerUsers.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={3} className="px-4 py-8 text-center text-gray-400">
-                                                    Sin socios con taquilla asignada.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            visibleLockerUsers.map((u) => (
-                                                <tr key={u.id} className="border-t border-gray-700 text-gray-100">
-                                                    <td className="px-4 py-3">
-                                                        <p className="font-semibold text-gray-100">{u.name}</p>
-                                                        <p className="text-xs text-gray-400">{u.email || "sin email"}</p>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setReassigning({
-                                                                    user_id: u.id,
-                                                                    name: u.name,
-                                                                    locker_number: Number(u.locker),
-                                                                })
-                                                            }
-                                                            className="inline-flex rounded-full bg-sky-900/40 px-3 py-1 text-xs font-semibold text-sky-100 ring-1 ring-sky-600/30"
-                                                        >
-                                                            #{u.locker}
-                                                        </button>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex justify-end gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    setFocusedUserPayments({
-                                                                        id: u.id,
-                                                                        name: u.name || "Usuario",
-                                                                    });
-                                                                    setActiveSection(TAB_PAGOS);
-                                                                }}
-                                                                className="rounded-lg border border-gray-600 bg-gray-800 px-3 py-1 text-xs font-semibold text-gray-200 hover:bg-gray-700"
-                                                            >
-                                                                Ver pagos
-                                                            </button>
-                                                            {u.phone ? (
-                                                                <a
-                                                                    href={buildLockerWhatsappLink(u, adminName) || "#"}
-                                                                    target="_blank"
-                                                                    rel="noreferrer"
-                                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-white shadow transition-all hover:scale-105 hover:bg-emerald-500"
-                                                                    title="Contactar por WhatsApp"
-                                                                    aria-label="WhatsApp"
-                                                                >
-                                                                    <WhatsAppIcon className="h-3.5 w-3.5" />
-                                                                </a>
-                                                            ) : (
-                                                                <span className="text-xs text-gray-500">sin tel.</span>
-                                                            )}
-                                                            {u.email ? (
-                                                                <a
-                                                                    href={buildLockerMailtoLink(u, adminName) || "#"}
-                                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-500 text-white shadow transition-all hover:scale-105 hover:bg-sky-400"
-                                                                    title="Enviar email"
-                                                                    aria-label="Enviar email"
-                                                                >
-                                                                    <Mail className="h-3.5 w-3.5" />
-                                                                </a>
-                                                            ) : null}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : null}
+                    </div>
                 </div>
             </div>
 
@@ -1027,60 +643,60 @@ export default function Registry({ pagos }) {
                     <p className="text-sm text-slate-600">
                         {proofModal?.user || "Usuario"} · {formatAmountEuros(proofModal?.amount)}
                     </p>
-                    {proofModal?.proof_url ? (
-                        <iframe title="Justificante de pago" src={proofModal.proof_url} className="h-[65vh] w-full rounded-lg border border-slate-200" />
-                    ) : null}
-                    <div className="flex justify-end">
-                        <button
-                            type="button"
-                            onClick={() => setProofModal(null)}
-                            className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700"
-                        >
-                            Cerrar
-                        </button>
-                    </div>
-                </div>
-            </ModalShell>
-
-            <ModalShell open={!!reassigning} onClose={() => setReassigning(null)} maxWidth="max-w-2xl">
-                <div className="space-y-4">
-                    <p className="text-lg font-bold text-slate-900">Reasignar Taquilla · {reassigning?.name}</p>
-                    <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">
-                        {lockerCells.map((n) => {
-                            const occupied = lockerOccupiedSet.has(Number(n)) && Number(reassigning?.locker_number) !== Number(n);
-                            const selected = Number(reassigning?.locker_number) === Number(n);
-                            return (
-                                <button
-                                    key={`reassign-locker-${n}`}
-                                    type="button"
-                                    disabled={occupied}
-                                    onClick={() => setReassigning((prev) => ({ ...prev, locker_number: n }))}
-                                    className={`h-9 rounded-md text-xs font-semibold ${
-                                        occupied
-                                            ? "cursor-not-allowed bg-slate-200 text-slate-400"
-                                            : selected
-                                              ? "bg-sky-600 text-white"
-                                              : "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                                    }`}
+                    {proofModal?.proof_is_stripe_receipt ? (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                            <p className="text-sm text-slate-700">
+                                Este recibo está alojado en Stripe y no se puede previsualizar aquí.
+                            </p>
+                            <p className="mt-1 text-xs text-slate-500">Se abrirá en una pestaña nueva.</p>
+                            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                                <a
+                                    href={proofModal.proof_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-3.5 py-2 text-sm font-semibold text-white hover:bg-sky-500"
                                 >
-                                    {n}
+                                    Abrir recibo
+                                    <ExternalLink className="h-4 w-4" />
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setProofModal(null)}
+                                    className="rounded-lg bg-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700"
+                                >
+                                    Cerrar
                                 </button>
-                            );
-                        })}
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => setReassigning(null)} className="rounded-lg bg-slate-200 px-3 py-1 text-slate-700">
-                            Cancelar
-                        </button>
-                        <button
-                            type="button"
-                            disabled={!reassigning?.locker_number || processingId === `reassign-${reassigning?.user_id}`}
-                            onClick={saveReassign}
-                            className="rounded-lg bg-emerald-600 px-3 py-1 text-white disabled:opacity-50"
-                        >
-                            Guardar cambio
-                        </button>
-                    </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {proofModal?.proof_url ? (
+                                <iframe
+                                    title="Justificante de pago"
+                                    src={proofModal.proof_url}
+                                    className="h-[65vh] w-full rounded-lg border border-slate-200"
+                                />
+                            ) : null}
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                                {proofModal?.proof_url ? (
+                                    <a
+                                        href={proofDownloadUrl(proofModal.proof_url)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-slate-800 px-3.5 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                                    >
+                                        <Download className="h-4 w-4" />
+                                        Descargar
+                                    </a>
+                                ) : null}
+                                <button
+                                    type="button"
+                                    onClick={() => setProofModal(null)}
+                                    className="rounded-lg bg-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </div>
             </ModalShell>
 

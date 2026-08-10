@@ -311,7 +311,7 @@ final class SandboxRandomDemoSeeder extends Seeder
                     'payment_proof_path' => 'taquilla-proofs/sandbox.pdf',
                     'proof_uploaded_at' => $start->copy()->addHours(2),
                     'reviewed_at' => $start->copy()->addDay(),
-                    'payment_method' => 'bizum',
+                    'payment_method' => 'datafono',
                     'periodo_inicio' => $start,
                     'periodo_fin' => $end,
                     'fecha_pago' => $start,
@@ -339,7 +339,7 @@ final class SandboxRandomDemoSeeder extends Seeder
                 'is_checked' => false,
                 'payment_proof_path' => 'taquilla-proofs/pending.pdf',
                 'proof_uploaded_at' => now()->subHours(3),
-                'payment_method' => 'transferencia',
+                'payment_method' => 'card',
                 'periodo_inicio' => now()->startOfDay(),
                 'periodo_fin' => now()->addDays(30)->endOfDay(),
             ]
@@ -538,7 +538,7 @@ final class SandboxRandomDemoSeeder extends Seeder
                     'credits_locked' => isset($bonosByUser[$client->id]) ? 1 : 0,
                     'status' => LessonUser::STATUS_ATTENDED,
                     'payment_status' => PaymentStatus::Confirmed->value,
-                    'payment_method' => isset($bonosByUser[$client->id]) ? 'bono_vip' : 'transferencia',
+                    'payment_method' => isset($bonosByUser[$client->id]) ? 'bono_vip' : 'card',
                     'confirmed_at' => $lesson->starts_at?->copy()->subDay(),
                 ]);
 
@@ -578,7 +578,7 @@ final class SandboxRandomDemoSeeder extends Seeder
                         'credits_locked' => isset($bonosByUser[$client->id]) ? 1 : 0,
                         'status' => LessonUser::STATUS_CONFIRMED,
                         'payment_status' => PaymentStatus::Confirmed->value,
-                        'payment_method' => isset($bonosByUser[$client->id]) ? 'bono_vip' : 'transferencia',
+                        'payment_method' => isset($bonosByUser[$client->id]) ? 'bono_vip' : 'card',
                         'confirmed_at' => now()->subHours(6),
                     ]
                 );
@@ -599,7 +599,7 @@ final class SandboxRandomDemoSeeder extends Seeder
                     'party_size' => 1,
                     'quantity' => 1,
                     'payment_status' => PaymentStatus::Pending->value,
-                    'payment_method' => 'bizum',
+                    'payment_method' => 'datafono',
                     'payment_proof_path' => 'lesson-proofs/sandbox-pending.jpg',
                     'proof_uploaded_at' => now()->subHours(2),
                     'expires_at' => now()->addDays(2),
@@ -684,20 +684,20 @@ final class SandboxRandomDemoSeeder extends Seeder
         }
 
         foreach ($clients as $i => $client) {
-            $paid = $i % 2 === 0;
             $picked = array_slice($products, $i * 2, 2);
             if ($picked === []) {
                 $picked = [$products[0]];
             }
 
             $total = 0.0;
+            // Pasarela: solo pedidos cobrados (estado operativo = entrega).
             $pedido = Pedido::query()->create([
                 'user_id' => $client->id,
                 'precio_total' => 0,
-                'pagado' => $paid,
-                'entregado' => $paid && $i === 0,
-                'payment_method' => $paid ? 'card' : null,
-                'payment_proof_path' => $paid ? null : 'payment-proofs/pedidos/pending.jpg',
+                'pagado' => true,
+                'entregado' => $i % 3 === 0,
+                'payment_method' => 'card',
+                'payment_proof_path' => null,
             ]);
 
             foreach ($picked as $prod) {

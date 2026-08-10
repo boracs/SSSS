@@ -4,23 +4,27 @@ declare(strict_types=1);
 
 namespace App\Actions\Academy;
 
+use App\DTOs\Academy\PrivateLessonQuoteDto;
 use App\Enums\PaymentStatus;
 use App\Events\PrivateLessonRequestedEvent;
 use App\Http\Requests\Academy\RequestPrivateLessonRequest;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
+use App\Services\Academy\PrivateLessonPricingService;
 use App\Services\AvailabilityService;
+use App\Support\MoneyCents;
 use Illuminate\Support\Facades\DB;
 
 final class RequestPrivateLessonAction
 {
     public function __construct(
         private readonly AvailabilityService $availabilityService,
+        private readonly PrivateLessonPricingService $pricingService,
     ) {}
 
     /**
-     * @return array{ok: bool, message: string, enrollment?: LessonUser, lesson?: Lesson}
+     * @return array{ok: bool, message: string, enrollment?: LessonUser, lesson?: Lesson, quote?: PrivateLessonQuoteDto}
      */
     public function execute(?User $user, RequestPrivateLessonRequest $request): array
     {
@@ -29,6 +33,11 @@ final class RequestPrivateLessonAction
 
         $participants = $request->participants();
         $lead = $participants[0] ?? null;
+
+        $quote = $this->pricingService->quote(
+            people: max(1, count($participants)),
+            durationMinutes: (int) $startsAt->diffInMinutes($endsAt),
+        );
 
         if ($user) {
             $label = trim(($user->nombre ?? '').' '.($user->apellido ?? '')) ?: ('#'.$user->id);
@@ -54,9 +63,10 @@ final class RequestPrivateLessonAction
             $guestEmail,
             $guestPhone,
             $participants,
+            $quote,
         ) {
-            // Cupo/monitor: sigue siendo 1 plaza de particular (señal actual).
-            // TODO: si se tarifan N personas, ajustar evaluate/party_size/precio; ahora solo se guardan en notes.
+            // Cupo/monitor: la particular ocupa 1 plaza de agenda (un monitor
+            // atiende al grupo); el nº de personas solo afecta a la tarifa.
             $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, 1, 0);
             if (! $evaluation['allowed']) {
                 return ['ok' => false, 'message' => $this->availabilityService->buildConflictMessage($evaluation)];
@@ -72,6 +82,7 @@ final class RequestPrivateLessonAction
                 'max_slots' => 1,
                 'status' => Lesson::STATUS_SCHEDULED,
                 'is_private' => true,
+                'price' => MoneyCents::centsToEuros($quote->totalCents),
             ]);
 
             $participantNotes = $participants !== []
@@ -95,6 +106,7 @@ final class RequestPrivateLessonAction
                 'status' => LessonUser::STATUS_PENDING,
                 'payment_status' => PaymentStatus::Pending->value,
                 'payment_method' => 'card',
+                'deposit_amount_cents' => $quote->depositCents,
                 'admin_notes' => $participantNotes,
             ]);
 
@@ -104,6 +116,7 @@ final class RequestPrivateLessonAction
                 'ok' => true,
                 'enrollment' => $enrollment,
                 'lesson' => $lesson,
+                'quote' => $quote,
                 'message' => 'Clase particular registrada. Completando pago…',
             ];
         });

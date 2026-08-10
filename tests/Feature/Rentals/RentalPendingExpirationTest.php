@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 /**
  * Dos velocidades de caducidad para una reserva pending:
  *   - pública (Stripe Checkout): minutos, config rentals.pending_unpaid_expiration_minutes.
- *   - manual (Admin, transferencia/bizum): días, config rentals.pending_expiration_days.
+ *   - manual (Admin, cobro en mostrador): días, config rentals.pending_expiration_days.
  * autoExpirePending() libera cualquiera de las dos en cuanto vence expires_at.
  */
 beforeEach(function () {

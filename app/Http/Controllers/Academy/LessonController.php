@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Academy;
 use App\Actions\Academy\EnrollStudentAction;
 use App\Actions\Academy\RequestLessonAction;
 use App\Actions\Academy\RequestPrivateLessonAction;
-use App\Actions\Academy\UploadLessonProofAction;
 use App\Actions\Academy\CancelEnrollmentAction;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDto;
@@ -15,7 +14,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Academy\EnrollStudentRequest;
 use App\Http\Requests\Academy\RequestLessonRequest;
 use App\Http\Requests\Academy\RequestPrivateLessonRequest;
-use App\Http\Requests\Academy\UploadLessonProofRequest;
 use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
@@ -41,7 +39,6 @@ class LessonController extends Controller
         protected EnrollStudentAction $enrollStudentAction,
         protected RequestLessonAction $requestLessonAction,
         protected RequestPrivateLessonAction $requestPrivateLessonAction,
-        protected UploadLessonProofAction $uploadLessonProofAction,
         protected CancelEnrollmentAction $cancelEnrollmentAction,
         protected InitiatePaymentAction $initiatePaymentAction,
     ) {
@@ -306,8 +303,6 @@ class LessonController extends Controller
             'myEnrollmentIdByLesson' => $myEnrollmentIdByLesson,
             'myEnrollmentAdminNotesByLesson' => $myEnrollmentAdminNotesByLesson ?? [],
             'pendingSurfTripLesson' => $pendingSurfTripLesson,
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ]);
     }
@@ -398,20 +393,22 @@ class LessonController extends Controller
         $enrollment = $result['enrollment'];
         /** @var \App\Models\Lesson $lesson */
         $lesson = $result['lesson'];
+        /** @var \App\DTOs\Academy\PrivateLessonQuoteDto $quote */
+        $quote = $result['quote'];
 
-        $depositEur   = (float) config('services.academy.private_lesson_deposit_eur', 7);
-        $priceCents   = (int) round($depositEur * 100);
         $dateLabel    = $lesson->starts_at?->locale('es')->translatedFormat('d/m/Y H:i') ?? '';
         $customerEmail = $user?->email ?: $request->guestEmail();
+        $restLabel = number_format($quote->remainingCents() / 100, 2, ',', '.');
+        $totalLabel = number_format($quote->totalCents / 100, 2, ',', '.');
 
         $dto = new InitiatePaymentDto(
             payableType:   LessonUser::class,
             payableId:     $enrollment->id,
             lineItems:     [
                 new PaymentLineItemDto(
-                    name:            'Clase particular',
-                    description:     $dateLabel,
-                    unitAmountCents: $priceCents,
+                    name:            'Clase particular · señal',
+                    description:     trim($dateLabel.' · Total '.$totalLabel.' € · Resto en la escuela: '.$restLabel.' €'),
+                    unitAmountCents: $quote->depositCents,
                     quantity:        1,
                 ),
             ],
@@ -423,6 +420,9 @@ class LessonController extends Controller
                 'enrollment_id' => (string) $enrollment->id,
                 'modality'      => 'particular',
                 'guest'         => $user ? '0' : '1',
+                'people'        => (string) $quote->people,
+                'total_cents'   => (string) $quote->totalCents,
+                'deposit_cents' => (string) $quote->depositCents,
             ],
         );
 
@@ -584,44 +584,6 @@ class LessonController extends Controller
 
             return back()->with('error', 'No se pudo abrir la pasarela de pago.');
         }
-    }
-
-    /**
-     * @deprecated Flujo manual sustituido por Stripe. Mantener temporalmente por compatibilidad.
-     */
-    public function uploadProof(UploadLessonProofRequest $request, Lesson $lesson)
-    {
-        $user = $request->user();
-        if (! $user) {
-            return back()->with('error', 'Debes iniciar sesión.');
-        }
-
-        $enrollment = LessonUser::query()
-            ->where('lesson_id', $lesson->id)
-            ->where('user_id', $user->id)
-            ->whereIn('status', [
-                LessonUser::STATUS_PENDING,
-                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-            ])
-            ->first();
-
-        if (! $enrollment) {
-            return back()->with('error', 'No existe una solicitud pendiente para esta clase.');
-        }
-
-        $this->authorize('uploadProof', $enrollment);
-
-        $result = $this->uploadLessonProofAction->execute(
-            $enrollment,
-            $request->proofFile(),
-            $request->paymentMethod(),
-        );
-
-        if (! $result['ok']) {
-            return back()->with('error', $result['message']);
-        }
-
-        return back()->with('success', $result['message']);
     }
 
     /**

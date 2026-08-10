@@ -40,8 +40,6 @@ function formatDateTimeLabel(value) {
  */
 export default function SurfboardBookingSection({
     surfboard,
-    paymentIban = "[IBAN]",
-    paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
     rentalPolicy = null,
     initialStart = null,

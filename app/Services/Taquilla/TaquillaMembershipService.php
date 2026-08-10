@@ -4,17 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Taquilla;
 
+use App\DTOs\Taquilla\LockerOccupancyMapDto;
+use App\DTOs\Taquilla\LockerOccupantDto;
 use App\DTOs\Taquilla\PlanTaquillaPublicDto;
 use App\Events\Taquilla\PagoTaquillaConfirmado;
-use App\Events\Taquilla\PagoTaquillaRechazado;
-use App\Http\Requests\Taquilla\ConfirmarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\ReassignLockerRequest;
-use App\Http\Requests\Taquilla\RechazarPagoTaquillaRequest;
-use App\Http\Requests\Taquilla\RegistrarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\StorePlanTaquillaRequest;
-use App\Http\Requests\Taquilla\SubirJustificanteTaquillaRequest;
-use App\Http\Requests\Taquilla\UpdatePagoTaquillaCheckedStateRequest;
-use App\Http\Requests\Taquilla\UpdatePagoTaquillaPaymentStateRequest;
 use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Http\Resources\PagoCuotaRegistryResource;
 use App\Models\PagoCuota;
@@ -23,13 +18,11 @@ use App\Models\User;
 use App\Services\Chatbot\S4BusinessContextService;
 use App\Services\Payments\PaymentReceiptAccessService;
 use App\Support\MoneyCents;
+use App\Support\VipVirtualLocker;
 use Carbon\Carbon;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -377,6 +370,10 @@ class TaquillaMembershipService
 
         $planCents = (int) $plan->precio_total_cents;
 
+        // Un checkout abandonado no debe bloquear el reintento ni desplazar el
+        // periodo del nuevo pago: se borra antes de calcular fechas.
+        $this->purgeExpiredPendingPayments($user);
+
         $ultimoPago = PagoCuota::query()
             ->where('user_id', $user->id)
             ->orderByDesc('periodo_fin')
@@ -417,6 +414,7 @@ class TaquillaMembershipService
                     'periodo_fin'             => $fechaFin,
                     'fecha_pago'              => now(),
                     'payment_method'          => 'card',
+                    'expires_at'              => now()->addMinutes($this->pendingUnpaidExpirationMinutes()),
                 ]);
 
                 $this->syncUserLockerCacheFromConfirmedPayments($user);
@@ -478,6 +476,75 @@ class TaquillaMembershipService
         return $pago->fresh(['plan']);
     }
 
+    /** Ventana de vida de un pago pendiente antes de darlo por abandonado. */
+    public function pendingUnpaidExpirationMinutes(): int
+    {
+        return max(1, (int) config('taquilla.pending_unpaid_expiration_minutes', 30));
+    }
+
+    /**
+     * Reabre la ventana de pago: el socio vuelve a la pasarela desde un pendiente.
+     */
+    public function refreshPendingExpiration(PagoCuota $pago): PagoCuota
+    {
+        if (($pago->status ?? '') !== PagoCuota::STATUS_PENDING) {
+            return $pago;
+        }
+
+        $pago->update([
+            'expires_at' => now()->addMinutes($this->pendingUnpaidExpirationMinutes()),
+        ]);
+
+        return $pago;
+    }
+
+    /**
+     * Borra los pagos pendientes caducados: si Stripe no confirmó, la cuota no existió.
+     * Incluye pendientes sin expires_at (legado/demo) más viejos que la ventana de checkout.
+     *
+     * @return int Pagos eliminados
+     */
+    public function purgeExpiredPendingPayments(?User $user = null): int
+    {
+        $ttlMinutes = max(1, (int) config('taquilla.pending_unpaid_expiration_minutes', 30));
+        $staleBefore = now()->subMinutes($ttlMinutes);
+
+        return DB::transaction(function () use ($user, $staleBefore): int {
+            $ids = PagoCuota::query()
+                ->where('status', PagoCuota::STATUS_PENDING)
+                ->where(function ($q) use ($staleBefore): void {
+                    $q->where(function ($expired): void {
+                        $expired->whereNotNull('expires_at')
+                            ->where('expires_at', '<', now());
+                    })->orWhere(function ($legacy) use ($staleBefore): void {
+                        $legacy->whereNull('expires_at')
+                            ->where('created_at', '<', $staleBefore);
+                    });
+                })
+                ->when($user !== null, fn ($q) => $q->where('user_id', $user->id))
+                ->pluck('id');
+
+            $deleted = 0;
+            foreach ($ids as $id) {
+                $locked = PagoCuota::query()->whereKey($id)->lockForUpdate()->first();
+                if ($locked === null || ! $locked->isExpiredPending()) {
+                    continue;
+                }
+
+                $ownerId = (int) $locked->user_id;
+                $locked->delete();
+                $deleted++;
+
+                $owner = User::query()->find($ownerId);
+                if ($owner !== null) {
+                    $this->syncUserLockerCacheFromConfirmedPayments($owner);
+                }
+            }
+
+            return $deleted;
+        });
+    }
+
     /**
      * Confirma un PagoCuota tras webhook Stripe (sin intervención admin).
      */
@@ -508,6 +575,7 @@ class TaquillaMembershipService
                     'status'         => PagoCuota::STATUS_CONFIRMED,
                     'payment_method' => 'card',
                     'reviewed_at'    => now(),
+                    'expires_at'     => null,
                 ]);
 
                 $this->syncUserLockerCacheFromConfirmedPayments($targetUser);
@@ -524,141 +592,6 @@ class TaquillaMembershipService
         ));
 
         return true;
-    }
-
-    public function registerPayment(User $user, RegistrarPagoTaquillaRequest $request): void
-    {
-        if (! $user->hasPhysicalLocker()) {
-            throw ValidationException::withMessages([
-                'plan_id' => ['Necesitas una taquilla física asignada para contratar o renovar un plan. Contacta con el club.'],
-            ]);
-        }
-
-        $validated = $request->validated();
-        $payload = [
-            'plan_id' => (int) $validated['plan_id'],
-            'monto_pagado' => $validated['monto_pagado'] ?? null,
-            'referencia_pago_externa' => $validated['referencia_pago_externa'] ?? null,
-            'payment_method' => $validated['payment_method'] ?? null,
-        ];
-
-        $plan = PlanTaquilla::query()->findOrFail($payload['plan_id']);
-        if (! (bool) $plan->activo) {
-            throw ValidationException::withMessages([
-                'plan_id' => ['Este plan esta desactivado. Selecciona uno vigente.'],
-            ]);
-        }
-
-        $planCents = (int) $plan->precio_total_cents;
-        if (! MoneyCents::amountsMatchCents($planCents, $payload['monto_pagado'])) {
-            throw ValidationException::withMessages([
-                'monto_pagado' => ['El importe no coincide con el precio real del plan.'],
-            ]);
-        }
-
-        $ultimoPago = PagoCuota::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('periodo_fin')
-            ->first();
-
-        $now = now()->startOfDay();
-        $fechaInicio = $ultimoPago
-            ? Carbon::parse($ultimoPago->periodo_fin)->addDay()->startOfDay()
-            : $now;
-        $fechaFin = (clone $fechaInicio)->addDays((int) $plan->duracion_dias)->subDay()->endOfDay();
-
-        $pendingDuplicate = PagoCuota::query()
-            ->where('user_id', $user->id)
-            ->where('id_plan_pagado', $plan->id)
-            ->where('status', PagoCuota::STATUS_PENDING)
-            ->exists();
-
-        if ($pendingDuplicate) {
-            throw ValidationException::withMessages([
-                'plan_id' => ['Ya tienes una renovacion pendiente de validacion para este plan.'],
-            ]);
-        }
-
-        $this->runTransactional(
-            action: 'register_payment',
-            actorUserId: (int) $user->id,
-            payload: $payload,
-            callback: function () use ($user, $plan, $planCents, $validated, $fechaInicio, $fechaFin, $request): void {
-                $lockedDuplicate = PagoCuota::query()
-                    ->where('user_id', $user->id)
-                    ->where('id_plan_pagado', $plan->id)
-                    ->where('status', PagoCuota::STATUS_PENDING)
-                    ->lockForUpdate()
-                    ->exists();
-
-                if ($lockedDuplicate) {
-                    throw ValidationException::withMessages([
-                        'plan_id' => ['Ya existe un pago pendiente para este plan.'],
-                    ]);
-                }
-
-                $pago = PagoCuota::query()->create([
-                    'user_id' => $user->id,
-                    'id_plan_pagado' => $plan->id,
-                    'monto_pagado_cents' => $planCents,
-                    'status' => PagoCuota::STATUS_PENDING,
-                    'referencia_pago_externa' => $validated['referencia_pago_externa'] ?? null,
-                    'periodo_inicio' => $fechaInicio,
-                    'periodo_fin' => $fechaFin,
-                    'fecha_pago' => now(),
-                ]);
-
-                $path = $this->storeProofFile(
-                    pagoId: (int) $pago->id,
-                    proof: $request->file('proof'),
-                );
-
-                $pago->update([
-                    'payment_proof_path' => $path,
-                    'proof_uploaded_at' => now(),
-                    'payment_method' => $validated['payment_method'] ?? null,
-                ]);
-
-                $this->syncUserLockerCacheFromConfirmedPayments($user);
-            },
-        );
-    }
-
-    public function uploadProof(User $user, PagoCuota $pago, SubirJustificanteTaquillaRequest $request): void
-    {
-        if ((int) $pago->user_id !== (int) $user->id) {
-            abort(403);
-        }
-
-        $validated = $request->validated();
-        $payload = ['pago_id' => $pago->id, 'payment_method' => $validated['payment_method'] ?? null];
-
-        $this->runTransactional(
-            action: 'upload_proof',
-            actorUserId: (int) $user->id,
-            payload: $payload,
-            callback: function () use ($pago, $request, $validated): void {
-                $locked = PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail();
-
-                $oldPath = $locked->payment_proof_path;
-                if ($oldPath && Storage::disk('local')->exists($oldPath)) {
-                    Storage::disk('local')->delete($oldPath);
-                }
-
-                $path = $this->storeProofFile(
-                    pagoId: (int) $locked->id,
-                    proof: $request->file('proof'),
-                );
-
-                $locked->update([
-                    'payment_proof_path' => $path,
-                    'proof_uploaded_at' => now(),
-                    'reviewed_at' => null,
-                    'payment_method' => $validated['payment_method'] ?? null,
-                    'status' => PagoCuota::STATUS_PENDING,
-                ]);
-            },
-        );
     }
 
     /**
@@ -698,19 +631,7 @@ class TaquillaMembershipService
             ->limit(300)
             ->get();
 
-        $lockerUsersSource = User::query()
-            ->whereNotNull('numeroTaquilla')
-            ->orderBy('numeroTaquilla')
-            ->get(['id', 'nombre', 'apellido', 'email', 'telefono', 'numeroTaquilla', 'fecha_vencimiento_cuota']);
-
-        $index = $this->lockerPaymentIndex->build(
-            $lockerUsersSource->pluck('id')->unique(),
-        );
-
-        $availabilityUserIds = $rows->pluck('user_id')
-            ->merge($lockerUsersSource->pluck('id'))
-            ->unique()
-            ->values();
+        $availabilityUserIds = $rows->pluck('user_id')->unique()->values();
         $availabilityMap = $this->lockerPaymentIndex->computeAvailabilityMap($availabilityUserIds);
 
         return [
@@ -726,180 +647,94 @@ class TaquillaMembershipService
                 'status' => $status,
                 'search' => $search,
             ],
-            'lockerUsers' => $lockerUsersSource
-                ->map(function (User $u) use ($index, $availabilityMap): array {
-                    $row = $this->lockerPaymentIndex->mapLockerUserRow($u, $index);
-
-                    return $this->mergeTaquillaAvailability($row, $availabilityMap[(int) $u->id] ?? null);
-                })
-                ->values(),
-            'lockerGrid' => $this->buildLockerGrid(),
         ];
     }
 
-    public function markReviewed(PagoCuota $pago): void
+    public function buildLockerOccupancyMap(): LockerOccupancyMapDto
     {
-        $this->runTransactional(
-            action: 'mark_reviewed',
-            actorUserId: (int) $pago->user_id,
-            payload: ['pago_id' => $pago->id],
-            callback: function () use ($pago): void {
-                PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail()
-                    ->update(['reviewed_at' => now()]);
-            },
-        );
-    }
+        $today = now()->startOfDay();
 
-    public function updatePaymentState(PagoCuota $pago, UpdatePagoTaquillaPaymentStateRequest $request): void
-    {
-        $validated = $request->validated();
-        $nextState = (string) $validated['pago_state'];
-        $failureReason = trim((string) ($validated['failure_reason'] ?? ''));
+        $users = User::query()
+            ->whereNotNull('numeroTaquilla')
+            ->with([
+                'pagosCuotas' => function ($q): void {
+                    $q->where('status', PagoCuota::STATUS_CONFIRMED)
+                        ->select('id', 'user_id', 'periodo_inicio', 'periodo_fin', 'status')
+                        ->orderBy('periodo_inicio');
+                },
+            ])
+            ->orderBy('numeroTaquilla')
+            ->orderBy('id')
+            ->get(['id', 'numeroTaquilla', 'nombre', 'apellido', 'email', 'telefono']);
 
-        if ($nextState === 'failed' && $failureReason === '') {
-            throw ValidationException::withMessages([
-                'failure_reason' => ['Indica el motivo del pago fallido.'],
-            ]);
+        /** @var array<int, LockerOccupantDto> $byNumber */
+        $byNumber = [];
+        foreach ($users as $user) {
+            $number = (int) $user->numeroTaquilla;
+            if ($number <= 0 || isset($byNumber[$number])) {
+                continue;
+            }
+
+            $byNumber[$number] = new LockerOccupantDto(
+                number: $number,
+                nombre: trim((string) ($user->nombre ?? '')),
+                apellido: trim((string) ($user->apellido ?? '')),
+                email: trim((string) ($user->email ?? '')),
+                telefono: trim((string) ($user->telefono ?? '')),
+                diasDeuda: $this->lockerDaysOverdue($user, $today),
+            );
         }
 
-        $mapMethod = [
-            'online' => 'card',
-            'transferencia' => 'transferencia',
-            'metalico' => 'tienda',
-            'datafono' => 'datafono',
-            'domiciliado' => 'domiciliado',
-        ];
+        $occupants = array_values($byNumber);
+        $maxOccupied = $occupants === []
+            ? 0
+            : max(array_map(static fn (LockerOccupantDto $o): int => $o->number, $occupants));
 
-        $nextStatus = match ($nextState) {
-            'failed' => PagoCuota::STATUS_REJECTED,
-            default => PagoCuota::STATUS_CONFIRMED,
-        };
-
-        $this->runTransactional(
-            action: 'update_payment_state',
-            actorUserId: (int) $pago->user_id,
-            payload: ['pago_id' => $pago->id, 'pago_state' => $nextState],
-            callback: function () use ($pago, $nextStatus, $nextState, $mapMethod, $failureReason): void {
-                $locked = PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail();
-                $locked->update([
-                    'status' => $nextStatus,
-                    'payment_method' => $mapMethod[$nextState] ?? null,
-                    'admin_notes' => $nextState === 'failed' ? $failureReason : null,
-                    'reviewed_at' => null,
-                ]);
-
-                if ($nextStatus === PagoCuota::STATUS_CONFIRMED) {
-                    $this->syncUserLockerCacheFromConfirmedPayments($locked->user);
-                }
-            },
+        return new LockerOccupancyMapDto(
+            max: max(200, $maxOccupied),
+            occupants: $occupants,
         );
     }
 
-    public function updateCheckedState(PagoCuota $pago, UpdatePagoTaquillaCheckedStateRequest $request): void
+    /**
+     * Días de retraso de cuota de taquilla física (0 = al día / sin mora medible).
+     * Alineado con vigencia: solo rojo si hubo cobertura y ya caducó (debe días).
+     */
+    private function lockerDaysOverdue(User $user, Carbon $today): int
     {
-        $isChecked = (bool) $request->validated('is_checked');
-
-        $this->runTransactional(
-            action: 'update_checked_state',
-            actorUserId: (int) $pago->user_id,
-            payload: ['pago_id' => $pago->id, 'is_checked' => $isChecked],
-            callback: function () use ($pago, $isChecked): void {
-                PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail()
-                    ->update([
-                        'is_checked' => $isChecked,
-                        'reviewed_at' => null,
-                    ]);
-            },
-        );
-    }
-
-    public function confirmPayment(PagoCuota $pago, User $admin, ConfirmarPagoTaquillaRequest $request): void
-    {
-        if (($pago->status ?? '') === PagoCuota::STATUS_CONFIRMED) {
-            throw ValidationException::withMessages([
-                'pago' => ['Este pago ya esta confirmado.'],
-            ]);
+        if (VipVirtualLocker::isShared($user->numeroTaquilla)) {
+            return 0;
         }
 
-        $lockerNumber = $request->filled('locker_number')
-            ? (int) $request->validated('locker_number')
-            : null;
+        $confirmed = $user->pagosCuotas;
 
-        $this->runTransactional(
-            action: 'confirm_payment',
-            actorUserId: (int) $pago->user_id,
-            payload: [
-                'pago_id' => $pago->id,
-                'admin_id' => $admin->id,
-                'locker_number' => $lockerNumber,
-            ],
-            callback: function () use ($pago, $admin, $lockerNumber): void {
-                $lockedPago = PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail();
-                $targetUser = User::query()->whereKey($lockedPago->user_id)->lockForUpdate()->firstOrFail();
+        $hasActiveToday = $confirmed->contains(function ($p) use ($today): bool {
+            return $p->periodo_inicio && $p->periodo_fin
+                && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today)
+                && Carbon::parse($p->periodo_fin)->startOfDay()->gte($today);
+        });
 
-                if ($lockerNumber !== null && $lockerNumber > 0) {
-                    $this->assignLockerToUser(
-                        target: $targetUser,
-                        admin: $admin,
-                        lockerNumber: $lockerNumber,
-                        action: 'assign_from_payment_approval',
-                        notes: 'Asignacion durante confirmacion de pago.',
-                    );
-                }
-
-                $lockedPago->update([
-                    'status' => PagoCuota::STATUS_CONFIRMED,
-                    'reviewed_at' => null,
-                ]);
-
-                $this->syncUserLockerCacheFromConfirmedPayments($targetUser);
-            },
-        );
-
-        // Efectos secundarios desacoplados: solo tras commit correcto de la transaccion.
-        $pagoConfirmado = PagoCuota::query()->with('plan')->findOrFail($pago->id);
-        $usuarioAsignado = User::query()->findOrFail($pagoConfirmado->user_id);
-
-        event(new PagoTaquillaConfirmado(
-            pago: $pagoConfirmado,
-            usuario: $usuarioAsignado,
-            lockerNumber: $usuarioAsignado->numeroTaquilla !== null ? (int) $usuarioAsignado->numeroTaquilla : null,
-        ));
-    }
-
-    public function rejectPayment(PagoCuota $pago, RechazarPagoTaquillaRequest $request): void
-    {
-        if (($pago->status ?? '') === PagoCuota::STATUS_REJECTED) {
-            throw ValidationException::withMessages([
-                'pago' => ['Este pago ya esta rechazado.'],
-            ]);
+        if ($hasActiveToday) {
+            return 0;
         }
 
-        $notes = $request->validated('admin_notes') ?? 'Comprobante rechazado.';
+        $lastStarted = $confirmed
+            ->filter(fn ($p) => $p->periodo_inicio && $p->periodo_fin
+                && Carbon::parse($p->periodo_inicio)->startOfDay()->lte($today))
+            ->sortByDesc(fn ($p) => Carbon::parse($p->periodo_fin)->timestamp)
+            ->first();
 
-        $this->runTransactional(
-            action: 'reject_payment',
-            actorUserId: (int) $pago->user_id,
-            payload: ['pago_id' => $pago->id, 'admin_notes' => $notes],
-            callback: function () use ($pago, $notes): void {
-                PagoCuota::query()->whereKey($pago->id)->lockForUpdate()->firstOrFail()
-                    ->update([
-                        'status' => PagoCuota::STATUS_REJECTED,
-                        'admin_notes' => $notes,
-                        'reviewed_at' => null,
-                    ]);
-            },
-        );
+        if (! $lastStarted) {
+            // Solo prepago futuro o nunca pagó → no pintar como “debe días”.
+            return 0;
+        }
 
-        // Efectos secundarios desacoplados: solo tras commit correcto de la transaccion.
-        $pagoRechazado = PagoCuota::query()->with('plan')->findOrFail($pago->id);
-        $usuarioAfectado = User::query()->findOrFail($pagoRechazado->user_id);
+        $fechaFin = Carbon::parse($lastStarted->periodo_fin)->startOfDay();
+        if ($fechaFin->gte($today)) {
+            return 0;
+        }
 
-        event(new PagoTaquillaRechazado(
-            pago: $pagoRechazado,
-            usuario: $usuarioAfectado,
-            motivo: $notes,
-        ));
+        return max(0, (int) $fechaFin->diffInDays($today));
     }
 
     public function reassignLocker(User $target, User $admin, ReassignLockerRequest $request): void
@@ -979,6 +814,14 @@ class TaquillaMembershipService
         );
 
         return $rows
+            ->filter(function (PagoCuota $p): bool {
+                // Checkout abandonado: no mostrar (y el schedule lo borra).
+                if (($p->status ?? '') === PagoCuota::STATUS_PENDING && $p->isExpiredPending()) {
+                    return false;
+                }
+
+                return true;
+            })
             ->map(function (PagoCuota $p) use ($receiptMap): array {
                 $manualProofUrl = ! empty($p->payment_proof_path)
                     ? route('taquilla.pagos.proof', $p->id)
@@ -1083,24 +926,6 @@ class TaquillaMembershipService
             'fecha_vencimiento_cuota' => $planVigente?->periodo_fin,
             'id_plan_vigente' => $planVigente?->id_plan_pagado,
         ]);
-    }
-
-    /**
-     * @return array{max: int, occupied: Collection<int, int>}
-     */
-    private function buildLockerGrid(): array
-    {
-        $occupied = User::query()
-            ->whereNotNull('numeroTaquilla')
-            ->pluck('numeroTaquilla')
-            ->map(fn ($n) => (int) $n)
-            ->unique()
-            ->values();
-
-        return [
-            'max' => max(60, ((int) $occupied->max() + 20)),
-            'occupied' => $occupied,
-        ];
     }
 
     private function assignLockerToUser(
@@ -1298,14 +1123,6 @@ class TaquillaMembershipService
             '1 mes' => 100,
             default => 0,
         };
-    }
-
-    private function storeProofFile(int $pagoId, UploadedFile $proof): string
-    {
-        $ext = strtolower((string) $proof->getClientOriginalExtension());
-        $fileName = Str::uuid()->toString().'.'.$ext;
-
-        return $proof->storeAs('taquilla-proofs/'.$pagoId, $fileName, 'local');
     }
 
     /**

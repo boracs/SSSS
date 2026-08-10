@@ -133,7 +133,7 @@ class ClassManagerEnrollmentController extends Controller
             'phone' => 'nullable|string|max:40',
             'email' => 'nullable|email|max:120',
             'payment_status' => 'nullable|in:pending,confirmed,rejected',
-            'payment_method' => 'nullable|in:bizum,transferencia',
+            'payment_method' => 'nullable|in:card,datafono,tienda',
         ]);
     }
 }

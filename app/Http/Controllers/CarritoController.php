@@ -36,8 +36,6 @@ class CarritoController extends Controller
             ->get();
 
         $paymentProps = [
-            'paymentIban' => config('services.academy.iban', '[IBAN]'),
-            'paymentBizumNumber' => config('services.academy.bizum_number', '[BIZUM_NUMBER]'),
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
         ];
 

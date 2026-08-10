@@ -117,6 +117,42 @@ test('el admin sí puede marcar recogida con el pago confirmado', function () {
     expect($booking->fresh()->picked_up_at)->not->toBeNull();
 });
 
+test('el admin no puede marcar recogida con el resto del alquiler pendiente de cobro', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $booking = Booking::factory()
+        ->for($this->board)
+        ->hourWindow(BusinessDateTime::parseInAppTimezone('2026-08-10 10:00:00'), 120)
+        ->create([
+            'status' => Booking::STATUS_CONFIRMED,
+            'payment_status' => Booking::PAYMENT_CONFIRMED,
+            'balance_status' => Booking::BALANCE_PENDING,
+        ]);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.mark-picked-up', $booking))
+        ->assertSessionHas('error');
+
+    expect($booking->fresh()->picked_up_at)->toBeNull();
+});
+
+test('cobrado el resto, el admin sí puede marcar la recogida', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $booking = Booking::factory()
+        ->for($this->board)
+        ->hourWindow(BusinessDateTime::parseInAppTimezone('2026-08-10 10:00:00'), 120)
+        ->create([
+            'status' => Booking::STATUS_CONFIRMED,
+            'payment_status' => Booking::PAYMENT_CONFIRMED,
+            'balance_status' => Booking::BALANCE_CONFIRMED,
+        ]);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.mark-picked-up', $booking))
+        ->assertSessionHas('success');
+
+    expect($booking->fresh()->picked_up_at)->not->toBeNull();
+});
+
 test('el listado admin recibe payment_status para pintar el botón de recogida', function () {
     $admin = User::factory()->create(['role' => 'admin']);
     Booking::factory()

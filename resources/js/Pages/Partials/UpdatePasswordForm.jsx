@@ -3,15 +3,53 @@ import InputLabel from "@/Components/InputLabel";
 import TextInput from "@/Components/TextInput";
 import { Transition } from "@headlessui/react";
 import { useForm } from "@inertiajs/react";
-import { useRef } from "react";
-import { CheckCircle2, LockKeyhole } from "lucide-react";
+import { useRef, useState } from "react";
+import { CheckCircle2, Eye, EyeOff, LockKeyhole } from "lucide-react";
 
 const fieldClass =
     "mt-1 block w-full !rounded-xl !border-slate-200 !bg-white !px-4 !py-2.5 !text-sm !text-slate-900 !shadow-sm placeholder:!text-slate-400 focus:!border-sky-500 focus:!outline-none focus:!ring-2 focus:!ring-sky-500/20";
 
+function PasswordField({ id, label, inputRef, value, onChange, error, autoComplete, placeholder, show, onToggleShow }) {
+    const inputClass = `${fieldClass} !pr-11`;
+    return (
+        <div>
+            <InputLabel htmlFor={id} value={label} />
+            <div className="relative">
+                <TextInput
+                    id={id}
+                    ref={inputRef}
+                    value={value}
+                    onChange={onChange}
+                    type={show ? "text" : "password"}
+                    className={inputClass}
+                    autoComplete={autoComplete}
+                    placeholder={placeholder}
+                />
+                <button
+                    type="button"
+                    onClick={onToggleShow}
+                    aria-label={show ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    title={show ? "Ocultar contraseña" : "Mostrar contraseña"}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-slate-600"
+                >
+                    {show ? (
+                        <EyeOff className="h-4 w-4" aria-hidden />
+                    ) : (
+                        <Eye className="h-4 w-4" aria-hidden />
+                    )}
+                </button>
+            </div>
+            <InputError message={error} className="mt-2" />
+        </div>
+    );
+}
+
 export default function UpdatePasswordForm({ className = "" }) {
     const passwordInput = useRef();
     const currentPasswordInput = useRef();
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const {
         data,
@@ -68,66 +106,48 @@ export default function UpdatePasswordForm({ className = "" }) {
             </div>
 
             <form onSubmit={updatePassword} className="space-y-5 p-6 sm:p-8">
-                <div>
-                    <InputLabel
-                        htmlFor="current_password"
-                        value="Contraseña actual"
-                    />
-                    <TextInput
-                        id="current_password"
-                        ref={currentPasswordInput}
-                        value={data.current_password}
-                        onChange={(e) =>
-                            setData("current_password", e.target.value)
-                        }
-                        type="password"
-                        className={fieldClass}
-                        autoComplete="current-password"
-                        placeholder="Introduce tu contraseña actual"
-                    />
-                    <InputError
-                        message={errors.current_password}
-                        className="mt-2"
-                    />
-                </div>
+                <PasswordField
+                    id="current_password"
+                    label="Contraseña actual"
+                    inputRef={currentPasswordInput}
+                    value={data.current_password}
+                    onChange={(e) =>
+                        setData("current_password", e.target.value)
+                    }
+                    error={errors.current_password}
+                    autoComplete="current-password"
+                    placeholder="Introduce tu contraseña actual"
+                    show={showCurrent}
+                    onToggleShow={() => setShowCurrent((v) => !v)}
+                />
 
                 <div className="grid gap-5 sm:grid-cols-2">
-                    <div>
-                        <InputLabel htmlFor="password" value="Nueva contraseña" />
-                        <TextInput
-                            id="password"
-                            ref={passwordInput}
-                            value={data.password}
-                            onChange={(e) => setData("password", e.target.value)}
-                            type="password"
-                            className={fieldClass}
-                            autoComplete="new-password"
-                            placeholder="Introduce tu nueva contraseña"
-                        />
-                        <InputError message={errors.password} className="mt-2" />
-                    </div>
+                    <PasswordField
+                        id="password"
+                        label="Nueva contraseña"
+                        inputRef={passwordInput}
+                        value={data.password}
+                        onChange={(e) => setData("password", e.target.value)}
+                        error={errors.password}
+                        autoComplete="new-password"
+                        placeholder="Introduce tu nueva contraseña"
+                        show={showNew}
+                        onToggleShow={() => setShowNew((v) => !v)}
+                    />
 
-                    <div>
-                        <InputLabel
-                            htmlFor="password_confirmation"
-                            value="Confirmar contraseña"
-                        />
-                        <TextInput
-                            id="password_confirmation"
-                            value={data.password_confirmation}
-                            onChange={(e) =>
-                                setData("password_confirmation", e.target.value)
-                            }
-                            type="password"
-                            className={fieldClass}
-                            autoComplete="new-password"
-                            placeholder="Repite la nueva contraseña"
-                        />
-                        <InputError
-                            message={errors.password_confirmation}
-                            className="mt-2"
-                        />
-                    </div>
+                    <PasswordField
+                        id="password_confirmation"
+                        label="Confirmar contraseña"
+                        value={data.password_confirmation}
+                        onChange={(e) =>
+                            setData("password_confirmation", e.target.value)
+                        }
+                        error={errors.password_confirmation}
+                        autoComplete="new-password"
+                        placeholder="Repite la nueva contraseña"
+                        show={showConfirm}
+                        onToggleShow={() => setShowConfirm((v) => !v)}
+                    />
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 border-t border-slate-100 pt-6">

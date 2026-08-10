@@ -31,13 +31,16 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
 
         // 2. Verificar si el usuario tiene asignado un número de taquilla física.
         if (! $user->hasPhysicalLocker()) {
-            return redirect()->route('tienda')->with('error', 'Debes tener una taquilla asignada para acceder a esta funcionalidad.');
+            return redirect()->route('tienda')->with(
+                'access_alert',
+                'Debes tener una taquilla asignada para acceder al carrito y completar pedidos.',
+            );
         }
 
         // 3. Cuota al día: obligatorio para compras; la renovación sigue accesible.
         $renewalRoutes = [
             'taquillas.pago.client',
-            'taquillas.pago.upload-proof',
+            'taquillas.pago.pay',
             'taquillas.pago.proof',
             'emergency-key.show',
             'emergency-key.request',
@@ -49,7 +52,10 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
         ) {
             return redirect()
                 ->route('taquillas.index.client')
-                ->with('error', 'Tu membresía de taquilla no está al día. Renueva tu plan para seguir usando el carrito y los servicios del club.');
+                ->with(
+                    'access_alert',
+                    'Tu cuota de taquilla está vencida. Renueva tu plan para seguir usando el carrito y los servicios del club.',
+                );
         }
 
         return $next($request);

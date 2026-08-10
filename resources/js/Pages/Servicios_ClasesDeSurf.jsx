@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Link } from "@inertiajs/react";
+import React, { useMemo, useState } from "react";
+import { Link, usePage } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
 import {
@@ -26,8 +26,6 @@ import {
 } from "lucide-react";
 
 import { privateLessonPriceRows } from "../lib/privateLessonPricing";
-
-const PARTICULARES = privateLessonPriceRows();
 
 const BONOS = [
     {
@@ -481,6 +479,12 @@ const InvitadoAmigoCard = () => {
 export default function ServiciosClasesDeSurf({ seo = null }) {
     const [contactOpen, setContactOpen] = useState(false);
     const [contactTopic, setContactTopic] = useState("academy");
+
+    const privateLessonPricing = usePage().props.academyPrivateLesson ?? null;
+    const PARTICULARES = useMemo(
+        () => privateLessonPriceRows(privateLessonPricing),
+        [privateLessonPricing],
+    );
 
     const openContact = (topic = "academy") => {
         setContactTopic(topic);

@@ -8,6 +8,7 @@ const ENTITY_LABELS = {
     alquiler: "bg-amber-900/35 text-amber-100 ring-amber-600/25",
     clase: "bg-emerald-900/35 text-emerald-100 ring-emerald-600/30",
     taquilla: "bg-rose-900/35 text-rose-100 ring-rose-600/25",
+    fotos: "bg-fuchsia-900/35 text-fuchsia-100 ring-fuchsia-600/30",
 };
 
 function statusBadgeClass(status) {

@@ -13,6 +13,9 @@ const SORT_OPTIONS = [
     { value: "descuento_asc", label: "Menor descuento" },
 ];
 
+/** Lotes de 8 = 2 filas en xl (4 cols) / ~4 filas en móvil (2 cols). */
+const BATCH_SIZE = 8;
+
 const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
     const { props } = usePage();
     const { flash, auth } = props;
@@ -20,8 +23,7 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
     const puedeComprar = hasStoreAccess(user);
     const [contactOpen, setContactOpen] = useState(false);
 
-    const productosPorPagina = 18;
-    const [paginaActual, setPaginaActual] = useState(1);
+    const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     const [tagActivo, setTagActivo] = useState("all");
     const [orden, setOrden] = useState("nombre");
 
@@ -64,25 +66,12 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
         });
     }, [productos, tagActivo, orden]);
 
-    const obtenerProductosDePagina = () => {
-        const inicio = (paginaActual - 1) * productosPorPagina;
-        const fin = inicio + productosPorPagina;
-        return productosFiltrados.slice(inicio, fin);
-    };
-
-    const totalPaginas = Math.max(1, Math.ceil(productosFiltrados.length / productosPorPagina));
+    const productosVisibles = productosFiltrados.slice(0, visibleCount);
+    const quedanMas = visibleCount < productosFiltrados.length;
 
     React.useEffect(() => {
-        setPaginaActual(1);
+        setVisibleCount(BATCH_SIZE);
     }, [tagActivo, orden]);
-
-    const irAAnterior = () => {
-        if (paginaActual > 1) setPaginaActual(paginaActual - 1);
-    };
-
-    const irASiguiente = () => {
-        if (paginaActual < totalPaginas) setPaginaActual(paginaActual + 1);
-    };
 
     const toastClasses =
         tipoToast === "success"
@@ -222,7 +211,7 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
                 ) : null}
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
-                    {obtenerProductosDePagina().map((producto) => (
+                    {productosVisibles.map((producto) => (
                         <Producto
                             key={producto.id}
                             nombre={producto.nombre}
@@ -241,26 +230,28 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
                     </p>
                 ) : null}
 
-                <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-                    <button
-                        onClick={irAAnterior}
-                        className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={paginaActual === 1}
-                    >
-                        Anterior
-                    </button>
-                    <span className="text-sm text-slate-300">
-                        Página <span className="font-bold text-slate-100">{paginaActual}</span> de{" "}
-                        <span className="font-bold text-slate-100">{totalPaginas}</span>
-                    </span>
-                    <button
-                        onClick={irASiguiente}
-                        className="rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={paginaActual === totalPaginas}
-                    >
-                        Siguiente
-                    </button>
-                </div>
+                {quedanMas ? (
+                    <div className="mt-7 flex flex-col items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() =>
+                                setVisibleCount((n) =>
+                                    Math.min(
+                                        n + BATCH_SIZE,
+                                        productosFiltrados.length,
+                                    ),
+                                )
+                            }
+                            className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10 hover:text-white"
+                        >
+                            Ver más
+                        </button>
+                        <p className="text-xs text-slate-500">
+                            Mostrando {productosVisibles.length} de{" "}
+                            {productosFiltrados.length}
+                        </p>
+                    </div>
+                ) : null}
             </div>
 
             {contactOpen ? (

@@ -36,12 +36,14 @@ class PagoCuota extends Model
         'periodo_inicio',
         'periodo_fin',
         'fecha_pago',
+        'expires_at',
     ];
 
     protected $casts = [
         'periodo_inicio' => 'datetime',
         'periodo_fin' => 'datetime',
         'fecha_pago' => 'datetime',
+        'expires_at' => 'datetime',
         'proof_uploaded_at' => 'datetime',
         'reviewed_at' => 'datetime',
         'is_checked' => 'boolean',
@@ -63,6 +65,25 @@ class PagoCuota extends Model
     public function plan()
     {
         return $this->belongsTo(PlanTaquilla::class, 'id_plan_pagado');
+    }
+
+    /**
+     * Checkout Stripe abandonado: sigue pendiente y su ventana de pago ya pasó
+     * (o es un pending legado sin expires_at más viejo que el TTL).
+     */
+    public function isExpiredPending(): bool
+    {
+        if ($this->status !== self::STATUS_PENDING) {
+            return false;
+        }
+
+        if ($this->expires_at !== null) {
+            return $this->expires_at->isPast();
+        }
+
+        $ttl = max(1, (int) config('taquilla.pending_unpaid_expiration_minutes', 30));
+
+        return $this->created_at !== null && $this->created_at->lt(now()->subMinutes($ttl));
     }
 
     public function getDuracionDiasAttribute(): int

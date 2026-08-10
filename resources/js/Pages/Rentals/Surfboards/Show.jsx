@@ -8,8 +8,6 @@ import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 
 export default function Show({
     surfboard,
-    paymentIban = "[IBAN]",
-    paymentBizumNumber = "[BIZUM_NUMBER]",
     whatsappHelpUrl = null,
     rentalPolicy = null,
     seo = null,
@@ -56,8 +54,6 @@ export default function Show({
                         <SurfboardPublicDetail
                             board={surfboard}
                             onImageClick={setLightbox}
-                            paymentIban={paymentIban}
-                            paymentBizumNumber={paymentBizumNumber}
                             whatsappHelpUrl={whatsappHelpUrl}
                             rentalPolicy={rentalPolicy}
                             initialStart={initialDates.start}

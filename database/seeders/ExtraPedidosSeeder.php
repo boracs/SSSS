@@ -61,7 +61,7 @@ final class ExtraPedidosSeeder extends Seeder
                 'precio_total' => 0,
                 'pagado' => $pagado,
                 'entregado' => $entregado,
-                'payment_method' => $pagado ? ($i % 2 === 0 ? 'bizum' : 'transferencia') : null,
+                'payment_method' => $pagado ? 'card' : null,
                 'created_at' => Carbon::now()->subDays($daysAgo)->subHours($i % 12),
                 'updated_at' => Carbon::now()->subDays(max(0, $daysAgo - 1)),
             ]);

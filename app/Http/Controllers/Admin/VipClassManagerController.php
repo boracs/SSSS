@@ -15,7 +15,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Inertia\Inertia;
 
 class VipClassManagerController extends Controller
 {
@@ -32,79 +31,10 @@ class VipClassManagerController extends Controller
         private readonly SyncLessonStaffAction $syncLessonStaffAction,
     ) {}
 
-    public function index(Request $request)
+    /** @deprecated El calendario VIP vive en ClassManager; esta ruta solo redirige. */
+    public function index()
     {
-        $month = (string) $request->query('month', BusinessDateTime::now()->format('Y-m'));
-        [$year, $m] = array_pad(array_map('intval', explode('-', $month)), 2, 0);
-        if ($year < 2000 || $m < 1 || $m > 12) {
-            $year = (int) BusinessDateTime::now()->format('Y');
-            $m = (int) BusinessDateTime::now()->format('m');
-            $month = sprintf('%04d-%02d', $year, $m);
-        }
-
-        $start = Carbon::create($year, $m, 1, 0, 0, 0, BusinessDateTime::businessTimezone())->startOfMonth()->startOfDay();
-        $end = $start->copy()->endOfMonth()->endOfDay();
-
-        $lessons = Lesson::query()
-            ->with([
-                'staffAssignments.user:id,nombre,apellido',
-                'enrollments.user:id,nombre,apellido',
-            ])
-            ->where('modality', 'vip')
-            ->whereBetween('starts_at', [$start, $end])
-            ->orderBy('starts_at')
-            ->get()
-            ->map(function (Lesson $lesson) {
-                $monitor = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_MONITOR);
-                $photographer = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_FOTOGRAFO);
-                $occupancy = (int) $lesson->enrollments()->whereIn('status', ['pending', 'confirmed', 'enrolled', 'attended'])->count();
-                $evaluation = $this->availabilityService->preview($lesson->starts_at, $lesson->ends_at, 1, (int) $lesson->id);
-                $staffStatus = $this->availabilityService->describeCapacity($evaluation);
-                $configuredCapacity = (int) ($lesson->max_capacity ?? $lesson->max_slots ?? 0);
-                $capacity = min($configuredCapacity, (int) ($evaluation['max_capacity'] ?? $configuredCapacity));
-                $poolMax = (int) ($evaluation['max_capacity'] ?? 0);
-                $students = $lesson->enrollments
-                    ->whereIn('status', self::ACTIVE_ENROLLMENT_STATUSES)
-                    ->map(function (LessonUser $enrollment) {
-                        return trim((string) (($enrollment->user?->nombre ?? '').' '.($enrollment->user?->apellido ?? '')));
-                    })
-                    ->filter()
-                    ->values()
-                    ->all();
-
-                return [
-                    'id' => (int) $lesson->id,
-                    'title' => $lesson->title ?: 'Clase VIP',
-                    'starts_at' => $lesson->starts_at ? BusinessDateTime::toApi($lesson->starts_at) : null,
-                    'ends_at' => $lesson->ends_at ? BusinessDateTime::toApi($lesson->ends_at) : null,
-                    'level' => $lesson->level,
-                    'location' => $lesson->location ?: 'Zurriola',
-                    'status' => $lesson->status,
-                    'occupancy' => $occupancy,
-                    'max_capacity' => $capacity,
-                    'staff_pool_max_capacity' => $poolMax,
-                    'monitors_free' => (int) $staffStatus['monitors_free'],
-                    'staff_capacity_status' => (string) $staffStatus['status'],
-                    'staff_capacity_label' => (string) $staffStatus['label'],
-                    'staff_capacity_message' => (string) $staffStatus['message'],
-                    'staff_capacity_show_warning' => (bool) $staffStatus['show_warning'],
-                    'monitor_id' => $monitor?->user_id ? (int) $monitor->user_id : null,
-                    'photographer_id' => $photographer?->user_id ? (int) $photographer->user_id : null,
-                    'has_photographer' => (bool) $photographer,
-                    'monitor_name' => trim((string) (($monitor?->user?->nombre ?? '').' '.($monitor?->user?->apellido ?? ''))),
-                    'photographer_name' => trim((string) (($photographer?->user?->nombre ?? '').' '.($photographer?->user?->apellido ?? ''))),
-                    'students' => $students,
-                ];
-            })
-            ->values();
-
-        $staff = $this->buildStaffCatalog();
-
-        return Inertia::render('Admin/VipManager', [
-            'month' => $month,
-            'lessons' => $lessons,
-            'staff' => $staff,
-        ]);
+        return redirect()->route('admin.class-manager.index');
     }
 
     public function checkAvailability(Request $request)

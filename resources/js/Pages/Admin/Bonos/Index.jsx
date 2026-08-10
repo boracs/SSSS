@@ -1,126 +1,126 @@
-import { Head, router, usePage } from "@inertiajs/react";
-import { useMemo, useState } from "react";
+import { router, usePage } from "@inertiajs/react";
+import { useState } from "react";
+import AdminPageShell from "@/components/admin/ui/AdminPageShell";
+import AdminCard from "@/components/admin/ui/AdminCard";
+import AdminTable from "@/components/admin/ui/AdminTable";
+import AdminStatusBadge from "@/components/admin/ui/AdminStatusBadge";
+import AdminButton from "@/components/admin/ui/AdminButton";
+import AdminFormField from "@/components/admin/ui/AdminFormField";
+import AdminToast from "@/components/admin/ui/AdminToast";
 
-export default function AdminBonosIndex({ packs = [], vipUsers = [] }) {
+export default function AdminBonosIndex({ packs = [] }) {
     const { flash } = usePage().props;
-    const [form, setForm] = useState({
-        nombre: "",
-        num_clases: 5,
-        precio: 0,
-        activo: true,
-    });
-    const [assignForm, setAssignForm] = useState({ user_id: "", pack_id: "", admin_notes: "Asignación manual por admin" });
+    const emptyForm = { nombre: "", num_clases: "", precio: "", activo: true };
+    const [form, setForm] = useState(emptyForm);
 
     const submit = (e) => {
         e.preventDefault();
-        router.post(route("admin.bonos.store"), form);
+        router.post(
+            route("admin.bonos.store"),
+            {
+                ...form,
+                num_clases: Number(form.num_clases),
+                precio: Number(form.precio),
+            },
+            {
+                onSuccess: () => setForm(emptyForm),
+            },
+        );
     };
 
     const togglePack = (pack) => {
         router.patch(route("admin.bonos.toggle-active", pack.id));
     };
 
-    const activePacks = useMemo(() => (packs || []).filter((p) => !!p.activo), [packs]);
-
-    const assignManual = (e) => {
-        e.preventDefault();
-        router.post(route("admin.bonos.assign-manual"), assignForm, {
-            onSuccess: () => setAssignForm({ user_id: "", pack_id: "", admin_notes: "Asignación manual por admin" }),
-        });
-    };
-
     const toast = flash?.success || flash?.error;
 
     return (
-        <>
-            <Head title="Admin · Bonos" />
-            <div className="mx-auto max-w-6xl p-6 space-y-6">
-                <h1 className="text-2xl font-bold text-slate-900">Gestión de Packs Bono</h1>
-                {toast ? (
-                    <div className={`fixed right-4 top-24 z-50 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg ${flash?.success ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"}`}>
-                        {toast}
-                    </div>
-                ) : null}
-
-                <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white p-4 grid gap-3 sm:grid-cols-4">
-                    <input className="rounded-lg border border-slate-300 px-3 py-2" placeholder="Nombre" value={form.nombre} onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))} />
-                    <input className="rounded-lg border border-slate-300 px-3 py-2" type="number" min="1" value={form.num_clases} onChange={(e) => setForm((f) => ({ ...f, num_clases: Number(e.target.value) }))} />
-                    <input className="rounded-lg border border-slate-300 px-3 py-2" type="number" step="0.01" min="0" value={form.precio} onChange={(e) => setForm((f) => ({ ...f, precio: Number(e.target.value) }))} />
-                    <button className="rounded-lg bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700" type="submit">Crear Pack</button>
+        <AdminPageShell
+            headTitle="Admin · Bonos"
+            activeTab="bonos"
+            breadcrumbs={[
+                { label: "Admin", href: route("Pag_principal") },
+                { label: "Servicios", href: route("admin.catalog.index") },
+                { label: "Bonos VIP" },
+            ]}
+            eyebrow="Admin · Bonos VIP"
+            title="Gestión de Packs Bono"
+            description="Packs de clases que ven los socios VIP. La asignación a un socio se hace siempre desde Pagos → datáfono (cobro → asignar)."
+            toast={<AdminToast message={toast} variant={flash?.success ? "success" : "error"} />}
+        >
+            <AdminCard>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-slate-400">
+                    Nuevo pack
+                </h2>
+                <form onSubmit={submit} className="grid gap-3 sm:grid-cols-4">
+                    <AdminFormField
+                        inputProps={{
+                            required: true,
+                            placeholder: "Nombre del pack",
+                            value: form.nombre,
+                            onChange: (e) => setForm((f) => ({ ...f, nombre: e.target.value })),
+                        }}
+                    />
+                    <AdminFormField
+                        type="number"
+                        inputProps={{
+                            required: true,
+                            min: "1",
+                            placeholder: "Cantidad de clases",
+                            value: form.num_clases,
+                            onChange: (e) =>
+                                setForm((f) => ({ ...f, num_clases: e.target.value })),
+                        }}
+                    />
+                    <AdminFormField
+                        type="number"
+                        inputProps={{
+                            required: true,
+                            step: "0.01",
+                            min: "0",
+                            placeholder: "Precio (€)",
+                            value: form.precio,
+                            onChange: (e) =>
+                                setForm((f) => ({ ...f, precio: e.target.value })),
+                        }}
+                    />
+                    <AdminButton type="submit">Crear Pack</AdminButton>
                 </form>
+            </AdminCard>
 
-                <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-slate-50 text-slate-700">
-                            <tr>
-                                <th className="px-3 py-2 text-left">Nombre</th>
-                                <th className="px-3 py-2 text-left">Clases</th>
-                                <th className="px-3 py-2 text-left">Precio</th>
-                                <th className="px-3 py-2 text-left">Activo</th>
-                                <th className="px-3 py-2 text-left">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-slate-900">
-                            {packs.map((pack) => (
-                                <tr
-                                    key={pack.id}
-                                    className={`border-t border-slate-100 transition-all ${pack.activo ? "bg-white text-slate-900" : "bg-slate-50 text-slate-600"}`}
-                                >
-                                    <td className="px-3 py-2 text-slate-900">{pack.nombre}</td>
-                                    <td className="px-3 py-2 text-slate-900">{pack.num_clases}</td>
-                                    <td className="px-3 py-2 text-slate-900">{`${Number(pack.precio).toFixed(2)} €`}</td>
-                                    <td className="px-3 py-2 text-slate-900">{pack.activo ? "Sí" : "No"}</td>
-                                    <td className="px-3 py-2">
-                                        <button
-                                            onClick={() => togglePack(pack)}
-                                            className={`rounded-md px-3 py-1 text-white ${pack.activo ? "bg-amber-500 hover:bg-amber-600" : "bg-emerald-600 hover:bg-emerald-700"}`}
-                                            type="button"
-                                        >
-                                            {pack.activo ? "Desactivar" : "Activar"}
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-                    <h2 className="text-lg font-semibold text-slate-900">Asignar Bono Manual</h2>
-                    <form onSubmit={assignManual} className="grid gap-3 sm:grid-cols-3">
-                        <select
-                            className="rounded-lg border border-slate-300 px-3 py-2"
-                            value={assignForm.user_id}
-                            onChange={(e) => setAssignForm((f) => ({ ...f, user_id: e.target.value }))}
-                            required
-                        >
-                            <option value="">Selecciona usuario VIP</option>
-                            {vipUsers.map((u) => (
-                                <option key={u.id} value={u.id}>
-                                    {`${u.nombre ?? ""} ${u.apellido ?? ""}`.trim()} - {u.email}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            className="rounded-lg border border-slate-300 px-3 py-2"
-                            value={assignForm.pack_id}
-                            onChange={(e) => setAssignForm((f) => ({ ...f, pack_id: e.target.value }))}
-                            required
-                        >
-                            <option value="">Selecciona pack</option>
-                            {activePacks.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.nombre} ({p.num_clases} clases)
-                                </option>
-                            ))}
-                        </select>
-                        <button className="rounded-lg bg-emerald-600 px-4 py-2 font-semibold text-white hover:bg-emerald-700" type="submit">
-                            Asignar y Confirmar
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </>
+            <AdminTable
+                columns={[
+                    { key: "nombre", label: "Nombre" },
+                    { key: "num_clases", label: "Clases" },
+                    { key: "precio", label: "Precio" },
+                    { key: "activo", label: "Activo" },
+                    { key: "acciones", label: "Acciones", align: "right" },
+                ]}
+                rows={packs}
+                emptyMessage="Aún no hay packs de bono creados."
+                renderCell={(pack, col) => {
+                    if (col.key === "precio") return `${Number(pack.precio).toFixed(2)} €`;
+                    if (col.key === "activo") {
+                        return (
+                            <AdminStatusBadge variant={pack.activo ? "success" : "neutral"}>
+                                {pack.activo ? "Activo" : "Inactivo"}
+                            </AdminStatusBadge>
+                        );
+                    }
+                    if (col.key === "acciones") {
+                        return (
+                            <AdminButton
+                                variant={pack.activo ? "danger" : "success"}
+                                className="px-3 py-1.5 text-xs"
+                                onClick={() => togglePack(pack)}
+                            >
+                                {pack.activo ? "Desactivar" : "Activar"}
+                            </AdminButton>
+                        );
+                    }
+                    return pack[col.key];
+                }}
+            />
+        </AdminPageShell>
     );
 }
-

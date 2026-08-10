@@ -7,12 +7,14 @@ namespace App\Services\Payments;
 use App\DTOs\Payments\CheckoutSessionResultDto;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\Enums\PaymentStatus;
+use App\Actions\Photos\ConfirmPhotoBookingPaymentAction;
 use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
 use App\Models\PaymentWebhookIdempotency;
+use App\Models\PhotoSessionBooking;
 use App\Models\UserBono;
 use App\Services\Auctions\AuctionSettlementService;
 use App\Services\BonoService;
@@ -307,13 +309,14 @@ final class PaymentGatewayService
             }
 
             $confirmed = match ($intent->payable_type) {
-                Booking::class    => $this->confirmBookingPayment((int) $intent->payable_id),
+                Booking::class => $this->confirmBookingPayment((int) $intent->payable_id),
                 LessonUser::class => $this->confirmLessonPayment((int) $intent->payable_id),
-                Pedido::class     => $this->confirmPedidoPayment((int) $intent->payable_id),
-                UserBono::class   => $this->confirmUserBonoPayment((int) $intent->payable_id),
-                PagoCuota::class  => $this->confirmPagoCuotaPayment((int) $intent->payable_id),
-                Auction::class    => $this->confirmAuctionPayment((int) $intent->payable_id),
-                default           => $this->confirmGenericPayment($intent->payable_type, (int) $intent->payable_id),
+                Pedido::class => $this->confirmPedidoPayment((int) $intent->payable_id),
+                UserBono::class => $this->confirmUserBonoPayment((int) $intent->payable_id),
+                PagoCuota::class => $this->confirmPagoCuotaPayment((int) $intent->payable_id),
+                Auction::class => $this->confirmAuctionPayment((int) $intent->payable_id),
+                PhotoSessionBooking::class => $this->confirmPhotoBookingPayment((int) $intent->payable_id),
+                default => $this->confirmGenericPayment($intent->payable_type, (int) $intent->payable_id),
             };
 
             if (! $confirmed) {
@@ -359,10 +362,15 @@ final class PaymentGatewayService
             return true;
         }
 
+        // Stripe solo cobra el depósito (30 % por defecto): si no cubre el
+        // total, queda un resto pendiente de cobrar en mostrador.
+        $remaining = round(((float) $booking->total_price) - ((float) $booking->deposit_amount), 2);
+
         $booking->update([
             'payment_status' => PaymentStatus::Confirmed->value,
             'status'         => Booking::STATUS_CONFIRMED,
             'reviewed_at'    => BusinessDateTime::now(),
+            'balance_status' => $remaining > 0.01 ? Booking::BALANCE_PENDING : Booking::BALANCE_NONE,
         ]);
 
         return true;
@@ -370,7 +378,7 @@ final class PaymentGatewayService
 
     private function confirmLessonPayment(int $enrollmentId): bool
     {
-        $enrollment = LessonUser::query()->whereKey($enrollmentId)->lockForUpdate()->first();
+        $enrollment = LessonUser::query()->with('lesson')->whereKey($enrollmentId)->lockForUpdate()->first();
         if ($enrollment === null) {
             return false;
         }
@@ -379,10 +387,19 @@ final class PaymentGatewayService
             return true;
         }
 
+        // La particular solo cobra una señal online: si no cubre el total de la
+        // clase, el resto queda pendiente de cobrar en mostrador. Las grupales
+        // pagan el importe íntegro y no dejan señal registrada.
+        $hasDeposit = (int) ($enrollment->deposit_amount_cents ?? 0) > 0;
+        $remainingCents = $enrollment->remainingBalanceCents();
+
         $enrollment->update([
             'payment_status' => PaymentStatus::Confirmed->value,
             'status'         => LessonUser::STATUS_CONFIRMED,
             'confirmed_at'   => BusinessDateTime::now(),
+            'balance_status' => $hasDeposit && $remainingCents > 0
+                ? LessonUser::BALANCE_PENDING
+                : LessonUser::BALANCE_NONE,
         ]);
 
         return true;
@@ -437,6 +454,27 @@ final class PaymentGatewayService
             Log::error('PaymentGatewayService::confirmPagoCuotaPayment error', [
                 'pago_id' => $pagoId,
                 'error'   => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function confirmPhotoBookingPayment(int $bookingId): bool
+    {
+        try {
+            $booking = PhotoSessionBooking::query()->find($bookingId);
+            if ($booking === null) {
+                return false;
+            }
+
+            app(ConfirmPhotoBookingPaymentAction::class)->execute($booking, 'card');
+
+            return true;
+        } catch (Throwable $e) {
+            Log::error('PaymentGatewayService::confirmPhotoBookingPayment error', [
+                'booking_id' => $bookingId,
+                'error' => $e->getMessage(),
             ]);
 
             return false;
