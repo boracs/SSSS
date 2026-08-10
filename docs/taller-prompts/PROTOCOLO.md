@@ -1,6 +1,8 @@
 # Taller de Prompts — maider_0 (DeepSeek ↔ Cursor)
 
-Sesión exclusiva de la que salen prompts listos para usar, mejorados y fusionados entre **DeepSeek** y **Cursor**, con aprendizaje mutuo: cada iteración deja registrado qué aportó cada herramienta.
+Sesión exclusiva de la que salen prompts listos para usar, mejorados y fusionados entre **DeepSeek (Reasonix)** y **Cursor**, con aprendizaje mutuo: cada iteración deja registrado qué aportó cada herramienta.
+
+**Compatibilidad:** `docs/taller-prompts/CONTRATO-IA.md` (roles, router único, anti-pisotón). Ambas IAs lo respetan.
 
 ## Metodología adoptada
 
@@ -16,9 +18,10 @@ Esta sesión aplica la metodología de `.cursor/skills/prompt-forge/SKILL.md` (y
 
 1. Código del repositorio.
 2. `docs/PROJECT_TREE_FOR_GEMINI.md` (mapa de rutas y dominios; leerlo antes de proponer rutas).
-3. `.cursorrules` + `.cursor/rules/*` (chatbot-s4, seo-geo-public, tunnel-share-modes, taller-reading-layout).
-4. `docs/ia/01-cto-protocol.md` (V5) y `docs/ia/02-master-prompt-v3-ultra.md`.
-5. `docs/taller-prompts/PROTOCOLO.md` (este documento), `docs/taller-prompts/COORDINACION.md` (estado de trabajo compartido) y `docs/taller-prompts/REGISTRO.md`.
+3. `docs/taller-prompts/CONTRATO-IA.md` + `COORDINACION.md` (dúo Reasonix/DeepSeek ↔ Cursor).
+4. `.cursorrules` + `.cursor/rules/*` (chatbot-s4, seo-geo-public, tunnel-share-modes, taller-reading-layout) · en Reasonix: `AGENTS.md`.
+5. `docs/ia/01-cto-protocol.md` (V5) y `docs/ia/02-master-prompt-v3-ultra.md`.
+6. Este `PROTOCOLO.md` + `REGISTRO.md`.
 
 Si un documento y el código se contradicen, prevalece el código.
 
@@ -26,8 +29,9 @@ Si un documento y el código se contradicen, prevalece el código.
 
 | Herramienta | Naturaleza | Consecuencia para el prompt |
 |---|---|---|
-| **Cursor** | Agente con acceso al repo | Puede leer código: usa rutas reales, pídele leer archivos antes de escribir, exige respetar la arquitectura (DTOs readonly, Service Layer, Actions, eventos encolados, `DB::transaction()` + `lockForUpdate()`, dinero en int). |
-| **DeepSeek** | Modelo de chat sin repo | No ve el código: el prompt debe ser autocontenido (stack, reglas clave, fragmentos de código pegados, delimitadores). Su fuerza: crítica, alternativas, contexto libre. |
+| **Cursor** | Agente IDE con repo | Lee/escribe código; rutas reales; arquitectura (DTOs, Services, Actions, transacciones, dinero int). Implementación por defecto. |
+| **Reasonix + DeepSeek** | DeepSeek con harness local | Misma repo que Cursor; taller/UX/prompts por defecto; código solo si el usuario lo pide. Coordina vía `COORDINACION.md`. |
+| **DeepSeek-web** | Chat sin repo | Prompt autocontenido + pegar archivos del router (`MASTER-PROMPT-DEEPSEEK.md`). Crítica y alternativas. |
 
 ## Flujo de trabajo estándar
 

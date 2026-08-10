@@ -1,5 +1,8 @@
 # maider_0 — Mapa estructural del proyecto (contexto para IA)
 
+> **DEPRECATED (2026-08-08):** este documento está desactualizado. Usar como mapa canónico
+> [`docs/PROJECT_TREE_FOR_GEMINI.md`](PROJECT_TREE_FOR_GEMINI.md).
+
 **Proyecto:** San Sebastián Surf School (S4)
 **Dominio de negocio:** escuela/club de surf — tienda, academia de clases, alquiler de tablas, taquillas/lockers, programa VIP con bonos, tablas de segunda mano y pagos manuales con validación administrativa.
 **Tipo de aplicación:** monolito modular (arquitectura por dominios) Laravel 11 + SPA React 19 vía Inertia.js 2.
@@ -57,7 +60,7 @@
 | Alquileres | `Rentals/*`, `BookingService` | `Rentals/Surfboards/`, `Admin/Surfboards/` |
 | Taquillas | `PlanesTaquillas`, `Taquilla`, `PagoCuota`, `Services/Taquilla/*` | `PlanesTaquillas*`, `AsignarTaquilla`, `Admin/Taquillas/{Registry,Vigencia}` |
 | Llave de emergencia | `EmergencyKeyController` (socio + Admin), `EmergencyKeyService` | `Profile/MeQuedeSinLlave`, `Admin/EmergencyKeys/` |
-| VIP / Bonos | `Client/BonoController`, `Admin/*`, `BonoService` | `Client/Bonos/`, `Admin/Bonos/`, `Admin/Vips/` |
+| VIP / Bonos | `Client/BonoController`, `Admin/*`, `BonoService` | `Client/Bonos/`, `Admin/Bonos/` |
 | Pagos (admin) | `Admin/PaymentValidationController` | `Admin/Payments/`, `Admin/CheckManager` |
 | Usuario / Reservas | `User/MyReservationsController` | `User/Dashboard/MyReservations` |
 | Auth / Perfil | `Auth/*`, `ProfileController` | `Auth/`, `Profile/`, `Partials/` |
@@ -270,7 +273,7 @@ resources/
     │   ├── PaymentModal.jsx
     │   ├── Taquilla.jsx, UsuarioTaquillaCard.jsx
     │   ├── Producto.jsx, ProductoGestor.jsx, ProductoOferta.jsx
-    │   ├── FormularioContacto.jsx, ListaUsuarios.jsx
+    │   ├── FormularioContacto.jsx
     │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx, Modal.jsx
     │   ├── CartaServicio_surf.jsx, CartaServicio_skate.jsx, BrandBanner.jsx, SurfTripFab.jsx
     │   ├── [Breeze base] PrimaryButton, SecondaryButton, DangerButton, TextInput,
@@ -298,7 +301,7 @@ resources/
         ├── [Auth] Login, Register, ForgotPassword, ResetPassword, VerifyEmail, ConfirmPassword
         └── [Admin] Academy/Commander, Bonos/Index, Bookings/Index, SecondHand/(Index,Create,Edit),
             CheckManager, EmergencyKeys/Index, Payments/(Dashboard,GlobalDashboard),
-            Surfboards/(Index,Create,Edit), Taquillas/{Registry,Vigencia}, Users/Index, Vips/Index, VipManager
+            Surfboards/(Index,Create,Edit), Taquillas/{Registry,Vigencia}, Users/Index, VipManager
 ```
 
 ---
@@ -341,7 +344,7 @@ HandleInertiaRequests::share
 ├── auth.user      (id, role, is_vip, has_active_locker, …)
 ├── cart / cartCount
 ├── adminStats     (unreviewed_payments_total, unreviewed_rentals_count,
-│                   unreviewed_lockers_total, vipRenewalAlertCount)
+│                   unreviewed_lockers_total, pendingCuotasCount)
 └── ziggy          (rutas para el frontend)
 ```
 

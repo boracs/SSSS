@@ -7,7 +7,7 @@ Establecer un estándar único para cambios en `maider_0`: seguridad de datos, c
 1. Código del repositorio.
 2. `docs/PROJECT_TREE_FOR_GEMINI.md`.
 3. Este protocolo.
-4. `docs/ai/02-master-prompt-v3-ultra.md`.
+4. `docs/ia/02-master-prompt-v3-ultra.md`.
 
 Si hay conflicto entre documentos y código, prevalece el código y se actualiza la documentación en el mismo cambio.
 

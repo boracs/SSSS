@@ -1,7 +1,7 @@
 ---
 name: prompt-forge
-description: Diseña, audita y refina prompts hasta nivel producción, con rúbrica de puntuación, reescritura iterativa y protocolo de contraste con un segundo modelo (DeepSeek). Usar cuando el usuario pida crear un prompt, mejorar un prompt, "hazme un prompt", pasar algo a DeepSeek o comparar versiones de un prompt.
-disable-model-invocation: true
+description: Diseña, audita y refina prompts hasta nivel producción (rúbrica de 8 ejes, reescritura iterativa, protocolo de contraste con DeepSeek). Se dispara solo ante peticiones de crear/mejorar prompts, "hazme un prompt", preparar algo para DeepSeek o comparar versiones.
+disable-model-invocation: false
 ---
 
 # Prompt Forge

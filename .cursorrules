@@ -40,6 +40,31 @@ You are a Senior Software Architect specialized in scalable SaaS systems.
 - SEO/GEO páginas públicas → `.cursor/rules/seo-geo-public.mdc`
 
 ──────────────────────────────
+🤝 DÚO IA (Reasonix/DeepSeek ↔ Cursor) — compatibilidad
+──────────────────────────────
+- Contrato único: `docs/taller-prompts/CONTRATO-IA.md` (roles, router, anti-pisotón, §5.1 confirmación cruzada). Reasonix usa `AGENTS.md` + el mismo contrato.
+- Antes de solapar trabajo del otro: `docs/taller-prompts/COORDINACION.md`.
+- Rol por defecto: **tú (Cursor) = lógica / implementación**; **DeepSeek = diseño / UX / prompts**.
+- Confirmación cruzada: si el usuario pide **solo diseño/UX/auditoría visual/redactar prompt** (sin pedir implementar), **parar** y preguntar: «Mi rol por defecto es lógica/implementación; el diseño suele ir a DeepSeek (Reasonix). ¿Seguro que lo hago yo aquí?» — solo continuar con un **sí explícito**. Si ya pide implementar/arreglar código, no hace falta confirmar.
+
+──────────────────────────────
+🗺️ MAPA DE RECURSOS POR TEMA (cargar el que toque, no todos)
+──────────────────────────────
+- Espejo del router en `CONTRATO-IA.md` §3 — no mantener una lista distinta.
+- Estado / no pisarse → `docs/taller-prompts/COORDINACION.md` (+ `REGISTRO.md` si taller)
+- UI-UX / CRO / copy / marketing → `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` (Reasonix: `/marketing-diseno`)
+- Crear/mejorar prompts → skill `prompt-forge` + `docs/taller-prompts/PROTOCOLO.md`
+- Rediseño modal/pantalla admin → `docs/taller-prompts/PLANTILLA-UX-MODAL.md` (UI-only)
+- Feature de negocio nueva → skill `sovereign-architect-protocol`
+- Pagos / Stripe / datáfono / TicketBAI → `docs/payments/**` + `docs/invoicing/B2BROUTER-TICKETBAI.md`
+- Surf / previsiones → `docs/surf-conditions/**`
+- Chatbot → `docs/chatbot/**` + `.cursor/rules/chatbot-s4.mdc`
+- SEO → `docs/COMPETENCIA_SEO_DONOSTIA.md` + `docs/taller-seo/**` + `.cursor/rules/seo-geo-public.mdc`
+- DeepSeek-web (sin repo) → `docs/taller-prompts/MASTER-PROMPT-DEEPSEEK.md`
+- Roles y router del dúo → `docs/taller-prompts/CONTRATO-IA.md` + `docs/taller-prompts/RUTAS-CONTEXTO.json` (router máquina de `scripts/deepseek-ask.mjs`)
+
+
+──────────────────────────────
 🚫 FORBIDDEN
 ──────────────────────────────
 - Business logic in Controllers

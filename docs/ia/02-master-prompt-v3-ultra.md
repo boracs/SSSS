@@ -2,6 +2,8 @@
 
 Usa este documento como plantilla de trabajo para cualquier tarea técnica en Cursor.
 
+> **Estado: plantilla de ejecución (+AA).** Las reglas de arquitectura viven en `.cursorrules` + `docs/taller-prompts/CONTRATO-IA.md` (router en `RUTAS-CONTEXTO.json`). Este documento ya NO es fuente de reglas: es la plantilla operativa (protocolo de ejecución, formato de respuesta, plantilla rápida).
+
 ## 1) Contexto mínimo
 - Stack: Laravel 11 + PHP 8.2+, React 19 + Inertia 2, MySQL.
 - Dominios críticos: Academia, Rentals, Taquillas, Bonos VIP, Pedidos.
@@ -15,7 +17,7 @@ Usa este documento como plantilla de trabajo para cualquier tarea técnica en Cu
 - `TaquillaMembershipService`: cuotas y confirmación de membresía.
 
 ## 3) Protocolo de ejecución por tarea
-1. Leer `docs/ai/01-cto-protocol.md`.
+1. Leer `docs/ia/01-cto-protocol.md`.
 2. Validar contexto en `docs/PROJECT_TREE_FOR_GEMINI.md`.
 3. Hacer +AA breve (impacto, concurrencia, seguridad, datos).
 4. Ejecutar cambio por capas cuando aplique:
@@ -28,12 +30,8 @@ Usa este documento como plantilla de trabajo para cualquier tarea técnica en Cu
 5. Verificar y documentar cambios.
 
 ## 4) Reglas no negociables
-- `declare(strict_types=1);`
-- Sin lógica de negocio en controller ni JSX.
-- `DB::transaction()` en operaciones multi-escritura.
-- `lockForUpdate()` en recursos con concurrencia.
-- Dinero en céntimos (`int`) en el dominio.
-- Logs de error con contexto (`payable_type`, `payable_id`, ids relevantes).
+
+Ver `.cursorrules` (Cursor lo carga siempre) + `docs/taller-prompts/CONTRATO-IA.md`. No duplicar aquí.
 
 ## 5) Formato de respuesta recomendado
 - +AA (3-6 bullets).

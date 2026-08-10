@@ -43,7 +43,7 @@
 │ Subastas        │ Auction, AuctionBid, Auction*Service │ Auctions/, Admin/Auctions/   │
 │ Taquillas       │ Taquilla, PlanesTaquillas, EmergencyKey │ PlanesTaquillas*, MeQuedeSinLlave, Admin/EmergencyKeys │
 │ VIP / Bonos     │ BonoService, Client/Bono     │ Client/Bonos/, Admin/Bonos/      │
-│ Pagos admin     │ PaymentValidation            │ Admin/Payments/*                 │
+│ Pagos admin     │ Datafono + ClientPayments    │ Admin/Payments/{Datafono,Clients} │
 │ AutoCoach       │ AutoCoachController + Services │ AutoCoach/Index.jsx            │
 │ Chatbot         │ ChatbotAgentService (regex→Gemini), GoogleAIService, S4BusinessContextService │ Admin/Chatbot/Index.jsx │
 │ Webcams         │ ServicioController (ruta)    │ Servicios_Webcams.jsx            │
@@ -55,7 +55,7 @@
 
 **Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`GlobalNav.jsx` vía `Header.jsx`) y políticas.
 
-**Menú admin (`GlobalNav`):** Inicio · **Gestión** (flyout: Taquillas, Pedidos, Alquileres, Clases, Usuarios, Pagos) · **Extras** (Comparador, Webcams) · Contacto.
+**Menú admin (`GlobalNav`):** Inicio · **Gestión** (flyout: Taquillas, Tienda, Alquileres, Servicios/Gestor de servicios, Chatbot, Usuarios, Pagos/cobros) · **Extras** (Comparador, Webcams) · Contacto.
 
 ---
 
@@ -63,11 +63,15 @@
 
 ```
 maider_0/
+├── AGENTS.md                               ──► Entrada Reasonix (DeepSeek); apunta a CONTRATO-IA.md
+├── .cursorrules                            ──► Entrada Cursor; dúo + router (= CONTRATO-IA)
 ├── .cursor/
 │   ├── rules/
 │   │   ├── tunnel-share-modes.mdc          ──► Modos local vs Cloudflare túnel (Vite/build)
 │   │   ├── seo-geo-public.mdc              ──► Reglas SEO/GEO páginas públicas
-│   │   └── chatbot-s4.mdc                  ──► Embudo FAQ→Gemini→escalación; fuentes de verdad S4
+│   │   ├── chatbot-s4.mdc                  ──► Embudo FAQ→Gemini→escalación; fuentes de verdad S4
+│   │   ├── taller-reading-layout.mdc       ──► Layout de lectura del Taller (ancho tipográfico)
+│   │   └── ui-admin-s4.mdc                 ──► Design language admin (slate/cyan, kit, estados, €)
 │   └── skills/
 │       ├── sovereign-architect-protocol/
 │       │   └── SKILL.md
@@ -85,6 +89,10 @@ maider_0/
 │   │   ├── SyncLessonStaffAction.php       ──► Sincroniza monitor, monitor_2 y fotógrafo en staff_assignments
 │   │   └── UploadLessonProofAction.php     ──► LessonProofStorageService; LessonProofUploadedEvent
 │   │
+│   ├── [DOMINIO: FOTOS] Actions/Photos/
+│   │   ├── ConfirmPhotoBookingPaymentAction.php ──► Confirma pago; bloquea cancelled/rejected/expires_at pasado
+│   │   └── RejectPhotoBookingPaymentAction.php  ──► Rechaza pago reserva fotos
+│   │
 │   ├── Actions/Chatbot/
 │   │   └── ProcessChatbotQueryAction.php   ──► ChatbotInteractionQueryDto → ChatbotAgentService (guard + FAQ + derivación)
 │   │
@@ -98,6 +106,7 @@ maider_0/
 │   ├── Console/
 │   │   ├── AuditLessonCreditsCommand.php
 │   │   └── Commands/
+│   │       ├── CancelExpiredPhotoBookingsCommand.php ──► `photos:cancel-expired` (schedule everyFiveMinutes)
 │   │       ├── CleanupAutoCoachUploads.php      ──► Purga uploads AutoCoach expirados
 │   │       ├── CleanupExpiredReservations.php   ──► Invoca AutoReleaseService (cron)
 │   │       ├── MakeUserVip.php
@@ -119,7 +128,7 @@ maider_0/
 │   │   ├── Academy/
 │   │   │   └── AdminGuestEnrollmentDto.php     ──► DTO readonly inscripción walk-in (nombre, pago)
 │   │   ├── Taller/
-│   │   │   ├── ArticleCardDto.php              ──► Tarjeta artículo (id/title/slug/excerpt)
+│   │   │   ├── ArticleCardDto.php              ──► Tarjeta artículo (id/title/slug/excerpt/cover_image)
 │   │   │   └── ArticleRelatedPageDto.php       ──► Página related + has_more/next_offset (load more)
 │   │   ├── Chatbot/
 │   │   │   └── ChatbotReplyDto.php             ──► FAQ local: response + context (readonly)
@@ -129,7 +138,9 @@ maider_0/
 │   │   │   ├── EmergencyKeyRevealDto.php       ──► Código revelado post-solicitud (flash único)
 │   │   │   └── EmergencyLockStatusDto.php      ──► is_active + can_request (sin exponer código)
 │   │   └── Taquilla/
-│   │       └── PlanTaquillaPublicDto.php       ──► Catálogo planes: periodo, beneficios, VIP, descuento
+│   │       ├── PlanTaquillaPublicDto.php       ──► Catálogo planes: periodo, beneficios, VIP, descuento
+│   │       ├── LockerOccupantDto.php           ──► Celda mapa ocupación (nº + nombre/apellido + email + telefono + dias_deuda)
+│   │       └── LockerOccupancyMapDto.php       ──► Mapa ocupación taquillas (max + occupants)
 │   │   └── Payments/
 │   │       ├── InitiatePaymentDto.php          ──► Intención de cobro: payable_type/id, lineItems[], success/cancel paths
 │   │       ├── PaymentLineItemDto.php          ──► Línea Stripe (céntimos int)
@@ -176,10 +187,12 @@ maider_0/
 │   │   │   ├── [DOMINIO: ADMIN]
 │   │   │   │   └── Admin/
 │   │   │   │       ├── AcademyController.php      ──► Commander; cancelación Mal Mar → Observer
+│   │   │   │       ├── CatalogHubController.php   ──► Hub admin Gestor de servicios (`/admin/catalogo`) + placeholder Surfskate
 │   │   │   │       ├── BonoController.php
 │   │   │   │       ├── BookingController.php        ──► Reservas alquiler admin; markPickedUp() = check-in de mostrador (PATCH admin/bookings/{booking}/mark-picked-up), exige payment_status=confirmed (si no, error flash y no entrega); check-availability sigue con detalle completo (id incluido) vía getBlockedRanges(); index() manda payment_status al listado para pintar el botón
-│   │   │   │       ├── PaymentValidationController.php
 │   │   │   │       ├── ClientPaymentsController.php ──► Admin · Pagos · Clientes: index (listado ligero + nº pagos) + history() JSON perezoso por acordeón; usa Services/Payments/ClientPaymentHistoryService
+│   │   │   │       ├── DatafonoPaymentController.php ──► Ledger datáfono + ticket multi-línea (store efectivo cierra ticket; assign TPV con N lines; pending/ignore)
+│   │   │   │       ├── PhotoSessionAdminController.php ──► CRUD sesiones fotos + confirmar/rechazar reservas + justificante
 │   │   │   │       ├── EmergencyKeyController.php ──► CRUD candado + histórico solicitudes
 │   │   │   │       ├── SecondHandBoardController.php  ──► CRUD admin; filtros search/status/board_type/date_type/fechas; expone purchase_price y margen; protegido VerificarAdmin
 │   │   │   │       ├── SurfboardController.php ──► CRUD alquiler; index slim + detalle() JSON perezoso para acordeón inline
@@ -211,6 +224,10 @@ maider_0/
 │   │   │   │       ├── BookingController.php    ──► Alta pública + Stripe; si el cobro no se abre (o el importe sale 0) cancela la pending para no bloquear la tabla; expira en minutos (no 7 días) si el cliente abandona el pago; store/check-availability con throttle:8,1 / throttle:40,1; check-availability usa getPublicBlockedRanges() (sin id de reserva ni status crudo, solo start/end/display_status)
 │   │   │   │       └── SurfboardController.php  ──► Catálogo público (solo is_active); show() 404 si la tabla está retirada
 │   │   │   │
+│   │   │   ├── [DOMINIO: FOTOS]
+│   │   │   │   └── Photos/
+│   │   │   │       └── PhotoSessionController.php ──► Landing servicios/fotos + reserva Stripe (PhotoSessionBooking payable)
+│   │   │   │
 │   │   │   ├── [DOMINIO: USUARIO]
 │   │   │   │   └── User/
 │   │   │   │       ├── MyProfileController.php      ──► Perfil VIP: wallet, asistencia, extracto créditos
@@ -239,7 +256,7 @@ maider_0/
 │   │   │       └── UserTaquillaController.php
 │   │   │
 │   │   ├── Middleware/
-│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, cart, adminStats, academyWhatsappUrl
+│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, academyWhatsappUrl (sin adminStats)
 │   │   │   ├── EnsureUserHasRole.php                ──► Gate por role (admin/user)
 │   │   │   ├── VerificarAdmin.php
 │   │   │   └── VerificarTaquilla.php
@@ -327,7 +344,7 @@ maider_0/
 │   │       └── PagoTaquillaRechazadoMail.php
 │   │
 │   ├── Models/                               ──► 25 modelos Eloquent (ver tabla abajo)
-│   │   ├── Article.php                       ──► Blog Taller de Surf; route key slug; chatbot_summary/chatbot_keywords (opc.) para catálogo FAQ/Gemini
+│   │   ├── Article.php                       ──► Blog Taller de Surf; route key slug; cover_image (opc.); chatbot_summary/chatbot_keywords (opc.) para catálogo FAQ/Gemini
 │   │   ├── AttendanceNote.php
 │   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
@@ -345,7 +362,7 @@ maider_0/
 │   │   ├── PagoCuota.php
 │   │   ├── PaymentWebhookIdempotency.php   ──► Idempotencia webhooks (transaction_id, idempotency_token, payable polimórfico)
 │   │   ├── PaymentReceipt.php              ──► Recibo Stripe por payable (session_id, receipt_url, storage_path)
-│   │   ├── Pedido.php
+│   │   ├── Pedido.php                        ──► Tienda; guest_name/guest_email opc. (venta datáfono sin cuenta)
 │   │   ├── PedidoProducto.php
 │   │   ├── PlanTaquilla.php
 │   │   ├── PriceSchema.php                   ──► Packs alquiler: minutos (60/90/120/180/240/360) + días (1d…5d, week); NAME_BY_CATEGORY; alias legacy price_1h…price_72h (deprecados)
@@ -390,9 +407,13 @@ maider_0/
 │   │   │   ├── PaymentGatewayService.php       ──► lazy StripeClient; createCheckoutSession→CheckoutSessionResultDto; idempotency_token; confirmPaymentFromWebhook (lockForUpdate)
 │   │   │   ├── StripeReceiptCaptureService.php ──► Tras webhook: recupera charge.receipt_url de Stripe y persiste PaymentReceipt
 │   │   │   ├── PaymentReceiptAccessService.php ──► proofMetaMapForPayables(); prioriza recibo Stripe sobre justificante manual
-│   │   │   └── ClientPaymentHistoryService.php ──► Admin · Pagos · Clientes: historyForUser() unifica Pedido/UserBono/Booking/LessonUser/PagoCuota de UN cliente (a demanda); confirmedPaymentCountsForUsers() agrega solo COUNT ligero para el listado
+│   │   │   ├── ClientPaymentHistoryService.php ──► Admin · Pagos · Clientes: historyForUser() unifica Pedido/UserBono/Booking/LessonUser/PagoCuota/PhotoSessionBooking
+│   │   │   ├── DatafonoPaymentReconciliationService.php ──► registerRawPayment; materializePayable(line cents); reconcile 1:1 (+ticket 1 línea); listPayments domains; fiscal
+│   │   │   └── MostradorTicketService.php ──► closeCashTicket / assignTpvTicket: N líneas atómicas; perfiles guest/VIP/taquilla
+│   │   ├── [DOMINIO: FOTOS] Services/Photos/
+│   │   │   └── PhotoBookingService.php           ──► packs fotos (base+plus×personas), createBooking, confirm/reject, payloads
 │   │   ├── Invoicing/
-│   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (Pedido/UserBono/Booking/LessonUser/PagoCuota) → FiscalInvoiceDraftDto; los 5 dominios ya tienen rama; fallback de contacto invitado (client_name/guest_email) cuando no hay user_id
+│   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (+ PhotoSessionBooking) → FiscalInvoiceDraftDto; fallback contacto invitado
 │   │   │   ├── FiscalInvoiceAccessService.php    ──► Vista cliente: ownership + DTO público (TBAI id, QR, PDF URL)
 │   │   │   ├── ClientFiscalInvoiceListService.php ──► "Mis facturas" (/mis-facturas): paginado + filtro por FiscalInvoiceCategory; ownership por user_id; reusa FiscalInvoiceAccessService::toPublicDto()
 │   │   │   ├── B2BRouterClient.php               ──► HTTP fino: POST invoices, GET tax_reports, GET PDF; headers X-B2B-API-Key/Version
@@ -471,9 +492,16 @@ maider_0/
 │   │   ├── SEO_MATRIX.md                       ← auditoría + Paso 1b + checklists Paso 2 / estructura
 │   │   └── SEO_DONE.md                         ← cierre Paso 4 (SeoHead/DTO/sitemap QA)
 │   ├── taller-prompts/
-│   │   ├── PROTOCOLO.md                        ← metodología prompt-forge + protocolo dúo DeepSeek↔Cursor para esta sesión
-│   │   ├── COORDINACION.md                     ← estado de trabajo compartido Reasonix↔Cursor (quién toca qué, evitar pisarse)
-│   │   └── REGISTRO.md                         ← registro de iteraciones de prompts (aprendizaje mutuo)
+│   │   ├── CONTRATO-IA.md                      ← compatibilidad dúo Reasonix/DeepSeek ↔ Cursor (roles + router único)
+│   │   ├── RUTAS-CONTEXTO.json                 ← router máquina (fuente única; lo lee `scripts/deepseek-ask.mjs --topic`)
+│   │   ├── PROTOCOLO.md                        ← metodología prompt-forge + protocolo dúo
+│   │   ├── COORDINACION.md                     ← estado compartido (quién toca qué; historial en COORDINACION-ARCHIVO.md)
+│   │   ├── COORDINACION-ARCHIVO.md             ← historial HECHO archivado (poda 2026-08-10)
+│   │   ├── REGISTRO.md                         ← iteraciones de prompts (aprendizaje mutuo)
+│   │   ├── MASTER-PROMPT-DEEPSEEK.md           ← núcleo para DeepSeek-web (espejo .cursorrules)
+│   │   ├── AGENTE-MARKETING-DISENO.md          ← persona UI/UX/CRO (skill Reasonix `/marketing-diseno`)
+│   │   └── PLANTILLA-UX-MODAL.md               ← plantilla prompts UX modal (UI-only)
+│   ├── RESUMEN-PARA-GEMINI.md                  ← resumen compacto del proyecto (pegar en Gemini; el árbol no, 83 KB)
 │   ├── PROJECT_TREE.md
 │   ├── INFORME_TECNICO_COTIZACION.md           ← informe estructural/funcional para cotización
 │   └── PROJECT_TREE_FOR_GEMINI.md              ← este documento
@@ -542,6 +570,12 @@ maider_0/
 | `PaymentGatewayService`                            | Pasarela Stripe           | `createCheckoutSession(InitiatePaymentDto): CheckoutSessionResultDto`; metadata con `idempotency_token`; `registerPaymentIntent` + `confirmPaymentFromWebhook` con `lockForUpdate`. |
 | `InitiatePaymentAction`                            | Action pagos              | DTO → PaymentGatewayService → PaymentInitiated (graceful) → URL checkout. |
 | `PaymentWebhookController`                         | Webhook Stripe            | Firma HMAC → confirmPaymentFromWebhook → PaymentConfirmed (graceful). POST /webhooks/stripe. |
+| `DatafonoIngestWebhookController` (`Http/Controllers/Payments/`) | Webhook TPV firmado | POST /webhooks/datafono/ingest (sin CSRF/auth, firma HMAC-SHA256 propia `X-Datafono-Signature` con `config('services.datafono.ingest_secret')`). Decodifica JSON → `TpvPaymentIngestDto::fromArray` → `DatafonoPaymentReconciliationService::ingestTpvPayment`. 401 firma inválida, 422 payload/terminal inválido, 503 si `DATAFONO_INGEST_ENABLED=false`. |
+| `TpvPaymentIngestDto` (`DTOs/Payments/`)            | DTO readonly              | `amountCents`, `paidAt` (ISO8601), `externalReference`, `terminalCodigo?`, `notes?`, `rawPayload` (payload completo, auditoría). `fromArray()` valida obligatorios. |
+| `MostradorTicketLineDto` (`DTOs/Payments/`)         | DTO readonly              | Línea de ticket: `category`, `amountCents`, `payload` (ids dominio). |
+| `MostradorTicket` / `MostradorTicketLine`          | Modelos                   | Ticket 1:1 con `datafono_payments`; N líneas con morph payable + payload JSON. |
+| `MostradorTicketService`                           | Ticket multi-servicio     | `closeCashTicket` / `assignTpvTicket`: suma líneas, perfiles guest/VIP/locker, materializa N payables atómicos. |
+| `DatafonoPaymentReconciliationService::ingestTpvPayment` | Ingesta TPV | Resuelve terminal por `terminal_codigo` o `config('services.datafono.default_terminal_codigo')` (404/inactivo → ValidationException) → delega en `registerRawPayment()` (source=tpv, idempotente por `external_reference`, ya en Fase 1). |
 | `RedirectsToStripeCheckout` (trait Controller)     | Redirección Inertia 2     | `Inertia::location()` si X-Inertia; `redirect()->away()` si no. |
 | `PaymentSuccessController`                         | Retorno Stripe            | Página de aterrizaje tras pago: lee session_id → redirige contextualmente. |
 | `MyFiscalInvoicesController` / `ClientFiscalInvoiceListService` | Panel cliente | `/mis-facturas`; filtro por las 5 categorías (tienda, bonos_clases, alquileres, clases, bonos_taquilla). Las 5 ramas están implementadas en `FiscalInvoiceBuilderService`, pero `FiscalInvoiceCategory::isEnabled()` exige además `INVOICING_ENABLED=true`; con el flag en `false` (entorno de prueba actual) todas se muestran como "Próximamente". |
@@ -634,7 +668,7 @@ resources/
     │   └── demoCatalogImages.js ──► placeholders prueba tienda/tablas (`/img/tienda/demo`)
     │
     ├── layouts/
-    │   ├── PublicLayout.jsx          ──► Header + main + Footer + Chatbot lazy (único FAB flotante)
+    │   ├── PublicLayout.jsx          ──► Header + main + Footer + FlashErrorModal + Chatbot lazy (único FAB flotante)
     │   ├── AuthenticatedLayout.jsx   ──► Alias de PublicLayout
     │   ├── GuestLayout.jsx           ──► Auth Breeze (sin Header global)
     │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; suele ir dentro de PublicLayout)
@@ -643,7 +677,9 @@ resources/
     │
     ├── components/
     │   ├── Header.jsx                ──► Shell: GlobalNav (sin OpcionesIntro)
-    │   ├── GlobalNav.jsx             ──► Navegación única; menú flyout por rol; admin Gestión/Extras; CTA Acceder/Salir; PressRipple cyan al clic
+    │   ├── GlobalNav.jsx             ──► Navegación única; menú flyout por rol; admin Gestión (Servicios + Pagos cobros + resto)/Extras; CTA Acceder/Salir; PressRipple cyan al clic
+    │   ├── admin/
+    │   │   └── CatalogOfferTabs.jsx  ──► Tabs Gestor de servicios → Taquillas / Bonos VIP / Clases / Fotos / Surfskate
     │   ├── PressRipple.jsx           ──► Rail vertical izquierdo cyan (barra + flyout + móvil; sin fondo; reduced-motion)
     │   ├── OpcionesIntro.jsx         ──► Mosaico accesos S4 (home); tile "Forecast al detalle" abre panel on-demand; assets `/img/opciones/*.webp`
     │   ├── S4Button.jsx              ──► CTA marca S4 (tokens .s4-btn* en app.css)
@@ -688,6 +724,7 @@ resources/
     │   ├── ProductoGestor.jsx, ProductImageGallery.jsx, ProductTagSelector.jsx, ProductoEditorPanel.jsx, ProductoEditModal.jsx, ProductoCreateModal.jsx, PedidoDetailModal.jsx
     │   ├── FormularioContacto.jsx
     │   ├── ContactChannelsModal.jsx ──► Modal canales: WhatsApp / Instagram / email / formulario
+    │   ├── FlashErrorModal.jsx ──► Modal rojo bloqueante por `flash.access_alert` (cuota vencida / sin taquilla → carrito); montado en PublicLayout
     │   ├── StoreAccessPopover.jsx ──► Gate compra socios (popover + ContactChannelsModal topic=store)
     │   ├── StoreAddToCartButton.jsx ──► CTA «Añadir al carrito» (Producto)
     │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx, SortableTable.jsx (SortableTh + compareRows)
@@ -716,7 +753,7 @@ resources/
         │   ├── Servicios_SurfSkate.jsx
         │   ├── Servicios_SurfskateGuia.jsx   ──► Guía YOW: altura/peso, tabla selección, perfiles rider
         │   ├── Servicios_SurfTrips.jsx
-        │   ├── Servicios_Fotos.jsx
+        │   ├── Servicios_Fotos.jsx              ──► Catálogo PhotoSession + reserva Stripe
         │   ├── Servicios_Videograbaciones.jsx   ──► Landing videograbación + análisis técnico
         │   └── Servicios_Webcams.jsx            ──► Webcam Zurriola (HLS Gipuzkoa)
         │
@@ -786,7 +823,7 @@ resources/
         ├── components/
         │   ├── Taller/
         │   │   ├── TallerShell.jsx       ──► Shell gradiente, hero, barra lectura, fadeUp
-        │   │   └── TallerArticleCard.jsx ──► Tarjetas + relacionados con «Cargar más artículos» (JSON)
+        │   │   └── TallerArticleCard.jsx ──► Tarjetas (texto + miniatura cover_image) + relacionados con «Cargar más artículos» (JSON)
         │   └── VipProfile/
         │       └── VipProfileDashboard.jsx     ──► Wallet + heatmap + extracto (compartido perfil/admin)
         │
@@ -797,9 +834,8 @@ resources/
         ├── [DOMINIO: TAQUILLAS]
         │   ├── PlanesTaquillasPublic.jsx   ──► Catálogo público planes/cuotas (sin login)
         │   ├── PlanesTaquillasClient.jsx   ──► Panel socio: renovación + historial pagos
-        │   ├── PlanesTaquillasAdmin.jsx    ──► Admin: gestor de planes de taquilla
-        │   ├── AsignarTaquilla.jsx
-        │   └── ListaUsuarios.jsx             ──► Admin: listado socios/usuarios (taquilla, contacto)
+        │   ├── PlanesTaquillasAdmin.jsx    ──► Admin: Planes taquillas (CRUD planes de cuota)
+        │   └── AsignarTaquilla.jsx
         │
         ├── [DOMINIO: AUTH]
         │   └── Auth/
@@ -820,6 +856,9 @@ resources/
             └── Admin/
                 ├── Academy/
                 │   └── Commander.jsx       ──► Gestión masiva clases/enrollments
+                ├── Catalog/
+                │   ├── Index.jsx ──► Hub Gestor de servicios (crear/editar/activar ofertas)
+                │   └── SurfskatePlaceholder.jsx ──► Placeholder tarifas surfskate (Fase 2)
                 ├── Bonos/
                 │   └── Index.jsx
                 ├── Bookings/
@@ -829,26 +868,25 @@ resources/
                 │   ├── Index.jsx           ──► CRUD admin; barra filtros (marca/modelo, estado, fechas); stats margen/ingresos; modal confirmación borrado
                 │   ├── Create.jsx
                 │   └── Edit.jsx
-                ├── CheckManager.jsx
                 ├── EmergencyKeys/
                 │   └── Index.jsx             ──► Admin: reponer código (ON), histórico, marcar extravío
                 ├── Payments/
-                │   ├── Dashboard.jsx
-                │   ├── GlobalDashboard.jsx
-                │   └── Clients.jsx ──► Admin · Pagos · Clientes: acordeón por cliente, historial (5 dominios) cargado a demanda vía admin.payments.clients.history
+                │   ├── Clients.jsx ──► Historial pagos (incluye entity fotos)
+                │   └── Datafono/
+                │       └── Index.jsx ──► Ledger datáfono + modal conciliación (hub Pagos; GlobalDashboard retirado)
+                ├── Photos/
+                │   └── Index.jsx ──► CRUD sesiones fotos + validación reservas
                 ├── Surfboards/
                 │   ├── Index.jsx             ──► Listado zebra + acordeón edición inline (detalle JSON perezoso) + toggle is_active
                 │   └── Create.jsx
                 ├── Taquillas/
-                │   ├── Registry.jsx          ──► Registro pagos + reasignación rápida (SortableTh compartido)
+                │   ├── Esquema.jsx           ──► Esquema taquillas (mapa ocupación)
+                │   ├── Registry.jsx          ──► Registro de pagos taquilla (SortableTh compartido)
                 │   └── Vigencia.jsx          ──► Vigencia socios (ordenación columnas + select móvil)
                 ├── Users/
                 │   └── Index.jsx
                 ├── ClassManager/
                 │   └── Index.jsx             ──► Gestor unificado: calendario + filtros + creación todas modalidades
-                ├── Vips/
-                │   └── Index.jsx
-                └── VipManager.jsx            ──► Legacy (redirige a ClassManager)
 ```
 
 **Páginas con `document.documentElement` modo claro forzado** (`app.jsx`):  
@@ -861,8 +899,8 @@ resources/
 ```
 HandleInertiaRequests
     ├── auth.user          (role, is_vip, has_active_locker, …)
-    ├── cart / cartCount
-    ├── adminStats         (unreviewed_payments_total, unreviewed_rentals_count, unreviewed_lockers_total, vipRenewalAlertCount)
+    ├── academyWhatsappUrl / academyWhatsappDisplay
+    ├── flash
     └── ziggy              (rutas)
 ```
 

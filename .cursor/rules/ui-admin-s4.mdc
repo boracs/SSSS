@@ -1,0 +1,23 @@
+---
+description: Design language del admin S4 — aplicar al implementar UI admin (slate/cyan, kit de componentes, estados obligatorios, formato €)
+globs: resources/js/components/admin/**,resources/js/Pages/Admin/**
+alwaysApply: false
+---
+
+# Admin UI S4 — Design Language (al implementar código)
+
+Regla de **implementación** (no de evaluación). La doctrina de diseño/evaluación vive en
+`docs/taller-prompts/AGENTE-MARKETING-DISENO.md`; aquí solo lo que hay que aplicar al codear.
+
+1. **Usar el kit admin** (`resources/js/components/admin/ui/`): `AdminCard`, `AdminButton`,
+   `AdminFormField`, etc. Si existe componente del kit para el caso, no crear estilos propios.
+2. **Paleta:** fondos slate-900/950, textos slate-200/300/400, acento cyan-600, danger
+   `rose-300/90` (patrón del resto del admin). No introducir colores nuevos sin motivo.
+3. **Dinero:** céntimos → `/100` y formato `Number(x).toLocaleString("es-ES", { minimumFractionDigits: 2 })` + " €". Nunca `number_format` en frontend.
+4. **Estados obligatorios en toda pantalla:** vacío (mensaje + acción), carga (skeleton/spinner),
+   error (mensaje + salida), deshabilitado (con explicación de por qué).
+5. **Modales:** patrón `MostradorTicketModal` — header sticky + cuerpo con scroll propio + pie
+   sticky (acciones siempre visibles).
+6. **Responsive:** cards/acordeón < md; tabla ≥ md cuando haya listas.
+7. Si el cambio es rediseño de un modal/pantalla: seguir `docs/taller-prompts/PLANTILLA-UX-MODAL.md`
+   (UI-only, sin tocar lógica ni payload keys).
