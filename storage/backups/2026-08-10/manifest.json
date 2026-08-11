@@ -1,0 +1,31 @@
+{
+    "exported_at": "2026-08-10 16:34:40",
+    "app": "mas_que_surf",
+    "db": "mysql \/ mas_que_surf",
+    "files": [
+        {
+            "table": "chatbot_interactions",
+            "file": "chatbot_interactions.json",
+            "count": 4,
+            "size": "9.7 KB"
+        },
+        {
+            "table": "surf_daily_briefs",
+            "file": "surf_daily_briefs.json",
+            "count": 16,
+            "size": "37.4 KB"
+        },
+        {
+            "table": "surf_brief_votes",
+            "file": "surf_brief_votes.json",
+            "count": 5,
+            "size": "1.6 KB"
+        },
+        {
+            "table": "articles",
+            "file": "articles.json",
+            "count": 18,
+            "size": "61.1 KB"
+        }
+    ]
+}

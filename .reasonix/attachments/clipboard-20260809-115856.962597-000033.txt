@@ -1,0 +1,62 @@
+# Prompt — UX ticket mostrador: bloque Alquiler (Modo + formularios)
+
+## Pre-vuelo (obligatorio)
+1. Leer `docs/taller-prompts/COORDINACION.md` (Estado actual + Última actividad). No pisar tareas EN CURSO.
+2. Leer el código real de:
+   - `resources/js/components/admin/payments/MostradorTicketModal.jsx` (bloque `draft.category === "alquiler"`)
+   - `resources/js/lib/rentalPricing.js` (`MINUTE_PACKS`, `DAY_PACKS`, `packLabel`, `buildPacksFromSchema`, `priceForMinutes`)
+   - `resources/js/components/admin/ui/AdminFormField.jsx` (reutilizar si cabe)
+3. Reclamar en COORDINACION: `Datáfono ticket: UX Alquiler (modo pastillas + packs)` | Cursor | EN CURSO.
+4. **Solo UI/JS del modal.** No tocar backend (`BookingService`, reconcile, DTOs) salvo bug bloqueante.
+
+## Contexto / decisión de producto (ya acordada)
+- El campo **Modo** (`hour` | `day`) son **2 opciones excluyentes**.
+- **NO** usar checkbox (el “off” no tiene semántica clara).
+- **NO** dejar el `<select>` de Modo: en mostrador es lento para solo 2 valores.
+- **SÍ** usar **pastillas / segmented control** al estilo de las categorías del mismo modal (`Por horas` | `Por días`), mismo look (cyan activo / slate inactivo).
+
+## Objetivo
+Mejorar UX del draft de **Alquiler** al añadir línea al ticket (efectivo + TPV), sin cambiar la lógica de negocio ni los payloads (`rental_mode`, `rental_pack_minutes`, `rental_pack_days`, `rental_pickup_at`, `surfboard_id`).
+
+## Cambios requeridos
+
+### 1) Modo → pastillas
+- Sustituir el `AdminFormField as="select"` label "Modo" por 2 botones:
+  - `Por horas` → `rental_mode = "hour"`
+  - `Por días` → `rental_mode = "day"`
+- Al cambiar modo: mantener el reset de `rental_pickup_at` (date vs datetime-local) como ahora.
+- Accesible: `role="group"` + `aria-pressed` o equivalente.
+
+### 2) Packs con precio visible
+- Cuando haya `surfboard_id` y precios de la tabla:
+  - Preferir chips/botones del pack con **etiqueta + precio €** (usar `buildPacksFromSchema` / `priceForMinutes` / `packLabel`).
+  - Si no hay tabla elegida: no mostrar packs “a ciegas”; mensaje corto “Elige una tabla para ver packs e importe”.
+- Mantener selects solo si los chips no caben bien; priorizar chips.
+
+### 3) Orden y estados del draft
+- Orden visual: **Tabla → Modo (pastillas) → Pack → Recogida → importe de línea destacado**.
+- Botón “+ Añadir al ticket”: deshabilitado (o no-op claro) si faltan tabla / pack / recogida / importe ≤ 0; opcional hint de 1 línea del motivo.
+- Acortar o quitar el párrafo largo del “Forzar importe distinto” en el draft de alquiler (ese concepto ya vive al conciliar TPV).
+
+### 4) Diseño
+- Compacto para móvil/mostrador: sin cards innecesarias; pastillas alineadas con el resto del modal.
+- En `sm+` opcional: grid 2 columnas (Tabla+Modo | Pack+Recogida) si no rompe el layout actual.
+- Tipografía consistente con el modal oscuro admin (slate/cyan).
+
+## Fuera de alcance
+- No rehacer Fotos/Clase/Producto en este prompt (salvo micro-ajustes de consistencia de pastillas si sale gratis).
+- No cambiar API ni tests de backend salvo que un test de front/e2e exista y falle por selectores.
+- No inventar modo “checkbox día”.
+
+## Criterios de aceptación
+- [ ] Modo es pastillas Horas/Días (sin select, sin checkbox).
+- [ ] Cambiar modo actualiza pack visible y tipo de fecha de recogida.
+- [ ] Con tabla elegida, packs muestran precio € coherente con `rentalPricing.js`.
+- [ ] Sin tabla, no se ofrecen packs engañosos.
+- [ ] Payload al submit igual que antes (`rental_mode` hour|day + packs + pickup).
+- [ ] `npm run build` OK (o HMR si hay `public/hot`).
+- [ ] Cerrar tarea en COORDINACION (HECHO + Última actividad).
+
+## Archivos previstos
+- `resources/js/components/admin/payments/MostradorTicketModal.jsx` (principal)
+- Solo si hace falta helper visual mínimo: no crear archivos nuevos salvo reutilización clara.

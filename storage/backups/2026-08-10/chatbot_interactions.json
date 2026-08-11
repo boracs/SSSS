@@ -1,0 +1,64 @@
+{
+    "exported_at": "2026-08-10 16:34:40",
+    "table": "chatbot_interactions",
+    "count": 4,
+    "note": "Historial de conversaciones del chatbot (columna history = JSON, máx 24 turnos)",
+    "rows": [
+        {
+            "id": 1,
+            "user_id": null,
+            "session_token": null,
+            "status": "requires_human",
+            "history": "[{\"role\":\"user\",\"text\":\"Cuabto cuesta una taquilla\"},{\"role\":\"model\",\"text\":\"**Planes de taquilla disponibles:**\\n\\n- **Taquilla Mensual**: 30 d\\u00edas por **60\\u20ac**.\\n- **Taquilla Trimestral**: 90 d\\u00edas por **165\\u20ac**.\\n- **Taquilla Semestral**: 180 d\\u00edas por **300\\u20ac**.\\n- **Taquilla Anual**: 365 d\\u00edas por **480\\u20ac**.\\n\\nConsulta el detalle y contrata en **Taquillas** dentro de la web.\"},{\"role\":\"user\",\"text\":\"Hay olas hoy?\"},{\"role\":\"model\",\"text\":\"**Gu\\u00eda de Olas y Rompientes: Tipos, Fondos y Factores que Influyen en el Surf**\\n\\nClasifica rompientes beach\\/reef\\/point y factores viento-fondo-swell-marea. No cubre corrientes, derecha\\/izquierda ni posicionamiento t\\u00e1ctico; enlaza a esas gu\\u00edas.\\n\\n\\ud83d\\udcd6 Art\\u00edculo completo: [**Leer m\\u00e1s**](\\/taller\\/guia-de-olas-y-rompientes-tipos-fondos-y-factores-que-influyen-en-el-surf)\"},{\"role\":\"user\",\"text\":\"Mandame al wsthp del admin\"},{\"role\":\"model\",\"text\":\"No tengo una respuesta 100% segura sobre eso. \\u00bfPuedes reformular la pregunta o darme un poco m\\u00e1s de detalle? Si tampoco acierto a la segunda, te paso directamente con el equipo.\"},{\"role\":\"user\",\"text\":\"Mandame el wthsup\"}]",
+            "flag_reason": "uncertain_response",
+            "ip_address": "31.4.137.196",
+            "contact_phone": "34600222002",
+            "contact_phone_captured_at": "2026-08-07 19:22:27",
+            "resolved_at": null,
+            "created_at": "2026-07-17 14:50:48",
+            "updated_at": "2026-08-07 19:22:27"
+        },
+        {
+            "id": 2,
+            "user_id": null,
+            "session_token": "test-4555cbc052d0210b",
+            "status": "requires_human",
+            "history": "[{\"role\":\"user\",\"text\":\"cuanto cuesta un alquiler ?\"},{\"role\":\"model\",\"text\":\"El precio del alquiler depende de **cu\\u00e1nto tiempo** (1 h, medio d\\u00eda, d\\u00eda, varios d\\u00edas\\u2026) y del **tipo de tabla**. No hay una tarifa fija \\u00fanica: en [**Alquiler de tablas**](\\/tablas-alquiler), al elegir **modelo y fechas**, ves el **precio total** y la **se\\u00f1al (30%)** antes de pagar.\\n\\nSi necesitas el importe exacto de **una hora** o de un modelo concreto y no te cuadra lo de la web, reformula con el **modelo** o te derivo con el equipo.\"},{\"role\":\"user\",\"text\":\"cuanbto cuesta alquilar una hora ?\"}]",
+            "flag_reason": "repeated_answer",
+            "ip_address": "127.0.0.1",
+            "contact_phone": null,
+            "contact_phone_captured_at": null,
+            "resolved_at": null,
+            "created_at": "2026-07-25 17:49:21",
+            "updated_at": "2026-07-25 17:49:21"
+        },
+        {
+            "id": 3,
+            "user_id": null,
+            "session_token": "8daf2271-623e-4d6e-a3fd-f82da03dc8ae",
+            "status": "resolved",
+            "history": "[{\"role\":\"model\",\"text\":\"El n\\u00famero de WhatsApp de la escuela es +34 600 000 000.\"},{\"role\":\"user\",\"text\":\"hola que preciso tienenen las clases ?\"},{\"role\":\"model\",\"text\":\"\\u00a1Hola! \\ud83d\\udc4b Soy **Maider**, de **San Sebastian Surf School**. Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del d\\u00eda a d\\u00eda. \\u00bfQu\\u00e9 necesitas?\"},{\"role\":\"user\",\"text\":\"hola que precuios tiene una clase de surf ?\"},{\"role\":\"model\",\"text\":\"\\u00a1Hola! \\ud83d\\udc4b Soy **Maider**, de **San Sebastian Surf School**. Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del d\\u00eda a d\\u00eda. \\u00bfQu\\u00e9 necesitas?\"},{\"role\":\"user\",\"text\":\"cuanto cuesta un alquiler ?\"},{\"role\":\"model\",\"text\":\"Estas p\\u00e1ginas de la web te pueden ayudar:\\n- [**Alquiler de tablas**](\\/tablas-alquiler) \\u2014 Alquila tabla por horas o d\\u00edas; elige modelo y fechas en la web. Se\\u00f1al del 30% al reservar.\"},{\"role\":\"user\",\"text\":\"cuanbto cuesta alquilar una hora ?\"},{\"role\":\"model\",\"text\":\"Estas p\\u00e1ginas de la web te pueden ayudar:\\n- [**Alquiler de tablas**](\\/tablas-alquiler) \\u2014 Alquila tabla por horas o d\\u00edas; elige modelo y fechas en la web. Se\\u00f1al del 30% al reservar.\"},{\"role\":\"user\",\"text\":\"SUPISTE REPOSNDER ?\"},{\"role\":\"model\",\"text\":\"No tengo una respuesta 100% segura sobre eso. \\u00bfPuedes reformular la pregunta o darme un poco m\\u00e1s de detalle? Si tampoco acierto a la segunda, te paso directamente con el equipo.\"},{\"role\":\"user\",\"text\":\"cuanto cuetsa una clase de surf ?\"},{\"role\":\"model\",\"text\":\"**Tarifas de clases de surf** \\u2014 resumen:\\n\\n**\\u2460 Clases particulares** (1,5 h, tabla y neopreno incluidos; atenci\\u00f3n personalizada):\\n- **1 persona** \\u2192 **80\\u20ac** (total)\\n- **2 personas** \\u2192 **55\\u20ac** por persona\\n- **3 personas** \\u2192 **40\\u20ac** por persona\\n- **4 personas** \\u2192 **30\\u20ac** por persona\\n- **5 personas** \\u2192 **30\\u20ac** por persona\\n- **6 personas** \\u2192 **30\\u20ac** por persona\\n\\n**\\u2461 Bonos** (clases en grupo en Zurriola; compras el pack y surfeas cuando mejor est\\u00e9 el mar):\\n- **Bono 5 clases** \\u2192 **150\\u20ac** \\u00b7 \\u224830\\u20ac\\/clase\\n- \"},{\"role\":\"user\",\"text\":\"y un alquiler ?\"},{\"role\":\"model\",\"text\":\"Estas p\\u00e1ginas de la web te pueden ayudar:\\n- [**Alquiler de tablas**](\\/tablas-alquiler) \\u2014 Alquila tabla por horas o d\\u00edas; elige modelo y fechas en la web. Se\\u00f1al del 30% al reservar.\"},{\"role\":\"user\",\"text\":\"puede decirme cuanto cuesta un alquioler ?\"},{\"role\":\"model\",\"text\":\"El precio del alquiler de tablas depende del modelo y la duraci\\u00f3n, desde 1 hora hasta 1 semana. Puedes calcularlo directamente en nuestra web al elegir las fechas y el tipo de tabla que te interese en \\/tablas-alquiler.\"},{\"role\":\"user\",\"text\":\"cuanto cuesta un neopreno ?\"},{\"role\":\"model\",\"text\":\"**El Kit del Surfista: Gu\\u00eda Esencial de Equipamiento**\\n\\nPara entrar al agua a disfrutar de una sesi\\u00f3n de surf, existen ciertos elementos indispensables que todo surfista debe tener en su equipamiento b\\u00e1sico: Tabla de surf Neopreno\\u2026\\n\\n\\ud83d\\udcd6 Art\\u00edculo completo: [**Leer m\\u00e1s**](\\/taller\\/el-kit-del-surfista-guia-esencial-de-equipamiento)\"},{\"role\":\"user\",\"text\":\"pero cuanto cuesta ?\"},{\"role\":\"model\",\"text\":\"No tengo una respuesta 100% segura sobre eso. \\u00bfPuedes reformular la pregunta o darme un poco m\\u00e1s de detalle? Si tampoco acierto a la segunda, te paso directamente con el equipo.\"},{\"role\":\"user\",\"text\":\"uantos euros cuesta un neopreno ?\"},{\"role\":\"model\",\"text\":\"**El Kit del Surfista: Gu\\u00eda Esencial de Equipamiento**\\n\\nPara entrar al agua a disfrutar de una sesi\\u00f3n de surf, existen ciertos elementos indispensables que todo surfista debe tener en su equipamiento b\\u00e1sico: Tabla de surf Neopreno\\u2026\\n\\n\\ud83d\\udcd6 Art\\u00edculo completo: [**Leer m\\u00e1s**](\\/taller\\/el-kit-del-surfista-guia-esencial-de-equipamiento)\"},{\"role\":\"user\",\"text\":\"cuanto cuest aun neopreno ?\"}]",
+            "flag_reason": "repeated_answer",
+            "ip_address": "127.0.0.1",
+            "contact_phone": null,
+            "contact_phone_captured_at": null,
+            "resolved_at": "2026-08-08 18:18:55",
+            "created_at": "2026-07-25 18:18:50",
+            "updated_at": "2026-08-08 18:18:55"
+        },
+        {
+            "id": 4,
+            "user_id": null,
+            "session_token": "9672b33e-a625-4419-b1f9-10ce19c94a02",
+            "status": "requires_human",
+            "history": "[{\"role\":\"user\",\"text\":\"hola que horario teneis ?\"},{\"role\":\"model\",\"text\":\"**D\\u00f3nde estamos y c\\u00f3mo llegar:**\\n\\n- **Ubicaci\\u00f3n:** Playa de Zurriola, Donostia \\u2014 instalaciones del club\\n- **C\\u00f3mo llegar:** Llega 10\\u201315 minutos antes de tu clase. Punto de encuentro en Zurriola, junto a las instalaciones del club.\\n- **Horario:** Horario variable seg\\u00fan temporada; confirma por WhatsApp el d\\u00eda de tu clase.\\n- **Email:** info@sansebastiansurfschool.com\\n- **WhatsApp:** solo tras derivaci\\u00f3n a humano (bot\\u00f3n en el chat). No cites el n\\u00famero ni digas que el bot\\u00f3n est\\u00e1 siempre visible.\\n- **I\"},{\"role\":\"user\",\"text\":\"vale coo os escvribo por washtupo ?\"},{\"role\":\"model\",\"text\":\"Para contactarnos, puedes usar el formulario de nuestra p\\u00e1gina de [Contacto](\\/contacto) o reformular tu pregunta si es sobre clases, bonos, taquillas o alquiler, y as\\u00ed intentar\\u00e9 ayudarte.\"},{\"role\":\"user\",\"text\":\"no quier elformulario quiero contactaros por qwashtuop\"},{\"role\":\"model\",\"text\":\"No tengo una respuesta 100% segura sobre eso. \\u00bfPuedes reformular la pregunta o darme un poco m\\u00e1s de detalle? Si tampoco acierto a la segunda, te paso directamente con el equipo.\"},{\"role\":\"user\",\"text\":\"querio ahbalr con vosotor spor washtapp\"}]",
+            "flag_reason": "uncertain_response",
+            "ip_address": "88.10.228.75",
+            "contact_phone": "34657453456",
+            "contact_phone_captured_at": "2026-08-04 00:37:44",
+            "resolved_at": null,
+            "created_at": "2026-08-04 00:37:11",
+            "updated_at": "2026-08-04 00:37:44"
+        }
+    ]
+}

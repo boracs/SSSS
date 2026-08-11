@@ -1,0 +1,48 @@
+{
+    "exported_at": "2026-08-10 16:34:40",
+    "table": "surf_brief_votes",
+    "count": 5,
+    "note": "Votos de usuarios sobre los partes de surf",
+    "rows": [
+        {
+            "id": 4,
+            "surf_daily_brief_id": 1,
+            "reaction": "up",
+            "voter_key": "ff9b6599e3a20ff93ac9afe6a72afa9b29fba636e04070f3bc76395cbfc875ca",
+            "created_at": "2026-07-17 14:24:30",
+            "updated_at": "2026-07-17 14:24:30"
+        },
+        {
+            "id": 5,
+            "surf_daily_brief_id": 1,
+            "reaction": "up",
+            "voter_key": "504c97a56a653aa2a86b75676cc0679d608c8431fc58c6f9d0c29fcfb0087e78",
+            "created_at": "2026-07-17 15:14:15",
+            "updated_at": "2026-07-17 15:16:05"
+        },
+        {
+            "id": 6,
+            "surf_daily_brief_id": 7,
+            "reaction": "up",
+            "voter_key": "198fca31999146e4ebe5d6b05364c5a3b5798d8546c6cbb161cc1ef66b636743",
+            "created_at": "2026-07-31 21:05:17",
+            "updated_at": "2026-07-31 21:05:17"
+        },
+        {
+            "id": 7,
+            "surf_daily_brief_id": 9,
+            "reaction": "up",
+            "voter_key": "b9645758339f1e670f910a1a5cc79f317e8e3a34dd6aae5a2356f41000f12fe4",
+            "created_at": "2026-08-03 18:33:13",
+            "updated_at": "2026-08-03 18:33:13"
+        },
+        {
+            "id": 8,
+            "surf_daily_brief_id": 13,
+            "reaction": "up",
+            "voter_key": "3759c2150a42974ec25f8ba9aa371e0ee13c4482b9221a0183c878a2823ad8e5",
+            "created_at": "2026-08-07 19:54:24",
+            "updated_at": "2026-08-07 19:54:24"
+        }
+    ]
+}

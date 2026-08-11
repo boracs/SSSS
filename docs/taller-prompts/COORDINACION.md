@@ -58,8 +58,11 @@ Añadir/actualizar una fila en **Estado actual**:
 | 2026-08-10 | Agente senior Marketing + Diseño Web (persona con skills/rules, invocable `/marketing-diseno`) | Reasonix | HECHO | `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` |
 | 2026-08-10 | Tienda: «Ver más» (lotes de 8) en vez de paginación | Cursor | HECHO | `Tienda.jsx` |
 | 2026-08-10 | Tienda: suavizar parche blanco de fotos de producto | Cursor | HECHO | `Producto.jsx` (pozo slate-200 + object-contain; grid /tienda y slider ofertas) |
+| 2026-08-10 | Prompt auditoría BD + archivos rotos (tras «Partida 1» de Cursor: valor de reposición) | Reasonix | HECHO → ejecuta Cursor | `docs/taller-prompts/PROMPT-AUDITORIA-DB-ARCHIVOS.md` |
 
 ## Última actividad
+
+- **2026-08-10** — Reasonix: crítica de la «Partida 1» de Cursor (valor de reposición) + prompt de auditoría BD/archivos rotos guardado en `docs/taller-prompts/PROMPT-AUDITORIA-DB-ARCHIVOS.md` para que lo ejecute Cursor. Verificado contra repo: 39 modelos ✓, 98 migraciones ✓, TPV reconciliación 1.900 líneas ✓, 86 páginas JSX = frontend total (admin solo 25).
 
 - **2026-08-10** — Cursor: confirmación cruzada de roles — si DeepSeek recibe pedido de lógica/código, pregunta confirmación; si Cursor recibe solo diseño/UX, pregunta confirmación (`CONTRATO-IA.md` §5.1 + `AGENTS.md` + `.cursorrules` + MASTER). HECHO.
 - **2026-08-10** — Cursor: compatibilidad dúo Reasonix/DeepSeek ↔ Cursor — nuevo `CONTRATO-IA.md` (roles, router único, anti-pisotón); espejado en `AGENTS.md`, `.cursorrules`, `MASTER-PROMPT-DEEPSEEK.md`, `PROTOCOLO.md` y mapa. HECHO.
