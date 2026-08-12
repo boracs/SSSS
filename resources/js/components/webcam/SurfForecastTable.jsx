@@ -7,17 +7,15 @@ import {
     ChevronLeft,
     ChevronRight,
     Clock,
+    CloudSun,
     Gauge,
-    Sparkles,
     TrendingDown,
     TrendingUp,
     Waves,
     Wind,
 } from "lucide-react";
-import SurfBriefReactions from "./SurfBriefReactions";
-import SurfLevelAccordion from "./SurfLevelAccordion";
-import { SURF_LEVELS } from "./surfLevels";
-import { surfBriefOverrideMeta } from "./surfBriefOverride";
+import SurfBriefParteToday from "./SurfBriefParteToday";
+import { DEFAULT_METRIC_HELP, splitHelpParagraphs } from "./surfMetricHelp";
 
 const TONE_TEXT = {
     green: "text-emerald-300",
@@ -55,24 +53,8 @@ export function DirectionArrow({ degrees, className = "" }) {
     );
 }
 
-const DEFAULT_METRIC_HELP = {
-    oleaje:
-        "Qué es: altura de la ola (metros) y dirección (flecha = de dónde viene el mar).\n\nEn Zurriola (abre al NW): si el swell llega de NW entra de lleno y se nota más tamaño. Si viene rotado (S u otras), gran parte de la energía se pierde y la playa queda más pequeña de lo que sugiere el número.",
-    periodo:
-        "Qué es: segundos entre una ola y la siguiente.\n\nEn Zurriola: 6–9 s mar de viento (fofas); 10–13 s óptimo (mar de fondo ordenado); ≥14 s mucha energía de fondo y más riesgo de cerrazón en arena de verano.",
-    energia:
-        "Qué es: índice de punch del oleaje alineado a Surf-Forecast, calculado sobre Open-Meteo (no es un feed oficial de SF).\n\nFórmula: kJ ≈ 2.4 × boost(T) × 0.5 × (H×1.52)² × T (H en pies). La escala 1.52 corrige Hs OM→SF en Zurriola; boost sube en periodo largo. La columna de altura sigue siendo Open-Meteo sin escalar.\n\nUmbrales S4 (orientativos): <50 intermedio escaso; ~70–80 avanzado posible; ≥100 pueden surfear todos.",
-    viento:
-        "Qué es: km/h + flecha (de dónde sopla).\n\nZurriola: sur = offshore (limpia); norte = onshore (pica). Colores: verde flojo, amarillo medio, rojo fuerte.",
-    marea:
-        "Fuente preferente: Euskalmet (Open Data Euskadi) — pleamar/bajamar con minutos. Si falta, estimación Open-Meteo.\n\nBajo cada día: ~2 altas y ~2 bajas con flecha, hora y altura. Entre paréntesis (+/− Xm) cuánto subió o bajó desde el extremo anterior.\n\nCoeficientes del día: Sube +Xm (media de llenados) y Baja −Xm (media de vaciados).",
-};
-
 function HelpText({ text }) {
-    const parts = String(text)
-        .split(/\n+/)
-        .map((line) => line.trim())
-        .filter(Boolean);
+    const parts = splitHelpParagraphs(text);
 
     return (
         <span className="block space-y-2">
@@ -576,8 +558,6 @@ export default function SurfForecastTable({
         ...(metricHelp && typeof metricHelp === "object" ? metricHelp : {}),
     };
 
-    const signalMeta = signal?.status ? surfBriefOverrideMeta(signal.status) : null;
-
     // Sticky métricas / día: compact ~3.5rem; cómodo ~5rem; md+ 9rem (w-36)
     const labelSticky = compact
         ? "sticky left-0 w-14 min-w-[3.5rem] md:w-36 md:min-w-[9rem]"
@@ -613,11 +593,17 @@ export default function SurfForecastTable({
     return (
         <div className="rounded-3xl border border-cyan-500/20 bg-slate-900/60 p-3 shadow-xl backdrop-blur-sm sm:p-5 md:p-7">
             <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                <div className="min-w-0">
+                <div className="flex min-w-0 flex-col gap-2">
                     <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200 sm:px-3 sm:text-xs">
                         <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">Previsión {days.length} días · Zurriola</span>
                     </div>
+                    {updatedAtHuman ? (
+                        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200">
+                            <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
+                            Parte actualizado {updatedAtHuman}
+                        </span>
+                    ) : null}
                 </div>
 
                 <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
@@ -625,10 +611,16 @@ export default function SurfForecastTable({
                         <button
                             type="button"
                             onClick={() => onOpenDetailedTimeline?.()}
+                            title="Oleaje, sol, temperatura y probabilidad de lluvia cada 2 horas"
                             className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-cyan-200 shadow-sm transition hover:bg-slate-900 sm:w-auto sm:px-3.5 sm:text-sm"
                         >
-                            <Clock className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-                            <span className="truncate">Ver forecast al detalle</span>
+                            <CloudSun className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                            <span className="flex min-w-0 flex-col items-start leading-tight">
+                                <span className="truncate">Ver forecast al detalle</span>
+                                <span className="text-[10px] font-medium text-cyan-200/65">
+                                    olas · sol · lluvia
+                                </span>
+                            </span>
                         </button>
                         <button
                             type="button"
@@ -816,93 +808,15 @@ export default function SurfForecastTable({
                 </table>
             </ForecastSlider>
 
-            {summary ? (
-                <div
-                    id="parte-s4-hoy"
-                    className={`mt-4 scroll-mt-24 rounded-2xl border p-4 shadow-lg sm:mt-5 sm:p-5 md:p-6 ${signalMeta ? signalMeta.tableWrap : "border-transparent bg-white"}`}
-                >
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-                        <div className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                            <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#0f5f74]">
-                                <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                                Parte S4 · Hoy
-                            </div>
-                            <span className="text-[11px] font-medium leading-none normal-case tracking-normal text-slate-500">
-                                (Actualizado {updatedAtHuman?.split(" ")[1] || "—"})
-                            </span>
-                        </div>
-                        {signalMeta ? (
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}>
-                                {signalMeta.badge}
-                                {signal?.is_manual ? (
-                                    <span className="ml-1.5 opacity-80">· S4</span>
-                                ) : null}
-                            </span>
-                        ) : null}
-                    </div>
-
-                    {signal?.note ? (
-                        <p className="mb-3 rounded-xl bg-black/5 px-3 py-2 text-sm text-slate-800">{signal.note}</p>
-                    ) : null}
-
-                    {summarySections?.general || summarySections?.iniciacion ? (
-                        <div className="space-y-3">
-                            {(summarySections.general || summary) ? (
-                                <p className="text-sm font-semibold leading-relaxed text-slate-900 sm:text-base">
-                                    {summarySections.general || summary}
-                                </p>
-                            ) : null}
-                            {SURF_LEVELS.map((lvl) => {
-                                const text = summarySections?.[lvl.level];
-                                if (!text) return null;
-                                return (
-                                    <div key={lvl.level} className="space-y-1.5">
-                                        <span
-                                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${lvl.labelClass}`}
-                                        >
-                                            {lvl.label}
-                                        </span>
-                                        <p className="text-sm leading-relaxed text-slate-800 sm:text-[15px]">
-                                            {text}
-                                        </p>
-                                    </div>
-                                );
-                            })}
-                            {summarySections.aviso ? (
-                                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
-                                    {summarySections.aviso}
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : (
-                        <p className="text-sm font-semibold leading-relaxed text-slate-900 sm:text-base">
-                            {summary}
-                        </p>
-                    )}
-                    <SurfLevelAccordion />
-                    <SurfBriefReactions initial={reactions} />
-                </div>
-            ) : (
-                <div
-                    id="parte-s4-hoy"
-                    className="mt-4 scroll-mt-24 rounded-2xl border border-cyan-500/20 bg-slate-950/50 p-4 sm:mt-5 sm:p-5 md:p-6"
-                >
-                    <div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-cyan-300/90">
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Parte S4 · Hoy
-                    </div>
-                    <p className="mt-3 text-sm font-medium text-slate-200">
-                        {summaryStatus === "generating"
-                            ? summaryMessage || "Generando el parte de hoy…"
-                            : "El parte de hoy aún no está disponible."}
-                    </p>
-                    <p className="mt-2 text-[11px] text-slate-500">
-                        {summaryStatus === "generating"
-                            ? "Recarga la página en unos segundos. Si sigue vacío, ejecuta el comando de generación (ver docs)."
-                            : "Consulta la webcam o regenera el parte si eres admin."}
-                    </p>
-                </div>
-            )}
+            <SurfBriefParteToday
+                summary={summary}
+                summarySections={summarySections}
+                summaryStatus={summaryStatus}
+                summaryMessage={summaryMessage}
+                updatedAtHuman={updatedAtHuman}
+                signal={signal}
+                reactions={reactions}
+            />
         </div>
     );
 }

@@ -36,7 +36,7 @@ Si doc ≠ código → gana el código. Si las dos IAs contradicen → gana lo v
 
 | # | Tema | Archivo(s) |
 |---|---|---|
-| 0 | Estado / no pisarse | `docs/taller-prompts/COORDINACION.md` (+ `REGISTRO.md` si es taller de prompts) |
+| 0 | Estado / no pisarse | `docs/taller-prompts/COORDINACION.md` + `HANDOFF.md` (si continuidad) (+ `REGISTRO.md` si es taller de prompts) |
 | 1 | UI-UX / CRO / copy / marketing | `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` (Reasonix: `/marketing-diseno`) |
 | 2 | Crear/mejorar prompts | `docs/taller-prompts/PROTOCOLO.md` + skill `prompt-forge` (Cursor) |
 | 3 | Rediseño modal/pantalla admin | `docs/taller-prompts/PLANTILLA-UX-MODAL.md` (UI-only; sin lógica ni payload keys) |
@@ -47,8 +47,18 @@ Si doc ≠ código → gana el código. Si las dos IAs contradicen → gana lo v
 | 8 | SEO / competencia | `docs/COMPETENCIA_SEO_DONOSTIA.md` + `docs/taller-seo/**` + `.cursor/rules/seo-geo-public.mdc` |
 | 9 | Rutas / dominios | extracto de `docs/PROJECT_TREE_FOR_GEMINI.md` (sección afectada, no el doc entero) |
 | 10 | Ticket mostrador (datáfono) | `node scripts/deepseek-ask.mjs --topic ticket` (modal + backend datáfono) · Cursor: `MostradorTicketModal.jsx` + `DatafonoPayment*` |
+| 11 | Teoría / profesor / cuaderno | `docs/aprendizaje/` (`INDICE.md` + temas 01–06). Reasonix: `/profesor-aprendizaje`. Ambos canales pueden **leer y guardar**. |
 
 **Regla de tokens:** nunca volcar todos los `.md`. Solo el/los de la fila del tema.
+
+### 3.1) Libro de Aprendizaje (cuaderno compartido)
+
+- **Dónde:** `docs/aprendizaje/` (entrada: `INDICE.md`).
+- **Quién:** Cursor **y** Reasonix/DeepSeek (mismo cuaderno; no es “solo DeepSeek”).
+- **Cuándo guardar:** el usuario pregunta teoría/conceptos/flujos y la respuesta merece quedar; o pide explícitamente “guárdalo / anótalo”.
+- **Cómo:** seguir las reglas de alimentación del `INDICE.md` (no duplicar; estructura Qué es / Por qué / En tu proyecto / Para recordar; actualizar log del índice).
+- **Flujo de eficiencia de tokens (2026-08-11, ambas IAs):** resúmenes (nunca transcripciones); aviso de reinicio; ritual **«fin de chat» → sobrescribir `docs/taller-prompts/HANDOFF.md`**; en chat nuevo, puente solo si el usuario sigue el handoff o el tema encaja (máx. ~5 viñetas; sin matching por hora ni Q&A). Detalle: `COORDINACION.md` §Flujo de eficiencia.
+- Preguntar teoría **no** dispara la confirmación cruzada §5.1 (no es implementación ni rediseño UI).
 
 ---
 
@@ -70,6 +80,7 @@ Si doc ≠ código → gana el código. Si las dos IAs contradicen → gana lo v
 | Prompt listo, crítica UX, alternativas, rúbrica | **Reasonix/DeepSeek** | Prompt o informe; si hay que codear → handoff a Cursor |
 | Rediseño UI modal | Reasonix diseña con plantilla → Cursor ejecuta UI-only | Prompt + PR/diff |
 | Dúo de calidad | Reasonix critica → Cursor consolida/verifica en código | v3 verificable |
+| Teoría / conceptos / “guárdalo en el libro” | **Cualquiera de los dos** | Entrada en `docs/aprendizaje/` según `INDICE.md` |
 
 Ante empate de propuestas: gana la más **verificable en el repo**; si empatan, la más corta.
 

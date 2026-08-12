@@ -29,8 +29,8 @@ final class OpenMeteoWeatherClient
 
     private const FORECAST_DAYS = 7;
 
-    /** Tope de franjas horarias devueltas al front (24h por defecto + "Ver 48 h"). */
-    private const MAX_HOURLY_POINTS = 48;
+    /** Tope de franjas horarias: 7 días × 24 h (panel «Tiempo detallado» + clic por día). */
+    private const MAX_HOURLY_POINTS = 168;
 
     public function fetchForecast(): ZurriolaWeatherForecastDto
     {

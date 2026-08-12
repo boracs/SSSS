@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\VerificarAdmin; // Importar el nuevo middleware (¡CLAVE!)
 use App\Http\Middleware\VerificarTaquilla;
 use App\Http\Middleware\EnsureAuctionAccess;
+use App\Http\Middleware\EnsureAdminVerified;
 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -38,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Registramos el alias 'admin' para nuestro middleware de seguridad
         $middleware->alias([
             'admin' => VerificarAdmin::class, // Usa el import de arriba
+            'admin.verified' => EnsureAdminVerified::class,
             'verificarTaquilla' => VerificarTaquilla::class, // <-- PASO 2: Registrar el alias de Taquilla (¡NUEVO!)
             'auction.access' => EnsureAuctionAccess::class,
             'role' => \App\Http\Middleware\EnsureUserHasRole::class,

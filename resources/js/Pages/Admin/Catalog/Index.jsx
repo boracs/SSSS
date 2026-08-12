@@ -1,7 +1,11 @@
 import React from "react";
 import { Head, Link } from "@inertiajs/react";
-import CatalogOfferTabs from "@/components/admin/CatalogOfferTabs";
 
+/**
+ * Hub del Gestor de servicios: solo cards con descripción.
+ * Las pills (CatalogOfferTabs) viven en los gestores hijos para saltar entre dominios
+ * sin repetir aquí el mismo menú.
+ */
 const LINKS = [
     {
         label: "Planes taquillas",
@@ -48,15 +52,16 @@ export default function CatalogIndex() {
         <>
             <Head title="Admin · Gestor de servicios" />
             <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-                <CatalogOfferTabs />
                 <header>
-                    <h1 className="text-2xl font-bold text-white sm:text-3xl">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-400">
+                        Admin · Servicios
+                    </p>
+                    <h1 className="mt-1 text-2xl font-bold text-white sm:text-3xl">
                         Gestor de servicios
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                        Panel para crear, editar, activar y desactivar los servicios
-                        que ofrecemos. Elige un tipo: cada uno abre su gestor de
-                        dominio, sin mezclar datos ni lógica.
+                        Elige un tipo: cada card abre su gestor de dominio, sin
+                        mezclar datos ni lógica.
                     </p>
                 </header>
                 <ul className="grid gap-3 sm:grid-cols-2">

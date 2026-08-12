@@ -31,6 +31,10 @@ import {
     Waves,
     X,
     ZoomIn,
+    Gavel,
+    CalendarDays,
+    Video,
+    GitCompareArrows,
 } from "lucide-react";
 
 const GALLERY_IMAGES = [
@@ -257,32 +261,60 @@ function BenefitVerMas({ detail, trigger = "Ver dinámica" }) {
     );
 }
 
-function MicroServiceItem({ icon: Icon, label, sub, more, anchorId, anchorLabel = "Ver dinámica" }) {
-    const scrollToSection = () => {
-        document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    };
+function MicroServiceItem({ icon: Icon, label, sub, more, href, anchorId }) {
+    const hasNav = Boolean(href || anchorId);
+    const className = [
+        "group flex w-full items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-left transition-colors",
+        hasNav ? "hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40" : "",
+        more ? "sm:col-span-2" : "",
+    ]
+        .filter(Boolean)
+        .join(" ");
 
-    return (
-        <div className={`flex items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-3 ${more ? "sm:col-span-2" : ""}`}>
-            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+    const body = (
+        <>
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
             <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold leading-tight text-white">{label}</p>
-                {sub && <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p>}
-                {more && <BenefitVerMas detail={more} />}
-                {anchorId && !more && (
-                    <button
-                        type="button"
-                        onClick={scrollToSection}
-                        className="mt-2 inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-                    >
-                        <Info className="h-3 w-3" />
-                        {anchorLabel}
-                        <ChevronRight className="h-3 w-3" />
-                    </button>
-                )}
+                {sub ? <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p> : null}
+                {more ? <BenefitVerMas detail={more} /> : null}
             </div>
-        </div>
+            {hasNav ? (
+                <ChevronRight
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-600 transition-colors group-hover:text-cyan-300"
+                    aria-hidden
+                />
+            ) : null}
+        </>
     );
+
+    if (href) {
+        return (
+            <Link href={href} className={className} aria-label={`${label}: ver más`}>
+                {body}
+            </Link>
+        );
+    }
+
+    if (anchorId) {
+        return (
+            <button
+                type="button"
+                className={className}
+                aria-label={`${label}: ver en esta página`}
+                onClick={() => {
+                    document.getElementById(anchorId)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                    });
+                }}
+            >
+                {body}
+            </button>
+        );
+    }
+
+    return <div className={className}>{body}</div>;
 }
 
 const MICRO_SERVICES = [
@@ -298,12 +330,48 @@ const MICRO_SERVICES = [
     { icon: Ruler,       label: "Zona de encerado y reparaciones pequenas", sub: "Material comun: Solarez, lijas, luz UV..." },
     { icon: Wind,        label: "Zona de secado rapido para neoprenos", sub: "Baja humedad relativa" },
     { icon: Bath,        label: "Baños",                        sub: "A disposicion de socios" },
-    { icon: Package,     label: "Taquillas",                    sub: "Espacio privado a pie de playa" },
+    {
+        icon: Package,
+        label: "Taquillas",
+        sub: "Espacio privado a pie de playa",
+        href: route("taquillas.planes"),
+    },
     {
         icon: Wrench,
         label: "Servicio de reparacion automatizado",
         sub: "Pizarra fisica + seguimiento semanal",
         anchorId: "taller-edy-mulder",
+    },
+    { icon: Dumbbell,    label: "Zona de calentamiento",        sub: "TRX y multi ejercicios" },
+    {
+        icon: Video,
+        label: "Webcam Zurriola",
+        sub: "Playa en directo",
+        href: `${route("servicios.webcams")}#webcam-directo`,
+    },
+    {
+        icon: CalendarDays,
+        label: "Surf forecast 16 dias",
+        sub: "Prevision marina Zurriola",
+        href: `${route("servicios.webcams")}#prevision-forecast`,
+    },
+    {
+        icon: Star,
+        label: "Recomendacion por nivel",
+        sub: "Ini / Int / Ava segun el parte",
+        href: `${route("servicios.webcams")}#parte-s4-hoy`,
+    },
+    {
+        icon: Gavel,
+        label: "Subastas",
+        sub: "Pujas de material S4",
+        href: route("auctions.index"),
+    },
+    {
+        icon: GitCompareArrows,
+        label: "Comparador de maniobras",
+        sub: "AutoCoach online",
+        href: route("autocoach.index"),
     },
 ];
 
@@ -424,45 +492,42 @@ export default function SobreNosotros({ seo = null }) {
                     </h1>
 
                     {/* Subtítulo */}
-                    <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-slate-400 sm:text-lg">
-                        Somos la escuela de surf de referencia en Donostia. Formación, alquiler de material,
-                        bonos VIP y un club de socios con instalaciones premium a pie de la playa de Zurriola.
+                    <p className="mx-auto mt-5 max-w-2xl text-sm leading-snug text-slate-400 sm:text-base">
+                        Escuela de surf en Zurriola: clases, alquiler, tienda, club y muchos más servicios
+                        a pie de playa.
                     </p>
-                    {/* Barra de métricas premium */}
+                    {/* Barra de métricas (alineada con home) */}
                     <div className="mx-auto mt-10 max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm">
                         <div className="grid grid-cols-2 divide-x divide-y divide-white/5 sm:grid-cols-4 sm:divide-y-0">
                             {[
                                 {
-                                    value: "<5",
-                                    label: "Instalaciones renovadas",
-                                    sub: "Menos de 5 años de antigüedad",
+                                    value: "1 año",
+                                    label: "Instalaciones nuevas",
                                     color: "text-[#4ecde6]",
                                 },
                                 {
                                     value: "200+",
                                     label: "Socios activos",
-                                    sub: "Comunidad creciente",
                                     color: "text-[#4ecde6]",
                                 },
                                 {
                                     value: "98%",
                                     label: "Satisfacción",
-                                    sub: "Valoración media",
                                     color: "text-emerald-400",
                                 },
                                 {
                                     value: "Top",
                                     label: "Material premium",
-                                    sub: "Las mejores marcas del mercado",
                                     color: "text-orange-400",
                                 },
-                            ].map(({ value, label, sub, color }, i) => (
-                                <div key={i} className="flex flex-col items-center justify-center gap-1 px-6 py-6">
-                                    <span className={`text-4xl font-black tracking-tight ${color}`}>
+                            ].map(({ value, label, color }, i) => (
+                                <div key={i} className="flex flex-col items-center justify-center gap-0.5 px-4 py-5">
+                                    <span className={`text-2xl font-black tracking-tight sm:text-3xl ${color}`}>
                                         {value}
                                     </span>
-                                    <span className="text-[13px] font-semibold text-white/80">{label}</span>
-                                    <span className="text-[11px] text-slate-500">{sub}</span>
+                                    <span className="text-[11px] font-medium leading-tight text-white/80 sm:text-xs">
+                                        {label}
+                                    </span>
                                 </div>
                             ))}
                         </div>
@@ -617,7 +682,9 @@ export default function SobreNosotros({ seo = null }) {
                                 <Layers className="h-8 w-8 shrink-0 text-amber-400" />
                                 <div>
                                     <h3 className="text-lg font-bold text-white">Micro-servicios del Club</h3>
-                                    <p className="text-xs text-slate-500">+14 servicios incluidos para socios</p>
+                                    <p className="text-xs text-slate-500">
+                                        +{MICRO_SERVICES.length} servicios incluidos para socios
+                                    </p>
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -728,7 +795,7 @@ export default function SobreNosotros({ seo = null }) {
                         Listo para unirte al club?
                     </h2>
                     <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
-                        La comunidad S4 te espera en Zurriola. Escríbenos y te contamos cómo unirte al club.
+                        La comunidad de San Sebastián Surf School te espera en Zurriola. Escríbenos y te contamos cómo unirte al club.
                     </p>
                     <div className="mt-7 flex justify-center">
                         <button

@@ -168,7 +168,7 @@ export default function ServiciosFotos({ seo = null, sessions = [] }) {
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-fuchsia-400/25 bg-fuchsia-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-fuchsia-200">
                         <Aperture className="h-3.5 w-3.5" />
-                        Fotografía de surf S4
+                        Fotografía · San Sebastián Surf School
                     </div>
                     <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Captura tu mejor ola y{" "}

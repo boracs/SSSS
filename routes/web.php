@@ -35,7 +35,6 @@ use App\Http\Controllers\TaquillaController;
 use App\Http\Controllers\TiendaController;
 use App\Http\Controllers\User\MyProfileController;
 use App\Http\Controllers\User\MyReservationsController;
-use App\Http\Middleware\VerificarAdmin;
 use App\Http\Middleware\VerificarTaquilla;
 use App\Services\Seo\PublicPageSeoService;
 use Illuminate\Support\Facades\Route;
@@ -404,8 +403,9 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
 
 // ///ADMINISTRADORES////////////
 
-// Aqui uso un midleware personalizado que sirve pàra unicamente permitir el acceso a los usuariso que son admin
-Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(function () { // verifico que este asutentificado y ademas que sea admin
+// Panel admin: auth + rol admin + verify email (opcional vía ADMIN_REQUIRE_EMAIL_VERIFIED).
+// Allowlist contingencia: ADMIN_EMERGENCY_EMAILS en .env (ver config/auth.php).
+Route::middleware(['auth', 'admin', 'admin.verified', 'can:manage-vips'])->group(function () {
     // PRODUCTOS   // Rutas para el administrador para poder modificar productos
     Route::get('/productos', [ProductoController::class, 'mostrarProductos'])->name('mostrar.productos');
     Route::put('/productos/{id}/eliminar', [ProductoController::class, 'desactivarProducto'])->name('producto.eliminar');
@@ -535,6 +535,14 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::patch('vip-manager/lessons/{lesson}', [VipClassManagerController::class, 'update'])->name('vip-manager.lessons.update');
         Route::delete('vip-manager/lessons/{lesson}', [VipClassManagerController::class, 'destroy'])->name('vip-manager.lessons.destroy');
         Route::post('vip-manager/replicate-previous-week', [VipClassManagerController::class, 'replicatePreviousWeek'])->name('vip-manager.replicate-previous-week');
+
+        Route::get('emergency-keys', [AdminEmergencyKeyController::class, 'index'])->name('emergency-keys.index');
+        Route::post('emergency-keys/lock-code', [AdminEmergencyKeyController::class, 'updateCode'])->name('emergency-keys.update-code');
+        Route::post('emergency-keys/deactivate', [AdminEmergencyKeyController::class, 'deactivateLock'])->name('emergency-keys.deactivate');
+        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/deactivate', [AdminEmergencyKeyController::class, 'markKeyDeactivated'])
+            ->name('emergency-keys.mark-deactivated');
+        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/resolve', [AdminEmergencyKeyController::class, 'resolveKeyRequest'])
+            ->name('emergency-keys.resolve');
     });
 
     // Academia: Consola Comandante
@@ -558,20 +566,6 @@ Route::middleware(['auth', VerificarAdmin::class, 'can:manage-vips'])->group(fun
         Route::post('enrollments/bulk-delete-stale', [\App\Http\Controllers\Admin\AcademyController::class, 'bulkDeleteStale'])->name('enrollments.bulk-delete-stale');
     });
 });
-
-// Llave de emergencia — panel admin (auth + email verificado + rol admin)
-Route::middleware(['auth', 'verified', 'role:admin'])
-    ->prefix('admin')
-    ->name('admin.')
-    ->group(function () {
-        Route::get('emergency-keys', [AdminEmergencyKeyController::class, 'index'])->name('emergency-keys.index');
-        Route::post('emergency-keys/lock-code', [AdminEmergencyKeyController::class, 'updateCode'])->name('emergency-keys.update-code');
-        Route::post('emergency-keys/deactivate', [AdminEmergencyKeyController::class, 'deactivateLock'])->name('emergency-keys.deactivate');
-        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/deactivate', [AdminEmergencyKeyController::class, 'markKeyDeactivated'])
-            ->name('emergency-keys.mark-deactivated');
-        Route::patch('emergency-keys/requests/{emergencyKeyRequest}/resolve', [AdminEmergencyKeyController::class, 'resolveKeyRequest'])
-            ->name('emergency-keys.resolve');
-    });
 
 // Rutas de pedidos
 

@@ -2,9 +2,14 @@ import { Link, usePage } from "@inertiajs/react";
 import { formatEur } from "@/utils/money";
 import {
     Bath,
+    CalendarDays,
+    ChevronRight,
     Coffee,
     Droplets,
+    Dumbbell,
     ExternalLink,
+    Gavel,
+    GitCompareArrows,
     Heart,
     Lock,
     Music,
@@ -15,6 +20,8 @@ import {
     Ruler,
     Scissors,
     Shirt,
+    Star,
+    Video,
     Wifi,
     Wind,
     Wrench,
@@ -47,8 +54,49 @@ const MICRO_SERVICES = [
     { icon: Ruler, label: "Zona de encerado y reparaciones pequenas", sub: "Material comun: Solarez, lijas, luz UV..." },
     { icon: Wind, label: "Zona de secado rapido para neoprenos", sub: "Baja humedad relativa" },
     { icon: Bath, label: "Banos", sub: "A disposicion de socios" },
-    { icon: Package, label: "Taquillas", sub: "Espacio privado a pie de playa" },
-    { icon: Wrench, label: "Servicio de reparacion automatizado", sub: "Pizarra fisica + seguimiento semanal" },
+    {
+        icon: Package,
+        label: "Taquillas",
+        sub: "Espacio privado a pie de playa",
+        href: route("taquillas.planes"),
+    },
+    {
+        icon: Wrench,
+        label: "Servicio de reparacion automatizado",
+        sub: "Pizarra fisica + seguimiento semanal",
+        href: "/nosotros#taller-edy-mulder",
+    },
+    { icon: Dumbbell, label: "Zona de calentamiento", sub: "TRX y multi ejercicios" },
+    {
+        icon: Video,
+        label: "Webcam Zurriola",
+        sub: "Playa en directo",
+        href: `${route("servicios.webcams")}#webcam-directo`,
+    },
+    {
+        icon: CalendarDays,
+        label: "Surf forecast 16 dias",
+        sub: "Prevision marina Zurriola",
+        href: `${route("servicios.webcams")}#prevision-forecast`,
+    },
+    {
+        icon: Star,
+        label: "Recomendacion por nivel",
+        sub: "Ini / Int / Ava segun el parte",
+        href: `${route("servicios.webcams")}#parte-s4-hoy`,
+    },
+    {
+        icon: Gavel,
+        label: "Subastas",
+        sub: "Pujas de material S4",
+        href: route("auctions.index"),
+    },
+    {
+        icon: GitCompareArrows,
+        label: "Comparador de maniobras",
+        sub: "AutoCoach online",
+        href: route("autocoach.index"),
+    },
 ];
 
 function showMonthlyEquivalent(plan) {
@@ -175,7 +223,8 @@ export default function PlanesTaquillasPublic({ planes = [] }) {
                         <div>
                             <h2 className="text-xl font-extrabold sm:text-2xl">Micro-servicios del club</h2>
                             <p className="mt-2 text-sm text-slate-400">
-                                +14 servicios incluidos para socios: del cafe al taller de reparaciones.
+                                +{MICRO_SERVICES.length} servicios incluidos para socios: del cafe al forecast y las
+                                subastas.
                             </p>
                         </div>
                         <Link
@@ -186,15 +235,43 @@ export default function PlanesTaquillasPublic({ planes = [] }) {
                         </Link>
                     </div>
                     <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                        {MICRO_SERVICES.map(({ icon: Icon, label, sub }) => (
-                            <li key={label} className="flex items-start gap-3 rounded-xl border border-white/5 bg-slate-900/40 p-4">
-                                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" />
-                                <div>
-                                    <p className="text-sm font-semibold text-white">{label}</p>
-                                    <p className="text-xs text-slate-400">{sub}</p>
-                                </div>
-                            </li>
-                        ))}
+                        {MICRO_SERVICES.map(({ icon: Icon, label, sub, href }) => {
+                            const className = [
+                                "group flex w-full items-start gap-3 rounded-xl border border-white/5 bg-slate-900/40 p-4 text-left transition-colors",
+                                href
+                                    ? "hover:border-white/15 hover:bg-slate-900/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40"
+                                    : "",
+                            ]
+                                .filter(Boolean)
+                                .join(" ");
+                            const body = (
+                                <>
+                                    <Icon className="mt-0.5 h-5 w-5 shrink-0 text-cyan-300" aria-hidden />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold text-white">{label}</p>
+                                        <p className="text-xs text-slate-400">{sub}</p>
+                                    </div>
+                                    {href ? (
+                                        <ChevronRight
+                                            className="mt-0.5 h-4 w-4 shrink-0 text-slate-600 transition-colors group-hover:text-cyan-300"
+                                            aria-hidden
+                                        />
+                                    ) : null}
+                                </>
+                            );
+
+                            return (
+                                <li key={label}>
+                                    {href ? (
+                                        <Link href={href} className={className} aria-label={`${label}: ver más`}>
+                                            {body}
+                                        </Link>
+                                    ) : (
+                                        <div className={className}>{body}</div>
+                                    )}
+                                </li>
+                            );
+                        })}
                     </ul>
                 </section>
 

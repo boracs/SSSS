@@ -17,7 +17,7 @@ export default function Index({ articles = [], productos = [], seo = null }) {
             <TallerPageShell>
                 <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
                     <TallerHero
-                        badge={<TallerBadge icon={Waves} label="Taller de Surf · S4" />}
+                        badge={<TallerBadge icon={Waves} label="Blog educativo · S4" />}
                         title={
                             <>
                                 Guías, técnicas y{" "}
@@ -40,13 +40,15 @@ export default function Index({ articles = [], productos = [], seo = null }) {
                         </div>
                     </TallerHero>
 
-                    <div className="mt-10 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                        {featured ? (
-                            <TallerArticleCard article={featured} index={0} featured />
-                        ) : null}
-                        {rest.map((article, index) => (
-                            <TallerArticleCard key={article.id} article={article} index={index + 1} />
-                        ))}
+                    <div className="mt-10 rounded-3xl border border-slate-200/60 bg-white/70 p-4 shadow-[0_16px_48px_-28px_rgba(15,95,116,0.22)] backdrop-blur-sm sm:p-6">
+                        <div className="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                            {featured ? (
+                                <TallerArticleCard article={featured} index={0} featured />
+                            ) : null}
+                            {rest.map((article, index) => (
+                                <TallerArticleCard key={article.id} article={article} index={index + 1} />
+                            ))}
+                        </div>
                     </div>
 
                     <motion.div

@@ -1,6 +1,61 @@
 import React from "react";
-import { Clock3, Waves } from "lucide-react";
-import S4Button from "../S4Button";
+import { Link } from "@inertiajs/react";
+import { Waves } from "lucide-react";
+
+const MD_LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g;
+
+/**
+ * Renderiza texto FAQ con enlaces markdown `[etiqueta](/ruta#ancla)`.
+ * Sin lógica de negocio: solo presentación.
+ */
+function FaqAnswerText({ text }) {
+    if (typeof text !== "string" || text === "") {
+        return null;
+    }
+
+    const nodes = [];
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+    const re = new RegExp(MD_LINK_RE.source, "g");
+
+    while ((match = re.exec(text)) !== null) {
+        if (match.index > lastIndex) {
+            nodes.push(text.slice(lastIndex, match.index));
+        }
+        const label = match[1];
+        const href = match[2];
+        const internal = href.startsWith("/") || href.startsWith("#");
+        nodes.push(
+            internal ? (
+                <Link
+                    key={`faq-a-${key++}`}
+                    href={href}
+                    className="font-medium text-cyan-300/90 underline-offset-2 hover:text-cyan-200 hover:underline"
+                >
+                    {label}
+                </Link>
+            ) : (
+                <a
+                    key={`faq-a-${key++}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-cyan-300/90 underline-offset-2 hover:text-cyan-200 hover:underline"
+                >
+                    {label}
+                </a>
+            ),
+        );
+        lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < text.length) {
+        nodes.push(text.slice(lastIndex));
+    }
+
+    return nodes.length > 0 ? nodes : text;
+}
 
 /**
  * Bloque GEO citables Zurriola (props desde ZurriolaGeoFactsService).
@@ -17,8 +72,6 @@ export default function ZurriolaGeoGuide({ facts = null }) {
     const windows = Array.isArray(facts.summer_windows) ? facts.summer_windows : [];
     const bands = Array.isArray(facts.energy_bands) ? facts.energy_bands : [];
     const faqs = Array.isArray(facts.faqs) ? facts.faqs : [];
-    const operations = facts.operations ?? {};
-    const material = facts.material ?? {};
     const meters = school.meters ?? 20;
 
     return (
@@ -35,14 +88,14 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                     id="zurriola-geo-heading"
                     className="mt-1 font-heading text-2xl font-bold tracking-tight text-white sm:text-3xl"
                 >
-                    Zurriola: lugar, temporada y cómo venir a clase
+                    Zurriola: lugar, temporada y condiciones
                 </h2>
                 <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
                     {facts.description}
                 </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
                 <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
                     <h3 className="text-xs font-bold uppercase tracking-wide text-cyan-100">Lugar</h3>
                     <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
@@ -80,27 +133,10 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                         </p>
                     ) : null}
                 </article>
-
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-5 sm:col-span-2 lg:col-span-1">
-                    <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-cyan-100">
-                        <Clock3 className="h-3.5 w-3.5" aria-hidden />
-                        Día de clase
-                    </h3>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{operations.text}</p>
-                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{material.text}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                        <S4Button href={route("servicios.surf")} size="sm">
-                            Ver clases
-                        </S4Button>
-                        <S4Button href={route("contacto")} variant="secondary" size="sm">
-                            Contacto
-                        </S4Button>
-                    </div>
-                </article>
             </div>
 
             {seasons.length > 0 ? (
-                <div>
+                <div id="zurriola-temporada" className="scroll-mt-24">
                     <h3 className="font-heading text-lg font-bold text-white">Temporada en Zurriola</h3>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                         {seasons.map((season) => (
@@ -140,7 +176,39 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                     {facts.levels_intro ? (
                         <p className="mt-2 max-w-3xl text-sm text-slate-400">{facts.levels_intro}</p>
                     ) : null}
-                    <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+                    {/* Móvil: sin scroll horizontal — una franja = un bloque (marketing: menos fricción). */}
+                    <ul className="mt-4 divide-y divide-white/10 overflow-hidden rounded-2xl border border-white/10 md:hidden">
+                        {bands.map((band) => (
+                            <li key={band.range_label} className="bg-white/[0.02] px-3.5 py-3">
+                                <p className="text-[13px] font-bold tabular-nums text-cyan-200">
+                                    {band.range_label}
+                                </p>
+                                <dl className="mt-2.5 space-y-2 text-[11px] leading-snug text-slate-300">
+                                    <div>
+                                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                            Iniciación
+                                        </dt>
+                                        <dd className="mt-0.5">{band.iniciacion}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                            Intermedio
+                                        </dt>
+                                        <dd className="mt-0.5">{band.intermedio}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                            Avanzado
+                                        </dt>
+                                        <dd className="mt-0.5">{band.avanzado}</dd>
+                                    </div>
+                                </dl>
+                            </li>
+                        ))}
+                    </ul>
+
+                    {/* Desktop / tablet ancha: tabla clásica */}
+                    <div className="mt-4 hidden overflow-x-auto rounded-2xl border border-white/10 md:block">
                         <table className="min-w-full text-left text-sm">
                             <thead className="bg-white/5 text-xs uppercase tracking-wide text-slate-400">
                                 <tr>
@@ -164,25 +232,30 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                             </tbody>
                         </table>
                     </div>
+                    {facts.energy_bands_note ? (
+                        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-slate-500 sm:text-sm">
+                            {facts.energy_bands_note}
+                        </p>
+                    ) : null}
                 </div>
             ) : null}
 
             {faqs.length > 0 ? (
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-cyan-100">
+                <div>
+                    <h3 className="font-heading text-lg font-bold text-white">
                         Preguntas frecuentes
                     </h3>
-                    <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <dl className="mt-4 grid gap-5 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-6">
                         {faqs.map((faq) => (
                             <div key={faq.question}>
                                 <dt className="text-sm font-semibold text-white">{faq.question}</dt>
-                                <dd className="mt-1 text-sm leading-relaxed text-slate-400">
-                                    {faq.answer}
+                                <dd className="mt-1.5 text-sm leading-relaxed text-slate-400">
+                                    <FaqAnswerText text={faq.answer} />
                                 </dd>
                             </div>
                         ))}
                     </dl>
-                </article>
+                </div>
             ) : null}
 
             {facts.disclaimer ? (

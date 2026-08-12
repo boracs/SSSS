@@ -36,6 +36,7 @@ readonly class ZurriolaGeoFactsDto
         public array $summerWindows,
         public string $levelsIntro,
         public array $energyBands,
+        public string $energyBandsNote,
         public int $arriveMinutesBefore,
         public string $operationsText,
         public array $materialIncluded,
@@ -67,6 +68,7 @@ readonly class ZurriolaGeoFactsDto
             'summer_windows' => $this->summerWindows,
             'levels_intro' => $this->levelsIntro,
             'energy_bands' => $this->energyBands,
+            'energy_bands_note' => $this->energyBandsNote,
             'operations' => [
                 'arrive_minutes_before' => $this->arriveMinutesBefore,
                 'text' => $this->operationsText,

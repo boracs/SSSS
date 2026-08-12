@@ -5,13 +5,13 @@ import {
     BookOpenCheck,
     CalendarRange,
     ChevronDown,
-    Gauge,
     Loader2,
-    Waves,
-    Wind,
 } from "lucide-react";
+import WaveCrestIcon from "../icons/WaveCrestIcon";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 import SurfLevelAccordion from "./SurfLevelAccordion";
+import SurfBriefLevelBlocks from "./SurfBriefLevelBlocks";
+import SurfBriefParteCta from "./SurfBriefParteCta";
 import { SURF_LEVELS } from "./surfLevels";
 import SurfDetailedForecastSlider from "./SurfDetailedForecastSlider";
 import useDetailedForecast from "./useDetailedForecast";
@@ -19,41 +19,41 @@ import useDetailedForecast from "./useDetailedForecast";
 function BriefShell({ children, className = "" }) {
     return (
         <section className={`mt-8 sm:mt-10 ${className}`} aria-labelledby="parte-s4-heading">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-s4 sm:text-[11px]">
-                        Solo en S4 · Referente de iniciación
-                    </p>
+            <div className="mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-s4 sm:text-[11px]">
+                    Solo en S4 · Referente de iniciación
+                </p>
+                <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
                     <h2
                         id="parte-s4-heading"
-                        className="mt-1 font-heading text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl"
+                        className="font-heading text-xl font-extrabold tracking-tight text-slate-900 sm:text-2xl"
                     >
                         Parte S4 · Zurriola hoy
                     </h2>
+                    <p className="text-xs text-slate-500 sm:text-sm">
+                        Traducimos olas, viento y energía a un lenguaje claro — pensado para iniciación y para quien consulta Zurriola antes de salir.
+                    </p>
                 </div>
-                <p className="max-w-md text-xs leading-relaxed text-slate-500 sm:text-right sm:text-sm">
-                    Resumen del día redactado por el equipo para quien aún no interpreta bien el parte.
-                </p>
             </div>
             {children}
         </section>
     );
 }
 
-/** Miniatura decorativa de la tabla forecast (no es el componente real). */
-function ForecastMiniPreview({ waveM, onOpen, loading }) {
+/** Miniatura del forecast → página webcam/parte (#prevision-forecast). El detalle abre el botón inferior. */
+function ForecastMiniPreview({ waveM }) {
     const hours = ["06", "08", "10", "12", "14"];
     const waveHint =
         typeof waveM === "number" && Number.isFinite(waveM)
             ? waveM.toFixed(2)
             : "0.4";
+    const parteForecastHref = `${route("servicios.webcams")}#prevision-forecast`;
 
     return (
-        <button
-            type="button"
-            onClick={onOpen}
-            aria-label="Abrir forecast al detalle"
-            className="group relative w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left shadow-inner transition hover:border-cyan-500/40 hover:ring-1 hover:ring-cyan-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+        <Link
+            href={parteForecastHref}
+            aria-label="Ir al forecast en la página del Parte S4"
+            className="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left shadow-inner transition hover:border-cyan-500/40 hover:ring-1 hover:ring-cyan-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
         >
             <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent sm:w-20" />
             <div className="px-2.5 py-2 sm:px-3">
@@ -62,12 +62,8 @@ function ForecastMiniPreview({ waveM, onOpen, loading }) {
                         Forecast
                     </span>
                     <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-cyan-200/90 opacity-90 transition group-hover:opacity-100">
-                        {loading ? (
-                            <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
-                        ) : (
-                            <CalendarRange className="h-3 w-3" aria-hidden />
-                        )}
-                        Abrir
+                        <CalendarRange className="h-3 w-3" aria-hidden />
+                        Ver parte
                     </span>
                 </div>
                 <div className="grid grid-cols-[auto_repeat(5,minmax(0,1fr))] gap-x-1 gap-y-1 text-[8px] leading-none text-slate-400 sm:text-[9px]">
@@ -100,35 +96,20 @@ function ForecastMiniPreview({ waveM, onOpen, loading }) {
                     ))}
                 </div>
             </div>
-        </button>
+        </Link>
     );
 }
 
-function LevelParagraphs({ sections }) {
+function LevelParagraphs({ sections, signalStatus }) {
     if (!sections) return null;
-
+    const hasAny = SURF_LEVELS.some((lvl) => sections[lvl.level]);
+    if (!hasAny) return null;
     return (
-        <div className="mt-3 space-y-3">
-            {SURF_LEVELS.map((lvl) => {
-                const text = sections[lvl.level];
-                if (!text) return null;
-                return (
-                    <div key={lvl.level} className="space-y-1.5">
-                        <span
-                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${lvl.labelClass}`}
-                        >
-                            {lvl.label}
-                        </span>
-                        <p className="text-sm leading-relaxed text-slate-700">{text}</p>
-                    </div>
-                );
-            })}
-            {sections.aviso ? (
-                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
-                    {sections.aviso}
-                </p>
-            ) : null}
-        </div>
+        <SurfBriefLevelBlocks
+            summarySections={sections}
+            signalStatus={signalStatus}
+            showGuideLink
+        />
     );
 }
 
@@ -205,17 +186,17 @@ export default function SurfBriefMini({ brief }) {
                             ) : null}
                         </span>
                     </div>
-                    <p className="mt-2 text-xs leading-relaxed text-slate-600 sm:text-sm">
-                        Traducimos olas, viento y energía a un lenguaje claro — pensado para iniciación y
-                        para quien consulta Zurriola antes de salir.
-                    </p>
                 </div>
 
                 <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start sm:gap-5 sm:p-5">
                     <div className="min-w-0">
                         <div className="flex items-start gap-3">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#0f5f74] text-white shadow-sm">
-                                <Waves className="h-5 w-5" aria-hidden />
+                                <WaveCrestIcon
+                                    className="h-5 w-5"
+                                    decorative={false}
+                                    title="Ola · Parte S4 Zurriola"
+                                />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
@@ -249,7 +230,24 @@ export default function SurfBriefMini({ brief }) {
 
                         {expanded ? (
                             <div className="mt-1 border-t border-slate-100 pt-1">
-                                <LevelParagraphs sections={sections} />
+                                {sections?.aviso ? (
+                                    <p
+                                        className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200"
+                                        role="alert"
+                                    >
+                                        {sections.aviso}
+                                    </p>
+                                ) : null}
+                                <LevelParagraphs
+                                    sections={sections}
+                                    signalStatus={brief.signal?.status}
+                                />
+                                <div className="mt-3">
+                                    <SurfBriefParteCta
+                                        signalStatus={brief.signal?.status}
+                                        className="w-full sm:w-auto"
+                                    />
+                                </div>
                                 <SurfLevelAccordion />
                                 <p className="mt-3">
                                     <Link
@@ -262,43 +260,9 @@ export default function SurfBriefMini({ brief }) {
                                 </p>
                             </div>
                         ) : null}
-
-                        <div className="mt-4 flex flex-wrap items-end gap-4 border-t border-slate-100 pt-3 sm:gap-5">
-                            <div className="flex flex-col">
-                                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                    <Waves className="h-3 w-3 text-cyan-600" aria-hidden />
-                                    Ola
-                                </span>
-                                <span className="text-sm font-bold text-slate-800">
-                                    {brief.wave.height_m} m
-                                </span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                    <Wind className="h-3 w-3 text-cyan-600" aria-hidden />
-                                    Viento
-                                </span>
-                                <span className="text-sm font-bold text-slate-800">
-                                    {brief.wind.speed_kmh} km/h
-                                </span>
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                                    <Gauge className="h-3 w-3 text-cyan-600" aria-hidden />
-                                    Energía
-                                </span>
-                                <span className="text-sm font-bold text-slate-800">
-                                    {brief.energy.label}
-                                </span>
-                            </div>
-                        </div>
                     </div>
 
-                    <ForecastMiniPreview
-                        waveM={brief.wave?.height_m}
-                        onOpen={openDetailed}
-                        loading={loading && open}
-                    />
+                    <ForecastMiniPreview waveM={brief.wave?.height_m} />
                 </div>
 
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">

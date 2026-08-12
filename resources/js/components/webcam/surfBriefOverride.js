@@ -10,7 +10,7 @@ export const SURF_BRIEF_OVERRIDES = {
         buttonSub: "Totalmente seguro",
         adminClass: "bg-emerald-600 text-white",
         miniTone: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-        tableWrap: "border-emerald-300 bg-emerald-50",
+        tableWrap: "border-emerald-200/90 bg-white",
         tableBadge: "bg-emerald-600 text-white",
     },
     espigon: {
@@ -20,8 +20,8 @@ export const SURF_BRIEF_OVERRIDES = {
         buttonSub: "Iniciación en el espigón",
         adminClass: "bg-yellow-400 text-slate-900",
         miniTone: "bg-yellow-50 text-yellow-800 ring-yellow-300",
-        tableWrap: "border-yellow-300 bg-yellow-50",
-        tableBadge: "bg-yellow-400 text-slate-900",
+        tableWrap: "border-amber-200/90 bg-white",
+        tableBadge: "bg-amber-500 text-white",
     },
     caution: {
         status: "caution",
@@ -30,7 +30,7 @@ export const SURF_BRIEF_OVERRIDES = {
         buttonSub: "Cuidado",
         adminClass: "bg-amber-600 text-white",
         miniTone: "bg-amber-50 text-amber-700 ring-amber-200",
-        tableWrap: "border-amber-300 bg-amber-50",
+        tableWrap: "border-amber-300/90 bg-white",
         tableBadge: "bg-amber-600 text-white",
     },
     closed: {
@@ -40,7 +40,7 @@ export const SURF_BRIEF_OVERRIDES = {
         buttonSub: "Avanzado / baño no recomendado",
         adminClass: "bg-rose-600 text-white",
         miniTone: "bg-rose-50 text-rose-700 ring-rose-200",
-        tableWrap: "border-rose-300 bg-rose-50",
+        tableWrap: "border-rose-200/90 bg-white",
         tableBadge: "bg-rose-600 text-white",
     },
 };

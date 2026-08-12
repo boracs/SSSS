@@ -5,15 +5,21 @@ declare(strict_types=1);
 namespace App\Services\SurfConditions;
 
 use App\DTOs\SurfConditions\ZurriolaGeoFactsDto;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
  * Carga hechos GEO públicos de Zurriola (JSON editable).
  * Sin APIs externas; usado en webcams + FAQ JSON-LD.
+ * Cache con filemtime en la clave: al editar el JSON se invalida sola.
  */
 final class ZurriolaGeoFactsService
 {
+    private const CACHE_KEY = 'zurriola.geo_facts.v1';
+
+    private const CACHE_TTL_SECONDS = 3600;
+
     public function publicPayload(): array
     {
         return $this->dto()->toArray();
@@ -31,6 +37,17 @@ final class ZurriolaGeoFactsService
             throw new RuntimeException('Zurriola GEO facts file missing: '.$path);
         }
 
+        $cacheKey = self::CACHE_KEY.'.'.(int) filemtime($path);
+
+        return Cache::remember(
+            $cacheKey,
+            self::CACHE_TTL_SECONDS,
+            fn () => $this->buildDto($path),
+        );
+    }
+
+    private function buildDto(string $path): ZurriolaGeoFactsDto
+    {
         /** @var array<string, mixed>|null $raw */
         $raw = json_decode((string) file_get_contents($path), true);
         if (! is_array($raw)) {
@@ -56,6 +73,7 @@ final class ZurriolaGeoFactsService
             summerWindows: $this->listOfMaps($raw['summer_windows'] ?? []),
             levelsIntro: (string) ($raw['levels_intro'] ?? ''),
             energyBands: $this->listOfMaps($raw['energy_bands'] ?? []),
+            energyBandsNote: (string) ($raw['energy_bands_note'] ?? ''),
             arriveMinutesBefore: (int) ($operations['arrive_minutes_before'] ?? 15),
             operationsText: (string) ($operations['text'] ?? ''),
             materialIncluded: $this->stringList($material['included'] ?? []),
@@ -90,15 +108,26 @@ final class ZurriolaGeoFactsService
             '@context' => 'https://schema.org',
             '@type' => 'FAQPage',
             'url' => $pageUrl,
-            'mainEntity' => array_map(static fn (array $f): array => [
+            'mainEntity' => array_map(fn (array $f): array => [
                 '@type' => 'Question',
                 'name' => (string) $f['question'],
                 'acceptedAnswer' => [
                     '@type' => 'Answer',
-                    'text' => (string) $f['answer'],
+                    'text' => $this->plainFaqAnswer((string) $f['answer']),
                 ],
             ], $faqs),
         ]];
+    }
+
+    /**
+     * FAQ JSON-LD en texto plano (sin markdown de enlaces).
+     */
+    private function plainFaqAnswer(string $answer): string
+    {
+        $plain = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '$1', $answer) ?? $answer;
+        $plain = preg_replace('/\s+/u', ' ', $plain) ?? $plain;
+
+        return trim($plain);
     }
 
     /**

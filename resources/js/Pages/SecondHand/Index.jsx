@@ -199,10 +199,10 @@ export default function SecondHandIndex({ boards, seo = null }) {
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-400">
-                        Segunda Mano · San Sebastian Surf School
+                        Tablas segunda mano · San Sebastian Surf School
                     </p>
                     <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
-                        Tablas de Segunda Mano
+                        Tablas de segunda mano
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
                         Tablas revisadas y garantizadas por nuestra escuela. Equipo de calidad

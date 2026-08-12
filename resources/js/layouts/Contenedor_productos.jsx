@@ -3,6 +3,10 @@ import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import Producto from "../components/Producto";
 
+/**
+ * Carrusel de ofertas tienda socios.
+ * Superficie oscura alineada con /tienda y cards Producto (navy + texto claro).
+ */
 const Contenedor_productos = ({
     productos = [],
     eyebrow = "Tienda socios",
@@ -45,15 +49,15 @@ const Contenedor_productos = ({
 
     return (
         <section
-            className={`relative overflow-hidden rounded-3xl border border-slate-300/70 bg-gradient-to-br from-slate-200/90 via-slate-100 to-cyan-100/50 shadow-[0_20px_60px_-24px_rgba(15,95,116,0.4)] ${compact ? "rounded-2xl p-3 sm:p-4" : "p-5 sm:p-8"}`}
+            className={`relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-[#0a2a33] to-slate-950 shadow-[0_24px_64px_-28px_rgba(0,0,0,0.55)] ${compact ? "rounded-2xl p-3 sm:p-4" : "p-5 sm:p-8"}`}
             aria-labelledby="ofertas-socios-heading"
         >
             <div
-                className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-cyan-400/20 blur-3xl"
+                className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-cyan-500/15 blur-3xl"
                 aria-hidden
             />
             <div
-                className="pointer-events-none absolute -bottom-24 -left-12 h-48 w-48 rounded-full bg-orange-300/15 blur-3xl"
+                className="pointer-events-none absolute -bottom-24 -left-12 h-48 w-48 rounded-full bg-[#0f5f74]/20 blur-3xl"
                 aria-hidden
             />
 
@@ -62,20 +66,20 @@ const Contenedor_productos = ({
             >
                 <div>
                     {eyebrow ? (
-                        <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-700">
+                        <p className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/25 bg-cyan-500/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-300">
                             <Sparkles className="h-3.5 w-3.5" />
                             {eyebrow}
                         </p>
                     ) : null}
                     <h2
                         id="ofertas-socios-heading"
-                        className={`font-heading font-extrabold tracking-tight text-slate-900 ${eyebrow ? "mt-3" : ""} ${compact ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"}`}
+                        className={`font-heading font-extrabold tracking-tight text-white ${eyebrow ? "mt-3" : ""} ${compact ? "text-base sm:text-lg" : "text-2xl sm:text-3xl"}`}
                     >
                         {title}
                     </h2>
                     {description ? (
                         <p
-                            className={`max-w-xl leading-relaxed text-slate-600 ${compact ? "mt-1 text-xs" : "mt-2 text-sm"}`}
+                            className={`max-w-xl leading-relaxed text-slate-400 ${compact ? "mt-1 text-xs" : "mt-2 text-sm"}`}
                         >
                             {description}
                         </p>
@@ -84,7 +88,7 @@ const Contenedor_productos = ({
                 {showShopLink ? (
                     <Link
                         href={route("tienda")}
-                        className={`inline-flex shrink-0 items-center gap-1 rounded-xl border border-slate-200/80 bg-white/80 font-semibold text-[#0f5f74] shadow-sm backdrop-blur-sm transition hover:border-cyan-300 hover:bg-white hover:text-cyan-600 ${compact ? "px-2.5 py-1.5 text-xs" : "gap-1.5 px-4 py-2.5 text-sm"}`}
+                        className={`inline-flex shrink-0 items-center gap-1 rounded-xl border border-white/15 bg-white/10 font-semibold text-cyan-100 shadow-sm backdrop-blur-sm transition hover:border-cyan-400/40 hover:bg-white/15 hover:text-white ${compact ? "px-2.5 py-1.5 text-xs" : "gap-1.5 px-4 py-2.5 text-sm"}`}
                     >
                         Ver tienda completa
                         <ChevronRight className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
@@ -94,11 +98,11 @@ const Contenedor_productos = ({
 
             <div className="relative">
                 <div
-                    className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-slate-100/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+                    className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-slate-950/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
                     aria-hidden
                 />
                 <div
-                    className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-cyan-100/90 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+                    className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-slate-950/95 to-transparent transition-opacity duration-300 sm:w-14 ${canScrollRight ? "opacity-100" : "opacity-0"}`}
                     aria-hidden
                 />
 
@@ -107,7 +111,7 @@ const Contenedor_productos = ({
                     onClick={() => scroll(-1)}
                     aria-label="Productos anteriores"
                     disabled={!canScrollLeft}
-                    className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.35)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-cyan-300 hover:text-cyan-600 ${compact ? "-left-0.5 h-8 w-8" : "-left-1 hidden h-11 w-11 sm:flex"} ${canScrollLeft ? "opacity-100" : "pointer-events-none opacity-0"}`}
+                    className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-800/95 text-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-cyan-400/40 hover:text-cyan-200 ${compact ? "-left-0.5 h-8 w-8" : "-left-1 hidden h-11 w-11 sm:flex"} ${canScrollLeft ? "opacity-100" : "pointer-events-none opacity-0"}`}
                 >
                     <ChevronLeft className={compact ? "h-4 w-4" : "h-5 w-5"} />
                 </button>
@@ -146,7 +150,7 @@ const Contenedor_productos = ({
                     onClick={() => scroll(1)}
                     aria-label="Más productos"
                     disabled={!canScrollRight}
-                    className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-white/90 text-slate-700 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.35)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-cyan-300 hover:text-cyan-600 ${compact ? "-right-0.5 h-8 w-8" : "-right-1 hidden h-11 w-11 sm:flex"} ${canScrollRight ? "opacity-100" : "pointer-events-none opacity-0"}`}
+                    className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-slate-800/95 text-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] backdrop-blur-md transition-all duration-300 hover:scale-105 hover:border-cyan-400/40 hover:text-cyan-200 ${compact ? "-right-0.5 h-8 w-8" : "-right-1 hidden h-11 w-11 sm:flex"} ${canScrollRight ? "opacity-100" : "pointer-events-none opacity-0"}`}
                 >
                     <ChevronRight className={compact ? "h-4 w-4" : "h-5 w-5"} />
                 </button>

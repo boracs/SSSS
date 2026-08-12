@@ -1,34 +1,40 @@
 import React, { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, HelpCircle } from "lucide-react";
 import { SURF_LEVELS } from "./surfLevels";
 
 function LevelBody({ level }) {
     return (
-        <div className={`mt-2 rounded-xl p-3 ring-1 ${level.labelClass}`}>
+        <div className="mt-2 rounded-xl bg-slate-50/90 p-3 ring-1 ring-slate-900/5">
             <p className="text-sm font-semibold leading-snug text-slate-900">
                 {level.label}
                 <span className="font-medium text-slate-600"> · {level.title}</span>
             </p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-800">{level.body}</p>
-            <p className="mt-2 text-xs font-medium italic text-slate-600">{level.next}</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-700">{level.body}</p>
+            <p className="mt-2 text-xs font-medium italic text-slate-500">{level.next}</p>
         </div>
     );
 }
 
 /**
- * Guía fija "¿Cuál es mi nivel?".
- * Desktop: 3 cabeceras en fila + un panel a todo el ancho.
- * Móvil: acordeón vertical (panel bajo su cabecera).
+ * Guía fija de niveles S4 (no es el parte del día).
  */
 export default function SurfLevelAccordion() {
     const [open, setOpen] = useState(null);
     const active = SURF_LEVELS.find((l) => l.level === open) || null;
 
     return (
-        <div className="mt-4 border-t border-slate-900/10 pt-4">
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                ¿Cuál es mi nivel?
-            </p>
+        <div className="mt-5 border-t border-slate-200/80 pt-4">
+            <div className="mb-3 flex items-start gap-2">
+                <HelpCircle className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+                <div>
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-600">
+                        ¿No sabes tu nivel?
+                    </p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-slate-400">
+                        Guía fija de la escuela — no cambia con el parte de hoy.
+                    </p>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {SURF_LEVELS.map((lvl) => {
@@ -40,7 +46,7 @@ export default function SurfLevelAccordion() {
                                 onClick={() => setOpen(isOpen ? null : lvl.level)}
                                 aria-expanded={isOpen}
                                 aria-controls={`nivel-${lvl.level}-panel`}
-                                className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                                className={`flex min-h-[44px] items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-semibold transition ${
                                     isOpen ? lvl.activeClass : lvl.idleClass
                                 }`}
                             >

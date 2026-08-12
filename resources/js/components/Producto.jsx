@@ -73,10 +73,15 @@ const Producto = ({
 
     const padX = isCompact ? "px-2" : "px-3 sm:px-3.5";
 
+    const cardSurfaceClass = isCompact
+        ? "border-white/15 bg-slate-800/85 shadow-md shadow-black/25 hover:border-cyan-400/25 hover:bg-slate-800/95"
+        : "border-white/10 bg-white/5 hover:border-slate-500/60 hover:bg-white/[0.07] hover:shadow-[0_12px_36px_rgba(15,23,42,0.45)]";
+
     return (
         <article
             className={[
-                "group relative flex h-full min-w-0 flex-col overflow-visible border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-slate-500/60 hover:bg-white/[0.07] hover:shadow-[0_12px_36px_rgba(15,23,42,0.45)]",
+                "group relative flex h-full min-w-0 flex-col overflow-visible backdrop-blur-sm transition-all duration-300",
+                cardSurfaceClass,
                 isCompact ? "rounded-xl" : "rounded-2xl",
             ].join(" ")}
         >
@@ -195,7 +200,7 @@ const Producto = ({
                                     {formatEur(precioNum)}
                                 </span>
                                 {isCompact && ahorro > 0 ? (
-                                    <span className="rounded bg-rose-600/90 px-1 py-px text-[10px] font-bold tabular-nums text-white">
+                                    <span className="text-[10px] font-semibold tabular-nums text-emerald-400/95">
                                         −{formatEur(ahorro)}
                                     </span>
                                 ) : null}

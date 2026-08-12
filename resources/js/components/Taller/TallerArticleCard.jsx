@@ -3,14 +3,15 @@ import { Link } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen } from "lucide-react";
 import { fadeUp } from "./TallerShell";
+import { formatTallerDisplayTitle } from "../../lib/tallerTitle";
 
 const CARD_ACCENTS = [
-    "from-[#0f5f74]/90 to-cyan-600/80",
-    "from-cyan-600/90 to-teal-500/80",
-    "from-slate-800/90 to-[#0f5f74]/80",
-    "from-orange-500/85 to-amber-500/75",
-    "from-indigo-600/85 to-cyan-500/75",
-    "from-emerald-600/85 to-teal-500/75",
+    "from-[#0f5f74] to-cyan-600",
+    "from-cyan-600 to-teal-500",
+    "from-slate-700 to-[#0f5f74]",
+    "from-orange-500 to-amber-500",
+    "from-indigo-600 to-cyan-500",
+    "from-emerald-600 to-teal-500",
 ];
 
 function accentForIndex(index) {
@@ -24,8 +25,8 @@ function CoverThumb({ src, alt, className = "" }) {
         <img
             src={src}
             alt={alt}
-            width={128}
-            height={96}
+            width={640}
+            height={400}
             loading="lazy"
             decoding="async"
             className={`object-cover ${className}`}
@@ -33,9 +34,84 @@ function CoverThumb({ src, alt, className = "" }) {
     );
 }
 
+const MAGAZINE_CARD_CLASS =
+    "group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_12px_32px_-12px_rgba(15,45,55,0.38)] transition-[box-shadow,border-color] duration-150 ease-out hover:border-cyan-300/50 hover:shadow-[0_18px_44px_-10px_rgba(15,45,55,0.52)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 focus-visible:ring-offset-2";
+
+/**
+ * Tarjeta revista unificada: imagen hero + cuerpo con gradiente (índice y relacionados).
+ */
+export function TallerArticleCardMagazine({ article, index = 0, className = "" }) {
+    const accent = accentForIndex(index);
+    const cover = article?.cover_image || null;
+    const { main: titleMain, subtitle: titleSubtitle } = formatTallerDisplayTitle(
+        article?.title,
+    );
+    const guideNum = String(index + 1).padStart(2, "0");
+
+    return (
+        <Link
+            href={route("taller.show", article.slug)}
+            className={`${MAGAZINE_CARD_CLASS} ${className}`}
+        >
+            <div className="relative isolate aspect-[16/10] w-full shrink-0 overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 via-cyan-50/80 to-slate-200/60">
+                {cover ? (
+                    <CoverThumb
+                        src={cover}
+                        alt=""
+                        className="absolute inset-0 h-full w-full scale-100 transition-transform duration-500 ease-out will-change-transform group-hover:scale-[1.02]"
+                    />
+                ) : (
+                    <div
+                        className={`absolute inset-0 bg-gradient-to-br ${accent} opacity-25`}
+                        aria-hidden
+                    />
+                )}
+                <div
+                    className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/10 to-transparent"
+                    aria-hidden
+                />
+                <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-[#0f5f74] shadow-sm backdrop-blur-sm">
+                    <BookOpen className="h-3 w-3" aria-hidden />
+                    Guía {guideNum}
+                </span>
+            </div>
+
+            <div className="relative flex flex-1 flex-col bg-gradient-to-b from-white via-white to-slate-50/95 p-5 sm:p-6">
+                <div
+                    className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent}`}
+                    aria-hidden
+                />
+
+                <h2 className="line-clamp-3 font-heading text-lg font-bold leading-snug tracking-normal text-balance text-slate-900 transition-colors duration-150 ease-out group-hover:text-[#0f5f74] sm:text-xl">
+                    {titleMain}
+                </h2>
+                {titleSubtitle ? (
+                    <p className="mt-1 line-clamp-1 text-xs font-medium text-slate-500">
+                        {titleSubtitle}
+                    </p>
+                ) : null}
+                <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-slate-600">
+                    {article.excerpt}
+                </p>
+
+                <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-cyan-700 transition-[color,gap] duration-150 ease-out group-hover:gap-2.5 group-hover:text-[#0f5f74] sm:mt-5">
+                    Leer artículo
+                    <ArrowRight
+                        className="h-4 w-4 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
+                        aria-hidden
+                    />
+                </span>
+            </div>
+        </Link>
+    );
+}
+
 export function TallerArticleCard({ article, index = 0, featured = false }) {
     const accent = accentForIndex(index);
     const cover = article?.cover_image || null;
+    const { main: titleMain, subtitle: titleSubtitle } = formatTallerDisplayTitle(
+        article?.title,
+    );
 
     if (featured) {
         return (
@@ -45,9 +121,12 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
                 whileInView="visible"
                 viewport={{ once: true, margin: "-40px" }}
                 variants={fadeUp}
-                className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_20px_50px_-24px_rgba(15,95,116,0.4)] lg:col-span-2"
+                className="group relative overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-24px_rgba(15,95,116,0.45)] lg:col-span-2"
             >
-                <div className={`absolute inset-0 bg-gradient-to-br ${accent} opacity-[0.92]`} aria-hidden />
+                <div
+                    className={`absolute inset-0 bg-gradient-to-br ${accent} opacity-[0.92]`}
+                    aria-hidden
+                />
                 <div
                     aria-hidden
                     className="absolute inset-0 opacity-20"
@@ -60,11 +139,11 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
 
                 <div className="relative flex min-h-[280px] flex-col lg:min-h-[300px] lg:flex-row lg:items-stretch">
                     {cover ? (
-                        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden border-b border-white/15 lg:aspect-auto lg:w-[42%] lg:border-b-0 lg:border-l lg:border-white/15 lg:order-2">
+                        <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden border-b border-white/15 lg:order-2 lg:aspect-auto lg:w-[42%] lg:border-b-0 lg:border-l lg:border-white/15">
                             <CoverThumb
                                 src={cover}
                                 alt=""
-                                className="absolute inset-0 h-full w-full transition duration-500 group-hover:scale-105"
+                                className="absolute inset-0 h-full w-full scale-100 transition-transform duration-500 ease-out will-change-transform group-hover:scale-[1.02]"
                             />
                         </div>
                     ) : null}
@@ -72,12 +151,17 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
                     <div className="flex min-w-0 flex-1 flex-col justify-between p-6 sm:p-8 lg:p-9">
                         <div>
                             <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/95 backdrop-blur-sm">
-                                <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+                                <BookOpen className="h-3.5 w-3.5" aria-hidden />
                                 Destacado
                             </span>
-                            <h2 className="mt-4 font-heading text-2xl font-extrabold leading-tight text-white sm:mt-5 sm:text-3xl">
-                                {article.title}
+                            <h2 className="mt-4 font-heading text-2xl font-extrabold leading-[1.22] tracking-normal text-balance text-white sm:mt-5 sm:text-3xl">
+                                {titleMain}
                             </h2>
+                            {titleSubtitle ? (
+                                <p className="mt-1.5 text-sm font-medium leading-snug text-white/80">
+                                    {titleSubtitle}
+                                </p>
+                            ) : null}
                             <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/85 sm:mt-4 sm:text-base">
                                 {article.excerpt}
                             </p>
@@ -88,7 +172,10 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
                             className="mt-6 inline-flex w-fit items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#0f5f74] shadow-lg transition hover:scale-[1.02] hover:shadow-xl sm:mt-8"
                         >
                             Leer ahora
-                            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+                            <ArrowRight
+                                className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+                                aria-hidden
+                            />
                         </Link>
                     </div>
                 </div>
@@ -97,66 +184,16 @@ export function TallerArticleCard({ article, index = 0, featured = false }) {
     }
 
     return (
-        <motion.article
+        <motion.div
             custom={index}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-30px" }}
             variants={fadeUp}
-            whileHover={{ y: -6 }}
-            transition={{ type: "spring", stiffness: 400, damping: 22 }}
-            className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+            className="h-full"
         >
-            <div className={`h-1.5 w-full bg-gradient-to-r ${accent}`} aria-hidden />
-
-            {cover ? (
-                <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 sm:hidden">
-                    <CoverThumb
-                        src={cover}
-                        alt=""
-                        className="h-full w-full transition duration-500 group-hover:scale-105"
-                    />
-                </div>
-            ) : null}
-
-            <div className="flex flex-1 items-start gap-4 p-5 sm:gap-5 sm:p-6">
-                <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0f5f74]/10 to-cyan-500/15 text-[#0f5f74]">
-                            <BookOpen className="h-4 w-4" aria-hidden="true" />
-                        </span>
-                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
-                            Guía #{String(index + 1).padStart(2, "0")}
-                        </span>
-                    </div>
-
-                    <h2 className="line-clamp-3 font-heading text-lg font-bold leading-snug text-slate-900 transition-colors group-hover:text-[#0f5f74] sm:text-xl">
-                        {article.title}
-                    </h2>
-                    <p className="mt-2 line-clamp-2 flex-1 text-sm leading-relaxed text-slate-600 sm:line-clamp-3">
-                        {article.excerpt}
-                    </p>
-
-                    <Link
-                        href={route("taller.show", article.slug)}
-                        className="mt-auto inline-flex items-center gap-2 pt-4 text-sm font-semibold text-cyan-700 transition-colors group-hover:text-[#0f5f74] sm:pt-5"
-                    >
-                        Ver más
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
-                    </Link>
-                </div>
-
-                {cover ? (
-                    <div className="hidden w-[5.75rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:block md:w-28">
-                        <CoverThumb
-                            src={cover}
-                            alt=""
-                            className="aspect-square w-full transition duration-500 group-hover:scale-105"
-                        />
-                    </div>
-                ) : null}
-            </div>
-        </motion.article>
+            <TallerArticleCardMagazine article={article} index={index} />
+        </motion.div>
     );
 }
 
@@ -209,20 +246,28 @@ export function TallerRelatedArticles({
     };
 
     return (
-        <section className="mt-14" aria-labelledby="taller-related-heading">
+        <section
+            className="mt-14 overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-b from-white via-slate-50/80 to-cyan-50/40 p-5 shadow-[0_20px_50px_-28px_rgba(15,95,116,0.25)] sm:p-8"
+            aria-labelledby="taller-related-heading"
+        >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-700">
+                        Blog educativo
+                    </p>
                     <h2
                         id="taller-related-heading"
-                        className="font-heading text-xl font-bold text-slate-900 sm:text-2xl"
+                        className="mt-1 font-heading text-xl font-bold text-slate-900 sm:text-2xl"
                     >
-                        Sigue leyendo en el Taller
+                        Sigue leyendo
                     </h2>
-                    <p className="mt-2 text-sm text-slate-600">Más guías para mejorar tu surf</p>
+                    <p className="mt-2 text-sm text-slate-600">
+                        Más guías para mejorar tu surf
+                    </p>
                 </div>
             </div>
 
-            <div className="mt-6 grid items-stretch gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {items.map((article, index) => (
                     <motion.div
                         key={article.id}
@@ -232,46 +277,7 @@ export function TallerRelatedArticles({
                         transition={{ delay: Math.min(index, 8) * 0.05 }}
                         className="flex h-full"
                     >
-                        <Link
-                            href={route("taller.show", article.slug)}
-                            className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition hover:border-cyan-300/60 hover:shadow-md"
-                        >
-                            {article.cover_image ? (
-                                <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 sm:hidden">
-                                    <CoverThumb
-                                        src={article.cover_image}
-                                        alt=""
-                                        className="h-full w-full transition duration-500 group-hover:scale-105"
-                                    />
-                                </div>
-                            ) : null}
-                            <div className="flex flex-1 items-start gap-3 p-4 sm:p-5">
-                                <div className="flex min-w-0 flex-1 flex-col">
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-cyan-700">
-                                        Artículo
-                                    </p>
-                                    <h3 className="mt-2 line-clamp-3 font-heading text-base font-bold leading-snug text-slate-900 group-hover:text-[#0f5f74]">
-                                        {article.title}
-                                    </h3>
-                                    <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-600">
-                                        {article.excerpt}
-                                    </p>
-                                    <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-sm font-semibold text-cyan-700 transition group-hover:gap-2 group-hover:text-[#0f5f74]">
-                                        Leer artículo
-                                        <ArrowRight className="h-4 w-4" aria-hidden />
-                                    </span>
-                                </div>
-                                {article.cover_image ? (
-                                    <div className="hidden w-[4.5rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:block">
-                                        <CoverThumb
-                                            src={article.cover_image}
-                                            alt=""
-                                            className="aspect-square w-full transition duration-500 group-hover:scale-105"
-                                        />
-                                    </div>
-                                ) : null}
-                            </div>
-                        </Link>
+                        <TallerArticleCardMagazine article={article} index={index} />
                     </motion.div>
                 ))}
             </div>
@@ -282,7 +288,7 @@ export function TallerRelatedArticles({
                         type="button"
                         onClick={loadMore}
                         disabled={loading}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-bold text-[#0f5f74] shadow-sm transition hover:border-cyan-300 hover:bg-cyan-50/60 disabled:cursor-wait disabled:opacity-60"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/80 bg-white px-5 py-2.5 text-sm font-bold text-[#0f5f74] shadow-[0_8px_24px_-12px_rgba(15,95,116,0.3)] transition hover:border-cyan-300 hover:bg-cyan-50/60 disabled:cursor-wait disabled:opacity-60"
                     >
                         {loading ? "Cargando…" : "Cargar más artículos"}
                     </button>

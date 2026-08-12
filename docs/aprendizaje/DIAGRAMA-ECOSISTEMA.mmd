@@ -1,0 +1,134 @@
+```mermaid
+flowchart TD
+    U[("👤 Usuario pregunta")] --> TIPO{Tipo de petición}
+
+    %% ─── PUNTOS DE ENTRADA (cada herramienta arranca con su pieza) ───
+    TIPO -->|"cualquier tipo"| PREVUELO
+    subgraph ENTRADA["🚪 Puntos de entrada (según herramienta)"]
+        C1[".cursorrules → Cursor"]
+        C2["AGENTS.md → Reasonix (harness)"]
+        C3["MASTER-PROMPT-DEEPSEEK.md → DeepSeek-web (sin repo)"]
+        C4["RESUMEN-PARA-GEMINI.md → Gemini (sin repo)"]
+    end
+    ENTRADA --> PREVUELO
+
+    %% ─── PRE-VUELO OBLIGATORIO ───
+    subgraph PREVUELO["📋 Pre-vuelo obligatorio (antes de tocar nada)"]
+        P1["1. Leer COORDINACION.md<br/>(Estado actual + Última actividad)"]
+        P2["2. Leer PROJECT_TREE_FOR_GEMINI.md<br/>(mapa: no inventar rutas)"]
+        P3["3. Leer los archivos concretos de la tarea<br/>(no asumir)"]
+        P1 --> P2 --> P3
+    end
+
+    %% ─── ANTI-PISOTÓN ───
+    P3 --> PISA{¿Tarea EN CURSO<br/>o HECHO por el otro?}
+    PISA -->|SÍ| NOPISAR["🚫 NO repetir:<br/>preguntar o extender<br/>(CONTRATO §4)"]
+    PISA -->|NO| RECLAMA["Reclamar fila EN CURSO<br/>en COORDINACION.md<br/>(Quién + qué + cuándo)"]
+
+    %% ─── ROUTER ───
+    RECLAMA --> ROUTER["Router RUTAS-CONTEXTO.json<br/>(tema → archivos)<br/>⚠️ cargar SOLO la fila del tema<br/>⚠️ editar el JSON PRIMERO (§7);<br/>las vistas humanas se regeneran de él"]
+
+    %% ─── MAPA DE TEMAS DEL ROUTER ───
+    subgraph MAPA["🗂️ Mapa de temas del router (fila → archivos)"]
+        K1["estado → COORDINACION.md + REGISTRO.md"]
+        K2["chatbot → docs/chatbot/ + rule chatbot-s4"]
+        K3["diseno/ui/ux → AGENTE-MARKETING-DISENO.md"]
+        K4["seo → docs/taller-seo/ + rule seo-geo-public"]
+        K5["prompts/taller → PROTOCOLO.md + PLANTILLA-UX-MODAL.md"]
+        K6["modal → PLANTILLA-UX-MODAL.md"]
+        K7["pagos → docs/payments/"]
+        K8["surf → docs/surf-conditions/"]
+        K9["ticket → MostradorTicket + Datafono (5 archivos)"]
+        K10["aprendizaje/teoria/profesor → docs/aprendizaje/"]
+        K11["mapa/feature → SOLO Cursor (árbol/sovereign)"]
+    end
+    ROUTER --> MAPA
+    MAPA --> TIPO2{Tipo de petición}
+
+    %% ─── RAMAS POR TIPO ───
+    TIPO2 -->|"Teoría / qué es X"| LIBRO
+    TIPO2 -->|"Estado / tareas"| COORD["COORDINACION.md<br/>(pizarrón)"]
+    TIPO2 -->|"Diseño / UX / CRO / copy"| MKTD
+    TIPO2 -->|"Código / lógica / tests"| CRUZ
+    TIPO2 -->|"Pagos / surf / chatbot / SEO / ticket"| RUTA2["RUTAS-CONTEXTO.json → solo la fila"]
+    RUTA2 --> RESPUESTA
+
+    %% ─── SKILLS Y RULES ───
+    subgraph SKILLS["🛠️ Skills y rules (según intención o globs)"]
+        S1["prompt-forge (Cursor):<br/>'hazme un prompt' → REGISTRO.md"]
+        S2["sovereign-architect (Cursor):<br/>'nueva funcionalidad / blueprint'"]
+        S3["/marketing-diseno (Reasonix):<br/>AGENTE-MARKETING-DISENO.md →<br/>prompt final para Cursor"]
+        S4["/profesor-aprendizaje (Reasonix):<br/>Libro de Aprendizaje (reglas A-D)"]
+        R1["Rules automáticas (globs):<br/>chatbot-s4 · seo-geo-public ·<br/>ui-admin-s4 · taller-reading-layout"]
+        R2["tunnel-share-modes:<br/>⚙️ alwaysApply (siempre activa)"]
+    end
+    MKTD --> S3
+    TIPO2 -->|"prompts"| S1
+    TIPO2 -->|"feature nueva"| S2
+    TIPO2 -->|"tocar chatbot/seo/ui/taller"| R1
+    TIPO2 -->|"túnel/compartir"| R2
+    S1 --> RESPUESTA
+    S2 --> RESPUESTA
+    S3 --> RESPUESTA
+    R1 --> RESPUESTA
+    R2 --> RESPUESTA
+
+    %% ─── CONFIRMACIÓN CRUZADA ───
+    subgraph CRUZ["🤝 Confirmación cruzada (CONTRATO §5.1)"]
+        Q1{"¿Reasonix recibe<br/>lógica/código?"} -->|SÍ| PREG["PARAR y preguntar:<br/>'Mi rol es diseño, la lógica<br/>la hace Cursor. ¿Seguro?'"]
+        PREG -->|"sí explícito del dueño"| HACER["Ejecutar (excepción)"]
+        Q1 -->|NO| Q2{"¿Cursor recibe<br/>solo diseño/UX?"} -->|SÍ| PREG2["PARAR y preguntar"]
+        Q2 -->|NO| NORMAL["Actuar normal"]
+    end
+    HACER --> RESPUESTA
+    NORMAL --> RESPUESTA
+
+    %% ─── JERARQUÍA DE VERDAD ───
+    VERDAD["⚖️ Si doc ≠ código → gana el código<br/>(CONTRATO §2)"]
+    RESPUESTA --> VERDAD
+
+    %% ─── LIBRO DE APRENDIZAJE (flujo teoría) ───
+    subgraph LIBRO["📚 Libro de Aprendizaje (docs/aprendizaje/)"]
+        L1{"¿Concepto guardable?"} -->|NO| LRESP["Responder normal"]
+        L1 -->|SÍ| L2{"¿Ya está<br/>en el libro?"}
+        L2 -->|SÍ| LCITAR["Citar entrada (tema+nº)<br/>ampliar solo si matiz nuevo"]
+        L2 -->|NO| L3{"¿Merece guardarse?<br/>(filtro A: reutilizable +<br/>estable + no en código)"}
+        L3 -->|SÍ| LESCRIBIR["Escribir entrada:<br/>Qué es → Por qué →<br/>En tu proyecto → Para recordar<br/>(≤200 palabras, ruta verificada)"]
+        LESCRIBIR --> LLOG["Actualizar log INDICE<br/>con AUTOR"]
+        LLOG --> LSES["Anotar SESIONES.md<br/>(fin de sesión)"]
+        L3 -->|NO / duda| LGLOS["1 línea al glosario (06)"]
+        LGLOS --> LRESP
+        LCITAR --> LRESP
+        LSES --> LRESP
+    end
+    LIBRO --> EFICIENCIA
+
+    %% ─── EFICIENCIA Y REINICIO ───
+    subgraph EFICIENCIA["⚡ Eficiencia de tokens"]
+        E1["Resúmenes, no transcripciones<br/>ni .md enteros (05 §5.6-5.7)"]
+        E2{"¿Chat largo Y contexto<br/>viejo obsoleto?"} -->|SÍ| E3["🔄 Avisar: reiniciar chat<br/>(~50 tokens vs releer 100k+)"]
+        E2 -->|NO| E4["Seguir normal"]
+        E3 --> E5["Ritual: ¿guardo algo<br/>antes de reiniciar?"]
+        E5 --> E6["Guardar → reiniciar → reutilizar"]
+    end
+    LRESP --> E1
+    E1 --> E2
+    E4 --> FIN2
+    E6 --> FIN2
+
+    FIN["✔️ Fin (respuesta + cierre)"] --> FIN2["🔁 Siguiente petición"]
+    NOPISAR --> FIN2
+    COORD --> FIN2
+
+    %% ─── ESTILOS ───
+    classDef entrada fill:#e8eaf6,stroke:#3f51b5
+    classDef pre fill:#fff3e0,stroke:#ef6c00
+    classDef libro fill:#e8f5e9,stroke:#2e7d32
+    classDef efic fill:#e0f7fa,stroke:#00838f
+    classDef cruz fill:#fce4ec,stroke:#c2185b
+    class C1,C2,C3,C4 entrada
+    class P1,P2,P3 pre
+    class L1,L2,L3,LCITAR,LESCRIBIR,LLOG,LSES,LGLOS libro
+    class E1,E2,E3,E4,E5,E6 efic
+    class Q1,Q2,PREG,PREG2,HACER,NORMAL cruz
+```

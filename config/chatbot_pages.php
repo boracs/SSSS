@@ -225,7 +225,7 @@ return [
         ],
         [
             'key' => 'taller-index',
-            'title' => 'Taller de Surf — blog y guías',
+            'title' => 'Blog educativo — guías y artículos',
             'path' => '/taller',
             'summary' => 'Índice de artículos y guías prácticas sobre surf, material y seguridad.',
             'keywords' => 'taller blog guias articulos leer aprender',

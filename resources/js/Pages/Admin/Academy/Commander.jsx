@@ -1,8 +1,58 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
+import { User } from "lucide-react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import TimePicker24h from "../../../components/Academy/TimePicker24h";
 import { addMinutesToHhmm, formatDateTimeMadrid, formatTimeMadrid } from "../../../lib/madridTime";
+import { whatsappUrlFromPhone } from "../../../lib/whatsapp";
+
+function enrollmentContact(enrollment) {
+    const userName = [enrollment?.user?.nombre, enrollment?.user?.apellido]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+    const guestName = [enrollment?.guest_first_name, enrollment?.guest_last_name]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+    const name = userName || guestName || "Alumno";
+    const email = enrollment?.user?.email || enrollment?.guest_email || null;
+    const phone = enrollment?.user?.telefono || enrollment?.guest_phone || null;
+    return {
+        name,
+        email,
+        phone,
+        whatsappHref: whatsappUrlFromPhone(
+            phone,
+            `Hola ${name.split(" ")[0] || ""}, te escribo de San Sebastian Surf School.`,
+        ),
+    };
+}
+
+function shiftIsoDate(iso, deltaDays) {
+    const [y, m, d] = String(iso || "").split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + Number(deltaDays || 0));
+    const yy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yy}-${mm}-${dd}`;
+}
+
+function formatDayLabel(iso) {
+    try {
+        const [y, m, d] = String(iso || "").split("-").map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString("es-ES", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+        });
+    } catch {
+        return iso;
+    }
+}
 
 const STALE_HOURS = 48;
 function isStale(createdAt) {
@@ -26,7 +76,9 @@ const MODALITY_OPTIONS = [
 export default function Commander({ lessons = [], selectedDate, staff = [], selectedStaffId = null }) {
     const [date, setDate] = useState(selectedDate);
     const [staffFilter, setStaffFilter] = useState(selectedStaffId ? String(selectedStaffId) : "");
-    const [showNewLesson, setShowNewLesson] = useState(false);
+    /** Formulario siempre a mano: crear hueco del día sin salir de la jornada. */
+    const [showNewLesson, setShowNewLesson] = useState(true);
+    const [expandedLessonId, setExpandedLessonId] = useState(null);
     const [staleSelected, setStaleSelected] = useState([]);
     const [newLesson, setNewLesson] = useState({
         startTime: "10:00",
@@ -66,6 +118,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
     }, [selectedStaffId]);
 
     useEffect(() => {
+        setDate(selectedDate);
+    }, [selectedDate]);
+
+    useEffect(() => {
         if (newLesson.modality !== "particular") return;
         // Particular: grupo cerrado 1-6 pax
         if (Number(newLesson.max_slots) !== 6) {
@@ -75,11 +131,19 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
 
     const go = (d) => {
         setDate(d);
+        setExpandedLessonId(null);
         router.get(
             route("admin.academy.index"),
             { date: d, staff_id: staffFilter || undefined },
             { preserveScroll: true, preserveState: true, replace: true }
         );
+    };
+
+    const goPrevDay = () => go(shiftIsoDate(date, -1));
+    const goNextDay = () => go(shiftIsoDate(date, 1));
+
+    const toggleLessonAccordion = (lessonId) => {
+        setExpandedLessonId((current) => (current === lessonId ? null : lessonId));
     };
 
     const applyStaffFilter = (nextStaffId) => {
@@ -290,14 +354,47 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
         const modality = lesson.modality || (lesson.is_private ? "particular" : "grupal");
         const cap = modality === "particular" ? 6 : Number(lesson.max_slots || 6);
         const occ = occupiedCount(lesson);
+        const tone =
+            occ <= 0
+                ? "text-gray-400"
+                : occ >= cap
+                    ? "text-rose-300"
+                    : "text-emerald-300";
 
-        if (occ <= 0) {
-            return <span className="text-xs font-semibold text-gray-400">{occ} / {cap} plazas</span>;
-        }
-        if (occ >= cap) {
-            return <span className="text-xs font-extrabold text-rose-700">🚫 {occ} / {cap} completo</span>;
-        }
-        return <span className="text-xs font-semibold text-emerald-700">{occ} / {cap} plazas</span>;
+        return (
+            <span className={`inline-flex items-center gap-1 text-xs font-semibold ${tone}`}>
+                <User className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                    {occ} / {cap}
+                    {occ >= cap ? " completo" : ""}
+                </span>
+            </span>
+        );
+    };
+
+    /** Señales de mostrador en fila cerrada (sin abrir acordeón ni hover). */
+    const closedRowAlertChips = (lesson) => {
+        const list = Array.isArray(lesson.enrollments) ? lesson.enrollments : [];
+        const pendingCount = list.filter((e) =>
+            ["pending", "pending_extra_monitor"].includes(String(e.status)),
+        ).length;
+        const proofCount = list.filter((e) => !!e.has_proof).length;
+        if (pendingCount === 0 && proofCount === 0) return null;
+
+        return (
+            <>
+                {pendingCount > 0 ? (
+                    <span className="inline-flex rounded-full border border-amber-700/50 bg-amber-900/30 px-2 py-0.5 text-[11px] font-semibold text-amber-200">
+                        {pendingCount} pendiente{pendingCount === 1 ? "" : "s"}
+                    </span>
+                ) : null}
+                {proofCount > 0 ? (
+                    <span className="inline-flex rounded-full border border-sky-700/50 bg-sky-900/25 px-2 py-0.5 text-[11px] font-semibold text-sky-200">
+                        {proofCount} justificante{proofCount === 1 ? "" : "s"}
+                    </span>
+                ) : null}
+            </>
+        );
     };
 
     const toggleStale = (id) => {
@@ -307,6 +404,12 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
     const getStaffForRole = (lesson, role) => {
         const s = lesson.staff?.find((x) => x.role === role);
         return s?.user?.id ?? "";
+    };
+
+    const staffNameForRole = (lesson, role) => {
+        const s = lesson.staff?.find((x) => x.role === role);
+        const name = String(s?.user?.nombre || "").trim();
+        return name || null;
     };
 
     const openLessonDetails = async (lesson) => {
@@ -430,14 +533,37 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                 )}
 
                 <div className="mt-6 flex flex-wrap items-end gap-4">
-                    <div>
-                        <label className="block text-sm font-semibold text-gray-300">Fecha</label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => go(e.target.value)}
-                            className="input-focus-ring mt-1 rounded-xl px-4 py-2"
-                        />
+                    <div className="min-w-[280px] flex-1">
+                        <label className="block text-sm font-semibold text-gray-300">Jornada</label>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={goPrevDay}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-600 bg-gray-800 text-lg text-gray-100 hover:bg-gray-700"
+                                aria-label="Día anterior"
+                                title="Día anterior"
+                            >
+                                ‹
+                            </button>
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => go(e.target.value)}
+                                className="input-focus-ring rounded-xl px-4 py-2"
+                            />
+                            <button
+                                type="button"
+                                onClick={goNextDay}
+                                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-600 bg-gray-800 text-lg text-gray-100 hover:bg-gray-700"
+                                aria-label="Día siguiente"
+                                title="Día siguiente"
+                            >
+                                ›
+                            </button>
+                            <p className="ml-1 text-sm font-medium capitalize text-cyan-200/90">
+                                {formatDayLabel(date)}
+                            </p>
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-semibold text-gray-300">Monitor (filtro)</label>
@@ -459,7 +585,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                         onClick={() => setShowNewLesson(!showNewLesson)}
                         className="btn-primary"
                     >
-                        {showNewLesson ? "Cerrar" : "+ Nueva clase"}
+                        {showNewLesson ? "Ocultar formulario" : "+ Nueva clase"}
                     </button>
                 </div>
 
@@ -643,37 +769,60 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                     </form>
                 )}
 
-                <div className="mt-8 space-y-6">
+                <section className="mt-8 space-y-4">
+                    <div className="flex flex-wrap items-end justify-between gap-2">
+                        <div>
+                            <h2 className="font-heading text-lg font-bold text-gray-100">
+                                Clases de la jornada
+                            </h2>
+                            <p className="text-sm text-gray-400">
+                                {lessons.length === 0
+                                    ? "Sin clases este día — crea una arriba si entra una reserva."
+                                    : `${lessons.length} clase${lessons.length === 1 ? "" : "s"} · clic para ver alumnos y WhatsApp`}
+                            </p>
+                        </div>
+                    </div>
+
                     {lessons.length === 0 ? (
-                        <p className="text-gray-400">No hay clases este día.</p>
+                        <div className="rounded-xl border border-dashed border-gray-600 bg-gray-900/40 px-4 py-8 text-center text-sm text-gray-400">
+                            No hay clases este día. Usa ‹ › para recorrer jornadas o crea una arriba.
+                        </div>
                     ) : (
-                        lessons.map((lesson) => (
+                        lessons.map((lesson) => {
+                            const expanded = expandedLessonId === lesson.id;
+                            const monitorName = staffNameForRole(lesson, "monitor");
+                            const photographerName = staffNameForRole(lesson, "fotografo");
+                            return (
                             <div
                                 key={lesson.id}
                                 onMouseEnter={() => setHoverBatchId(lesson.batch_id || null)}
                                 onMouseLeave={() => setHoverBatchId(null)}
-                                onMouseOver={() => prefetchLessonDetails(lesson)}
-                                onClick={() => openLessonDetails(lesson)}
                                 className={[
-                                    "cursor-pointer rounded-xl border border-gray-700 bg-gray-800 p-5 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out hover:border-sky-600/40",
+                                    "rounded-xl border border-gray-700 bg-gray-800 shadow-sm backdrop-blur-sm transition-all duration-200 ease-in-out",
                                     lesson.batch_id ? "border-l-4 border-l-sky-500" : "",
-                                    (lesson.modality === "particular" || lesson.is_private) ? "bg-amber-50/60 border-amber-200/60" : "",
+                                    (lesson.modality === "particular" || lesson.is_private) ? "border-amber-700/50" : "",
                                     (hoverBatchId && lesson.batch_id && hoverBatchId === lesson.batch_id) ? "ring-2 ring-sky-200/70 shadow-md" : "",
+                                    expanded ? "border-cyan-500/40" : "hover:border-sky-600/40",
                                 ].join(" ")}
                             >
-                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleLessonAccordion(lesson.id)}
+                                    aria-expanded={expanded}
+                                    className="flex w-full flex-wrap items-start justify-between gap-4 p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
+                                >
                                     <div>
                                         <span className="text-sm font-medium text-gray-400">
                                             {formatTimeMadrid(lesson.starts_at)}
                                         </span>
                                         {lesson.batch_id && (
                                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-sky-900/40 px-2 py-0.5 text-xs font-semibold text-sky-200">
-                                                ♾️ Semanal
+                                                Semanal
                                             </span>
                                         )}
                                         {(lesson.modality === "particular" || lesson.is_private) && (
                                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-900/30 px-2 py-0.5 text-xs font-semibold text-amber-200">
-                                                👤 Particular
+                                                Particular
                                             </span>
                                         )}
                                         <span className="ml-2 rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-300">
@@ -690,122 +839,54 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                             </span>
                                         )}
                                         <p className="mt-1 text-sm text-gray-300">{lesson.location}</p>
-                                        <p className="mt-1 text-xs text-gray-400">
+                                        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-400">
                                             {occupancyBadge(lesson)}
-                                        </p>
-                                        {(lesson.enrollments?.length ?? 0) > 0 && (
-                                            <div className="mt-3 space-y-1 border-t border-gray-700 pt-3">
-                                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Inscripciones</p>
-                                                {lesson.enrollments.map((e) => {
-                                                    const stale = e.status === "pending" && isStale(e.created_at);
-                                                    const hasProof = !!e.has_proof;
-                                                    return (
-                                                        <div
-                                                            key={e.id}
-                                                            className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-sm ${stale ? "bg-rose-900/30 text-rose-200" : e.status === "expired" ? "bg-gray-700 text-gray-300" : hasProof ? "bg-sky-900/30 text-gray-100 ring-1 ring-sky-700/60 shadow-sm" : "bg-gray-700/70 text-gray-200"}`}
-                                                        >
-                                                            <span className="flex items-center gap-1.5">
-                                                                {hasProof && (
-                                                                    <span className="rounded bg-sky-900/40 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-sky-200">
-                                                                        Pago subido
-                                                                    </span>
-                                                                )}
-                                                                {lesson.is_private ? "Cliente" : (e.user?.nombre ?? "—")}
-                                                                {hasProof && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setProofViewer({ url: route("admin.academy.enrollments.proof", e.id), name: e.user?.nombre ?? "Justificante" })}
-                                                                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/40"
-                                                                        title="Ver justificante"
-                                                                    >
-                                                                        📎 Ver
-                                                                    </button>
-                                                                )}
-                                                            </span>
-                                                            <span className="rounded-full bg-gray-600 px-2 py-0.5 text-xs font-medium text-gray-200">{e.status}</span>
-                                                            <span className="text-xs opacity-80">{e.created_at ? formatDateTimeMadrid(e.created_at) : ""}</span>
-                                                            {e.status === "pending" && (
-                                                                <div className="flex items-center gap-2">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => confirmEnrollment(e.id)}
-                                                                        className={`rounded-xl px-3 py-1.5 text-xs font-semibold text-white transition-all ${hasProof ? "bg-emerald-600 ring-2 ring-emerald-400 ring-offset-1 hover:bg-emerald-700" : "bg-emerald-600 hover:bg-emerald-700"}`}
-                                                                    >
-                                                                        Confirmar
-                                                                    </button>
-                                                                    {hasProof && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => setRejecting({ id: e.id, name: e.user?.nombre ?? "Alumno", notes: "" })}
-                                                                            className="rounded-xl bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
-                                                                        >
-                                                                            Rechazar pago
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                            {e.status === "pending_extra_monitor" && (
-                                                                <div className="flex flex-wrap items-center gap-2">
-                                                                    <span className="text-[10px] font-semibold text-amber-200">Cupo extra (7.º+)</span>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => approveQuotaEnrollment(e.id)}
-                                                                        className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-                                                                    >
-                                                                        Aceptar
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setQuotaDenying({ id: e.id, name: e.user?.nombre ?? "Alumno" })}
-                                                                        className="rounded-xl bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
-                                                                    >
-                                                                        Denegar
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                            {e.status === "expired" && (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => router.post(route("admin.academy.enrollments.reactivate", e.id), {}, { preserveScroll: true })}
-                                                                    className="rounded-xl bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600"
-                                                                >
-                                                                    Reactivar 1h extra
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
+                                            {closedRowAlertChips(lesson)}
+                                            {monitorName ? (
+                                                <span>
+                                                    <span className="text-gray-500">Monitor:</span>{" "}
+                                                    <span className="font-medium text-gray-200">
+                                                        {monitorName}
+                                                    </span>
+                                                </span>
+                                            ) : null}
+                                            {photographerName ? (
+                                                <span>
+                                                    <span className="text-gray-500">Foto:</span>{" "}
+                                                    <span className="font-medium text-gray-200">
+                                                        {photographerName}
+                                                    </span>
+                                                </span>
+                                            ) : null}
+                                        </div>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
+                                    <span
+                                        className={`mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-gray-300 transition-transform ${expanded ? "rotate-180" : ""}`}
+                                        aria-hidden
+                                    >
+                                        ▾
+                                    </span>
+                                </button>
+
+                                <div className="flex flex-wrap gap-2 border-t border-gray-700/80 px-5 py-3">
                                         <button
                                             type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                openLessonDetails(lesson);
-                                            }}
+                                            onClick={() => openLessonDetails(lesson)}
                                             className="rounded-xl border border-sky-700 bg-sky-900/20 px-3 py-2 text-sm font-medium text-sky-200 transition-all duration-200 ease-in-out hover:bg-sky-800/30"
                                         >
                                             Ver detalle
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                duplicateLesson(lesson);
-                                            }}
+                                            onClick={() => duplicateLesson(lesson)}
                                             className="rounded-xl border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-200 transition-all duration-200 ease-in-out hover:-translate-y-0.5 hover:bg-gray-700"
                                             title="Duplicar clase"
                                         >
-                                            📄📄
+                                            Duplicar
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleOptimal(lesson);
-                                            }}
+                                            onClick={() => toggleOptimal(lesson)}
                                             className="rounded-xl border border-gray-600 bg-gray-800 px-3 py-2 text-sm font-medium text-gray-200 transition-all duration-300 hover:bg-gray-700"
                                         >
                                             {lesson.is_optimal_waves ? "Quitar óptimas" : "Olas óptimas"}
@@ -813,20 +894,16 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                         {!lesson.is_surf_trip && (
                                             <button
                                                 type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    triggerSurfTrip(lesson);
-                                                }}
+                                                onClick={() => triggerSurfTrip(lesson)}
                                                 className="rounded-xl bg-brand-accent px-3 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-brand-accent/90"
                                             >
-                                                Trigger Surf-Trip
+                                                Surf-Trip
                                             </button>
                                         )}
                                         {lesson.status === "scheduled" && (
                                             <button
                                                 type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
+                                                onClick={() => {
                                                     if (lesson.batch_id) {
                                                         setCancelChoice({ lessonId: lesson.id, batchId: lesson.batch_id });
                                                     } else {
@@ -838,61 +915,184 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                                 Cancelar
                                             </button>
                                         )}
-                                    </div>
                                 </div>
 
-                                {/* Asignación Monitor / Fotógrafo */}
-                                {lesson.status === "scheduled" && (
-                                    <div className="mt-4 border-t border-gray-700 pt-4">
-                                        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                                            Staff
-                                        </p>
-                                        <div className="flex flex-wrap gap-4">
-                                            <div className="min-w-[160px]">
-                                                <label className="block text-xs font-medium text-gray-300">Monitor</label>
-                                                <select
-                                                    value={getStaffForRole(lesson, "monitor")}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onChange={(e) => {
-                                                        e.stopPropagation();
-                                                        assignStaff(lesson.id, "monitor", e.target.value);
-                                                    }}
-                                                    className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
-                                                >
-                                                    <option value="">— Sin asignar</option>
-                                                    {staff.map((s) => (
-                                                        <option key={s.id} value={s.id}>
-                                                            {s.nombre || s.email}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="min-w-[160px]">
-                                                <label className="block text-xs font-medium text-gray-300">Fotógrafo</label>
-                                                <select
-                                                    value={getStaffForRole(lesson, "fotografo")}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    onChange={(e) => {
-                                                        e.stopPropagation();
-                                                        assignStaff(lesson.id, "fotografo", e.target.value);
-                                                    }}
-                                                    className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
-                                                >
-                                                    <option value="">— Sin asignar</option>
-                                                    {staff.map((s) => (
-                                                        <option key={s.id} value={s.id}>
-                                                            {s.nombre || s.email}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                {expanded ? (
+                                    <div className="space-y-4 border-t border-gray-700 px-5 pb-5 pt-4">
+                                        <div>
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                                Alumnos
+                                            </p>
+                                            {(lesson.enrollments?.length ?? 0) === 0 ? (
+                                                <p className="rounded-xl border border-dashed border-gray-600 px-3 py-4 text-sm text-gray-400">
+                                                    Todavía no hay inscritos en esta clase.
+                                                </p>
+                                            ) : (
+                                                <ul className="space-y-2">
+                                                    {lesson.enrollments.map((e) => {
+                                                        const contact = enrollmentContact(e);
+                                                        const stale = e.status === "pending" && isStale(e.created_at);
+                                                        const hasProof = !!e.has_proof;
+                                                        return (
+                                                            <li
+                                                                key={e.id}
+                                                                className={`rounded-xl px-3 py-3 text-sm ${stale ? "bg-rose-900/30 text-rose-100" : hasProof ? "bg-sky-900/25 text-gray-100 ring-1 ring-sky-700/50" : "bg-gray-900/70 text-gray-200"}`}
+                                                            >
+                                                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                                                    <div className="min-w-0 space-y-1">
+                                                                        <p className="font-semibold text-white">
+                                                                            {contact.name}
+                                                                            {Number(e.party_size) > 1 ? (
+                                                                                <span className="ml-2 text-xs font-medium text-gray-400">
+                                                                                    ×{e.party_size}
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </p>
+                                                                        {contact.email ? (
+                                                                            <a
+                                                                                href={`mailto:${contact.email}`}
+                                                                                className="block truncate text-xs text-cyan-300 hover:underline"
+                                                                            >
+                                                                                {contact.email}
+                                                                            </a>
+                                                                        ) : (
+                                                                            <p className="text-xs text-gray-500">Sin correo</p>
+                                                                        )}
+                                                                        {contact.phone ? (
+                                                                            <p className="text-xs text-gray-400">{contact.phone}</p>
+                                                                        ) : null}
+                                                                    </div>
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span className="rounded-full bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-200">
+                                                                            {e.status}
+                                                                        </span>
+                                                                        {contact.whatsappHref ? (
+                                                                            <a
+                                                                                href={contact.whatsappHref}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500"
+                                                                            >
+                                                                                WhatsApp
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span className="text-xs text-gray-500">Sin teléfono</span>
+                                                                        )}
+                                                                        {hasProof ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => setProofViewer({ url: route("admin.academy.enrollments.proof", e.id), name: contact.name })}
+                                                                                className="rounded-xl border border-sky-600/50 px-2 py-1 text-xs font-semibold text-sky-200 hover:bg-sky-900/40"
+                                                                            >
+                                                                                Justificante
+                                                                            </button>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </div>
+                                                                {(e.status === "pending" || e.status === "pending_extra_monitor" || e.status === "expired") ? (
+                                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                                        {e.status === "pending" ? (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => confirmEnrollment(e.id)}
+                                                                                    className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                                                >
+                                                                                    Confirmar
+                                                                                </button>
+                                                                                {hasProof ? (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setRejecting({ id: e.id, name: contact.name, notes: "" })}
+                                                                                        className="rounded-xl bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
+                                                                                    >
+                                                                                        Rechazar pago
+                                                                                    </button>
+                                                                                ) : null}
+                                                                            </>
+                                                                        ) : null}
+                                                                        {e.status === "pending_extra_monitor" ? (
+                                                                            <>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => approveQuotaEnrollment(e.id)}
+                                                                                    className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                                                                >
+                                                                                    Aceptar cupo
+                                                                                </button>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => setQuotaDenying({ id: e.id, name: contact.name })}
+                                                                                    className="rounded-xl bg-rose-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-600"
+                                                                                >
+                                                                                    Denegar
+                                                                                </button>
+                                                                            </>
+                                                                        ) : null}
+                                                                        {e.status === "expired" ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => router.post(route("admin.academy.enrollments.reactivate", e.id), {}, { preserveScroll: true })}
+                                                                                className="rounded-xl bg-amber-500 px-2 py-1 text-xs font-medium text-white hover:bg-amber-600"
+                                                                            >
+                                                                                Reactivar 1h extra
+                                                                            </button>
+                                                                        ) : null}
+                                                                    </div>
+                                                                ) : null}
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            )}
                                         </div>
+
+                                        {lesson.status === "scheduled" ? (
+                                            <div className="border-t border-gray-700 pt-4">
+                                                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                                    Staff
+                                                </p>
+                                                <div className="flex flex-wrap gap-4">
+                                                    <div className="min-w-[160px]">
+                                                        <label className="block text-xs font-medium text-gray-300">Monitor</label>
+                                                        <select
+                                                            value={getStaffForRole(lesson, "monitor")}
+                                                            onChange={(e) => assignStaff(lesson.id, "monitor", e.target.value)}
+                                                            className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
+                                                        >
+                                                            <option value="">— Sin asignar</option>
+                                                            {staff.map((s) => (
+                                                                <option key={s.id} value={s.id}>
+                                                                    {s.nombre || s.email}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="min-w-[160px]">
+                                                        <label className="block text-xs font-medium text-gray-300">Fotógrafo</label>
+                                                        <select
+                                                            value={getStaffForRole(lesson, "fotografo")}
+                                                            onChange={(e) => assignStaff(lesson.id, "fotografo", e.target.value)}
+                                                            className="input-focus-ring mt-1 w-full rounded-xl px-3 py-2 text-sm"
+                                                        >
+                                                            <option value="">— Sin asignar</option>
+                                                            {staff.map((s) => (
+                                                                <option key={s.id} value={s.id}>
+                                                                    {s.nombre || s.email}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : null}
                                     </div>
-                                )}
+                                ) : null}
                             </div>
-                        ))
+                            );
+                        })
                     )}
-                </div>
+                </section>
             </div>
             {lessonDetailsOpen && (
                 <div className="fixed inset-0 z-modal flex items-center justify-center p-4">

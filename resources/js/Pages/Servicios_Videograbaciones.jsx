@@ -75,7 +75,8 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                 <ContactChannelsModal
                     topic="video"
                     title="Reservar videograbación"
-                    subtitle="WhatsApp, Instagram, email o formulario: elige el canal que te venga mejor."
+                    subtitle="Cuéntanos fecha y tipo de sesión y te confirmamos disponibilidad."
+                    accent="academy"
                     onClose={() => setContactOpen(false)}
                 />
             ) : null}
@@ -84,7 +85,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-cyan-200">
                         <Clapperboard className="h-3.5 w-3.5" />
-                        Servicio premium S4
+                        Videograbaciones · San Sebastián Surf School
                     </div>
                     <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Videograbaciones que convierten cada ola en{" "}

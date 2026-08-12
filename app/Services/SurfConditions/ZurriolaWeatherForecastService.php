@@ -16,7 +16,7 @@ use Throwable;
  */
 final class ZurriolaWeatherForecastService
 {
-    private const CACHE_KEY = 'zurriola.weather.forecast.v1';
+    private const CACHE_KEY = 'zurriola.weather.forecast.v2';
 
     private const CACHE_TTL_MINUTES = 45;
 

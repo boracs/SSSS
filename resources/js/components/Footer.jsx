@@ -1,12 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@inertiajs/react";
 import BrandLogo from "./BrandLogo";
 import SponsorsStrip from "./SponsorsStrip";
+import ContactChannelsModal from "./ContactChannelsModal";
 
 const year = new Date().getFullYear();
+const INSTAGRAM_URL = "https://www.instagram.com/sansebastiansurfschool";
+const CONTACT_EMAIL = "info@sansebastiansurfschool.com";
 
 const footerLinkClass =
-    "inline-block text-sm font-medium text-slate-300 transition-colors duration-200 hover:text-s4-cyan";
+    "inline-block text-sm font-medium text-slate-300 transition-colors duration-200 hover:text-s4-cyan focus-visible:outline-none focus-visible:text-s4-cyan";
+
+const footerButtonClass = `${footerLinkClass} cursor-pointer text-left`;
 
 function FooterSection({ title, children, className = "" }) {
     return (
@@ -27,106 +32,137 @@ function InstagramIcon() {
     );
 }
 
-function FacebookIcon() {
-    return (
-        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-        </svg>
-    );
-}
-
 function SocialButton({ href, label, children }) {
     return (
         <a
             href={href}
+            target="_blank"
+            rel="noopener noreferrer"
             aria-label={label}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-s4-cyan/40 hover:bg-s4/20 hover:text-cyan-200"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition-all duration-200 hover:border-s4-cyan/40 hover:bg-s4/20 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         >
             {children}
         </a>
     );
 }
 
+function FooterLinks({ items, onOpenContact }) {
+    return (
+        <ul className="space-y-2.5 text-sm leading-snug">
+            {items.map(({ href, label, openContact }) => (
+                <li key={label}>
+                    {openContact ? (
+                        <button type="button" onClick={onOpenContact} className={footerButtonClass}>
+                            {label}
+                        </button>
+                    ) : (
+                        <Link href={href} className={footerLinkClass}>
+                            {label}
+                        </Link>
+                    )}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+function ContactBlock({ onOpenContact, className = "" }) {
+    return (
+        <ul className={`space-y-2.5 text-sm leading-snug text-slate-300 ${className}`}>
+            <li>San Sebastián · Donostia</li>
+            <li>
+                <button type="button" onClick={onOpenContact} className={footerButtonClass}>
+                    Escríbenos
+                </button>
+            </li>
+            <li>
+                <a href={`mailto:${CONTACT_EMAIL}`} className={`${footerLinkClass} break-all sm:break-normal`}>
+                    {CONTACT_EMAIL}
+                </a>
+            </li>
+        </ul>
+    );
+}
+
 export default function Footer() {
+    const [contactOpen, setContactOpen] = useState(false);
+    const openContact = () => setContactOpen(true);
+
+    const explorarLinks = [
+        { href: route("nosotros"), label: "Sobre nosotros" },
+        { href: route("servicios.surf"), label: "Clases de surf" },
+        { href: route("rentals.surfboards.index"), label: "Tablas de alquiler" },
+        { href: route("taller.index"), label: "Taller · Blog" },
+        { label: "Contacto", openContact: true },
+    ];
+
+    const serviciosLinks = [
+        { href: route("academy.lessons.index"), label: "Reservar clases" },
+        { href: route("taquillas.planes"), label: "Taquillas y planes" },
+        { href: `${route("servicios.webcams")}#webcam-directo`, label: "Webcam Zurriola en directo" },
+        { href: route("servicios.fotografia"), label: "Fotografía en el agua" },
+        { href: route("tienda"), label: "Tienda oficial" },
+    ];
+
     return (
         <footer className="border-t border-s4/30 bg-gradient-to-b from-s4-deep via-slate-900 to-slate-950 text-white">
-            <div className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-10 sm:pt-10">
-                {/* Marca — destacada en móvil */}
-                <div className="border-b border-white/10 pb-6 lg:hidden">
-                    <BrandLogo variant="whiteMark" className="mx-auto h-20 w-20" />
-                    <p className="mt-3 text-center font-heading text-lg font-bold tracking-tight text-white">
-                        Zurriola · Cantábrico
-                    </p>
-                    <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-slate-400">
-                        Seguridad, técnica y experiencia premium en Donostia.
-                    </p>
-                </div>
-
-                <div className="mt-6 grid grid-cols-2 gap-x-6 gap-y-8 sm:gap-x-8 lg:mt-0 lg:grid-cols-4 lg:gap-8">
-                    <FooterSection title="Explorar">
-                        <ul className="space-y-2 text-sm leading-snug">
-                            <li>
-                                <Link href={route("nosotros")} className={footerLinkClass}>
-                                    Sobre nosotros
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href={route("servicios.surf")} className={footerLinkClass}>
-                                    Clases de surf
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href={route("rentals.surfboards.index")} className={footerLinkClass}>
-                                    Tablas de alquiler
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href={route("contacto")} className={footerLinkClass}>
-                                    Contacto
-                                </Link>
-                            </li>
-                        </ul>
-                    </FooterSection>
-
-                    <FooterSection title="Soporte">
-                        <ul className="space-y-2 text-sm leading-snug text-slate-300">
-                            <li>San Sebastián · Donostia</li>
-                            <li>
-                                <a
-                                    href="mailto:info@sansebastiansurfschool.com"
-                                    className={`${footerLinkClass} break-all sm:break-normal`}
-                                >
-                                    info@sansebastiansurfschool.com
-                                </a>
-                            </li>
-                        </ul>
-                    </FooterSection>
-
-                    <FooterSection title="Escuela" className="hidden lg:block">
-                        <BrandLogo variant="whiteMark" className="h-20 w-20" />
-                        <p className="mt-3 font-heading text-lg font-bold tracking-tight text-white">
+            <div className="mx-auto max-w-7xl px-4 pb-8 pt-10 sm:px-6 sm:pb-10">
+                <div className="grid gap-8 lg:grid-cols-12 lg:gap-12">
+                    {/* Marca — móvil alineada a la izquierda (mismo eje que enlaces) */}
+                    <div className="flex flex-col items-start text-left lg:col-span-4">
+                        <BrandLogo variant="whiteMark" className="h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]" />
+                        <p className="mt-3 font-heading text-lg font-bold tracking-tight text-white sm:mt-4 sm:text-xl">
                             San Sebastian Surf School
                         </p>
-                        <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                            Zurriola · Cantábrico. Seguridad, técnica y experiencia premium.
+                        <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-400">
+                            Zurriola · Cantábrico. Seguridad, técnica y experiencia premium en Donostia.
                         </p>
-                    </FooterSection>
-
-                    <FooterSection title="Síguenos" className="col-span-2 lg:col-span-1">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <SocialButton href="#" label="Instagram">
+                        <div className="mt-4 flex flex-wrap items-center gap-3 sm:mt-5">
+                            <SocialButton href={INSTAGRAM_URL} label="Instagram @sansebastiansurfschool">
                                 <InstagramIcon />
                             </SocialButton>
-                            <SocialButton href="#" label="Facebook">
-                                <FacebookIcon />
-                            </SocialButton>
-                            <span className="text-xs text-slate-500">@s4surfschool</span>
+                            <span className="text-xs text-slate-500">@sansebastiansurfschool</span>
                         </div>
-                    </FooterSection>
+                    </div>
+
+                    {/* Móvil: banda de contacto ancho completo (CTA claro, sin columna huérfana) */}
+                    <div className="col-span-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 sm:hidden">
+                        <p className="text-center text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+                            San Sebastián · Donostia
+                        </p>
+                        <button
+                            type="button"
+                            onClick={openContact}
+                            className="mt-3 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-[#0f5f74] via-cyan-700 to-cyan-600 px-4 py-3 text-sm font-bold text-white shadow-md shadow-cyan-950/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50"
+                        >
+                            Escríbenos
+                        </button>
+                        <a
+                            href={`mailto:${CONTACT_EMAIL}`}
+                            className="mt-2 block text-center text-xs text-slate-400 transition hover:text-cyan-300"
+                        >
+                            {CONTACT_EMAIL}
+                        </a>
+                    </div>
+
+                    {/* Enlaces — móvil 2 cols simétricas; tablet+ 3 cols con contacto */}
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-3 lg:col-span-8 lg:gap-10">
+                        <FooterSection title="Explorar">
+                            <FooterLinks items={explorarLinks} onOpenContact={openContact} />
+                        </FooterSection>
+
+                        <FooterSection title="Servicios">
+                            <FooterLinks items={serviciosLinks} />
+                        </FooterSection>
+
+                        <FooterSection title="Contacto" className="hidden sm:block">
+                            <ContactBlock onOpenContact={openContact} />
+                        </FooterSection>
+                    </div>
                 </div>
 
-                <div className="mt-6 border-t border-white/10 pt-5 sm:mt-10 sm:pt-8">
-                    <SponsorsStrip variant="dark" />
+                <div className="mt-8 border-t border-white/10 pt-6 sm:mt-12 sm:pt-8">
+                    <SponsorsStrip variant="dark" layout="strip" title="Colaboradores" />
                 </div>
             </div>
 
@@ -137,6 +173,10 @@ export default function Footer() {
                     </p>
                 </div>
             </div>
+
+            {contactOpen ? (
+                <ContactChannelsModal topic="contact" onClose={() => setContactOpen(false)} />
+            ) : null}
         </footer>
     );
 }

@@ -112,4 +112,27 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin — verificación de email (panel)
+    |--------------------------------------------------------------------------
+    |
+    | ADMIN_REQUIRE_EMAIL_VERIFIED=false (default): desarrollo/test sin bloqueo.
+    | true en producción: admin debe tener email_verified_at salvo allowlist.
+    |
+    | ADMIN_EMERGENCY_EMAILS: emails admin (lowercase) que pueden entrar sin verificar
+    | (dueño / contingencia). Riesgo explícito — usar 1–2 cuentas como máximo.
+    |
+    */
+
+    'admin_require_email_verified' => filter_var(
+        env('ADMIN_REQUIRE_EMAIL_VERIFIED', false),
+        FILTER_VALIDATE_BOOL
+    ),
+
+    'admin_emergency_emails' => array_values(array_filter(array_map(
+        static fn (string $email): string => strtolower(trim($email)),
+        explode(',', (string) env('ADMIN_EMERGENCY_EMAILS', ''))
+    ))),
+
 ];

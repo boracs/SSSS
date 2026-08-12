@@ -33,12 +33,22 @@
     animation: home-hero-rise 0.7s ease-out both;
 }
 
+.home-hero__eyebrow {
+    animation: home-hero-rise 0.7s ease-out 0.08s both;
+}
+
 .home-hero__title {
     animation: home-hero-rise 0.7s ease-out 0.12s both;
+    text-shadow: 0 2px 24px rgba(2, 6, 23, 0.45);
 }
 
 .home-hero__copy {
     animation: home-hero-rise 0.7s ease-out 0.22s both;
+    text-shadow: 0 1px 12px rgba(2, 6, 23, 0.35);
+}
+
+.home-hero__trust {
+    animation: home-hero-rise 0.7s ease-out 0.28s both;
 }
 
 .home-hero__cta {
@@ -48,8 +58,10 @@
 @media (prefers-reduced-motion: reduce) {
     .home-hero__media,
     .home-hero__brand,
+    .home-hero__eyebrow,
     .home-hero__title,
     .home-hero__copy,
+    .home-hero__trust,
     .home-hero__cta {
         animation: none;
     }

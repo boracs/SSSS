@@ -41,7 +41,7 @@ const OPCIONES_PRINCIPALES = [
         href: () => route("servicios.webcams"),
     },
     {
-        texto: "Tablas 2ª mano",
+        texto: "Tablas segunda mano",
         imagen: "/img/ofertas.webp",
         href: () => route("second-hand.index"),
     },
@@ -65,7 +65,7 @@ const OPCIONES_MAS = [
         href: () => route("auctions.index"),
     },
     {
-        texto: "Taller de Surf",
+        texto: "Blog educativo",
         imagen: "/img/opciones/opcion-taller-surf.webp",
         href: () => route("taller.index"),
     },

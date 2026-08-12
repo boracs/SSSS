@@ -193,7 +193,7 @@ export default function ServiciosSurfTrips({ seo = null }) {
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-teal-400/25 bg-teal-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-teal-200">
                         <Compass className="h-3.5 w-3.5" />
-                        SurfTrips premium S4
+                        Surf trips · San Sebastián Surf School
                     </div>
                     <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Surf trips desde{" "}

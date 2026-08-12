@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Catálogo del Taller de Surf (blog) para el chatbot: enlaces a artículos cuando
+ * Catálogo del Blog educativo para el chatbot: enlaces a artículos cuando
  * la pregunta encaja con un tema publicado. Fuente: tabla `articles` (live).
  */
 final class ChatbotArticleCatalogService
@@ -123,7 +123,7 @@ final class ChatbotArticleCatalogService
             }
         }
 
-        $lines = ['Tenemos artículos en el **Taller de Surf** que te pueden ayudar:'];
+        $lines = ['Tenemos artículos en el **Blog educativo** que te pueden ayudar:'];
 
         foreach (array_slice($matches, 0, 3) as $match) {
             $article = $match['article'];
@@ -137,7 +137,7 @@ final class ChatbotArticleCatalogService
         }
 
         $lines[] = '';
-        $lines[] = 'Explora más en [**Taller de Surf**](/taller).';
+        $lines[] = 'Explora más en [**Blog educativo**](/taller).';
 
         return implode("\n", $lines);
     }
@@ -151,7 +151,7 @@ final class ChatbotArticleCatalogService
             $articles = $this->loadArticles();
 
             if ($articles->isEmpty()) {
-                return '- No hay artículos publicados en el Taller de Surf.';
+                return '- No hay artículos publicados en el Blog educativo.';
             }
 
             $lines = [];
@@ -222,7 +222,7 @@ final class ChatbotArticleCatalogService
             return $text;
         }
 
-        $lines = [trim($text), '', '**En el Taller de Surf puedes leer más:**'];
+        $lines = [trim($text), '', '**En el Blog educativo puedes leer más:**'];
 
         foreach (array_slice($matches, 0, 2) as $match) {
             $article = $match['article'];
@@ -244,7 +244,7 @@ final class ChatbotArticleCatalogService
             function (array $m): string {
                 $path = $m[1];
                 $slug = substr($path, strlen('/taller/'));
-                $title = $this->titleForSlug($slug) ?? 'Ver en el Taller de Surf';
+                $title = $this->titleForSlug($slug) ?? 'Ver en el Blog educativo';
 
                 return '[**'.$title.'**]('.$path.')';
             },

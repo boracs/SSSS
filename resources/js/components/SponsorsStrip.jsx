@@ -23,11 +23,15 @@ function SponsorMark({ logo, logoVariant, className }) {
 
 /**
  * Bloque reutilizable de patrocinadores (footer, home, etc.).
+ * layout="strip" → franja horizontal de logos (footer oscuro).
+ * layout="grid" → tarjetas en rejilla (legacy / superficies claras).
  */
 export default function SponsorsStrip({
     variant = "dark",
+    layout = "grid",
     className = "",
     showTitle = true,
+    title = "Colaboradores",
     logoVariant,
 }) {
     const { sponsors = [] } = usePage().props;
@@ -40,20 +44,73 @@ export default function SponsorsStrip({
     const isDark = variant === "dark";
     const resolvedLogoVariant =
         logoVariant ?? (isDark ? "whiteMark" : "navyMark");
-    const markClass =
+
+    const gridMarkClass =
         "mx-auto flex h-6 w-auto max-w-[88px] items-center justify-center sm:h-9 sm:max-w-[120px] [&_img]:h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
 
+    const stripMarkClass =
+        "flex h-7 w-auto max-w-[96px] items-center justify-center transition duration-200 group-hover:scale-[1.03] sm:h-9 sm:max-w-[128px] [&_img]:h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
+
+    const titleClass = `shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${
+        isDark ? "text-cyan-300/75" : "text-[#0f5f74]"
+    }`;
+
+    if (layout === "strip") {
+        return (
+            <section className={className} aria-label={title}>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-5 sm:px-6 sm:py-6">
+                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-8">
+                        {showTitle ? <p className={titleClass}>{title}</p> : null}
+                        <ul
+                            className={`flex flex-wrap items-center justify-center gap-x-8 gap-y-5 sm:flex-1 sm:justify-end lg:justify-center lg:gap-x-10 ${
+                                showTitle ? "" : "w-full"
+                            }`}
+                        >
+                            {items.map((sponsor) => {
+                                const label = sponsor.tagline
+                                    ? `${sponsor.name} — ${sponsor.tagline}`
+                                    : sponsor.name;
+                                const mark = (
+                                    <SponsorMark
+                                        logo={sponsor.logo}
+                                        logoVariant={resolvedLogoVariant}
+                                        className={stripMarkClass}
+                                    />
+                                );
+                                const linkClass =
+                                    "group inline-flex items-center opacity-75 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-lg";
+
+                                return (
+                                    <li key={sponsor.id ?? sponsor.name}>
+                                        {sponsor.url ? (
+                                            <a
+                                                href={sponsor.url}
+                                                target="_blank"
+                                                rel="noopener noreferrer sponsored"
+                                                className={linkClass}
+                                                aria-label={label}
+                                                title={label}
+                                            >
+                                                {mark}
+                                            </a>
+                                        ) : (
+                                            <span className="group inline-flex items-center opacity-75" title={label}>
+                                                {mark}
+                                            </span>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+
     return (
-        <section className={className} aria-label="Patrocinadores y colaboradores">
-            {showTitle ? (
-                <p
-                    className={`text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${
-                        isDark ? "text-cyan-300/80" : "text-[#0f5f74]"
-                    }`}
-                >
-                    Patrocinadores y colaboradores
-                </p>
-            ) : null}
+        <section className={className} aria-label={title}>
+            {showTitle ? <p className={titleClass}>{title}</p> : null}
 
             <ul
                 className={`grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 ${
@@ -70,7 +127,7 @@ export default function SponsorsStrip({
                         <SponsorMark
                             logo={sponsor.logo}
                             logoVariant={resolvedLogoVariant}
-                            className={markClass}
+                            className={gridMarkClass}
                         />
                     );
                     const tagline = sponsor.tagline ? (

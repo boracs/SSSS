@@ -46,7 +46,7 @@
       "range": "Aprox. 19:00–22:00"
     }
   ],
-  "levels_intro": "Los niveles (iniciación / intermedio / avanzado) se orientan con bandas de energía en kJ del modelo operativo S4. Son orientación empírica, no una certeza absoluta.",
+  "levels_intro": "Los niveles (iniciación / intermedio / avanzado) se orientan con bandas de energía en kJ del modelo operativo S4 (mismas franjas que la logística del spot: ~100, 400, 800, 1500, 2500…). Son orientación empírica: viento, marea y el monitor mandan el día concreto.",
   "energy_bands": [
     {
       "range_label": "< 50 kJ",
@@ -62,17 +62,42 @@
     },
     {
       "range_label": "70–99 kJ",
-      "iniciacion": "Sí",
+      "iniciacion": "Sí — espumas y verdes suaves",
       "intermedio": "Todavía corto de fuerza",
       "avanzado": "Escaso pero ya posible (~70–80 kJ)"
     },
     {
-      "range_label": "≥ 100 kJ",
-      "iniciacion": "Sí — pueden surfear todos",
+      "range_label": "100–400 kJ",
+      "iniciacion": "Sí — pueden surfear todos (zona segura; no solo espuma)",
       "intermedio": "Sí — olas nobles para progresar",
-      "avanzado": "Sí — ola pequeña y técnica"
+      "avanzado": "Sí — ola pequeña y técnica (giros, timing, secciones)"
+    },
+    {
+      "range_label": "401–800 kJ",
+      "iniciacion": "Solo cerca del espigón (más resguardado); ya hay buen baño",
+      "intermedio": "Sí — fuerza real y progresión",
+      "avanzado": "Sí — buen baño; entra en franja usable (~500+)"
+    },
+    {
+      "range_label": "801–1500 kJ",
+      "iniciacion": "Solo espigón y con precaución; fuerza considerable",
+      "intermedio": "Sí — con forma y lectura de corrientes",
+      "avanzado": "Sí — franja ideal orientativa (~500–1300); precaución"
+    },
+    {
+      "range_label": "1501–2500 kJ",
+      "iniciacion": "Espumas sí; no subir arriba (corrientes peligrosas)",
+      "intermedio": "Límite — sesión exigente; valorar condiciones",
+      "avanzado": "Posible al límite; alternativa Pico del Loro (La Concha)"
+    },
+    {
+      "range_label": "≥ 2500 kJ",
+      "iniciacion": "Evitar Zurriola — peligroso",
+      "intermedio": "Evitar — saturación y corrientes",
+      "avanzado": "Evitar Zurriola; ir a La Concha / otra playa"
     }
   ],
+  "energy_bands_note": "Esta tabla es orientativa. Los partes y previsiones no son siempre 100 % precisos: a veces viene más mar del previsto y otras veces menos. Contrasta siempre con la webcam y el criterio del monitor. Lo que haces en el agua es tu responsabilidad.",
   "operations": {
     "arrive_minutes_before": 15,
     "text": "Recomendamos llegar a la escuela 15 minutos antes del horario de la clase, para estar ya con el neopreno puesto cuando empiece la sesión."
@@ -90,7 +115,7 @@
     },
     {
       "question": "¿Cuándo suele haber mejores condiciones en Zurriola?",
-      "answer": "En primavera y otoño suele haber más viento del sur y el mar más ordenado. En verano hay menos oleaje (ideal para principiantes), con mejores franjas orientativas por la mañana temprano y al final del día. En invierno el onshore del NW pica el mar con más frecuencia."
+      "answer": "En primavera y otoño suele haber más viento del sur y el mar más ordenado. En verano hay menos oleaje (ideal para principiantes), con mejores franjas orientativas por la mañana temprano y al final del día. En invierno el onshore del NW pica el mar con más frecuencia. Detalle por estación en la [guía de temporada en Zurriola](/servicios/webcams#zurriola-temporada)."
     },
     {
       "question": "¿Hay que llevar tabla o neopreno a la clase?",
@@ -99,7 +124,19 @@
     {
       "question": "¿Zurriola se queda a menudo plana?",
       "answer": "Rara vez. Es una playa que casi siempre tiene ola. Con swell muy fuerte fuera de verano, a veces La Concha puede coger ola; en invierno lo habitual es surfear en Zurriola."
+    },
+    {
+      "question": "¿Dónde ver la webcam de Zurriola en directo?",
+      "answer": "En la [webcam de Zurriola en directo](/servicios/webcams#webcam-directo) de San Sebastian Surf School (S4): señal de la playa con fuente oficial de Gipuzkoa, junto a la [previsión de olas](/servicios/webcams#prevision-forecast) y el [parte del día](/servicios/webcams#parte-s4-hoy). La escuela está a unos 20 metros de la arena."
+    },
+    {
+      "question": "¿Cómo leer la previsión de olas en Zurriola?",
+      "answer": "Mira altura y dirección del swell, periodo (segundos entre olas), energía en kJ y viento: el sur suele limpiar (offshore) y el norte pica (onshore). Contrasta siempre el forecast con la [webcam en directo](/servicios/webcams#webcam-directo). S4 publica una guía técnica en la [tabla de previsión](/servicios/webcams#prevision-forecast) y el artículo del Taller [Cómo interpretar el parte de olas](/taller/como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas)."
+    },
+    {
+      "question": "¿Qué es el parte S4 del día en Zurriola?",
+      "answer": "Resumen orientativo de las condiciones de hoy: estado general del mar y recomendación por nivel (iniciación, intermedio, avanzado). Se actualiza con datos del modelo y criterio del monitor; no sustituye mirar la webcam ni la seguridad en el agua. Ver el [parte S4 del día](/servicios/webcams#parte-s4-hoy)."
     }
   ],
-  "disclaimer": "Orientación general de San Sebastian Surf School (S4). Condiciones reales según el parte del día, el monitor y el mar. Fondos de arena variables."
+  "disclaimer": "Orientación general de San Sebastian Surf School (S4). Condiciones reales según el parte del día, el monitor y el mar. Fondos de arena variables. La decisión de entrar al agua es siempre del surfista."
 }

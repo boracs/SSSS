@@ -1,18 +1,18 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     CalendarRange,
+    CloudRain,
     Droplets,
     Loader2,
     Sunrise,
     Sunset,
-    Waves,
-    Wind,
     X,
 } from "lucide-react";
 import { ForecastSlider, ENERGY_TONE_PILL, DirectionArrow } from "./SurfForecastTable";
-import { formatClock, weatherIconFor } from "./WeatherDetailPanel";
+import { formatClock, weatherIconMeta } from "./WeatherDetailPanel";
 import { LevelStarsStack } from "./LevelStars";
 import SurfForecastSheetFooter from "./SurfForecastSheetFooter";
+import { windArrowClass, windValueClass } from "./windArrowTone";
 
 /**
  * Slider "forecast al detalle": bottom-sheet al ras inferior.
@@ -21,10 +21,12 @@ import SurfForecastSheetFooter from "./SurfForecastSheetFooter";
  */
 
 function SlotColumn({ slot }) {
-    const WeatherIcon =
+    const weatherMeta =
         slot.weatherCode !== null && slot.weatherCode !== undefined
-            ? weatherIconFor(slot.weatherCode)
+            ? weatherIconMeta(slot.weatherCode)
             : null;
+    const WeatherIcon = weatherMeta?.icon ?? null;
+    const weatherTone = weatherMeta?.tone ?? "text-amber-300";
     const starsIni = slot.qualityStarsIniciacion ?? 1;
     const starsInt = slot.qualityStarsIntermedio ?? slot.qualityStars ?? 1;
     const starsAva = slot.qualityStarsAvanzado ?? 1;
@@ -35,9 +37,9 @@ function SlotColumn({ slot }) {
                 {slot.hourLabel}
             </p>
 
-            <div className="flex items-center gap-1 text-base font-semibold tabular-nums text-cyan-200 sm:text-lg">
-                <Waves className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden />
-                {slot.waveHeightM.toFixed(2)}
+            <div className="text-base font-semibold tabular-nums text-cyan-200 sm:text-lg">
+                <span>{slot.waveHeightM.toFixed(2)}</span>
+                <span className="ml-0.5 text-[0.7em] font-semibold text-cyan-200/85">m</span>
             </div>
             <div className="flex items-center gap-1 text-xs text-slate-400 sm:text-sm">
                 <DirectionArrow
@@ -53,9 +55,18 @@ function SlotColumn({ slot }) {
                 {slot.energyKj}
             </span>
 
-            <div className="flex items-center gap-1 text-sm text-slate-300 sm:text-base">
-                <Wind className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden />
-                {slot.windSpeedKmh}
+            <div className="flex items-center gap-1 text-sm sm:text-base">
+                <DirectionArrow
+                    degrees={slot.windDirectionDeg}
+                    className={`h-4 w-4 shrink-0 sm:h-5 sm:w-5 ${windArrowClass(slot.windState, slot.windSpeedKmh, slot.windDirectionDeg)}`}
+                />
+                <span
+                    className={`tabular-nums font-semibold ${windValueClass(slot.windState, slot.windSpeedKmh, slot.windDirectionDeg)}`}
+                    title={slot.windStateLabel || undefined}
+                >
+                    {slot.windSpeedKmh}
+                    <span className="ml-0.5 text-[0.7em] font-medium opacity-80">km/h</span>
+                </span>
             </div>
 
             <LevelStarsStack
@@ -70,13 +81,22 @@ function SlotColumn({ slot }) {
                 {WeatherIcon ? (
                     <>
                         <WeatherIcon
-                            className="mx-auto h-6 w-6 text-amber-300 sm:h-7 sm:w-7"
+                            className={`mx-auto h-6 w-6 sm:h-7 sm:w-7 ${weatherTone}`}
+                            strokeWidth={1.75}
                             aria-hidden
                         />
                         <p className="text-sm font-semibold tabular-nums text-white sm:text-base">
                             {Math.round(slot.tempC)}°
                         </p>
-                        <p className="text-xs tabular-nums text-sky-300 sm:text-sm">
+                        <p
+                            className="inline-flex items-center justify-center gap-0.5 text-xs tabular-nums text-sky-300 sm:text-sm"
+                            title="Probabilidad de lluvia"
+                        >
+                            <CloudRain
+                                className="h-3 w-3 shrink-0 text-sky-400/90 sm:h-3.5 sm:w-3.5"
+                                aria-hidden
+                            />
+                            <span className="sr-only">Probabilidad de lluvia </span>
                             {Math.round(slot.precipProbabilityPct ?? 0)}%
                         </p>
                     </>
@@ -289,16 +309,26 @@ export default function SurfDetailedForecastSlider({
             }`}
             style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         >
-            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-6 sm:py-2.5">
-                <div className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200 sm:gap-2 sm:px-3 sm:text-xs">
-                    <CalendarRange className="h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" aria-hidden />
-                    <span className="truncate">Forecast al detalle</span>
+            <div className="relative flex shrink-0 items-center justify-center border-b border-white/10 px-12 py-2.5 sm:px-14 sm:py-3">
+                <div className="flex min-w-0 max-w-full items-center justify-center gap-3 sm:gap-5">
+                    <div className="inline-flex min-w-0 items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-cyan-200 sm:gap-2 sm:text-xs">
+                        <CalendarRange className="h-3.5 w-3.5 shrink-0 text-cyan-300/90 sm:h-4 sm:w-4" aria-hidden />
+                        <span className="truncate">Forecast al detalle</span>
+                    </div>
+                    {days.length > 0 ? (
+                        <span
+                            className="shrink-0 text-xs font-semibold normal-case tracking-normal text-slate-300 tabular-nums sm:text-sm"
+                            aria-label={`Día ${activeDayIndex + 1} de ${days.length}`}
+                        >
+                            Día {activeDayIndex + 1}/{days.length}
+                        </span>
+                    ) : null}
                 </div>
                 <button
                     type="button"
                     onClick={onClose}
                     aria-label="Cerrar forecast al detalle"
-                    className="shrink-0 rounded-full border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white sm:p-2"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white sm:right-4 sm:p-2"
                 >
                     <X className="h-4 w-4" aria-hidden />
                 </button>

@@ -12,13 +12,13 @@ use App\Models\PhotoSession;
 use App\Models\PhotoSessionBooking;
 use App\Services\Photos\PhotoBookingService;
 use App\Services\Seo\PublicPageSeoService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 use Throwable;
 
 final class PhotoSessionController extends Controller
@@ -37,7 +37,7 @@ final class PhotoSessionController extends Controller
         ]);
     }
 
-    public function book(Request $request): RedirectResponse
+    public function book(Request $request): HttpResponse
     {
         $user = Auth::user();
         $guestRules = $user === null
@@ -115,6 +115,6 @@ final class PhotoSessionController extends Controller
             return back()->with('error', 'No se pudo iniciar el pago. Inténtalo de nuevo.');
         }
 
-        return redirect()->away($checkoutUrl);
+        return $this->redirectToStripeCheckout($checkoutUrl);
     }
 }

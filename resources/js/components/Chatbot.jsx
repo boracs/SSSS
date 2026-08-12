@@ -14,6 +14,7 @@ import {
     Clock,
     Sparkles,
     ShieldAlert,
+    ChevronUp,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
@@ -21,6 +22,34 @@ const LOCAL_CHAT_KEY = "s4_anon_chat_v1";
 const ANON_SESSION_TOKEN_KEY = "s4_anon_chat_token";
 
 const CHAT_Z = "z-[850]";
+/** Mostrar «subir» tras pasar ~un viewport corto (vuelta rápida al menú). */
+const SCROLL_TOP_AFTER_PX = 360;
+
+const fabDockClass =
+    `fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] sm:bottom-6 sm:right-6 ${CHAT_Z}`;
+
+const chatFabClass =
+    "relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f5f74] text-white " +
+    "shadow-[0_12px_28px_-8px_rgba(15,95,116,0.55)] ring-1 ring-white/25 " +
+    "transition duration-300 hover:scale-[1.04] hover:bg-[#0d5568] " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
+
+const scrollFabClass =
+    "absolute bottom-[calc(100%+0.75rem)] right-0 flex h-14 w-14 items-center justify-center rounded-2xl " +
+    "border border-white/20 bg-slate-950/75 text-cyan-100 shadow-[0_10px_28px_-12px_rgba(2,6,23,0.65)] " +
+    "backdrop-blur-md transition-all duration-300 ease-out " +
+    "hover:border-cyan-300/40 hover:bg-slate-900/90 hover:text-white " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 " +
+    "motion-reduce:transition-none";
+
+/** Misma estética glass, sin anclar encima del chat (modo admin / solo subir). */
+const scrollFabSoloClass =
+    "relative flex h-14 w-14 items-center justify-center rounded-2xl " +
+    "border border-white/20 bg-slate-950/75 text-cyan-100 shadow-[0_10px_28px_-12px_rgba(2,6,23,0.65)] " +
+    "backdrop-blur-md transition-all duration-300 ease-out " +
+    "hover:border-cyan-300/40 hover:bg-slate-900/90 hover:text-white " +
+    "focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/80 " +
+    "motion-reduce:transition-none";
 
 const fieldShell =
     "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-s4/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-500/15";
@@ -29,7 +58,7 @@ const fieldInput =
     "min-w-0 flex-1 border-0 bg-transparent py-1 text-[15px] text-slate-900 outline-none placeholder:text-slate-400";
 
 const panelShell =
-    "fixed bottom-6 right-6 flex w-[calc(100%-3rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-cyan-900/10 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.28)] transition-all duration-300 " +
+    "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] sm:bottom-6 sm:right-6 flex w-[calc(100%-2rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-cyan-900/10 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.28)] transition-all duration-300 " +
     CHAT_Z;
 
 const useChatbot = () => {
@@ -338,7 +367,7 @@ const TypingIndicator = () => (
     </div>
 );
 
-const Chatbot = () => {
+const Chatbot = ({ showChatLauncher = true }) => {
     const {
         isOpen,
         setIsOpen,
@@ -360,25 +389,94 @@ const Chatbot = () => {
     } = useChatbot();
 
     const [mounted, setMounted] = useState(false);
+    const [showScrollTop, setShowScrollTop] = useState(false);
     useEffect(() => setMounted(true), []);
 
-    const fabButton = (
-        <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className={`fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f5f74] text-white shadow-[0_12px_28px_-8px_rgba(15,95,116,0.55)] ring-1 ring-white/20 transition duration-300 hover:scale-105 hover:bg-[#0d5568] hover:shadow-[0_16px_32px_-8px_rgba(15,95,116,0.65)] ${CHAT_Z}`}
-            aria-label="Abrir chat con Maider"
-        >
-            <MessagesSquare className="h-6 w-6" strokeWidth={1.75} aria-hidden="true" />
-        </button>
+    useEffect(() => {
+        if (!mounted) return undefined;
+
+        const readScrollY = () =>
+            window.scrollY ||
+            document.documentElement.scrollTop ||
+            document.body.scrollTop ||
+            0;
+
+        let ticking = false;
+        const sync = () => {
+            const next = readScrollY() > SCROLL_TOP_AFTER_PX;
+            setShowScrollTop((prev) => (prev === next ? prev : next));
+            ticking = false;
+        };
+        const onScroll = () => {
+            if (ticking) return;
+            ticking = true;
+            window.requestAnimationFrame(sync);
+        };
+
+        sync();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+        return () => {
+            window.removeEventListener("scroll", onScroll);
+            document.removeEventListener("scroll", onScroll, { capture: true });
+        };
+    }, [mounted]);
+
+    const scrollToTop = () => {
+        const reduceMotion =
+            typeof window.matchMedia === "function" &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    };
+
+    /**
+     * Dock FAB (marketing/UX):
+     * - Chat = CTA primario (sólido S4), opcional (oculto para admin).
+     * - Subir = utilidad secundaria (glass), anclado encima sin mover el chat.
+     * - Entrada/salida solo con opacity/translate (sin salto de layout).
+     */
+    const fabStack = (
+        <div className={fabDockClass}>
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={scrollToTop}
+                    tabIndex={showScrollTop ? 0 : -1}
+                    aria-hidden={!showScrollTop}
+                    aria-label="Volver arriba al menú"
+                    className={`${showChatLauncher ? scrollFabClass : scrollFabSoloClass} ${
+                        showScrollTop
+                            ? "pointer-events-auto translate-y-0 opacity-100"
+                            : "pointer-events-none translate-y-2 opacity-0"
+                    }`}
+                >
+                    <ChevronUp className="h-5 w-5" strokeWidth={2.5} aria-hidden="true" />
+                </button>
+                {showChatLauncher ? (
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(true)}
+                        className={chatFabClass}
+                        aria-label="Abrir chat con Maider"
+                    >
+                        <MessagesSquare className="h-6 w-6" strokeWidth={1.75} aria-hidden="true" />
+                    </button>
+                ) : null}
+            </div>
+        </div>
     );
 
     if (!mounted) {
         return null;
     }
 
+    // Admin (sin chat): solo dock de «subir».
+    if (!showChatLauncher) {
+        return createPortal(fabStack, document.body);
+    }
+
     if (!isOpen) {
-        return createPortal(fabButton, document.body);
+        return createPortal(fabStack, document.body);
     }
 
     const panel = (

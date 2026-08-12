@@ -21,16 +21,18 @@ Solo continuar tras un **sí explícito**. Detalle en `CONTRATO-IA.md` §5.1.
 ## Reglas siempre activas
 1. Responder en **español**.
 2. Antes de tocar o proponer: `docs/taller-prompts/COORDINACION.md` + código/mapa real.
-3. No editar `.cursorrules`, `.cursor/*`, `docs/ia/*` sin petición explícita; **los docs de `docs/taller-prompts/` sí son editables por esta sesión** (zona propia del taller).
+3. No editar `.cursorrules`, `.cursor/*`, `docs/ia/*` sin petición explícita; **`docs/taller-prompts/` y `docs/aprendizaje/` sí son editables** (taller + cuaderno del dueño).
 4. No inventar rutas: `docs/PROJECT_TREE_FOR_GEMINI.md`.
 5. **Contexto por demanda** (router del contrato §3): no volcar todos los `.md`.
+6. **Libro de Aprendizaje:** si el usuario pregunta teoría/conceptos o dice “guárdalo”, leer `docs/aprendizaje/INDICE.md` y guardar ahí (skill `/profesor-aprendizaje`). Cursor también puede; es cuaderno compartido.
 
 ## Índice rápido (= router del contrato)
 - Contrato dúo → `docs/taller-prompts/CONTRATO-IA.md`
-- Estado compartido → `docs/taller-prompts/COORDINACION.md` + `REGISTRO.md`
+- Estado compartido → `docs/taller-prompts/COORDINACION.md` + `HANDOFF.md` (fin de chat) + `REGISTRO.md`
+- Teoría / profesor / cuaderno → `/profesor-aprendizaje` → `docs/aprendizaje/INDICE.md`
 - UI-UX / marketing → `/marketing-diseno` → `docs/taller-prompts/AGENTE-MARKETING-DISENO.md`
 - Prompts → `PROTOCOLO.md` + `PLANTILLA-UX-MODAL.md`
 - DeepSeek-web → `docs/taller-prompts/MASTER-PROMPT-DEEPSEEK.md`
 - Gemini (sin repo) → `docs/RESUMEN-PARA-GEMINI.md` (resumen compacto; árbol completo en `docs/PROJECT_TREE_FOR_GEMINI.md`)
-- API local DeepSeek → `node scripts/deepseek-ask.mjs` (`DEEPSEEK_API_KEY` en `.env`)
+- API local DeepSeek → `node scripts/deepseek-ask.mjs` (`DEEPSEEK_API_KEY` en `.env`; `--topic aprendizaje`)
 - Pagos → `docs/payments/`, `docs/invoicing/` · Surf → `docs/surf-conditions/` · Chatbot → `docs/chatbot/` · SEO → `docs/taller-seo/`

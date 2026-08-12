@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
-import { BookOpenText, Camera, Sparkles, X } from "lucide-react";
+import { BookOpenText, Camera, CircleHelp, Sparkles, X } from "lucide-react";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 import { SURF_LEVELS } from "./surfLevels";
+import {
+    FORECAST_GUIDE_ARTICLE_SLUG,
+    SURF_METRIC_HELP_ITEMS,
+    splitHelpParagraphs,
+} from "./surfMetricHelp";
 
 function firstLevelWithText(sections) {
     const found = SURF_LEVELS.find((lvl) => Boolean(sections?.[lvl.level]));
@@ -89,7 +94,7 @@ function ParteHoyModal({ open, onClose, brief }) {
         : null;
     const generalRaw = sections?.general || brief?.summary || "";
     const general = stripLeadingEmoji(generalRaw);
-    const updated = brief?.generated_at_human?.split(" ")[1] || null;
+    const updated = brief?.generated_at_human || null;
     const hasLevels = levelsWithText.length > 0;
     const hasContent = Boolean(general || hasLevels);
     const activeText = activeLevel ? sections?.[activeLevel] : null;
@@ -244,8 +249,102 @@ function ParteHoyModal({ open, onClose, brief }) {
 }
 
 /**
+ * Modal: glosario técnico de métricas (mismo texto que las «?» de la tabla).
+ * CTA al artículo del Taller en lenguaje sencillo.
+ */
+function InterpretarParteModal({ open, onClose }) {
+    if (!open) return null;
+
+    const articleHref = route("taller.show", FORECAST_GUIDE_ARTICLE_SLUG);
+
+    return (
+        <div
+            className="absolute inset-0 z-[40] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-[2px] sm:items-center sm:p-5 md:p-8"
+            role="presentation"
+            onClick={onClose}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="interpretar-parte-title"
+                className="flex max-h-[min(85dvh,42rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/40 bg-white shadow-2xl sm:max-h-[min(82vh,40rem)] sm:max-w-2xl"
+                onClick={(event) => event.stopPropagation()}
+            >
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6">
+                    <div>
+                        <h2
+                            id="interpretar-parte-title"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#0f5f74]"
+                        >
+                            <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            Cómo interpretar el parte
+                        </h2>
+                        <p className="mt-1 text-[11px] text-slate-500 sm:text-xs">
+                            Misma guía técnica que las «?» de la tabla · Zurriola
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar guía de interpretación"
+                        className="rounded-full border border-slate-200 p-1.5 text-slate-400 transition hover:bg-slate-50 hover:text-slate-700"
+                    >
+                        <X className="h-4 w-4" aria-hidden />
+                    </button>
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
+                    <div className="space-y-3">
+                        {SURF_METRIC_HELP_ITEMS.map((item) => (
+                            <article
+                                key={item.id}
+                                className="rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-3 sm:px-4"
+                            >
+                                <h3 className="text-[11px] font-bold uppercase tracking-widest text-cyan-800">
+                                    {item.label}
+                                </h3>
+                                <div className="mt-2 space-y-2 text-sm leading-relaxed text-slate-700">
+                                    {splitHelpParagraphs(item.text).map((para, idx) => (
+                                        <p key={idx}>{para}</p>
+                                    ))}
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    <div className="mt-4 rounded-xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 to-white p-3.5 sm:p-4">
+                        <p className="text-sm font-semibold leading-snug text-slate-900">
+                            ¿No te quedó claro? ¿Quieres saber cómo influye cada cosa en un lenguaje
+                            sencillo?
+                        </p>
+                        <Link
+                            href={articleHref}
+                            onClick={onClose}
+                            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#0f5f74] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0d5568] sm:w-auto"
+                        >
+                            <BookOpenText className="h-4 w-4 shrink-0" aria-hidden />
+                            Leer la guía del Taller
+                        </Link>
+                    </div>
+                </div>
+
+                <div className="shrink-0 border-t border-slate-100 px-4 py-2.5 sm:px-6">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                        Seguir con el forecast
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
  * Footer compartido de sheets SurfConditions:
- * [Ver parte de hoy] + [Ver webcam] + modal del parte.
+ * [Ver parte de hoy] + [Ver webcam] + [Cómo interpretar] + modales.
  * El sheet padre debe ser `relative` para el overlay del modal.
  */
 export default function SurfForecastSheetFooter({
@@ -262,39 +361,65 @@ export default function SurfForecastSheetFooter({
         Boolean(brief?.summary_sections?.general);
 
     const [parteOpen, setParteOpen] = useState(false);
+    const [guideOpen, setGuideOpen] = useState(false);
 
     useEffect(() => {
-        if (!sheetOpen) setParteOpen(false);
+        if (!sheetOpen) {
+            setParteOpen(false);
+            setGuideOpen(false);
+        }
     }, [sheetOpen]);
 
     useEffect(() => {
-        if (!parteOpen) return undefined;
+        if (!parteOpen && !guideOpen) return undefined;
 
         const onKeyDown = (event) => {
             if (event.key !== "Escape") return;
             event.stopImmediatePropagation();
+            if (guideOpen) {
+                setGuideOpen(false);
+                return;
+            }
             setParteOpen(false);
         };
         window.addEventListener("keydown", onKeyDown, true);
         return () => window.removeEventListener("keydown", onKeyDown, true);
-    }, [parteOpen]);
+    }, [parteOpen, guideOpen]);
+
+    const openParte = () => {
+        setGuideOpen(false);
+        setParteOpen(true);
+    };
+
+    const openGuide = () => {
+        setParteOpen(false);
+        setGuideOpen(true);
+    };
 
     return (
         <>
             <div className="relative z-10 shrink-0 border-t border-white/10 bg-slate-950 px-3 py-2 sm:px-6 sm:py-2.5">
                 <div className="flex flex-col items-center gap-1.5">
-                    <div className="flex w-full max-w-md flex-row items-stretch justify-center gap-2">
+                    <div className="flex w-full max-w-lg flex-row flex-wrap items-stretch justify-center gap-2">
                         {canShowParte ? (
                             <button
                                 type="button"
-                                onClick={() => setParteOpen(true)}
-                                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-semibold tracking-wide text-cyan-100 transition hover:border-cyan-400/35 hover:bg-cyan-500/10 sm:flex-none sm:px-4 sm:text-xs"
+                                onClick={openParte}
+                                className="inline-flex min-w-[9.5rem] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-semibold tracking-wide text-cyan-100 transition hover:border-cyan-400/35 hover:bg-cyan-500/10 sm:flex-none sm:px-4 sm:text-xs"
                             >
                                 <BookOpenText className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                 Ver parte de hoy
                             </button>
                         ) : null}
                         <WebcamFooterButton webcamAnchorId={webcamAnchorId} />
+                        <button
+                            type="button"
+                            onClick={openGuide}
+                            className="inline-flex min-w-[9.5rem] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-[11px] font-semibold tracking-wide text-cyan-100 transition hover:border-cyan-400/35 hover:bg-cyan-500/10 sm:flex-none sm:px-4 sm:text-xs"
+                        >
+                            <CircleHelp className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                            Cómo interpretar el parte
+                        </button>
                     </div>
                     {hint ? (
                         <p className="hidden text-center text-[10px] text-slate-500 sm:block">
@@ -309,6 +434,7 @@ export default function SurfForecastSheetFooter({
                 onClose={() => setParteOpen(false)}
                 brief={brief}
             />
+            <InterpretarParteModal open={guideOpen} onClose={() => setGuideOpen(false)} />
         </>
     );
 }

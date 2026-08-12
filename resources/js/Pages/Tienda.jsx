@@ -93,7 +93,7 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
             <div className="mx-auto w-full max-w-[96rem] px-2 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
                     <h1 className="text-xl font-extrabold tracking-tight text-slate-100 sm:text-2xl lg:text-3xl">
-                        Tienda oficial S4
+                        Tienda · San Sebastián Surf School
                     </h1>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                         <label className="flex items-center gap-1.5 text-slate-400">

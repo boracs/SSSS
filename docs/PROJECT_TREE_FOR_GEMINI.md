@@ -476,6 +476,7 @@ maider_0/
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
+│   ├── aprendizaje/                         ← Libro de Aprendizaje (cuaderno compartido Cursor+DeepSeek): INDICE.md + temas 01-06; skill Reasonix `/profesor-aprendizaje`
 │   ├── ia/
 │   │   ├── 01-cto-protocol.md
 │   │   └── 02-master-prompt-v3-ultra.md
@@ -496,6 +497,7 @@ maider_0/
 │   │   ├── RUTAS-CONTEXTO.json                 ← router máquina (fuente única; lo lee `scripts/deepseek-ask.mjs --topic`)
 │   │   ├── PROTOCOLO.md                        ← metodología prompt-forge + protocolo dúo
 │   │   ├── COORDINACION.md                     ← estado compartido (quién toca qué; historial en COORDINACION-ARCHIVO.md)
+│   │   ├── HANDOFF.md                          ← resumen corto del último chat (sobrescribir con «fin de chat»)
 │   │   ├── COORDINACION-ARCHIVO.md             ← historial HECHO archivado (poda 2026-08-10)
 │   │   ├── REGISTRO.md                         ← iteraciones de prompts (aprendizaje mutuo)
 │   │   ├── MASTER-PROMPT-DEEPSEEK.md           ← núcleo para DeepSeek-web (espejo .cursorrules)
@@ -660,6 +662,7 @@ resources/
     │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla…)
     │   ├── chatbotApi.js       ──► POST message + GET history + POST contact-phone (FAQ + derivación WhatsApp)
     │   ├── inertiaErrors.js    ──► inertiaErrorMessages + showInertiaErrors (toasts desde errors Laravel)
+    │   ├── tallerTitle.js      ──► formatTallerDisplayTitle / sentence case ES + subtítulo entre ( )
     │   └── utils.ts            ──► cn() shadcn
     │
     ├── utils/
@@ -681,6 +684,8 @@ resources/
     │   ├── admin/
     │   │   └── CatalogOfferTabs.jsx  ──► Tabs Gestor de servicios → Taquillas / Bonos VIP / Clases / Fotos / Surfskate
     │   ├── PressRipple.jsx           ──► Rail vertical izquierdo cyan (barra + flyout + móvil; sin fondo; reduced-motion)
+    │   ├── HomeServiciosDestacados.jsx ──► Escaparate oferta home (4: clases, taquillas, surfskate, fotos); post-`SurfBriefMini`
+    │   ├── HomeGeoTeaser.jsx ──► Teaser GEO Zurriola en home (hechos de `zurriolaGeo` → `#zurriola-guia`)
     │   ├── OpcionesIntro.jsx         ──► Mosaico accesos S4 (home); tile "Forecast al detalle" abre panel on-demand; assets `/img/opciones/*.webp`
     │   ├── S4Button.jsx              ──► CTA marca S4 (tokens .s4-btn* en app.css)
     │   ├── seo/
@@ -699,13 +704,20 @@ resources/
     │   │   ├── SurfBriefCard.jsx ──► Controles admin del parte (override + regenerar) en `/servicios/webcams`
     │   │   ├── surfBriefOverride.js ──► Labels/tonos override: good | espigon | caution | closed
     │   │   ├── surfLevels.js ──► Textos fijos iniciación/intermedio/avanzado + clases de etiqueta del Parte S4
-    │   │   ├── SurfLevelAccordion.jsx ──► Acordeón «¿Cuál es mi nivel?» (fila desktop / vertical móvil)
+    │   │   ├── SurfLevelAccordion.jsx ──► Acordeón «¿No sabes tu nivel?» (guía fija escuela; fila desktop / vertical móvil)
+    │   │   ├── surfBriefCta.js ──► CTA contextual del parte según señal (good/espigon/caution/closed)
+    │   │   ├── SurfBriefParteCta.jsx ──► Botón CTA reutilizable (webcams + home)
+    │   │   ├── SurfBriefLevelBlocks.jsx ──► Bloques por nivel + picker «Mi nivel» + link Taller
+    │   │   ├── useSurfLevelPreference.js ──► Preferencia de nivel visitante (localStorage)
+    │   │   ├── SurfBriefParteToday.jsx ──► Bloque público «Parte S4 · Hoy» (resumen + niveles + CTA + acordeón + reacciones)
     │   │   ├── SurfBriefMini.jsx ──► Parte S4 destacado en home (resumen expertos + métricas → webcams) + botón secundario "Ver forecast al detalle" (`DetailedForecastEntry`)
     │   │   ├── SurfBriefReactions.jsx ──► 👍/👎 + contadores bajo el texto del parte
-    │   │   ├── SurfForecastTable.jsx ──► Tabla previsión (slots diurnos cada 2h) + Parte S4; botones "Ver forecast al detalle" / "Ver resumen por día", en `/servicios/webcams`
+    │   │   ├── SurfForecastTable.jsx ──► Tabla previsión (slots diurnos cada 2h) + monta `SurfBriefParteToday`; botones "Ver forecast al detalle" / "Ver resumen por día", en `/servicios/webcams`
     │   │   ├── WeatherDetailPanel.jsx ──► Panel "Tiempo detallado" (horario 24/48h + 7 días) bajo demanda, amber; iconos Lucide por `weather_code` (lista blanca, sin emojis), en `/servicios/webcams`; exporta `weatherIconFor`/`formatClock`/`formatWeekdayShort` reutilizados por `SurfFullForecastOverlay.jsx`
     │   │   ├── SurfFullForecastOverlay.jsx ──► "Ver resumen por día": oleaje + tiempo + estrellas; footer compartido `SurfForecastSheetFooter`
-    │   │   ├── SurfForecastSheetFooter.jsx ──► Footer sheets: Ver parte de hoy (modal) + Ver webcam; usado por detalle y resumen por día
+    │   │   ├── SurfForecastSheetFooter.jsx ──► Footer sheets: Ver parte de hoy + Ver webcam + Cómo interpretar el parte (modal glosario + CTA Taller); usado por detalle y resumen por día
+    │   │   ├── surfMetricHelp.js ──► Textos únicos ayuda métricas (tooltips «?» + modal interpretar) + slug artículo Taller
+    │   │   ├── windArrowTone.js ──► Color flecha viento (verde off / gris cross / rojo on + 5 intensidades km/h)
     │   │   ├── LevelStars.jsx ──► Fila/stack de estrellas por nivel (Ini emerald · Int sky · Ava rose)
     │   │   ├── SurfDetailedForecastSlider.jsx ──► "Ver forecast al detalle": bottom-sheet al ras; estrellas por franja; footer `SurfForecastSheetFooter`
     │   │   ├── useDetailedForecast.js ──► Hook fetch on-demand `servicios.webcams.forecast_detailed` (1 request tras éxito)
@@ -729,6 +741,7 @@ resources/
     │   ├── StoreAddToCartButton.jsx ──► CTA «Añadir al carrito» (Producto)
     │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx, SortableTable.jsx (SortableTh + compareRows)
     │   ├── icons/WhatsAppIcon.jsx ──► SVG WhatsApp compartido (taquillas admin + asignar)
+    │   ├── icons/WaveCrestIcon.jsx ──► ola crestada (métrica oleaje forecast al detalle)
     │   ├── Academy/
     │   │   ├── ClassLessonInfoPanel.jsx    ──► Detalle clase + apuntados walk-in y estado pago
     │   │   ├── ClassGuestEnrollmentModal.jsx ──► Alta/edición persona sin registro web
@@ -744,7 +757,7 @@ resources/
     └── Pages/                        ──► Resolución: ./Pages/{name}.jsx (eager glob)
         │
         ├── [DOMINIO: MARKETING / CMS]
-        │   ├── Pag_principal.jsx       ──► Hero + Parte S4 + `OpcionesIntro` (antes footer) + SeoHead
+        │   ├── Pag_principal.jsx       ──► Hero + Parte S4 + `HomeServiciosDestacados` + directorio + `HomeGeoTeaser` + teaser club + `OpcionesIntro` + SeoHead
         │   ├── Nosotros.jsx            ──► Landing page premium club: Bento Grid instalaciones, tabla de ahorro socio, timeline Edy Mulder (dark/glassmorphic)
         │   ├── Contacto.jsx
         │   ├── Servicios.jsx                    ──► Reparación tablas (Edy Mulder)
@@ -823,7 +836,7 @@ resources/
         ├── components/
         │   ├── Taller/
         │   │   ├── TallerShell.jsx       ──► Shell gradiente, hero, barra lectura, fadeUp
-        │   │   └── TallerArticleCard.jsx ──► Tarjetas (texto + miniatura cover_image) + relacionados con «Cargar más artículos» (JSON)
+        │   │   └── TallerArticleCard.jsx ──► Tarjetas (título vía `tallerTitle.js` + cover) + relacionados «Cargar más»
         │   └── VipProfile/
         │       └── VipProfileDashboard.jsx     ──► Wallet + heatmap + extracto (compartido perfil/admin)
         │

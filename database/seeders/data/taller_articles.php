@@ -203,7 +203,7 @@ HTML,
         'title' => '¿Qué Debo Tener en Cuenta al Reservar una Clase de Surf?',
         'slug' => 'que-debo-tener-en-cuenta-al-reservar-una-clase-de-surf',
         'cover_image' => '/img/taller/reservar-clase-surf-checklist.webp',
-        'excerpt' => 'Checklist antes de reservar: ratio instructor/alumnos, material, playa, seguro y cancelación. Útil si vas a elegir escuela en Zurriola u otra costa.',
+        'excerpt' => 'Checklist antes de reservar: ratio, material, playa, seguro y cancelación. También qué mira la escuela: marea, parte de olas y momento del día.',
         'content' => <<<'HTML'
 <figure>
 <img src="/img/taller/reservar-clase-surf-checklist.webp" alt="Alumnos con softboards en clase de iniciación en playa" width="1536" height="1024" loading="eager">
@@ -225,6 +225,14 @@ HTML,
 <h3>Grupos vs particular</h3>
 <p>El grupo suele ser más económico y social, pero el feedback se reparte. Particular o semi aporta más correcciones por minuto.</p>
 <p>Elige según tu objetivo: probar el surf o progresar más rápido.</p>
+<h2>Qué debe tener en cuenta la escuela</h2>
+<p>Además del checklist del alumno, una escuela seria mira tres variables del día antes de confirmar o mantener la sesión.</p>
+<h3>Punto de marea</h3>
+<p>Con <strong>mareas vivas</strong> y marea alta suele formarse una orillera (shorebreak) difícil de surfear, sobre todo en iniciación. Preferible trabajar en <strong>mareas medias y bajas</strong>, donde hay más zona usable y menos impacto en la orilla.</p>
+<h3>Parte de olas</h3>
+<p>Las condiciones deben encajar con el nivel: ni plano o cerrado (poca ola útil) ni gigantesco para principiantes. Mira altura, periodo, energía y viento. En S4 puedes contrastar la <a href="/servicios/webcams">webcam y el parte del día</a> y leer <a href="/taller/como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas">cómo interpretar el parte de olas</a>.</p>
+<h3>Momento del día</h3>
+<p>A primera hora de la mañana, a mediodía (aprox. de 13:00 a 15:00) o a última hora suele haber <strong>menos gente</strong> en el agua: más espacio, menos estrés y, en la práctica, una sesión más segura para aprender.</p>
 <h2>Condiciones y cancelación</h2>
 <ul>
 <li>Pregunta con cuánta antelación avisan si cancelan por mar.</li>
@@ -232,13 +240,12 @@ HTML,
 <li>Para empezar, busca olas pequeñas y poco viento en contra.</li>
 <li>Si puedes, evita horas punta saturadas: más espacio y menos estrés.</li>
 </ul>
-<p>En <strong>S4 Academia</strong> puedes consultar clases desde la zona de academia (login) o preguntar por WhatsApp o contacto si aún no tienes cuenta. Usa este checklist para comparar cualquier escuela, incluida la nuestra en Zurriola.</p>
 HTML,
         'meta_title' => 'Qué mirar antes de reservar una clase de surf',
-        'meta_description' => 'Ratio, material incluido, playa, seguro y condiciones: checklist para elegir escuela. Útil también en Zurriola (S4).',
+        'meta_description' => 'Ratio, material, playa, seguro, marea y momento del día: checklist para elegir escuela. Útil también en Zurriola (S4).',
         'meta_keywords' => 'reservar clase de surf, escuela surf, ratio instructor',
-        'chatbot_summary' => 'Checklist para reservar clase de surf: ratio, material, playa, seguro, marea y cancelación. Ángulo comercial/local Zurriola-S4. Diferente de la guía del día 1 / FAQ de primera clase.',
-        'chatbot_keywords' => 'reservar clase de surf, ratio instructor alumnos, qué incluye clase surf, seguro clase surf, escuela surf Zurriola',
+        'chatbot_summary' => 'Checklist para reservar clase de surf: ratio, material, playa, seguro y cancelación. La escuela debe mirar marea (evitar altas en mareas vivas por orillera; preferir medias/bajas), parte de olas (ni flat/cerrado ni gigante) y franjas con menos gente (mañana temprano, ~13–15 h, última hora). Ángulo comercial/local Zurriola-S4. Diferente de la guía del día 1.',
+        'chatbot_keywords' => 'reservar clase de surf, ratio instructor alumnos, qué incluye clase surf, seguro clase surf, escuela surf Zurriola, marea clase surf, parte de olas clase',
     ],
     [
         'title' => 'Guía de Corrientes en la Playa: Cómo Detectarlas, Utilizarlas y Surfear Seguro',
@@ -286,18 +293,18 @@ HTML,
         'chatbot_keywords' => 'corrientes de resaca en la playa, detectar rip current, salir de una corriente, corrientes y surf',
     ],
     [
-        'title' => '¿Qué Aprenderé en mi Primera Clase de Surf? (Y Guía de Preguntas Frecuentes)',
+        'title' => '¿Qué aprenderé en mi primera clase de surf? (Guía de preguntas frecuentes)',
         'slug' => 'que-aprendere-en-mi-primera-clase-de-surf-y-guia-de-preguntas-frecuentes',
         'cover_image' => '/img/taller/primera-clase-surf-teoria-arena.webp',
-        'excerpt' => 'Teoría, práctica en arena, remada y primeras espumas: estructura típica de tu primera clase de surf y FAQ para llegar con menos nervios.',
+        'excerpt' => 'Qué pasa el día 1 y los cuatro objetivos de iniciación en San Sebastián Surf School: puesta en pie, escapes, coger olas solos y unir remada + pop-up + dirección.',
         'content' => <<<'HTML'
 <figure>
 <img src="/img/taller/primera-clase-surf-teoria-arena.webp" alt="Monitor corrigiendo pop-up en la arena" width="1536" height="1024" loading="eager">
 </figure>
-<p>Tu <strong>primera clase de surf</strong> no es solo “entrar al agua y probar”. En una sesión bien planteada hay teoría breve, práctica en arena y luego espumas con supervisión.</p>
-<p>Esta guía resume qué suele enseñarse el día 1 y responde dudas frecuentes. Si aún estás eligiendo escuela, mira también el <a href="/taller/que-debo-tener-en-cuenta-al-reservar-una-clase-de-surf">checklist antes de reservar</a>.</p>
+<p>Tu <strong>primera clase de surf</strong> no es solo “entrar al agua y probar”. En una sesión bien planteada hay teoría breve, práctica en arena y luego trabajo en zona segura con supervisión.</p>
+<p>Esta guía resume qué suele ocurrir el día 1, los <strong>objetivos de iniciación en San Sebastián Surf School</strong> y responde dudas frecuentes. Si aún estás eligiendo escuela, mira también el <a href="/taller/que-debo-tener-en-cuenta-al-reservar-una-clase-de-surf">checklist antes de reservar</a>.</p>
 <h2>Antes del agua</h2>
-<p>En la orilla el monitor suele explicar seguridad básica y las posturas clave. El objetivo es grabar el movimiento en seco antes de pelearte con el mar.</p>
+<p>En la orilla el monitor explica seguridad básica y las posturas clave. El objetivo es grabar el movimiento en seco antes de pelearte con el mar.</p>
 <h3>Tumbado en la tabla</h3>
 <p>Coloca los pies cerca del tail y alinea el cuerpo al eje central. Mantén el pecho ligeramente elevado para remar sin forzar el cuello.</p>
 <h3>Remada</h3>
@@ -307,29 +314,37 @@ HTML,
 <h3>Take-off (pop-up)</h3>
 <p>La secuencia habitual es: remada, manos bajo el pecho, empuje y pies al deck en un solo tiempo. El primer día prioriza estabilidad y mirada al frente, no el “estilo”.</p>
 <h2>En el agua</h2>
-<p>En espumas (zona segura) aplicarás lo mismo con olas pequeñas. El monitor elige la zona, corrige posición y gestiona el grupo.</p>
-<p>Es normal caerse. El aprendizaje es repetición con feedback, no una sesión de performance.</p>
+<p>En espumas y olas pequeñas (zona controlada) aplicas lo aprendido en arena. El monitor elige la zona, corrige y gestiona el grupo. Es normal caerse: el aprendizaje es repetición con feedback, no una sesión de performance.</p>
 <ul>
 <li>Entrada y salida controlada, sin lanzar la tabla.</li>
-<li>Remada hacia la orilla en el momento adecuado.</li>
-<li>Primeras puestas de pie cortas y seguras.</li>
+<li>El monitor marca cuándo remar, cuánto y hacia dónde.</li>
+<li>Primeras puestas de pie cortas y seguras (objetivo 1).</li>
 </ul>
+<h2>Objetivos de iniciación en San Sebastián Surf School</h2>
+<p>En <strong>San Sebastián Surf School</strong> (Zurriola / Donostia) la iniciación —nivel <strong>principiante</strong>— se trabaja con cuatro objetivos claros. El <strong>primer día</strong> suele centrarse en el primero y, si sale bien, empezar el segundo. Completar los cuatro puede llevar varias sesiones: lo marca el ritmo real del alumno y el criterio del monitor.</p>
+<p>Contamos con monitores con años de experiencia que facilitan avanzar: empujan la tabla con el ángulo adecuado y explican cómo mantener la dirección hacia donde quieres ir.</p>
+<ol>
+<li><strong>Puesta en pie.</strong> Es el estándar del día 1 y lo que casi todo el mundo aprende primero: estabilidad, mirada al frente y pop-up funcional.</li>
+<li><strong>Escapes (dirección).</strong> Si la puesta en pie va bien, se empieza a dirigir la tabla hacia el escape. Depende del monitor y del día; en San Sebastián Surf School se insiste en el ángulo y en mantener esa dirección.</li>
+<li><strong>Coger olas solos.</strong> Penúltimo objetivo de iniciación. Implica remar bien, controlar la puesta en pie y mantener el equilibrio sin ayuda constante del monitor.</li>
+<li><strong>Unir remada, puesta en pie y dirección.</strong> El gran objetivo final de iniciación: remas fuerte para coger la ola solo, direccionas la tabla y ejecutas un pop-up correcto. Todo sigue pautado: el monitor te dice cuándo remar, si remar más o menos, hacia dónde apuntar la tabla según rompa la ola, cómo jugar con el pecho (elevarlo o bajarlo —punto clave que cuesta interiorizar) y, por último, cuándo levantarte.</li>
+</ol>
+<p>Cuando controlas estos cuatro objetivos, pasas al <strong>nivel intermedio</strong>. Hasta entonces, el monitor marca el ritmo para que la sesión sea segura y útil.</p>
 <h2>FAQ</h2>
 <h3>¿Necesito saber nadar?</h3>
-<p>Sí, con soltura en aguas poco profundas. Si dudas, coméntalo al reservar.</p>
+<p>Idealmente sí, al menos con soltura en aguas poco profundas. Si el mar está pequeño, se puede gestionar con supervisión. Si el mar está grande, lo ideal es una <strong>clase particular</strong>: el monitor está constantemente contigo y trabaja en zonas donde se hace pie sin problemas. Coméntalo al reservar.</p>
 <h3>¿Llevo material?</h3>
-<p>En la mayoría de escuelas de iniciación el softboard y el neopreno van incluidos. Confírmalo al reservar.</p>
+<p>En la mayoría de escuelas de iniciación el softboard y el neopreno van incluidos. En <strong>San Sebastián Surf School</strong> sí: tabla y neopreno van incluidos en la clase.</p>
 <h3>¿Cuánto dura?</h3>
 <p>Suele rondar entre hora y media y dos horas entre teoría, arena y agua. La duración exacta varía por escuela.</p>
 <h3>¿Salgo surfeando de verdad?</h3>
-<p>El día 1 buscas sensaciones y bases. La progresión real llega en clases siguientes.</p>
-<p>En S4 (Zurriola / Donostia) el enfoque es seguridad y bases claras. Cuando quieras apuntarte, usa el checklist de reserva y pregunta por ratio y condiciones del día.</p>
+<p>El día 1 buscas sensaciones y, sobre todo, avanzar en la <strong>puesta en pie</strong>. Si el día acompaña y el monitor lo ve claro, puedes empezar escapes. Coger olas solos y unir remada + pop-up + dirección suelen consolidarse en sesiones siguientes dentro de iniciación.</p>
 HTML,
-        'meta_title' => 'Qué aprenderás en tu primera clase de surf',
-        'meta_description' => 'Teoría, práctica en arena, remada y primeras espumas: estructura típica y FAQ. Ideal antes de apuntarte en S4.',
-        'meta_keywords' => 'primera clase de surf, take off, iniciación surf',
-        'chatbot_summary' => 'Explica qué se aprende en la primera clase de surf: teoría y pop-up en arena, remada, primeras espumas y FAQ (nadar, material, duración). Enlaza al checklist de reserva; no es una guía de compra de escuela.',
-        'chatbot_keywords' => 'primera clase de surf, qué se aprende en clase de surf, take off arena, FAQ iniciación surf, pop-up',
+        'meta_title' => 'Qué aprenderás en tu primera clase de surf en San Sebastián',
+        'meta_description' => 'Día 1 y objetivos de iniciación en San Sebastián Surf School (Zurriola): puesta en pie, escapes, coger olas solos y unir remada con dirección.',
+        'meta_keywords' => 'primera clase de surf, San Sebastián Surf School, iniciación surf Donostia, Zurriola, puesta en pie',
+        'chatbot_summary' => 'Primera clase San Sebastián Surf School (Zurriola/Donostia): teoría/arena + agua. Objetivos de iniciación (principiante): 1) puesta en pie (día 1 estándar); 2) escapes/dirección si sale bien (monitor empuja ángulo y explica dirección); 3) coger olas solos (remar + pop-up + equilibrio); 4) unir remada+pop-up+dirección (monitor pauta cuándo remar, hacia dónde, pecho arriba/abajo, cuándo levantarse). Tras dominar los 4 → intermedio. FAQ: nadar (mar grande→particular con pie), material incluido, duración. No inventar precios.',
+        'chatbot_keywords' => 'primera clase de surf, San Sebastián Surf School, objetivos iniciación surf, puesta en pie, escapes surf, coger olas solos, principiante Donostia Zurriola, pop-up, FAQ iniciación surf',
     ],
     [
         'title' => '¿De Qué Materiales Está Hecha una Tabla de Surf? Guía de Componentes',
@@ -654,40 +669,45 @@ HTML,
         'title' => 'Cómo interpretar el parte de olas: Guía avanzada para surfistas',
         'slug' => 'como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas',
         'cover_image' => '/img/taller/interpretar-parte-olas-periodo-swell.webp',
-        'excerpt' => 'Altura, período, dirección y viento: qué mirar primero en un forecast para no engañarte solo con el tamaño de ola.',
+        'excerpt' => 'Altura, período, dirección, energía y viento: qué mirar primero en un forecast para no engañarte solo con el tamaño de ola.',
         'content' => <<<'HTML'
 <figure>
 <img src="/img/taller/interpretar-parte-olas-periodo-swell.webp" alt="Cuaderno junto a la ventana con vistas al mar para planificar el parte de olas" width="1536" height="1024" loading="eager">
 </figure>
-<p><strong>Interpretar el parte de olas</strong> es leer varios números a la vez. La altura sola engaña.</p>
-<p>El <strong>período</strong> suele decir más sobre la calidad y la energía del swell. Para tipos de fondo y rompiente, ve a la guía de <a href="/taller/guia-de-olas-y-rompientes-tipos-fondos-y-factores-que-influyen-en-el-surf">rompientes</a>.</p>
-<h2>Los 4 números</h2>
+<p><strong>Interpretar el parte de olas</strong> es cruzar varios datos a la vez. La altura sola engaña: no describe ni la fuerza real del swell ni cómo llegará a tu playa.</p>
+<p>El <strong>período</strong> (segundos entre crestas del swell dominante) suele decir más sobre la calidad y la energía del oleaje que el metro de altura. Para tipos de fondo y rompiente, ve a la guía de <a href="/taller/guia-de-olas-y-rompientes-tipos-fondos-y-factores-que-influyen-en-el-surf">rompientes</a>.</p>
+<h2>Los 5 números</h2>
 <h3>Altura</h3>
-<p>Es el tamaño estimado. Útil, pero incompleto si lo miras aislado.</p>
+<p>En la mayoría de partes es la <strong>altura significativa</strong> (media del tercio de olas más altas), no la cara de la set más grande. Útil como orden de magnitud, incompleta si la miras aislada.</p>
 <h3>Período</h3>
-<p>Es el tiempo entre olas del swell. Marca potencia y, en muchos spots, la “limpieza” de la pared.</p>
+<p>Es el <strong>tiempo, en segundos, entre una cresta y la siguiente</strong> del swell que marca el modelo (periodo pico). Periodos cortos suelen ser mar de viento; periodos largos, mar de fondo más organizado y con más empuje.</p>
 <h3>Dirección</h3>
-<p>Indica de dónde viene el swell respecto a tu costa. Condiciona qué playas o picos reciben mejor ese día.</p>
+<p>Indica de dónde viene el swell (origen del oleaje). Según la orientación de tu costa, esa misma dirección hace que el pico cargue, se filtre o se pierda energía antes de romper.</p>
+<h3>Energía</h3>
+<p>Es un índice de «punch» del swell (en muchos partes en kJ). Combina altura y período: ayuda a ver si la ola empujará de verdad o solo se verá grande en el número de metros.</p>
 <h3>Viento</h3>
-<p>Mira intensidad y dirección en superficie. Offshore y onshore cambian por completo la lectura del mismo swell.</p>
+<p>Mira <strong>intensidad</strong> y <strong>dirección</strong> en superficie. Offshore y onshore cambian por completo la lectura del mismo swell.</p>
+<p><strong>Onshore</strong> (desde el mar hacia tierra) suele aplanar la ola y dejarla más fofa, pica el mar y dificulta leer la pared, anticipar el pico y colocarte a tiempo en el sitio correcto para cogerla.</p>
+<p><strong>Offshore</strong> (desde tierra hacia el mar) ordena la superficie, facilita leer la ola y anticiparla, y te da más margen para posicionarte bien antes de remar.</p>
 <h2>Por qué el período importa tanto</h2>
-<p>Períodos más largos suelen traer más energía y paredes más organizadas para la misma altura nominal.</p>
-<p>Períodos cortos pueden verse “grandes” en el parte y sentirse choppy o flojos según el spot. Compara siempre altura y período juntos.</p>
+<p>El <strong>período</strong> es el intervalo de tiempo entre olas sucesivas del swell dominante y se mide en <strong>segundos</strong>. En física de oleaje, a igual altura, un período más largo implica mayor longitud de onda y, en general, más flujo de energía hacia la costa.</p>
+<p>Por eso los períodos largos suelen traer líneas más ordenadas y más fuerza real para la misma altura nominal del parte. Los períodos cortos (mar de viento) pueden verse “grandes” en metros y, en el agua, sentirse seguidos, fofos o choppy según el spot.</p>
+<p>Regla práctica: <strong>compara siempre altura y período juntos</strong>. Un 0,8&nbsp;m a 12&nbsp;s no es lo mismo que 0,8&nbsp;m a 7&nbsp;s.</p>
 <h2>Viento</h2>
 <ul>
-<li>Offshore: suele limpiar la cara de la ola.</li>
-<li>Onshore: desordena y cierra más rápido.</li>
-<li>La mañana y la tarde pueden no parecerse: mira la hora del parte.</li>
+<li><strong>Offshore</strong> (desde tierra hacia el mar): ordena el mar, deja la cara más limpia y legible, facilita anticipar la ola y colocarte a tiempo en el pico.</li>
+<li><strong>Onshore</strong> (desde el mar hacia tierra): suele aplanar y abofar la ola, pica la superficie, dificulta leer y anticipar sets, y complica situarte en el sitio correcto.</li>
+<li>La mañana y la tarde pueden no parecerse: mira la hora del parte, no solo el resumen del día.</li>
 </ul>
 <h2>Ejemplo de lectura</h2>
 <p>Una altura moderada con período largo y viento flojo favorable suele merecer más la pena que una altura alta con período corto y onshore.</p>
-<p>Contrasta el forecast con la realidad. En S4 puedes mirar las <a href="/servicios/webcams">webcams</a> y el parte del día cuando estén disponibles, sin fiarte solo del número grande.</p>
+<p>Contrasta el forecast con la realidad. En San Sebastián Surf School puedes mirar las <a href="/servicios/webcams">webcams</a> y el parte del día cuando estén disponibles, sin fiarte solo del número grande de altura.</p>
 HTML,
         'meta_title' => 'Cómo interpretar un parte de olas (forecast)',
-        'meta_description' => 'Altura, período, dirección y viento: qué mirar primero para no engañarte con el tamaño. Guía S4.',
-        'meta_keywords' => 'parte de olas, período swell, forecast surf',
-        'chatbot_summary' => 'Cómo leer un parte/forecast: altura, período (dato clave), dirección y viento, con ejemplo de lectura. Enlace a rompientes y a webcams S4. Sin Zurriola en meta_title.',
-        'chatbot_keywords' => 'interpretar el parte de olas, período del swell, leer forecast surf, altura vs período',
+        'meta_description' => 'Altura, período, dirección, energía y viento: qué mirar primero para no engañarte con el tamaño. Guía S4.',
+        'meta_keywords' => 'parte de olas, período swell, forecast surf, energía oleaje',
+        'chatbot_summary' => 'Cómo leer un parte/forecast: altura significativa, período (segundos entre crestas; dato clave), dirección, energía (índice punch/kJ) y viento. A igual altura, período largo = más energía. Offshore ordena y facilita leer/anticipar/colocarte; onshore aplana, pica el mar y dificulta lectura y posición. Enlace a rompientes y webcams S4.',
+        'chatbot_keywords' => 'interpretar el parte de olas, período del swell, segundos entre olas, leer forecast surf, altura vs período, energía oleaje kJ, offshore onshore',
     ],
     [
         'title' => '¿Cómo saber en qué dirección rompe una ola?',

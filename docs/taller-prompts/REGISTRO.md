@@ -8,6 +8,7 @@ Por cada prompt completado, añade una entrada con este esquema:
 
 ```md
 ### [YYYY-MM-DD] — [Objetivo en una línea]
+
 - **Herramienta destino:** DeepSeek | Cursor | Ambos
 - **Iteraciones:** v1 (draft) → v2 (crítica DeepSeek) → v3 (consolidada) — [o las que haya]
 - **Qué aportó DeepSeek:** [1-2 líneas: crítica, alternativa, punto ciego detectado]
@@ -20,7 +21,33 @@ Por cada prompt completado, añade una entrada con este esquema:
 
 ## Iteraciones
 
+### 2026-08-12 — SEO/GEO home: plan → crítica Reasonix → prompt implementación Cursor
+
+- **Herramienta destino:** Cursor (tras auditoría Reasonix)
+- **Iteraciones:** v1 (plan Cursor) → v2 (crítica Reasonix 8/10) → v3 (prompt implementación consolidado)
+- **Qué aportó Reasonix:** ancla `#zurriola-guia` no existe; solape ítems 2↔6; separar H2 (no tocar) vs alts; límite altura bloque GEO; aclarar `webPageNode` private.
+- **Qué aportó Cursor/taller:** rutas reales (`Pag_principalController`, `ZurriolaGeoFactsService::publicPayload`, patrón webcams); MVP ordenado ~45 min.
+- **Decisión final:** aceptar crítica; MVP = WebPage + description + HomeGeoTeaser + ancla + alts; sin stuffing; sin teléfono inventado.
+- **Lección aprendida:** en prompts GEO con deep-link, verificar el `id` en DOM antes de citar el hash.
+
+### 2026-08-12 — SEO post-rebrand: sitemap + keywords + re-crawl
+
+- **Herramienta destino:** Cursor
+- **Iteraciones:** v1 (Reasonix/usuario) → v2 (Cursor prompt-forge)
+- **Qué aportó Cursor:** corrección factual — el sitemap (`PublicSitemapService`) NO lleva title/description; solo `loc/lastmod/changefreq/priority` + cache `seo.sitemap.xml.v1` 1h; no hay Artisan command → `forgetCache()`; el valor real de la tarea es auditoría de keywords en `PublicPageSeoService` + plan GSC.
+- **Decisión final:** v2 lista; no reescribir copy; no inventar comando de sitemap.
+- **Lección aprendida:** tras un rebrand de metas, no pedir «regenerar sitemap para reflejar títulos» — el sitemap no contiene títulos; invalidar cache es opcional; lo crítico es HTML/JSON-LD + re-crawl.
+
+### 2026-08-12 — Auditoría consistencia «Taller de Surf» → «Blog educativo» (chatbot)
+
+- **Herramienta destino:** Cursor
+- **Iteraciones:** v1 (Reasonix/usuario) → v2 (Cursor prompt-forge, anclada a grep real del repo)
+- **Qué aportó Cursor:** falsos positivos (taller Edy en JSON; keywords `taller de surf`; path `/taller` legítimo); taxonomía INCONSISTENTE/LEGÍTIMO/FUERA_ALCANCE; estado esperado (rebrand ya casi hecho → resultado probable «0 inconsistencias» o PHPDoc); checklist + plantilla de tabla.
+- **Decisión final:** v2 lista para ejecutar en Cursor; no cambiar rutas ni seeders sin preguntar.
+- **Lección aprendida:** en auditorías de rename, listar explícitamente los homónimos del dominio (aquí «taller» = blog vs reparación Edy) evita correcciones falsas.
+
 ### 2026-08-10 — Afinado del agente de marketing/diseño (crítica Cursor 8/8 aceptada)
+
 - **Herramienta destino:** Ambos (fuente del skill `/marketing-diseno` + pegable en Gemini/DeepSeek)
 - **Iteraciones:** v1 (creación) → crítica Cursor (10 puntos) → aceptación 8 + 1 adaptado (puntero ya existía) + 0 rechazos → ejecución
 - **Qué aportó Cursor:** trigger de skill explícito (default S1 + mapa por intención), separación admin vs público, anti-patrones vividos del proyecto (botón ticket, "Pendiente" ambiguo, badges redundantes), SEO real del repo (no JSON-LD a mano), plantilla única R5/§6, límites de tokens (máx. 8 hallazgos), bloque "qué NO hace", y el duplicado tipográfico.
@@ -28,12 +55,14 @@ Por cada prompt completado, añade una entrada con este esquema:
 - **Lección aprendida:** una persona de agente gana determinismo cuando la selección de skill es explícita (mapa de intención → skill), no cuando el modelo la infiere; y gana anclaje cuando incluye anti-patrones vividos del proyecto en vez de principios genéricos.
 
 ### 2026-08-10 — Follow-up 2 de Cursor (5/5 aceptados): regresiones de la reconstrucción
+
 - **Herramienta destino:** Ambos
 - **Qué aportó Cursor:** detectó 2 regresiones reales de mi reconstrucción post-incidente (fila separadora de la tabla de COORDINACION perdida → render roto; título + enlace al contrato perdidos), el wording de MASTER L4 ("espejo" → "núcleo compartido"), el USO del script sin `--topic ticket`, y propuso podar más (08-09 → archivo).
 - **Qué aportó este taller (ejecución):** separador restaurado, título `Reasonix/DeepSeek ↔ Cursor` + línea de contrato al inicio, MASTER L4 corregido, USO con `--topic ticket`, poda extra (COORDINACION 75 → 65 líneas; solo quedan las filas y entradas 08-10). Verificado sin duplicados: 70 filas + 71 entradas íntegras entre vivo y archivo.
 - **Lección aprendida:** tras una reconstrucción manual, pedir siempre a la otra IA que audite la estructura markdown (tablas/separadores), no solo el contenido — las regresiones estructurales son invisibles en el diff de contenido.
 
 ### 2026-08-10 — Follow-up Cursor al remate (8/8 aceptados y ejecutados)
+
 - **Herramienta destino:** Ambos
 - **Iteraciones:** remate Reasonix → revisión Cursor (8 puntos) → aceptación total → ejecución
 - **Qué aportó Cursor:** detectó la contradicción §3 vs §7 del CONTRATO, la vista humana desfasada del JSON (faltaba `ticket`), el §4 del 02 con reglas duplicadas, el usage estático del script, los globs demasiado amplios de `ui-admin-s4`, y el `deepseek-ask.mjs` sin mención en CONTRATO §6.
@@ -42,6 +71,7 @@ Por cada prompt completado, añade una entrada con este esquema:
 - **Lección aprendida:** (1) en scripts que reescriben archivos, construir el string completo y validarlo ANTES de abrir el fichero en modo 'w'. (2) El router solo converge si la vista humana se regenera/cita del JSON — Cursor y yo coincidimos en eso.
 
 ### 2026-08-10 — Remate del sistema de prompts (plan consensuado Reasonix↔Cursor)
+
 - **Herramienta destino:** Ambos (Cursor + DeepSeek + Reasonix)
 - **Iteraciones:** v1 (mi análisis) → crítica Cursor (acepta 90 %) → réplica mía (convergencia total) → ejecución
 - **Qué aportó Cursor:** confirmó P1 (UTF-16 FF FE, typo `docs/ai`), propuso degradar el 02 a plantilla, matizó "espejo corto" (núcleo compartido, no contenido), y creó `CONTRATO-IA.md` como pegamento de roles.
@@ -50,18 +80,21 @@ Por cada prompt completado, añade una entrada con este esquema:
 - **Pendiente (sugerido por Cursor, no ejecutado):** podar `COORDINACION.md` (hoy ~38 KB): archivar filas HECHO antiguas en `COORDINACION-ARCHIVO.md`, dejando EN CURSO + últimas 10 HECHO.
 
 ### 2026-08-10 — Sistema de contexto selectivo por herramienta (Cursor / DeepSeek / Reasonix)
+
 - **Herramienta destino:** Ambos (Cursor + DeepSeek) + esta sesión
 - **Iteraciones:** v1
 - **Qué aportó este taller:** mismo patrón de 3 capas en cada herramienta — siempre-encendido corto (`.cursorrules`, `AGENTS.md`, núcleo del master prompt) + routing (Cursor: `globs`/skills nativos; DeepSeek: tabla router que pide pegar contextos; Reasonix: skills bajo demanda). Se creó `MASTER-PROMPT-DEEPSEEK.md` como equivalente del `.cursorrules` para chat sin repo, y se activó la auto-invocación del skill `prompt-forge`.
-- **Lección aprendida:** el router no se escribe a mano donde ya existe nativo (Cursor `globs`); en chats sin repo (DeepSeek) el usuario es el sistema de archivos — el router solo puede *pedir* que se pegue el contexto, nunca cargarlo.
+- **Lección aprendida:** el router no se escribe a mano donde ya existe nativo (Cursor `globs`); en chats sin repo (DeepSeek) el usuario es el sistema de archivos — el router solo puede _pedir_ que se pegue el contexto, nunca cargarlo.
 
 ### 2026-08-10 — Creación del agente senior de Marketing + Diseño Web (persona invocable)
+
 - **Herramienta destino:** Ambos (autocontenido para Gemini/DeepSeek/Cursor; skill `/marketing-diseno` en Reasonix)
 - **Iteraciones:** v1 (persona completa, validada contra el contexto real del repo)
 - **Qué aportó este taller:** contexto del proyecto incrustado (design language slate/cyan, archivos clave del admin, `PLANTILLA-UX-MODAL.md` como puente UI→Cursor, regla UI-only, anti-alucinación por capturas que el modelo no puede ver), rúbrica ponderada de 7 ejes con nota 0-10, y lección del ticket mostrador (fricción ≠ confirmación) elevada a principio.
 - **Lección aprendida:** un agente de diseño gana precisión cuando su persona lleva el contexto real del proyecto y una rúbrica numérica, no solo criterios genéricos.
 
 ### 2026-08-09 — UX ticket mostrador: bloque Alquiler (pastillas Modo + chips de pack con precio)
+
 - **Herramienta destino:** Cursor
 - **Iteraciones:** v1 (usuario) → v2 (taller, contrastado con código real) → v3 (consolidada con ajustes del usuario, 5/5 verificados contra código) → v4 (consolidada con la Ronda 1 de DeepSeek, 7/7 aceptadas)
 - **Qué aportó DeepSeek (Ronda 1):** trampa de unidades — `board.prices` es float en € y el patrón del pie (/100) podía inducir a dividir; riesgo de duplicar el pie global "Importe línea"; verificar payload exige diff de keys, no solo build; tensión entre "no tocar otras categorías" y el botón compartido; falta pre-check de tarea ya HECHO (evita rehacer); regla de pack repetida 3× (densidad); "modo actual" vs "nuevo modo" al cambiar tabla.

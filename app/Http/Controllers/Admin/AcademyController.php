@@ -154,7 +154,18 @@ class AcademyController extends Controller
                     'created_at' => $e->created_at?->toIso8601String(),
                     'has_proof' => ! empty($e->payment_proof_path),
                     'admin_notes' => $e->admin_notes,
-                    'user' => $l->is_private ? null : ($e->user ? ['id' => $e->user->id, 'nombre' => $e->user->nombre ?? $e->user->name] : null),
+                    'guest_first_name' => $e->guest_first_name,
+                    'guest_last_name' => $e->guest_last_name,
+                    'guest_phone' => $e->guest_phone,
+                    'guest_email' => $e->guest_email,
+                    // Consola admin: contacto completo (también particulares / reserva telefónica).
+                    'user' => $e->user ? [
+                        'id' => $e->user->id,
+                        'nombre' => $e->user->nombre ?? $e->user->name,
+                        'apellido' => $e->user->apellido,
+                        'email' => $e->user->email,
+                        'telefono' => $e->user->telefono,
+                    ] : null,
                 ]),
                 'staff' => $l->staffAssignments->map(fn ($s) => [
                     'role' => $s->role,
@@ -183,8 +194,8 @@ class AcademyController extends Controller
     public function lessonDetails(Lesson $lesson)
     {
         $lesson->load([
-            'staffAssignments.user:id,nombre,apellido,email',
-            'enrollments.user:id,nombre,apellido,email',
+            'staffAssignments.user:id,nombre,apellido,email,telefono',
+            'enrollments.user:id,nombre,apellido,email,telefono',
         ]);
 
         $statusLabels = [
@@ -208,7 +219,11 @@ class AcademyController extends Controller
         })->values();
 
         $students = $lesson->enrollments->map(function (LessonUser $enrollment) use ($statusLabels) {
-            $displayName = trim((string) (($enrollment->user?->nombre ?? '').' '.($enrollment->user?->apellido ?? '')));
+            $userName = trim((string) (($enrollment->user?->nombre ?? '').' '.($enrollment->user?->apellido ?? '')));
+            $guestName = trim((string) (($enrollment->guest_first_name ?? '').' '.($enrollment->guest_last_name ?? '')));
+            $displayName = $userName !== '' ? $userName : $guestName;
+            $phone = $enrollment->user?->telefono ?: $enrollment->guest_phone;
+            $email = $enrollment->user?->email ?: $enrollment->guest_email;
             $hasProof = ! empty($enrollment->payment_proof_path);
             $paymentState = 'Pendiente de pago';
             if ($hasProof && ($enrollment->payment_status ?? '') === LessonUser::PAYMENT_PENDING) {
@@ -223,7 +238,8 @@ class AcademyController extends Controller
             return [
                 'id' => (int) $enrollment->id,
                 'name' => $displayName !== '' ? $displayName : '—',
-                'email' => $enrollment->user?->email,
+                'email' => $email,
+                'phone' => $phone,
                 'status' => $enrollment->status,
                 'status_label' => $statusLabels[$enrollment->status] ?? ucfirst((string) $enrollment->status),
                 'payment_status' => $enrollment->payment_status ?? LessonUser::PAYMENT_PENDING,

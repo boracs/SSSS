@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import {
     ArrowUp,
     CalendarRange,
+    CloudRain,
     Droplets,
     Loader2,
     TrendingDown,
@@ -11,7 +12,7 @@ import {
     X,
 } from "lucide-react";
 import { ForecastSlider } from "./SurfForecastTable";
-import { weatherIconFor } from "./WeatherDetailPanel";
+import { weatherIconMeta } from "./WeatherDetailPanel";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 import { LevelStarsStack } from "./LevelStars";
 import SurfForecastSheetFooter from "./SurfForecastSheetFooter";
@@ -42,9 +43,11 @@ function DayFusionCard({ day, weatherDay }) {
         day.slots?.find((slot) => slot.time === day.bestSlotTime) ??
         day.slots?.[0] ??
         null;
-    const WeatherIcon = weatherDay
-        ? weatherIconFor(weatherDay.weather_code)
+    const weatherMeta = weatherDay
+        ? weatherIconMeta(weatherDay.weather_code)
         : null;
+    const WeatherIcon = weatherMeta?.icon ?? null;
+    const weatherTone = weatherMeta?.tone ?? "text-amber-300";
     const starsIni = day.qualityStarsIniciacion ?? 1;
     const starsInt = day.qualityStarsIntermedio ?? day.qualityStars ?? 1;
     const starsAva = day.qualityStarsAvanzado ?? 1;
@@ -172,7 +175,8 @@ function DayFusionCard({ day, weatherDay }) {
                         <div className="flex items-center gap-1.5">
                             {WeatherIcon ? (
                                 <WeatherIcon
-                                    className="h-4 w-4 text-amber-300"
+                                    className={`h-4 w-4 ${weatherTone}`}
+                                    strokeWidth={1.75}
                                     aria-hidden
                                 />
                             ) : null}
@@ -181,7 +185,8 @@ function DayFusionCard({ day, weatherDay }) {
                                 {Math.round(weatherDay.temp_min_c)}°
                             </span>
                         </div>
-                        <span className="text-[11px] tabular-nums text-sky-300">
+                        <span className="inline-flex items-center gap-1 text-[11px] tabular-nums text-sky-300">
+                            <CloudRain className="h-3 w-3 shrink-0 text-sky-400/90" aria-hidden />
                             {Math.round(
                                 weatherDay.precip_probability_max_pct ?? 0,
                             )}

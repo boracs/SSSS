@@ -1,9 +1,10 @@
 {
     "version": 1,
-    "updated": "2026-08-10",
+    "updated": "2026-08-11",
     "note": "Fuente única del router de contexto. Vista humana: docs/taller-prompts/CONTRATO-IA.md §3 y MASTER-PROMPT-DEEPSEEK.md §3. Consumido por scripts/deepseek-ask.mjs (--topic). Regla: cargar solo la fila del tema, nunca todo.",
     "router": {
-        "estado": ["docs/taller-prompts/COORDINACION.md", "docs/taller-prompts/REGISTRO.md"],
+        "estado": ["docs/taller-prompts/COORDINACION.md", "docs/taller-prompts/HANDOFF.md", "docs/taller-prompts/REGISTRO.md"],
+        "handoff": ["docs/taller-prompts/HANDOFF.md", "docs/taller-prompts/COORDINACION.md"],
         "diseno": ["docs/taller-prompts/AGENTE-MARKETING-DISENO.md"],
         "diseño": ["docs/taller-prompts/AGENTE-MARKETING-DISENO.md"],
         "ui": ["docs/taller-prompts/AGENTE-MARKETING-DISENO.md"],
@@ -15,6 +16,9 @@
         "surf": ["docs/surf-conditions/"],
         "chatbot": ["docs/chatbot/"],
         "seo": ["docs/taller-seo/", "docs/COMPETENCIA_SEO_DONOSTIA.md"],
+        "aprendizaje": ["docs/aprendizaje/"],
+        "teoria": ["docs/aprendizaje/"],
+        "profesor": ["docs/aprendizaje/"],
         "ticket": [
             "resources/js/components/admin/payments/MostradorTicketModal.jsx",
             "app/Http/Controllers/Admin/DatafonoPaymentController.php",

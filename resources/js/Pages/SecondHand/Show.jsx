@@ -457,7 +457,7 @@ export default function SecondHandShow(props) {
                         Volver al catálogo
                     </button>
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        Tienda · Segunda Mano
+                        Tienda · Tablas segunda mano
                     </p>
                 </div>
 

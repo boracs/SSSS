@@ -40,6 +40,7 @@ Si el tema lo requiere y **no** tienes el archivo, di: *"Pega `docs/...`"* antes
 | 7 | SEO / competencia | `docs/COMPETENCIA_SEO_DONOSTIA.md` + `docs/taller-seo/**` |
 | 8 | Rutas / dominios | extracto de `docs/PROJECT_TREE_FOR_GEMINI.md` (sección afectada) |
 | 9 | Ticket mostrador (datáfono) | `node scripts/deepseek-ask.mjs --topic ticket` (adjunta modal + backend datáfono) |
+| 10 | Teoría / profesor / cuaderno | `docs/aprendizaje/` (`INDICE.md` + temas). También Cursor puede guardar aquí. |
 
 ## 4) Reglas del router
 

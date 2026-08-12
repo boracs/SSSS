@@ -143,7 +143,7 @@ export default function ServiciosSurfSkate({ seo = null }) {
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-orange-400/25 bg-orange-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-orange-200">
                         <Activity className="h-3.5 w-3.5" />
-                        Surfskate S4
+                        Surfskate · San Sebastián Surf School
                     </div>
                     <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Clases de surfskate para{" "}

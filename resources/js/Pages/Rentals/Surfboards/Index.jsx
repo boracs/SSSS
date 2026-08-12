@@ -64,12 +64,12 @@ export default function Index({
     });
 
     const [activeCategory, setActiveCategory] = useState(category || "all");
-    const [selectedId, setSelectedId]         = useState(null);
-    const [lightbox, setLightbox]             = useState(null);
-    const [volumeMin, setVolumeMin]           = useState("");
-    const [volumeMax, setVolumeMax]           = useState("");
-    const [heightMin, setHeightMin]           = useState("");
-    const [heightMax, setHeightMax]           = useState("");
+    const [selectedId, setSelectedId] = useState(null);
+    const [lightbox, setLightbox] = useState(null);
+    const [volumeMin, setVolumeMin] = useState("");
+    const [volumeMax, setVolumeMax] = useState("");
+    const [heightMin, setHeightMin] = useState("");
+    const [heightMax, setHeightMax] = useState("");
     const [showAdvancedMeasures, setShowAdvancedMeasures] = useState(false);
     const [heightPresetId, setHeightPresetId] = useState("any");
     const [volumePresetId, setVolumePresetId] = useState("any");
@@ -81,7 +81,8 @@ export default function Index({
     );
 
     useEffect(() => {
-        if (typeof window === "undefined" || !window.matchMedia) return undefined;
+        if (typeof window === "undefined" || !window.matchMedia)
+            return undefined;
         const mq = window.matchMedia("(min-width: 1024px)");
         const sync = () => setIsLgUp(mq.matches);
         sync();
@@ -92,7 +93,10 @@ export default function Index({
     const closeLightbox = useCallback(() => setLightbox(null), []);
 
     const hasMeasureFilters =
-        volumeMin !== "" || volumeMax !== "" || heightMin !== "" || heightMax !== "";
+        volumeMin !== "" ||
+        volumeMax !== "" ||
+        heightMin !== "" ||
+        heightMax !== "";
 
     const clearMeasureFilters = () => {
         setVolumeMin("");
@@ -121,7 +125,11 @@ export default function Index({
     const handleHeightMinChange = (value) => {
         setHeightPresetId("custom");
         setHeightMin(value);
-        if (value !== "" && heightMax !== "" && Number(value) > Number(heightMax)) {
+        if (
+            value !== "" &&
+            heightMax !== "" &&
+            Number(value) > Number(heightMax)
+        ) {
             setHeightMax(value);
         }
         setSelectedId(null);
@@ -130,7 +138,11 @@ export default function Index({
     const handleHeightMaxChange = (value) => {
         setHeightPresetId("custom");
         setHeightMax(value);
-        if (value !== "" && heightMin !== "" && Number(value) < Number(heightMin)) {
+        if (
+            value !== "" &&
+            heightMin !== "" &&
+            Number(value) < Number(heightMin)
+        ) {
             setHeightMin(value);
         }
         setSelectedId(null);
@@ -139,7 +151,11 @@ export default function Index({
     const handleVolumeMinChange = (value) => {
         setVolumePresetId("custom");
         setVolumeMin(value);
-        if (value !== "" && volumeMax !== "" && Number(value) > Number(volumeMax)) {
+        if (
+            value !== "" &&
+            volumeMax !== "" &&
+            Number(value) > Number(volumeMax)
+        ) {
             setVolumeMax(value);
         }
         setSelectedId(null);
@@ -148,7 +164,11 @@ export default function Index({
     const handleVolumeMaxChange = (value) => {
         setVolumePresetId("custom");
         setVolumeMax(value);
-        if (value !== "" && volumeMin !== "" && Number(value) < Number(volumeMin)) {
+        if (
+            value !== "" &&
+            volumeMin !== "" &&
+            Number(value) < Number(volumeMin)
+        ) {
             setVolumeMin(value);
         }
         setSelectedId(null);
@@ -205,397 +225,500 @@ export default function Index({
                     <RentalTariffTable tariffTable={tariffTable} />
 
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                        {/* ── Catálogo ── */}
+                        <section
+                            id="catalogo-tablas"
+                            className="scroll-mt-24 rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur"
+                        >
+                            {/* Cabecera con título + filtros */}
+                            <div className="border-b border-slate-700 p-6">
+                                <h1 className="text-[32px] font-extrabold tracking-tight text-slate-100">
+                                    Tablas de alquiler
+                                </h1>
+                                <p className="mt-1 text-sm text-slate-300">
+                                    Consulta disponibilidad y reserva en
+                                    segundos.
+                                </p>
+                                <div
+                                    className="mt-4 flex flex-wrap gap-2"
+                                    role="tablist"
+                                    aria-label="Filtros de categoría"
+                                >
+                                    {categoryTabs.map((f) => {
+                                        const selected =
+                                            activeCategory === f.id;
+                                        const accent =
+                                            f.id === "all"
+                                                ? null
+                                                : boardCategoryAccent(f.id);
+                                        const activeClass = accent
+                                            ? accent.tabActive
+                                            : "bg-cyan-600 text-white ring-cyan-500";
 
-                    {/* ── Catálogo ── */}
-                    <section
-                        id="catalogo-tablas"
-                        className="scroll-mt-4 rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur"
-                    >
-                        {/* Cabecera con título + filtros */}
-                        <div className="border-b border-slate-700 p-6">
-                            <h1 className="text-[32px] font-extrabold tracking-tight text-slate-100">
-                                Tablas de alquiler
-                            </h1>
-                            <p className="mt-1 text-sm text-slate-300">
-                                Consulta disponibilidad y reserva en segundos.
-                            </p>
-                            <div
-                                className="mt-4 flex flex-wrap gap-2"
-                                role="tablist"
-                                aria-label="Filtros de categoría"
-                            >
-                                {categoryTabs.map((f) => {
-                                    const selected = activeCategory === f.id;
-                                    const accent = f.id === "all" ? null : boardCategoryAccent(f.id);
-                                    const activeClass = accent
-                                        ? accent.tabActive
-                                        : "bg-cyan-600 text-white ring-cyan-500";
-
-                                    return (
-                                        <button
-                                            key={f.id}
-                                            type="button"
-                                            role="tab"
-                                            aria-selected={selected}
-                                            onClick={() => handleCategoryChange(f.id)}
-                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ${
-                                                selected
-                                                    ? activeClass
-                                                    : "bg-slate-900 text-slate-300 ring-slate-600 hover:-translate-y-px hover:bg-slate-800 hover:text-slate-100"
-                                            }`}
-                                        >
-                                            {accent ? (
-                                                <span
-                                                    className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                                                        selected ? "bg-white/90" : accent.dot
-                                                    }`}
-                                                    aria-hidden="true"
-                                                />
-                                            ) : null}
-                                            {f.label}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-
-                            <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-800/70 p-3">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-300">
-                                        Filtros por medidas
-                                    </p>
-                                    {hasMeasureFilters ? (
-                                        <button
-                                            type="button"
-                                            onClick={clearMeasureFilters}
-                                            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/15"
-                                        >
-                                            <RotateCcw className="h-3.5 w-3.5" />
-                                            Limpiar
-                                        </button>
-                                    ) : null}
-                                </div>
-
-                                <div className="mt-3">
-                                    <p className="text-[11px] font-semibold text-slate-400">
-                                        Altura de la tabla
-                                    </p>
-                                    <div
-                                        className="mt-1.5 flex flex-wrap gap-1.5"
-                                        role="group"
-                                        aria-label="Rango de altura"
-                                    >
-                                        {HEIGHT_RANGE_PRESETS.map((preset) => {
-                                            const active = heightPresetId === preset.id;
-                                            return (
-                                                <button
-                                                    key={preset.id}
-                                                    type="button"
-                                                    aria-pressed={active}
-                                                    onClick={() => applyHeightPreset(preset)}
-                                                    className={`${chipBaseClass} ${
-                                                        active ? chipActiveClass : chipIdleClass
-                                                    }`}
-                                                >
-                                                    {preset.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="mt-3">
-                                    <p className="text-[11px] font-semibold text-slate-400">
-                                        Volumen
-                                    </p>
-                                    <div
-                                        className="mt-1.5 flex flex-wrap gap-1.5"
-                                        role="group"
-                                        aria-label="Rango de volumen"
-                                    >
-                                        {VOLUME_RANGE_PRESETS.map((preset) => {
-                                            const active = volumePresetId === preset.id;
-                                            return (
-                                                <button
-                                                    key={preset.id}
-                                                    type="button"
-                                                    aria-pressed={active}
-                                                    onClick={() => applyVolumePreset(preset)}
-                                                    className={`${chipBaseClass} ${
-                                                        active ? chipActiveClass : chipIdleClass
-                                                    }`}
-                                                >
-                                                    {preset.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className="mt-3 border-t border-slate-700/80 pt-2">
-                                    <button
-                                        type="button"
-                                        aria-expanded={showAdvancedMeasures}
-                                        onClick={() =>
-                                            setShowAdvancedMeasures((open) => !open)
-                                        }
-                                        className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-slate-400 transition hover:text-slate-200"
-                                    >
-                                        <span>Ajuste fino</span>
-                                        <ChevronDown
-                                            className={`h-3.5 w-3.5 shrink-0 transition-transform ${
-                                                showAdvancedMeasures ? "rotate-180" : ""
-                                            }`}
-                                            aria-hidden="true"
-                                        />
-                                    </button>
-
-                                    {showAdvancedMeasures ? (
-                                        <div className="mt-2 grid grid-cols-2 gap-2">
-                                            <label className="block">
-                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                                    Altura mínima
-                                                </span>
-                                                <select
-                                                    value={heightMin}
-                                                    onChange={(e) =>
-                                                        handleHeightMinChange(e.target.value)
-                                                    }
-                                                    className={selectClass}
-                                                    aria-label="Altura mínima de tabla"
-                                                >
-                                                    {HEIGHT_OPTIONS.map((opt) => (
-                                                        <option
-                                                            key={`hmin-${opt.value || "any"}`}
-                                                            value={opt.value}
-                                                        >
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                            <label className="block">
-                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                                    Altura máxima
-                                                </span>
-                                                <select
-                                                    value={heightMax}
-                                                    onChange={(e) =>
-                                                        handleHeightMaxChange(e.target.value)
-                                                    }
-                                                    className={selectClass}
-                                                    aria-label="Altura máxima de tabla"
-                                                >
-                                                    {HEIGHT_OPTIONS.map((opt) => (
-                                                        <option
-                                                            key={`hmax-${opt.value || "any"}`}
-                                                            value={opt.value}
-                                                        >
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                            <label className="block">
-                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                                    Volumen mínimo
-                                                </span>
-                                                <select
-                                                    value={volumeMin}
-                                                    onChange={(e) =>
-                                                        handleVolumeMinChange(e.target.value)
-                                                    }
-                                                    className={selectClass}
-                                                    aria-label="Volumen mínimo en litros"
-                                                >
-                                                    {VOLUME_OPTIONS.map((opt) => (
-                                                        <option
-                                                            key={`vmin-${opt.value || "any"}`}
-                                                            value={opt.value}
-                                                        >
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                            <label className="block">
-                                                <span className="mb-1 block text-[11px] font-semibold text-slate-300">
-                                                    Volumen máximo
-                                                </span>
-                                                <select
-                                                    value={volumeMax}
-                                                    onChange={(e) =>
-                                                        handleVolumeMaxChange(e.target.value)
-                                                    }
-                                                    className={selectClass}
-                                                    aria-label="Volumen máximo en litros"
-                                                >
-                                                    {VOLUME_OPTIONS.map((opt) => (
-                                                        <option
-                                                            key={`vmax-${opt.value || "any"}`}
-                                                            value={opt.value}
-                                                        >
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </label>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Lista de tablas */}
-                        <div className="p-3">
-                            {filteredBoards.length === 0 ? (
-                                <EmptyState
-                                    title={
-                                        hasMeasureFilters
-                                            ? "Ninguna tabla coincide con los filtros"
-                                            : "No hay tablas en esta categoría"
-                                    }
-                                    description={
-                                        hasMeasureFilters
-                                            ? "Amplía altura o volumen, o limpia los filtros para ver más opciones."
-                                            : "Prueba otra categoría arriba. Las demás pueden tener disponibilidad."
-                                    }
-                                    action={
-                                        hasMeasureFilters ? (
-                                            <button
-                                                type="button"
-                                                onClick={clearMeasureFilters}
-                                                className="inline-flex items-center rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-600"
-                                            >
-                                                Limpiar filtros
-                                            </button>
-                                        ) : null
-                                    }
-                                />
-                            ) : (
-                                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
-                                    {filteredBoards.map((s) => {
-                                        const name     = s.name || `Tabla #${s.id}`;
-                                        const imgUrl   = imageUrlFor(s);
-                                        const selected = selectedId === s.id;
-                                        const fromPrice = catalogFromPriceLabel(s.price_schema);
-                                        const metaParts = [
-                                            boardCategoryLabel(s.category),
-                                            s.altura ? formatSurfHeight(s.altura) : null,
-                                            s.volumen ? `${parseFloat(s.volumen)} L` : null,
-                                        ].filter(Boolean);
                                         return (
-                                            /* Tarjeta + acordeón en el mismo celda: en <lg el detalle cae justo debajo */
-                                            <div key={s.id} className="flex flex-col gap-2.5">
-                                                <div
-                                                    className={`group rounded-2xl border p-3 transition-all duration-200 ${
-                                                        selected
-                                                            ? "border-cyan-400 bg-cyan-500/10 shadow-sm"
-                                                            : "border-slate-700 bg-slate-900 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-sm"
-                                                    }`}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleCardClick(s.id)}
-                                                        aria-expanded={selected}
-                                                        aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
-                                                        className="flex w-full items-start gap-3 text-left"
-                                                    >
-                                                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24">
-                                                            <SafeImage
-                                                                src={imgUrl}
-                                                                alt={s.image_alt || name}
-                                                                className="h-full w-full object-cover"
-                                                                placeholderClassName="rounded-xl"
-                                                            />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <p className="truncate font-heading text-[15px] font-semibold text-slate-100">
-                                                                {name}
-                                                            </p>
-                                                            <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-slate-400">
-                                                                {metaParts.join(" · ")}
-                                                            </p>
-                                                            {fromPrice ? (
-                                                                <p className="mt-0.5 truncate text-xs font-medium text-cyan-300/90">
-                                                                    {fromPrice}
-                                                                </p>
-                                                            ) : null}
-                                                        </div>
-                                                        {!isLgUp ? (
-                                                            <span
-                                                                className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
-                                                                    selected
-                                                                        ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
-                                                                        : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
-                                                                }`}
-                                                                aria-hidden="true"
-                                                            >
-                                                                <ChevronDown
-                                                                    className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
-                                                                    strokeWidth={2.5}
-                                                                />
-                                                            </span>
-                                                        ) : null}
-                                                    </button>
-                                                    <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
-                                                        <Link
-                                                            href={route("rentals.surfboards.show", s.id)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200 lg:hidden"
-                                                        >
-                                                            Ver ficha
-                                                        </Link>
-                                                    </div>
-                                                </div>
-
-                                                {/* Acordeón: solo en <lg, montado justo debajo de ESTA tarjeta */}
-                                                {selected && !isLgUp ? (
-                                                    <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5">
-                                                        <SurfboardPublicDetail
-                                                            board={s}
-                                                            onImageClick={setLightbox}
-                                                            whatsappHelpUrl={whatsappHelpUrl}
-                                                            rentalPolicy={rentalPolicy}
-                                                            titleAs="h2"
-                                                        />
-                                                    </div>
+                                            <button
+                                                key={f.id}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={selected}
+                                                onClick={() =>
+                                                    handleCategoryChange(f.id)
+                                                }
+                                                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ${
+                                                    selected
+                                                        ? activeClass
+                                                        : "bg-slate-900 text-slate-300 ring-slate-600 hover:-translate-y-px hover:bg-slate-800 hover:text-slate-100"
+                                                }`}
+                                            >
+                                                {accent ? (
+                                                    <span
+                                                        className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                                                            selected
+                                                                ? "bg-white/90"
+                                                                : accent.dot
+                                                        }`}
+                                                        aria-hidden="true"
+                                                    />
                                                 ) : null}
-                                            </div>
+                                                {f.label}
+                                            </button>
                                         );
                                     })}
                                 </div>
-                            )}
-                        </div>
-                    </section>
 
-                    {/* Panel lateral: solo montado en ≥lg (nunca debajo de la lista en tablet) */}
-                    {isLgUp ? (
-                    <section className="rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
-                        <div className="p-6">
-                            {!selectedBoard ? (
-                                <div className="grid place-items-center rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
-                                    <div>
-                                        <p className="text-lg font-semibold text-slate-100">
-                                            Selecciona una tabla para ver los detalles
+                                <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-800/70 p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                                            Filtros por medidas
                                         </p>
-                                        <p className="mt-1 text-sm text-slate-400">
-                                            Aquí verás imágenes, especificaciones y opciones de reserva.
+                                        {hasMeasureFilters ? (
+                                            <button
+                                                type="button"
+                                                onClick={clearMeasureFilters}
+                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/15"
+                                            >
+                                                <RotateCcw className="h-3.5 w-3.5" />
+                                                Limpiar
+                                            </button>
+                                        ) : null}
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <p className="text-[11px] font-semibold text-slate-400">
+                                            Altura de la tabla
                                         </p>
+                                        <div
+                                            className="mt-1.5 flex flex-wrap gap-1.5"
+                                            role="group"
+                                            aria-label="Rango de altura"
+                                        >
+                                            {HEIGHT_RANGE_PRESETS.map(
+                                                (preset) => {
+                                                    const active =
+                                                        heightPresetId ===
+                                                        preset.id;
+                                                    return (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            aria-pressed={
+                                                                active
+                                                            }
+                                                            onClick={() =>
+                                                                applyHeightPreset(
+                                                                    preset,
+                                                                )
+                                                            }
+                                                            className={`${chipBaseClass} ${
+                                                                active
+                                                                    ? chipActiveClass
+                                                                    : chipIdleClass
+                                                            }`}
+                                                        >
+                                                            {preset.label}
+                                                        </button>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3">
+                                        <p className="text-[11px] font-semibold text-slate-400">
+                                            Volumen
+                                        </p>
+                                        <div
+                                            className="mt-1.5 flex flex-wrap gap-1.5"
+                                            role="group"
+                                            aria-label="Rango de volumen"
+                                        >
+                                            {VOLUME_RANGE_PRESETS.map(
+                                                (preset) => {
+                                                    const active =
+                                                        volumePresetId ===
+                                                        preset.id;
+                                                    return (
+                                                        <button
+                                                            key={preset.id}
+                                                            type="button"
+                                                            aria-pressed={
+                                                                active
+                                                            }
+                                                            onClick={() =>
+                                                                applyVolumePreset(
+                                                                    preset,
+                                                                )
+                                                            }
+                                                            className={`${chipBaseClass} ${
+                                                                active
+                                                                    ? chipActiveClass
+                                                                    : chipIdleClass
+                                                            }`}
+                                                        >
+                                                            {preset.label}
+                                                        </button>
+                                                    );
+                                                },
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 border-t border-slate-700/80 pt-2">
+                                        <button
+                                            type="button"
+                                            aria-expanded={showAdvancedMeasures}
+                                            onClick={() =>
+                                                setShowAdvancedMeasures(
+                                                    (open) => !open,
+                                                )
+                                            }
+                                            className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                                        >
+                                            <span>Ajuste fino</span>
+                                            <ChevronDown
+                                                className={`h-3.5 w-3.5 shrink-0 transition-transform ${
+                                                    showAdvancedMeasures
+                                                        ? "rotate-180"
+                                                        : ""
+                                                }`}
+                                                aria-hidden="true"
+                                            />
+                                        </button>
+
+                                        {showAdvancedMeasures ? (
+                                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                                <label className="block">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                        Altura mínima
+                                                    </span>
+                                                    <select
+                                                        value={heightMin}
+                                                        onChange={(e) =>
+                                                            handleHeightMinChange(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={selectClass}
+                                                        aria-label="Altura mínima de tabla"
+                                                    >
+                                                        {HEIGHT_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    key={`hmin-${opt.value || "any"}`}
+                                                                    value={
+                                                                        opt.value
+                                                                    }
+                                                                >
+                                                                    {opt.label}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                        Altura máxima
+                                                    </span>
+                                                    <select
+                                                        value={heightMax}
+                                                        onChange={(e) =>
+                                                            handleHeightMaxChange(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={selectClass}
+                                                        aria-label="Altura máxima de tabla"
+                                                    >
+                                                        {HEIGHT_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    key={`hmax-${opt.value || "any"}`}
+                                                                    value={
+                                                                        opt.value
+                                                                    }
+                                                                >
+                                                                    {opt.label}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                        Volumen mínimo
+                                                    </span>
+                                                    <select
+                                                        value={volumeMin}
+                                                        onChange={(e) =>
+                                                            handleVolumeMinChange(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={selectClass}
+                                                        aria-label="Volumen mínimo en litros"
+                                                    >
+                                                        {VOLUME_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    key={`vmin-${opt.value || "any"}`}
+                                                                    value={
+                                                                        opt.value
+                                                                    }
+                                                                >
+                                                                    {opt.label}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                </label>
+                                                <label className="block">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                        Volumen máximo
+                                                    </span>
+                                                    <select
+                                                        value={volumeMax}
+                                                        onChange={(e) =>
+                                                            handleVolumeMaxChange(
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        className={selectClass}
+                                                        aria-label="Volumen máximo en litros"
+                                                    >
+                                                        {VOLUME_OPTIONS.map(
+                                                            (opt) => (
+                                                                <option
+                                                                    key={`vmax-${opt.value || "any"}`}
+                                                                    value={
+                                                                        opt.value
+                                                                    }
+                                                                >
+                                                                    {opt.label}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                </label>
+                                            </div>
+                                        ) : null}
                                     </div>
                                 </div>
-                            ) : (
-                                <SurfboardPublicDetail
-                                    board={selectedBoard}
-                                    onImageClick={setLightbox}
-                                    whatsappHelpUrl={whatsappHelpUrl}
-                                    rentalPolicy={rentalPolicy}
-                                    titleAs="h2"
-                                />
-                            )}
-                        </div>
-                    </section>
-                    ) : null}
-                </div>
+                            </div>
+
+                            {/* Lista de tablas */}
+                            <div className="p-3">
+                                {filteredBoards.length === 0 ? (
+                                    <EmptyState
+                                        title={
+                                            hasMeasureFilters
+                                                ? "Ninguna tabla coincide con los filtros"
+                                                : "No hay tablas en esta categoría"
+                                        }
+                                        description={
+                                            hasMeasureFilters
+                                                ? "Amplía altura o volumen, o limpia los filtros para ver más opciones."
+                                                : "Prueba otra categoría arriba. Las demás pueden tener disponibilidad."
+                                        }
+                                        action={
+                                            hasMeasureFilters ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={
+                                                        clearMeasureFilters
+                                                    }
+                                                    className="inline-flex items-center rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-600"
+                                                >
+                                                    Limpiar filtros
+                                                </button>
+                                            ) : null
+                                        }
+                                    />
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-2">
+                                        {filteredBoards.map((s) => {
+                                            const name =
+                                                s.name || `Tabla #${s.id}`;
+                                            const imgUrl = imageUrlFor(s);
+                                            const selected =
+                                                selectedId === s.id;
+                                            const fromPrice =
+                                                catalogFromPriceLabel(
+                                                    s.price_schema,
+                                                );
+                                            const metaParts = [
+                                                boardCategoryLabel(s.category),
+                                                s.altura
+                                                    ? formatSurfHeight(s.altura)
+                                                    : null,
+                                                s.volumen
+                                                    ? `${parseFloat(s.volumen)} L`
+                                                    : null,
+                                            ].filter(Boolean);
+                                            return (
+                                                /* Tarjeta + acordeón en el mismo celda: en <lg el detalle cae justo debajo */
+                                                <div
+                                                    key={s.id}
+                                                    className="flex flex-col gap-2.5"
+                                                >
+                                                    <div
+                                                        className={`group rounded-2xl border p-3 transition-all duration-200 ${
+                                                            selected
+                                                                ? "border-cyan-400 bg-cyan-500/10 shadow-sm"
+                                                                : "border-slate-700 bg-slate-900 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-sm"
+                                                        }`}
+                                                    >
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                handleCardClick(
+                                                                    s.id,
+                                                                )
+                                                            }
+                                                            aria-expanded={
+                                                                selected
+                                                            }
+                                                            aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
+                                                            className="flex w-full items-start gap-3 text-left"
+                                                        >
+                                                            <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24">
+                                                                <SafeImage
+                                                                    src={imgUrl}
+                                                                    alt={
+                                                                        s.image_alt ||
+                                                                        name
+                                                                    }
+                                                                    className="h-full w-full object-cover"
+                                                                    placeholderClassName="rounded-xl"
+                                                                />
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate font-heading text-[15px] font-semibold text-slate-100">
+                                                                    {name}
+                                                                </p>
+                                                                <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-slate-400">
+                                                                    {metaParts.join(
+                                                                        " · ",
+                                                                    )}
+                                                                </p>
+                                                                {fromPrice ? (
+                                                                    <p className="mt-0.5 truncate text-xs font-medium text-cyan-300/90">
+                                                                        {
+                                                                            fromPrice
+                                                                        }
+                                                                    </p>
+                                                                ) : null}
+                                                            </div>
+                                                            {!isLgUp ? (
+                                                                <span
+                                                                    className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+                                                                        selected
+                                                                            ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
+                                                                            : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
+                                                                    }`}
+                                                                    aria-hidden="true"
+                                                                >
+                                                                    <ChevronDown
+                                                                        className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
+                                                                        strokeWidth={
+                                                                            2.5
+                                                                        }
+                                                                    />
+                                                                </span>
+                                                            ) : null}
+                                                        </button>
+                                                        <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
+                                                            <Link
+                                                                href={route(
+                                                                    "rentals.surfboards.show",
+                                                                    s.id,
+                                                                )}
+                                                                onClick={(e) =>
+                                                                    e.stopPropagation()
+                                                                }
+                                                                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200 lg:hidden"
+                                                            >
+                                                                Ver ficha
+                                                            </Link>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Acordeón: solo en <lg, montado justo debajo de ESTA tarjeta */}
+                                                    {selected && !isLgUp ? (
+                                                        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5">
+                                                            <SurfboardPublicDetail
+                                                                board={s}
+                                                                onImageClick={
+                                                                    setLightbox
+                                                                }
+                                                                whatsappHelpUrl={
+                                                                    whatsappHelpUrl
+                                                                }
+                                                                rentalPolicy={
+                                                                    rentalPolicy
+                                                                }
+                                                                titleAs="h2"
+                                                            />
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        {/* Panel lateral: solo montado en ≥lg (nunca debajo de la lista en tablet) */}
+                        {isLgUp ? (
+                            <section className="rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
+                                <div className="p-6">
+                                    {!selectedBoard ? (
+                                        <div className="grid place-items-center rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
+                                            <div>
+                                                <p className="text-lg font-semibold text-slate-100">
+                                                    Selecciona una tabla para
+                                                    ver los detalles
+                                                </p>
+                                                <p className="mt-1 text-sm text-slate-400">
+                                                    Aquí verás imágenes,
+                                                    especificaciones y opciones
+                                                    de reserva.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <SurfboardPublicDetail
+                                            board={selectedBoard}
+                                            onImageClick={setLightbox}
+                                            whatsappHelpUrl={whatsappHelpUrl}
+                                            rentalPolicy={rentalPolicy}
+                                            titleAs="h2"
+                                        />
+                                    )}
+                                </div>
+                            </section>
+                        ) : null}
+                    </div>
 
                     {allBoards.length === 0 && (
                         <div className="mt-8">

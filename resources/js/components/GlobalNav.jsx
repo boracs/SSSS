@@ -85,36 +85,6 @@ const NAV_FLYOUT_BTN_BASE =
  * - type "flyout": abre panel a todo el ancho con columnas (grupos).
  */
 function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
-    const forecastLink = {
-        type: "link",
-        id: "forecast",
-        label: "Parte",
-        href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
-    };
-    const publicTopLinks = [
-        {
-            type: "link",
-            id: "autocoach",
-            label: "Comparador de maniobras",
-            shortLabel: "Comparador",
-            href: safeRoute("autocoach.index"),
-        },
-        {
-            type: "link",
-            id: "taller",
-            label: "Taller de Surf",
-            shortLabel: "Taller",
-            href: safeRoute("taller.index"),
-        },
-        {
-            type: "link",
-            id: "nosotros",
-            label: "Sobre nosotros",
-            shortLabel: "Nosotros",
-            href: safeRoute("nosotros"),
-        },
-        forecastLink,
-    ];
     const contactoLink = {
         type: "link",
         id: "contacto",
@@ -130,12 +100,54 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                 label: "Inicio",
                 href: safeRoute("Pag_principal"),
             },
-            forecastLink,
+            // Mar/olas: mismos deep-links que el menú cliente (no solo forecast).
+            {
+                type: "flyout",
+                id: "admin-zurriola",
+                label: "La Zurriola",
+                shortLabel: "Zurriola",
+                groups: [
+                    {
+                        title: "Webcam y parte",
+                        links: [
+                            {
+                                label: "Webcam Zurriola en directo",
+                                href: `${safeRoute("servicios.webcams")}#webcam-directo`,
+                                featured: true,
+                            },
+                            {
+                                label: "Parte de hoy",
+                                href: `${safeRoute("servicios.webcams")}#parte-s4-hoy`,
+                            },
+                            {
+                                label: "Forecast 16 días",
+                                href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+                            },
+                        ],
+                    },
+                ],
+            },
+            // Gestión admin: orden por frecuencia de mostrador (cobros → ops → catálogo).
+            // Barra: Inicio · La Zurriola · Gestión · Extras · Contacto
             {
                 type: "flyout",
                 id: "admin-gestion",
                 label: "Gestión",
                 groups: [
+                    {
+                        title: "Cobros",
+                        links: [
+                            {
+                                label: "Pagos datáfono",
+                                href: safeRoute("admin.payments.datafono.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Clientes · Historial de pagos",
+                                href: safeRoute("admin.payments.clients.index"),
+                            },
+                        ],
+                    },
                     {
                         title: "Taquillas",
                         links: [
@@ -143,6 +155,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 label: "Esquema taquillas",
                                 href: safeRoute("taquilla.esquema"),
                                 featured: true,
+                            },
+                            {
+                                label: "Asignador de Taquillas",
+                                href: safeRoute("asignar.taquilla.mostrar"),
                             },
                             {
                                 label: "Vigencia",
@@ -153,12 +169,26 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 href: safeRoute("taquilla.pagos.registro"),
                             },
                             {
-                                label: "Asignador de Taquillas",
-                                href: safeRoute("asignar.taquilla.mostrar"),
-                            },
-                            {
                                 label: "Candado de emergencia",
                                 href: safeRoute("admin.emergency-keys.index"),
+                            },
+                        ],
+                    },
+                    {
+                        title: "Clases",
+                        links: [
+                            {
+                                label: "Gestor de Clases",
+                                href: safeRoute("admin.class-manager.index"),
+                                featured: true,
+                            },
+                            {
+                                label: "Gestor de clases diario",
+                                href: safeRoute("admin.academy.index"),
+                            },
+                            {
+                                label: "Tarifas particulares",
+                                href: safeRoute("admin.catalog.private-lessons"),
                             },
                         ],
                     },
@@ -174,32 +204,26 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 label: "Gestor de Productos",
                                 href: safeRoute("mostrar.productos"),
                             },
-                        ],
-                    },
-                    {
-                        title: "Alquileres",
-                        links: [
                             {
                                 label: "Inventario de Tablas",
                                 href: safeRoute("admin.surfboards.index"),
-                                featured: true,
                             },
                             {
-                                label: "Reservas de Alquiler",
-                                href: safeRoute("admin.bookings.index"),
-                            },
-                            {
-                                label: "Segunda Mano",
+                                label: "Tablas segunda mano",
                                 href: safeRoute("admin.second-hand.index"),
                             },
                             {
                                 label: "Subastas",
                                 href: safeRoute("admin.auctions.index"),
                             },
+                            {
+                                label: "Reservas de Alquiler",
+                                href: safeRoute("admin.bookings.index"),
+                            },
                         ],
                     },
                     {
-                        title: "Servicios",
+                        title: "Catálogo",
                         links: [
                             {
                                 label: "Gestor de servicios",
@@ -215,46 +239,22 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 href: safeRoute("admin.bonos.index"),
                             },
                             {
-                                label: "Gestor de Clases",
-                                href: safeRoute("admin.class-manager.index"),
-                            },
-                            {
                                 label: "Packs de fotos",
                                 href: safeRoute("admin.photos.index"),
                             },
                         ],
                     },
                     {
-                        title: "Chatbot",
-                        links: [
-                            {
-                                label: "Casos derivados",
-                                href: safeRoute("admin.chatbot.index"),
-                                featured: true,
-                            },
-                        ],
-                    },
-                    {
-                        title: "Usuarios",
+                        title: "Clientes",
                         links: [
                             {
                                 label: "Usuarios y VIP",
                                 href: safeRoute("admin.users.index"),
                                 featured: true,
                             },
-                        ],
-                    },
-                    {
-                        title: "Pagos",
-                        links: [
                             {
-                                label: "Pagos datáfono",
-                                href: safeRoute("admin.payments.datafono.index"),
-                                featured: true,
-                            },
-                            {
-                                label: "Clientes · Historial de pagos",
-                                href: safeRoute("admin.payments.clients.index"),
+                                label: "Casos chatbot",
+                                href: safeRoute("admin.chatbot.index"),
                             },
                         ],
                     },
@@ -273,14 +273,6 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 href: safeRoute("autocoach.index"),
                                 featured: true,
                             },
-                            {
-                                label: "Webcams",
-                                href: safeRoute("servicios.webcams"),
-                            },
-                            {
-                                label: "Parte / Forecast",
-                                href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
-                            },
                         ],
                     },
                 ],
@@ -289,14 +281,17 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         ];
     }
 
-    // Clases: reserva (transacción) arriba; landings informativas debajo.
-    // Guía surfskate va en Servicios (no es reserva de clase).
-    const clasesLinks = [];
-    clasesLinks.push({
-        label: "Reservar clases",
-        href: safeRoute("academy.lessons.index"),
-        featured: true,
-    });
+    // ── Usuario normal / cliente: jerarquía por intención (no admin) ──
+    // Barra: Inicio · Clases · Mar · Club · Tienda · Reparaciones · Más · Contacto
+    // Cuenta (perfil) vive en el icono de usuario, no en el mega-menú.
+
+    const clasesLinks = [
+        {
+            label: "Reservar clases",
+            href: safeRoute("academy.lessons.index"),
+            featured: true,
+        },
+    ];
     if (isAuth) {
         clasesLinks.push({
             label: "Mis clases reservadas",
@@ -308,6 +303,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         {
             label: "Info · Clases surfskate",
             href: safeRoute("servicios.surfSkate"),
+        },
+        {
+            label: "Guía surfskate",
+            href: safeRoute("servicios.surfSkate.guia"),
         },
         { label: "Surftrips", href: safeRoute("servicios.surfTrips") },
     );
@@ -325,20 +324,35 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         });
     }
 
-    // Taquillas: invitado/auth sin locker → Planes; con locker → Mi Taquilla + sin llave.
-    const taquillasLinks = [];
+    const marLinks = [
+        {
+            label: "Webcam Zurriola en directo",
+            href: `${safeRoute("servicios.webcams")}#webcam-directo`,
+            featured: true,
+        },
+        {
+            label: "Parte de hoy",
+            href: `${safeRoute("servicios.webcams")}#parte-s4-hoy`,
+        },
+        {
+            label: "Forecast 16 días",
+            href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
+        },
+    ];
+
+    const clubLinks = [];
     if (hasLocker) {
-        taquillasLinks.push({
+        clubLinks.push({
             label: "Mi Taquilla",
             href: safeRoute("taquillas.index.client"),
             featured: true,
         });
-        taquillasLinks.push({
+        clubLinks.push({
             label: "Me quedé sin llave",
             href: safeRoute("emergency-key.show"),
         });
     } else {
-        taquillasLinks.push({
+        clubLinks.push({
             label: "Planes y Cuotas",
             href: isAuth
                 ? safeRoute("taquillas.index.client")
@@ -346,6 +360,10 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             featured: true,
         });
     }
+    clubLinks.push({
+        label: "Micro-servicios del club",
+        href: `${safeRoute("nosotros")}#micro-servicios-club`,
+    });
 
     const tiendaLinks = [
         {
@@ -353,21 +371,25 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             href: safeRoute("tienda"),
             featured: true,
         },
+    ];
+    if (isAuth) {
+        // Solo menú cliente: buildMenus hace return temprano si isAdmin.
+        // Pedidos personales del usuario; el admin gestiona pedidos en Gestión → Gestor de Pedidos.
+        tiendaLinks.push({
+            label: "Mis Pedidos",
+            href: safeRoute("pedidos"),
+        });
+    }
+    tiendaLinks.push(
         {
-            label: "Tablas de Segunda Mano",
+            label: "Tablas segunda mano",
             href: safeRoute("second-hand.index"),
         },
         {
             label: "Subastas",
             href: safeRoute("auctions.index"),
         },
-    ];
-    if (isAuth && !isAdmin) {
-        tiendaLinks.splice(1, 0, {
-            label: "Mis Pedidos",
-            href: safeRoute("pedidos"),
-        });
-    }
+    );
 
     const reparacionesLinks = [
         {
@@ -385,79 +407,42 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
         },
     ];
 
-    const serviciosUtilLinks = [
+    const masLinks = [
         {
             label: "Alquiler de tablas",
             href: safeRoute("rentals.surfboards.index"),
             featured: true,
         },
-        {
-            label: "Guía surfskate",
-            href: safeRoute("servicios.surfSkate.guia"),
-        },
     ];
-    if (isAuth && !isAdmin) {
-        serviciosUtilLinks.push({
+    if (isAuth) {
+        // Solo menú cliente (admin no llega aquí). Acceso a reservas propias de alquiler.
+        masLinks.push({
             label: "Mis reservas · alquileres",
             href: `${safeRoute("my-reservations.index")}?tab=rentals`,
         });
     }
-
-    // Fila 1 (cortas): Tienda · Reparaciones · Servicios · Taquillas · [Cuenta]
-    // Fila 2 (largas): Clases · Multimedia
-    const serviciosGroups = [
-        { title: "Tienda", links: tiendaLinks },
-        { title: "Reparaciones", links: reparacionesLinks },
-        { title: "Servicios", links: serviciosUtilLinks },
-        { title: "Taquillas", links: taquillasLinks },
-    ];
-
-    if (isAuth && !isAdmin) {
-        serviciosGroups.push({
-            title: "Cuenta",
-            links: [
-                {
-                    label: "Mi Perfil",
-                    href: safeRoute("my-profile.index"),
-                    featured: true,
-                },
-            ],
-        });
-    }
-
-    serviciosGroups.push(
-        { title: "Clases", links: clasesLinks },
+    masLinks.push(
         {
-            title: "Multimedia",
-            links: [
-                {
-                    label: "Comparador de maniobras",
-                    href: safeRoute("autocoach.index"),
-                    featured: true,
-                },
-                {
-                    label: "Fotografia",
-                    href: safeRoute("servicios.fotografia"),
-                },
-                {
-                    label: "Videograbaciones",
-                    href: safeRoute("servicios.videograbaciones"),
-                },
-                { label: "Webcams", href: safeRoute("servicios.webcams") },
-                {
-                    label: "Parte / Forecast",
-                    href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
-                },
-            ],
+            label: "Comparador de maniobras",
+            href: safeRoute("autocoach.index"),
+        },
+        {
+            label: "Fotografía",
+            href: safeRoute("servicios.fotografia"),
+        },
+        {
+            label: "Videograbaciones",
+            href: safeRoute("servicios.videograbaciones"),
+        },
+        {
+            label: "Blog educativo",
+            href: safeRoute("taller.index"),
+        },
+        {
+            label: "Sobre nosotros",
+            href: safeRoute("nosotros"),
         },
     );
-
-    const servicios = {
-        type: "flyout",
-        id: "servicios",
-        label: "Servicios",
-        groups: serviciosGroups,
-    };
 
     return [
         {
@@ -466,10 +451,44 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             label: "Inicio",
             href: safeRoute("Pag_principal"),
         },
-        publicTopLinks[0],
-        publicTopLinks[1],
-        publicTopLinks[2],
-        servicios,
+        {
+            type: "flyout",
+            id: "clases",
+            label: "Clases",
+            groups: [{ title: "Clases", links: clasesLinks }],
+        },
+        {
+            type: "flyout",
+            id: "mar",
+            label: "La Zurriola",
+            shortLabel: "Zurriola",
+            groups: [{ title: "Webcam y parte", links: marLinks }],
+        },
+        {
+            type: "flyout",
+            id: "club",
+            label: "Club",
+            groups: [{ title: "Club y taquillas", links: clubLinks }],
+        },
+        {
+            type: "flyout",
+            id: "tienda",
+            label: "Tienda",
+            groups: [{ title: "Tienda", links: tiendaLinks }],
+        },
+        {
+            type: "flyout",
+            id: "reparaciones",
+            label: "Reparaciones",
+            shortLabel: "Reparac.",
+            groups: [{ title: "Reparaciones", links: reparacionesLinks }],
+        },
+        {
+            type: "flyout",
+            id: "mas",
+            label: "Más",
+            groups: [{ title: "Más", links: masLinks }],
+        },
         contactoLink,
     ];
 }
@@ -651,6 +670,7 @@ export default function GlobalNav() {
     const accountLinks = [
         { label: "Editar mi cuenta", href: safeRoute("profile.edit") },
     ];
+    // Admin: no listar Mis Pedidos/Reservas/facturas aquí — ya tiene Gestión; evita duplicar con el rol cliente.
     if (!isAdmin) {
         accountLinks.push(
             {

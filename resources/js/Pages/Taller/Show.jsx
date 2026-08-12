@@ -13,16 +13,19 @@ import {
 import { TallerRelatedArticles } from "../../components/Taller/TallerArticleCard";
 import { ArrowLeft, BookOpen, CalendarRange, Clock3, Waves } from "lucide-react";
 import DetailedForecastEntry from "../../components/webcam/DetailedForecastEntry";
+import { formatTallerDisplayTitle } from "../../lib/tallerTitle";
 
 const FORECAST_ARTICLE_SLUG = "como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas";
 
+/** Tipografía de lectura: todos los artículos del Taller (medida ~65ch, Hn sin tracking denso). */
 const ARTICLE_BODY_CLASS =
-    "taller-article font-editorial text-[1.0625rem] leading-[1.9] text-slate-700 " +
-    "[&_h2]:relative [&_h2]:mt-12 [&_h2]:mb-4 [&_h2]:pl-4 [&_h2]:font-heading [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-slate-900 " +
+    "taller-article mx-auto max-w-[42rem] text-[1.0625rem] leading-[1.75] tracking-normal text-slate-700 sm:text-[1.125rem] sm:leading-[1.8] " +
+    "[&_h2]:relative [&_h2]:mt-11 [&_h2]:mb-3.5 [&_h2]:pl-4 [&_h2]:font-heading [&_h2]:text-[1.35rem] [&_h2]:font-bold [&_h2]:leading-snug [&_h2]:tracking-normal [&_h2]:text-slate-900 sm:[&_h2]:text-2xl " +
     "[&_h2]:before:absolute [&_h2]:before:left-0 [&_h2]:before:top-1 [&_h2]:before:h-[calc(100%-0.25rem)] [&_h2]:before:w-1 [&_h2]:before:rounded-full [&_h2]:before:bg-gradient-to-b [&_h2]:before:from-[#0f5f74] [&_h2]:before:to-cyan-500 " +
-    "[&_h3]:mt-8 [&_h3]:mb-3 [&_h3]:font-heading [&_h3]:text-xl [&_h3]:font-semibold [&_h3]:text-[#0f5f74] " +
-    "[&_p]:mb-5 [&_p:last-child]:mb-0 " +
-    "[&_ul]:my-5 [&_ul]:space-y-2.5 [&_ul]:rounded-2xl [&_ul]:border [&_ul]:border-cyan-500/15 [&_ul]:bg-cyan-50/40 [&_ul]:p-5 [&_ul]:pl-8 [&_ul]:list-disc " +
+    "[&_h3]:mt-7 [&_h3]:mb-2.5 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:leading-snug [&_h3]:tracking-normal [&_h3]:text-[#0f5f74] sm:[&_h3]:text-xl " +
+    "[&_p]:mb-4 [&_p:last-child]:mb-0 " +
+    "[&_strong]:font-semibold [&_strong]:text-slate-800 " +
+    "[&_ul]:my-5 [&_ul]:space-y-2 [&_ul]:rounded-2xl [&_ul]:border [&_ul]:border-cyan-500/15 [&_ul]:bg-cyan-50/40 [&_ul]:p-5 [&_ul]:pl-8 [&_ul]:list-disc " +
     "[&_ol]:my-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-6 " +
     "[&_li]:leading-relaxed [&_li]:marker:text-cyan-600 " +
     "[&_figure]:my-8 [&_figure]:overflow-hidden [&_figure]:rounded-2xl [&_figure]:border [&_figure]:border-slate-200/80 [&_figure]:bg-slate-50 " +
@@ -35,7 +38,8 @@ const ARTICLE_BODY_CLASS =
 function estimateReadingMinutes(html) {
     const plain = String(html || "").replace(/<[^>]+>/g, " ");
     const words = plain.trim().split(/\s+/).filter(Boolean).length;
-    return Math.max(3, Math.ceil(words / 200));
+    // ~200 palabras/min; mínimo 1 (antes había suelo fijo de 3 y todos salían iguales)
+    return Math.max(1, Math.ceil(words / 200));
 }
 
 export default function Show({
@@ -46,6 +50,9 @@ export default function Show({
     seo = null,
 }) {
     const readingMinutes = estimateReadingMinutes(article.content);
+    const { main: titleMain, subtitle: titleSubtitle } = formatTallerDisplayTitle(
+        article.title,
+    );
 
     return (
         <Layout1>
@@ -65,7 +72,7 @@ export default function Show({
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur-sm transition hover:border-cyan-300 hover:text-[#0f5f74]"
                         >
                             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                            Volver al Taller
+                            Volver al blog educativo
                         </Link>
                     </motion.div>
 
@@ -76,7 +83,7 @@ export default function Show({
                         custom={0.08}
                         className="mt-8 overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.35)]"
                     >
-                        <header className="relative overflow-hidden bg-gradient-to-br from-[#0f5f74] via-[#0d4a5c] to-cyan-700 px-6 py-10 sm:px-10 sm:py-12">
+                        <header className="relative overflow-hidden bg-gradient-to-br from-[#0f5f74] via-[#0d4a5c] to-cyan-700 px-6 py-9 sm:px-10 sm:py-11">
                             <div
                                 aria-hidden
                                 className="pointer-events-none absolute inset-0 opacity-25"
@@ -91,15 +98,20 @@ export default function Show({
                                 className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-400/30 blur-3xl"
                             />
 
-                            <div className="relative">
+                            <div className="relative max-w-3xl">
                                 <TallerBadge
                                     icon={BookOpen}
-                                    label="Taller de Surf"
+                                    label="Blog educativo"
                                     variant="light"
                                 />
-                                <h1 className="mt-5 font-heading text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.65rem]">
-                                    {article.title}
+                                <h1 className="mt-5 font-heading text-[1.65rem] font-extrabold leading-[1.22] tracking-normal text-balance text-white sm:text-3xl sm:leading-[1.2] lg:text-[2.35rem] lg:leading-[1.18]">
+                                    {titleMain}
                                 </h1>
+                                {titleSubtitle ? (
+                                    <p className="mt-2 text-sm font-semibold leading-snug tracking-normal text-cyan-100/95 sm:text-base">
+                                        {titleSubtitle}
+                                    </p>
+                                ) : null}
                                 {article.excerpt ? (
                                     <p className="mt-4 max-w-2xl text-base leading-relaxed text-cyan-50/95 sm:text-lg">
                                         {article.excerpt}

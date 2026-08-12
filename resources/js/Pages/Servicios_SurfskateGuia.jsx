@@ -23,20 +23,17 @@ const PILARES = [
     {
         icon: Footprints,
         titulo: "Tu postura sobre la tabla",
-        texto:
-            "Mide mentalmente la distancia entre tus pies cuando surfeas. Esa medida debe encajar con la tabla: si los pies quedan muy juntos o muy separados, perderás fluidez al girar.",
+        texto: "Mide mentalmente la distancia entre tus pies cuando surfeas. Esa medida debe encajar con la tabla: si los pies quedan muy juntos o muy separados, perderás fluidez al girar.",
     },
     {
         icon: Ruler,
         titulo: "Tu altura y complexión",
-        texto:
-            "Si eres alto o tienes más corpulencia, necesitas una tabla más larga y ancha para no salirte de los cantos. Si eres más bajo o ligero, una tabla compacta te dará giros más rápidos y fáciles.",
+        texto: "Si eres alto o tienes más corpulencia, necesitas una tabla más larga y ancha para no salirte de los cantos. Si eres más bajo o ligero, una tabla compacta te dará giros más rápidos y fáciles.",
     },
     {
         icon: Scale,
         titulo: "Tu peso",
-        texto:
-            "El sistema de ejes YOW Meraki está pensado para quienes superan unos 50 kg. Para niños o pesos muy ligeros, la gama Grom ofrece tablas más suaves de manejar y menos exigentes al empujar.",
+        texto: "El sistema de ejes YOW Meraki está pensado para quienes superan unos 50 kg. Para niños o pesos muy ligeros, la gama Grom ofrece tablas más suaves de manejar y menos exigentes al empujar.",
     },
 ];
 
@@ -46,8 +43,7 @@ const FACTORES_TABLA = [
         icon: MoveHorizontal,
         clave: "Lo más importante",
         titulo: "Distancia entre ejes (wheelbase)",
-        queEs:
-            "Es el hueco entre el eje delantero y el trasero, medido por debajo de la tabla (de tornillo interior a tornillo interior). Ahí es donde caben tus pies.",
+        queEs: "Es el hueco entre el eje delantero y el trasero, medido por debajo de la tabla (de tornillo interior a tornillo interior). Ahí es donde caben tus pies.",
         puntos: [
             "Corta (16,5″ – 17,5″): giros muy cerrados y reactivos; pide más equilibrio.",
             "Larga (18,5″ – 20″+): giros más amplios, más estable a velocidad y bombeo más suave.",
@@ -57,8 +53,7 @@ const FACTORES_TABLA = [
         icon: Waves,
         clave: "Agarre de los pies",
         titulo: "Concavidad (concave)",
-        queEs:
-            "Es cómo de «hundida» está la tabla de lado a lado. YOW la clasifica en Low, Medium y High. Cuanta más curva, más «sujetos» quedan los pies sin depender de una lija muy agresiva.",
+        queEs: "Es cómo de «hundida» está la tabla de lado a lado. YOW la clasifica en Low, Medium y High. Cuanta más curva, más «sujetos» quedan los pies sin depender de una lija muy agresiva.",
         puntos: [
             "Alta (p. ej. Snappers, Hole Shot): ideal para cantear fuerte o giros agresivos.",
             "Baja / media (p. ej. Chiba, Malibú): más plana y cómoda para pasear o si vienes del longboard.",
@@ -68,8 +63,7 @@ const FACTORES_TABLA = [
         icon: Maximize2,
         clave: "Apoyo al inclinarte",
         titulo: "Ancho de la tabla (width)",
-        queEs:
-            "Es lo ancha que es la tabla en su punto más ancho. Influye en la palanca que haces con talón y punta del pie al girar.",
+        queEs: "Es lo ancha que es la tabla en su punto más ancho. Influye en la palanca que haces con talón y punta del pie al girar.",
         puntos: [
             "10″ o más: más superficie de apoyo; útil con pie grande (aprox. 42–43 EU o más) o si buscas estabilidad al inclinarte.",
         ],
@@ -78,8 +72,7 @@ const FACTORES_TABLA = [
         icon: ArrowUpFromLine,
         clave: "Sensación al girar",
         titulo: "Forma de la cola (tail) y rocker",
-        queEs:
-            "Es la elevación y la forma de la parte trasera (y a veces de la nariz). Cambia cómo «clavas» el pie de atrás y el tipo de giro que sientes.",
+        queEs: "Es la elevación y la forma de la parte trasera (y a veces de la nariz). Cambia cómo «clavas» el pie de atrás y el tipo de giro que sientes.",
         puntos: [
             "Cola elevada y ancha (squash o kicktail): ayuda a marcar el giro y a simular maniobras tipo top turn.",
             "Cola en pez (swallow) o redonda (pin): sensación más retro o de deslizamiento suave.",
@@ -159,13 +152,15 @@ const COMPARATIVA = [
         modelo: "Snappers 32,5″",
         longitud: "32,5″",
         wheelbase: "17″",
-        paraQuien: "Tabla media con ejes cortos: mucho espacio para los pies y giros muy cerrados. Simula un shortboard técnico.",
+        paraQuien:
+            "Tabla media con ejes cortos: mucho espacio para los pies y giros muy cerrados. Simula un shortboard técnico.",
     },
     {
         modelo: "Chiba 30″",
         longitud: "30″",
         wheelbase: "18″",
-        paraQuien: "Tabla corta con ejes más separados: muy estable y predecible, perfecta para ciudad y asfalto abierto.",
+        paraQuien:
+            "Tabla corta con ejes más separados: muy estable y predecible, perfecta para ciudad y asfalto abierto.",
     },
 ];
 
@@ -212,14 +207,18 @@ function PerfilCard({ perfil }) {
             <dl className="mt-4 space-y-3 text-sm">
                 <div>
                     <dt className="text-slate-500">Distancia entre ejes</dt>
-                    <dd className="font-semibold text-slate-200">{perfil.wheelbase}</dd>
+                    <dd className="font-semibold text-slate-200">
+                        {perfil.wheelbase}
+                    </dd>
                 </div>
                 <div>
                     <dt className="text-slate-500">Modelos recomendados</dt>
                     <dd className="text-slate-300">{perfil.modelos}</dd>
                 </div>
             </dl>
-            <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-400">{perfil.estilo}</p>
+            <p className="mt-4 flex-1 text-sm leading-relaxed text-slate-400">
+                {perfil.estilo}
+            </p>
         </article>
     );
 }
@@ -247,9 +246,10 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     </span>
                                 </h1>
                                 <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-300 sm:text-lg">
-                                    No se trata solo de cómo se ve la tabla. Te ayudamos a elegir la medida
-                                    correcta para que en clase te sientas cómodo, gires con fluidez y no
-                                    luches contra el equipo.
+                                    No se trata solo de cómo se ve la tabla. Te
+                                    ayudamos a elegir la medida correcta para
+                                    que en clase te sientas cómodo, gires con
+                                    fluidez y no luches contra el equipo.
                                 </p>
                                 <div className="mt-7 flex flex-wrap gap-3">
                                     <a
@@ -275,7 +275,8 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                 </p>
                                 <YowLogo height={40} className="opacity-95" />
                                 <p className="max-w-[220px] text-center text-xs leading-relaxed text-slate-400 sm:text-left">
-                                    Sistemas Meraki S5 · Guía elaborada con San Sebastian Surf School
+                                    Sistemas Meraki S5 · Guía elaborada con San
+                                    Sebastian Surf School
                                 </p>
                             </div>
                         </div>
@@ -283,17 +284,23 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                 </section>
 
                 {/* Pilares */}
-                <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6" aria-labelledby="pilares-titulo">
+                <section
+                    className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+                    aria-labelledby="pilares-titulo"
+                >
                     <div className="mb-8 max-w-2xl">
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                             Antes de elegir
                         </p>
-                        <h2 id="pilares-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                        <h2
+                            id="pilares-titulo"
+                            className="mt-2 text-3xl font-extrabold text-white"
+                        >
                             Tres cosas que importan de verdad
                         </h2>
                         <p className="mt-3 text-slate-400">
-                            Olvida el marketing: la tabla correcta depende de cómo te colocas, de tu
-                            cuerpo y de cuánto pesas.
+                            Olvida el marketing: la tabla correcta depende de
+                            cómo te colocas, de tu cuerpo y de cuánto pesas.
                         </p>
                     </div>
                     <div className="grid gap-5 md:grid-cols-3">
@@ -307,8 +314,12 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
                                         <Icon className="h-5 w-5" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-white">{p.titulo}</h3>
-                                    <p className="mt-2 text-sm leading-relaxed text-slate-400">{p.texto}</p>
+                                    <h3 className="text-lg font-bold text-white">
+                                        {p.titulo}
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                                        {p.texto}
+                                    </p>
                                 </div>
                             );
                         })}
@@ -324,12 +335,16 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                             Guía para principiantes
                         </p>
-                        <h2 id="factores-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                        <h2
+                            id="factores-titulo"
+                            className="mt-2 text-3xl font-extrabold text-white"
+                        >
                             Qué mirar al elegir un surfskate
                         </h2>
                         <p className="mt-3 text-slate-400">
-                            Cuatro cosas de la propia tabla, explicadas sin tecnicismos. Empieza por la
-                            distancia entre ejes: es lo que más cambia cómo se siente al girar.
+                            Cuatro cosas de la propia tabla, explicadas sin
+                            tecnicismos. Empieza por la distancia entre ejes: es
+                            lo que más cambia cómo se siente al girar.
                         </p>
                     </div>
                     <div className="grid gap-5 sm:grid-cols-2">
@@ -353,7 +368,9 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                             </h3>
                                         </div>
                                     </div>
-                                    <p className="text-sm leading-relaxed text-slate-400">{f.queEs}</p>
+                                    <p className="text-sm leading-relaxed text-slate-400">
+                                        {f.queEs}
+                                    </p>
                                     <ul className="mt-4 space-y-2 border-t border-white/10 pt-4">
                                         {f.puntos.map((punto) => (
                                             <li
@@ -381,13 +398,19 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                                 Por tipo de rider
                             </p>
-                            <h2 id="perfiles-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                            <h2
+                                id="perfiles-titulo"
+                                className="mt-2 text-3xl font-extrabold text-white"
+                            >
                                 Encuentra tu perfil
                             </h2>
                         </div>
                         <div className="grid gap-6 sm:grid-cols-2">
                             {PERFILES.map((perfil) => (
-                                <PerfilCard key={perfil.etiqueta} perfil={perfil} />
+                                <PerfilCard
+                                    key={perfil.etiqueta}
+                                    perfil={perfil}
+                                />
                             ))}
                         </div>
                     </div>
@@ -396,7 +419,7 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                 {/* Tabla principal */}
                 <section
                     id="tabla-seleccion"
-                    className="mx-auto max-w-6xl px-4 py-14 sm:px-6"
+                    className="mx-auto max-w-6xl scroll-mt-24 px-4 py-14 sm:px-6"
                     aria-labelledby="tabla-titulo"
                 >
                     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -404,12 +427,19 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                                 Consulta rápida
                             </p>
-                            <h2 id="tabla-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                            <h2
+                                id="tabla-titulo"
+                                className="mt-2 text-3xl font-extrabold text-white"
+                            >
                                 Tabla de selección
                             </h2>
                             <p className="mt-2 max-w-xl text-sm text-slate-400">
-                                Busca tu rango de altura y peso. La <strong className="font-semibold text-slate-300">distancia entre ejes</strong>{" "}
-                                (wheelbase) es la medida clave: es el hueco entre los dos ejes por donde van tus pies.
+                                Busca tu rango de altura y peso. La{" "}
+                                <strong className="font-semibold text-slate-300">
+                                    distancia entre ejes
+                                </strong>{" "}
+                                (wheelbase) es la medida clave: es el hueco
+                                entre los dos ejes por donde van tus pies.
                             </p>
                         </div>
                         <div className="inline-flex items-center gap-2 rounded-xl border border-orange-400/20 bg-orange-500/10 px-4 py-2 text-xs text-orange-100">
@@ -453,9 +483,15 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                             <td className="px-4 py-4 font-medium text-white sm:px-6">
                                                 {fila.altura}
                                             </td>
-                                            <td className="px-4 py-4 text-slate-300 sm:px-6">{fila.peso}</td>
-                                            <td className="px-4 py-4 text-slate-200 sm:px-6">{fila.longitud}</td>
-                                            <td className="px-4 py-4 text-slate-400 sm:px-6">{fila.ejemplos}</td>
+                                            <td className="px-4 py-4 text-slate-300 sm:px-6">
+                                                {fila.peso}
+                                            </td>
+                                            <td className="px-4 py-4 text-slate-200 sm:px-6">
+                                                {fila.longitud}
+                                            </td>
+                                            <td className="px-4 py-4 text-slate-400 sm:px-6">
+                                                {fila.ejemplos}
+                                            </td>
                                             <td className="px-4 py-4 font-semibold text-orange-200 sm:px-6">
                                                 {fila.wheelbase}
                                             </td>
@@ -477,12 +513,17 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                                 Error muy común
                             </p>
-                            <h2 id="concepto-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                            <h2
+                                id="concepto-titulo"
+                                className="mt-2 text-3xl font-extrabold text-white"
+                            >
                                 No mires solo la longitud total
                             </h2>
                             <p className="mt-3 text-slate-400">
-                                Dos tablas pueden medir parecido por fuera y comportarse muy distinto. Lo
-                                que marca la diferencia es la combinación de longitud y distancia entre ejes.
+                                Dos tablas pueden medir parecido por fuera y
+                                comportarse muy distinto. Lo que marca la
+                                diferencia es la combinación de longitud y
+                                distancia entre ejes.
                             </p>
                         </div>
                         <div className="grid gap-5 md:grid-cols-2">
@@ -492,9 +533,12 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     className="rounded-2xl border border-white/10 bg-white/5 p-6"
                                 >
                                     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                                        <h3 className="text-lg font-bold text-white">{item.modelo}</h3>
+                                        <h3 className="text-lg font-bold text-white">
+                                            {item.modelo}
+                                        </h3>
                                         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                            {item.longitud} · ejes {item.wheelbase}
+                                            {item.longitud} · ejes{" "}
+                                            {item.wheelbase}
                                         </span>
                                     </div>
                                     <p className="mt-3 text-sm leading-relaxed text-slate-400">
@@ -515,12 +559,17 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-300">
                             Seguridad en clase
                         </p>
-                        <h2 id="proteccion-titulo" className="mt-2 text-3xl font-extrabold text-white">
+                        <h2
+                            id="proteccion-titulo"
+                            className="mt-2 text-3xl font-extrabold text-white"
+                        >
                             Equipo de protección disponible
                         </h2>
                         <p className="mt-3 text-slate-400">
-                            En nuestras clases puedes usar protección si lo deseas. No es obligatorio, pero
-                            te ayuda a sentirte más seguro mientras aprendes, sobre todo al principio.
+                            En nuestras clases puedes usar protección si lo
+                            deseas. No es obligatorio, pero te ayuda a sentirte
+                            más seguro mientras aprendes, sobre todo al
+                            principio.
                         </p>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -533,20 +582,25 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/25">
                                         <ShieldCheck className="h-4 w-4" />
                                     </div>
-                                    <h3 className="font-bold text-white">{item.nombre}</h3>
+                                    <h3 className="font-bold text-white">
+                                        {item.nombre}
+                                    </h3>
                                     {item.opcional && (
                                         <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                                             Opcional
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-sm leading-relaxed text-slate-400">{item.texto}</p>
+                                <p className="text-sm leading-relaxed text-slate-400">
+                                    {item.texto}
+                                </p>
                             </div>
                         ))}
                     </div>
                     <p className="mt-6 flex items-start gap-2 rounded-xl border border-orange-400/15 bg-orange-500/5 px-4 py-3 text-sm text-slate-300">
                         <Info className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
-                        Pregunta al monitor antes de la sesión si necesitas talla o algún complemento concreto.
+                        Pregunta al monitor antes de la sesión si necesitas
+                        talla o algún complemento concreto.
                     </p>
                 </section>
 
@@ -565,8 +619,9 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     ¿Tienes dudas con tu medida?
                                 </h2>
                                 <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
-                                    En nuestras clases de surfskate probamos el equipo contigo y te
-                                    orientamos. Si ya tienes tabla, tráela; si no, te ayudamos a acertar
+                                    En nuestras clases de surfskate probamos el
+                                    equipo contigo y te orientamos. Si ya tienes
+                                    tabla, tráela; si no, te ayudamos a acertar
                                     antes de comprar.
                                 </p>
                                 <ul className="mt-4 space-y-2">

@@ -102,7 +102,7 @@
     ],
     "level_skill_profiles": {
       "description": "Qué sabe hacer realmente cada nivel en el agua. Úsalo para calibrar el tono y las expectativas de cada bloque (iniciacion/intermedio/avanzado) del parte: no le pidas a iniciación que lea picos, ni le hables a avanzado de ponerse de pie.",
-      "iniciacion": "Se pone de pie y sabe remar, pero con poca fuerza. En Zurriola coge espumas y/o olas pequeñas sin romper (verdes suaves de poco tamaño); no hace falta insistir solo en espuma: aquí esas olas sin romper se montan con facilidad. Va con tablas de gran volumen. Apenas tiene lectura de ola: no identifica picos ni elige la ola por su forma; depende de que la ola venga a él.",
+      "iniciacion": "Nivel principiante en S4. Progresión de objetivos (no todo el día 1): 1) puesta en pie (estándar del primer día); 2) escapes/dirección si sale bien (el monitor empuja con ángulo adecuado y explica cómo mantener la dirección); 3) coger olas solos (remar bien + pop-up controlado + equilibrio); 4) unir remada + puesta en pie + dirección (el monitor pauta cuándo remar, cuánto, hacia dónde según rompe la ola, pecho arriba/abajo —punto que cuesta interiorizar— y cuándo levantarse). Tras dominar los 4 → intermedio. En el agua: se pone de pie y rema con poca fuerza; en Zurriola coge espumas y/o olas pequeñas sin romper (verdes suaves); tablas de gran volumen; poca lectura de pico (depende de que la ola venga a él).",
       "intermedio": "Rema con soltura, coge olas ya rotas y algunas verdes de poca fuerza, empieza a hacer algún giro básico. Tiene cierta lectura de ola pero todavía se equivoca de pico o de timing en días con secciones rápidas.",
       "avanzado": "Rema fuerte y lee la playa: elige pico, se posiciona antes de que rompa, encadena maniobras y aprovecha secciones técnicas. Solo busca fuerza real; con energía baja no encuentra reto ni beneficio."
     },
@@ -135,6 +135,33 @@
           "iniciacion": "Sí — pueden surfear todos (seguir en zona segura; no solo espuma).",
           "intermedio": "Sí — olas nobles para progresar.",
           "avanzado": "Sí — ola pequeña y muy técnica, ideal para mejorar la técnica."
+        },
+        {
+          "min_kj": 401,
+          "max_kj": 800,
+          "iniciacion": "Solo cerca del espigón (zona resguardada); empieza a haber fuerza real y buen baño.",
+          "intermedio": "Sí — fuerza real y buen baño para progresar.",
+          "avanzado": "Sí — buen baño; entra en la franja usable (~500+)."
+        },
+        {
+          "min_kj": 801,
+          "max_kj": 1500,
+          "iniciacion": "Solo espigón y con precaución; fuerza considerable y corrientes.",
+          "intermedio": "Sí — con buena forma física y lectura de corrientes.",
+          "avanzado": "Sí — franja ideal orientativa (~500–1300 kJ); precaución y lectura de playa."
+        },
+        {
+          "min_kj": 1501,
+          "max_kj": 2500,
+          "iniciacion": "Espumas posibles; no subir arriba (corrientes peligrosas). Playa al límite.",
+          "intermedio": "Límite — sesión muy exigente; valorar viento/marea.",
+          "avanzado": "Posible al límite; a partir de ~1500 kJ valorar Pico del Loro (La Concha) como alternativa."
+        },
+        {
+          "min_kj": 2501,
+          "iniciacion": "Evitar Zurriola — saturación, corrientes incontrolables.",
+          "intermedio": "Evitar Zurriola — peligroso.",
+          "avanzado": "Evitar Zurriola; ir a Playa de La Concha u otra opción."
         }
       ]
     },
@@ -221,7 +248,7 @@
     "oleaje": "Qué es: altura de la ola (metros) y dirección (flecha = de dónde viene el mar).\n\nEn Zurriola (abre al NW): si el swell llega de NW entra de lleno y se nota más tamaño. Si viene rotado (S u otras direcciones), gran parte de la energía se pierde por la costa y la playa queda más pequeña de lo que sugiere el número.\n\nCómo leerlo: mira la flecha + los metros juntos; un 0,5 m de NW no es lo mismo que 0,5 m de sur.",
     "periodo": "Qué es: segundos entre una ola y la siguiente (Tp).\n\nEn Zurriola:\n• 6–9 s → mar de viento: olas seguidas, fofas, poca fuerza real.\n• 10–13 s → óptimo: mar de fondo ordenado, secciones abiertas.\n• ≥14 s → mucha energía de fondo; en arena de verano sube el riesgo de que cierre en barra.\n\nPeriodo largo + poca altura aún puede tener fuerza; periodo corto aunque haya algo de altura suele ser chop.",
     "energia": "Qué es: índice de punch del oleaje (convención tipo apps de previsión), calculado sobre datos Open-Meteo — no es un dato oficial de Surf-Forecast.\n\nFórmula: kJ ≈ factor × 0.5 × H² × T (H en pies; factor de calibración S4 ≈ 2.4 para acercar el orden de magnitud en periodo corto). Usamos la ola combinada (wave) del modelo.\n\nUmbrales S4 en Zurriola (orientativos, misma escala):\n• <50 → intermedio: escaso; avanzado: no merece la pena.\n• ~70–80 → avanzado: escaso pero ya posible.\n• ≥100 → pueden surfear todos; para avanzado es ola pequeña y muy técnica.\n\nEl color del valor indica intensidad relativa del oleaje (kJ).",
-    "viento": "Qué es: velocidad (km/h) y dirección (flecha = de dónde sopla).\n\nEn Zurriola (NW): componente sur = offshore/terral (limpia la cara de la ola). Componente norte = más onshore (pica el mar).\n\nIntensidad (aprox. en nudos):\n• ≤5 → flojo / glassy.\n• 6–10 → riza la superficie.\n• 11–15 → choppy.\n• ≥16 → muy malo.\n\nColores en la tabla: verde flojo, amarillo medio, rojo fuerte. La flecha importa tanto como el número.",
+    "viento": "Qué es: velocidad (km/h) y dirección (flecha = de dónde sopla).\n\nEn Zurriola (NW): componente sur = offshore/terral; componente norte = más onshore.\n\nOffshore: ordena el mar, deja la cara más limpia y legible, facilita anticipar la ola y colocarte a tiempo en el pico.\n\nOnshore: suele aplanar y abofar la ola, pica la superficie, dificulta leer y anticipar sets, y complica situarte en el sitio correcto para cogerlas.\n\nIntensidad (aprox. en nudos):\n• ≤5 → flojo / glassy.\n• 6–10 → riza la superficie.\n• 11–15 → choppy.\n• ≥16 → muy malo.\n\nColores en la tabla: verde flojo, amarillo medio, rojo fuerte. La flecha importa tanto como el número.",
     "marea": "Qué ves bajo cada día:\n\n1) Lista de extremos (normalmente 2 altas + 2 bajas):\n• Flecha ↑ Alta / ↓ Baja + hora + altura (m respecto al nivel medio del modelo).\n• Entre paréntesis (+Xm / −Xm): cuánto subió o bajó el nivel desde el extremo anterior (amplitud de esa media marea).\n\n2) Coeficientes del día (abajo):\n• Sube +Xm = media de las subidas hacia las altas de ese día (cuánto crece el agua al llenar).\n• Baja −Xm = media de las bajadas hacia las bajas (cuánto baja al vaciar).\n\nCriterio Zurriola: con poca energía vale cualquier marea; con energía media prioriza media-alta; con mucha fuerza, marea alta (efecto piscina) o baja solo resguardado en el espigón."
   }
 }

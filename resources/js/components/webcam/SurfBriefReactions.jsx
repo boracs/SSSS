@@ -29,22 +29,29 @@ export default function SurfBriefReactions({ initial = null }) {
     };
 
     return (
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-200/70 pt-2.5">
-            <p className="text-[11px] text-slate-500">¿Te sirvió? Dale like</p>
-            <div className="flex items-center gap-1">
+        <div className="mt-4 flex flex-col gap-2 border-t border-slate-200/80 pt-3 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="text-xs text-slate-500">¿Te ha servido el parte?</p>
+                {likes > 0 ? (
+                    <p className="text-[11px] text-emerald-700">
+                        {likes} {likes === 1 ? "persona" : "personas"} lo han encontrado útil hoy
+                    </p>
+                ) : null}
+            </div>
+            <div className="flex items-center gap-2">
                 <button
                     type="button"
                     disabled={busy}
                     onClick={() => vote("up")}
                     aria-pressed={mine === "up"}
-                    aria-label={`Me gusta${likes ? `, ${likes}` : ""}`}
-                    className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition disabled:opacity-50 ${
+                    aria-label={`Útil${likes ? `, ${likes} votos` : ""}`}
+                    className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition disabled:opacity-50 ${
                         mine === "up"
-                            ? "bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-600/30"
-                            : "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-200"
+                            ? "bg-emerald-600 text-white shadow-sm"
+                            : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
                     }`}
                 >
-                    <ThumbsUp className="h-3 w-3" aria-hidden />
+                    <ThumbsUp className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="tabular-nums">{likes}</span>
                 </button>
                 <button
@@ -52,18 +59,18 @@ export default function SurfBriefReactions({ initial = null }) {
                     disabled={busy}
                     onClick={() => vote("down")}
                     aria-pressed={mine === "down"}
-                    aria-label={`No me gusta${dislikes ? `, ${dislikes}` : ""}`}
-                    className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-[11px] font-semibold transition disabled:opacity-50 ${
+                    aria-label={`Poco útil${dislikes ? `, ${dislikes} votos` : ""}`}
+                    className={`inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition disabled:opacity-50 ${
                         mine === "down"
                             ? "bg-rose-600 text-white"
                             : "bg-rose-50 text-rose-700 ring-1 ring-rose-200 hover:bg-rose-100"
                     }`}
                 >
-                    <ThumbsDown className="h-3 w-3" aria-hidden />
+                    <ThumbsDown className="h-4 w-4 shrink-0" aria-hidden />
                     <span className="tabular-nums">{dislikes}</span>
                 </button>
             </div>
-            {error ? <p className="w-full text-[10px] text-rose-600">{error}</p> : null}
+            {error ? <p className="w-full text-xs text-rose-600">{error}</p> : null}
         </div>
     );
 }

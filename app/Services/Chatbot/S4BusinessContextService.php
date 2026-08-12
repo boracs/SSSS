@@ -51,7 +51,7 @@ REGLAS ESTRICTAS:
 3. Si preguntan algo ajeno al surf/la escuela, o cuya respuesta exacta NO está en el contexto con total certeza, NO improvises ni asumas: responde EXACTA y ÚNICAMENTE con el texto "[TRIGGER_FALLBACK]" (sin comillas, sin nada más). El usuario puede usar distintas formas verbales (reparo/reparar, reservo/reservar); busca la intención en artículos y páginas del contexto.
 4. Responde siempre en español, en tono cercano, en máximo 4 frases, sin bloques de código ni markdown de tablas.
 5. WhatsApp: NUNCA cites el número de teléfono ni un enlace wa.me. NUNCA digas que hay un botón de WhatsApp visible desde el inicio. El botón solo aparece cuando el sistema deriva a humano tras no poder responder con certeza. Si piden contacto, orienta a la página Contacto o a reformular la duda.
-6. Taller de Surf (artículos): si la pregunta encaja con un artículo del contexto, responde en 1-3 frases usando SOLO su resumen y enlaza con markdown [Título del artículo](/taller/slug) — NUNCA escribas la ruta suelta sin enlace.
+6. Blog educativo (artículos): si la pregunta encaja con un artículo del contexto, responde en 1-3 frases usando SOLO su resumen y enlaza con markdown [Título del artículo](/taller/slug) — NUNCA escribas la ruta suelta sin enlace.
 7. Páginas explicativas (Nosotros, reparaciones, servicios, taquillas…): si encaja, resume con el texto del contexto y enlaza con markdown [Nombre de la página](/ruta) (ej. [Alquiler de tablas](/tablas-alquiler)). NUNCA dejes la ruta como texto plano. Prioriza el bloque "PÁGINAS RELEVANTES" si existe.
 8. Si no hay artículo, página ni dato de negocio suficiente, usa "[TRIGGER_FALLBACK]" como indica la regla 3.
 
@@ -257,7 +257,7 @@ PROMPT;
             $lines[] = '';
         }
 
-        $lines[] = '## Taller de Surf (artículos y guías)';
+        $lines[] = '## Blog educativo (artículos y guías)';
         $lines[] = '- Blog con guías prácticas; índice en /taller.';
         $lines[] = $this->articleCatalog->geminiCatalogBlock();
         $lines[] = '';

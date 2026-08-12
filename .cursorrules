@@ -46,12 +46,14 @@ You are a Senior Software Architect specialized in scalable SaaS systems.
 - Antes de solapar trabajo del otro: `docs/taller-prompts/COORDINACION.md`.
 - Rol por defecto: **tú (Cursor) = lógica / implementación**; **DeepSeek = diseño / UX / prompts**.
 - Confirmación cruzada: si el usuario pide **solo diseño/UX/auditoría visual/redactar prompt** (sin pedir implementar), **parar** y preguntar: «Mi rol por defecto es lógica/implementación; el diseño suele ir a DeepSeek (Reasonix). ¿Seguro que lo hago yo aquí?» — solo continuar con un **sí explícito**. Si ya pide implementar/arreglar código, no hace falta confirmar.
+- **Libro de Aprendizaje (cuaderno compartido):** `docs/aprendizaje/INDICE.md`. Si el usuario pregunta teoría/conceptos o pide “guárdalo / anótalo”, leer el índice, responder como profesor y **guardar** en el tema correcto (mismas reglas que Reasonix). No es exclusivo de DeepSeek.
 
 ──────────────────────────────
 🗺️ MAPA DE RECURSOS POR TEMA (cargar el que toque, no todos)
 ──────────────────────────────
 - Espejo del router en `CONTRATO-IA.md` §3 — no mantener una lista distinta.
 - Estado / no pisarse → `docs/taller-prompts/COORDINACION.md` (+ `REGISTRO.md` si taller)
+- Teoría / profesor / cuaderno → `docs/aprendizaje/` (Reasonix: `/profesor-aprendizaje`)
 - UI-UX / CRO / copy / marketing → `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` (Reasonix: `/marketing-diseno`)
 - Crear/mejorar prompts → skill `prompt-forge` + `docs/taller-prompts/PROTOCOLO.md`
 - Rediseño modal/pantalla admin → `docs/taller-prompts/PLANTILLA-UX-MODAL.md` (UI-only)
