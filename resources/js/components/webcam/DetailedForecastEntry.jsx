@@ -21,7 +21,7 @@ export default function DetailedForecastEntry({
     webcamAnchorId = "webcam-directo",
     panelId: panelIdProp,
     className = "",
-    label = "Ver forecast al detalle",
+    label = "Ver forecast ampliado",
     brief = null,
     children = null,
 }) {

@@ -4,7 +4,7 @@ Fuente: criterio de la escuela S4 / Zurriola (2026-08), redactado a partir de la
 Uso: reglas de negocio para **estrellas por nivel** y para el razonamiento del parte / forecast.  
 No es el resumen corto del chat: aquí va el **detalle operativo**.
 
-**Importante arquitectura:** hoy Gemini del parte lee `resources/surf-guide/zurriola-spot-guide.md` + `zurriola-spot-logistics.json`. Este archivo **aún no se inyecta solo**; hay que fusionarlo al JSON/guía o al servicio de estrellas para que la IA/código lo usen.
+**Arquitectura (2026-08-19):** las estrellas las calcula PHP (`SurfLevelQualityStarsService`) leyendo `zurriola-spot-logistics.json` (`stars` por banda kJ + `star_modifiers`: viento sur fuerte, rip del espigón, periodo largo en verano). Gemini del parte recibe esas mismas notas y no debe contradecirlas. Este documento sigue siendo el criterio humano; si cambia G1–G4, actualiza el JSON.
 
 ---
 
@@ -21,7 +21,7 @@ Pero **no es un corte fijo para todos los días**. Depende mucho de la fuerza y 
 
 | Situación | Lectura |
 |-----------|---------|
-| Glassy **0–5 km/h** (da igual la dirección) | Muy bien |
+| Glassy **−5 / 0 / +5 km/h** (si pasa de 5 al sur o al norte, ya no) | Calma real; **8 km/h no es glass** |
 | Sur ~**5 km/h** | Ideal |
 | Sur **10–15 km/h** | Notable; si hay olas grandes, muy usable |
 | Sur **≥15–20 km/h** + mar pequeño (&lt;1 m / &lt;200 kJ) | Demasiado: frena mucho y no compensa |
@@ -84,7 +84,7 @@ Por tanto: **penalizar más el periodo largo en junio–septiembre** que en invi
 **Varias escalas por nivel.**  
 Para el mismo escenario grande/potente, iniciación, intermedio y avanzado no deben ver la misma nota.
 
-Implicación de producto (pendiente): la app debería poder mostrar / calcular estrellas **según nivel** (no una sola columna `qualityStars` universal).
+En producto (2026-08-19): la tabla y el slider ya muestran **tres filas** de estrellas. El titular del parte sale de esas mismas notas (`headlineFromStars`).
 
 ---
 

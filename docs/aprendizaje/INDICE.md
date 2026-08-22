@@ -45,6 +45,7 @@
 | 04 | [`04-patrones.md`](04-patrones.md) | Patrones de diseño y arquitectónicos (Money, Observer, Pipeline, Pessimistic Locking…) |
 | 05 | [`05-flujos-de-trabajo.md`](05-flujos-de-trabajo.md) | Método de trabajo: cómo trabajar con las IAs, procesos atómicos, cómo pensar un flujo |
 | 06 | [`06-glosario.md`](06-glosario.md) | Términos sueltos y siglas: ¿qué es V3?, DTO, idempotencia, TicketBAI, Inertia, Ziggy… |
+| 07 | [`07-pagos-facturacion.md`](07-pagos-facturacion.md) | Cobro Stripe vs factura TicketBAI/B2BRouter: flujo, IVA, Sandbox, cómo probar |
 | — | [`SESIONES.md`](SESIONES.md) | **Diario de sesiones:** qué se habló en cada chat y qué se guardó (para cuando el dueño olvide) |
 | — | [`FLUJOS-VISUAL.md`](FLUJOS-VISUAL.md) | **Mapa visual del ecosistema IA completo:** puntos de entrada, rules .mdc, skills, contrato/router/pizarrón, scripts + flujos de decisión |
 | — | [`DIAGRAMA-ECOSISTEMA.mmd`](DIAGRAMA-ECOSISTEMA.mmd) | **Diagrama Mermaid renderizable** del flujo IA completo (pre-vuelo, anti-pisotón, router, skills/rules, confirmación cruzada, libro A-D, eficiencia). Render en mermaid.live / GitHub / VS Code |
@@ -56,6 +57,15 @@
 
 | Fecha | Tema | Entrada |
 |---|---|---|
+| 2026-08-21 | 03+06 | **3.8** canónico = molde oficial; **3.9** trigger frontend ≠ BD; glosario (Cursor) |
+| 2026-08-19 | 02+06 | 2.4–2.5–2.9: evento **escribe** `jobs`; cron = reloj + `console.php` (Cursor) |
+| 2026-08-19 | 02 | 2.9 ampliada: cron mira el reloj, worker mira `jobs` (Cursor) |
+| 2026-08-19 | 06 | glosario: JSON del spot ≠ estrellas de la tabla (Cursor) |
+| 2026-08-19 | 03+05+06 | 3.7 y 5.14 reescritos sin jerga (restaurante); glosario React/JSX (Cursor) |
+| 2026-08-19 | 03+05+06 | **3.7** Vite/`npm run dev`; **5.14** 4 terminales; glosario Vite, HMR, `public/hot` (Cursor) |
+| 2026-08-16 | 02+06 | **2.9** schedule ≠ queue (`schedule:work`); glosario schedule:work (Cursor) |
+| 2026-08-16 | 07+06 | **Tema nuevo 07** pagos/facturación: 7.1–7.5 (Stripe ≠ TBAI, flujo, IVA, Sandbox, prueba local); glosario (Cursor) |
+| 2026-08-16 | 02+06 | 2.5 reordenada (cola vs HTTP, dispatch, pago+redirect); **2.8 Workers: 1 job a la vez**; glosario Worker (Cursor) |
 | 2026-08-10 | 01 | 1.1 Atomicidad, 1.2 Idempotencia, 1.3 lockForUpdate, 1.4 Zero-logic controllers, 1.5 DTOs, 1.6 Services/Actions/Helpers, 1.7 ¿Qué es V3? |
 | 2026-08-11 | 05 | 5.5 Cuaderno compartido Cursor + DeepSeek |
 | 2026-08-10 | 05 | 5.1 Pensar un flujo antes de escribir código, 5.2 Embudo chatbot FAQ→IA→humano |

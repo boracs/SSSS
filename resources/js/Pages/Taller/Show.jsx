@@ -166,7 +166,7 @@ export default function Show({
                                             className="!border-transparent !bg-[#0f5f74] !text-white hover:!bg-[#0d4a5c]"
                                         >
                                             <CalendarRange className="h-4 w-4" aria-hidden />
-                                            Ver forecast al detalle
+                                            Ver forecast ampliado
                                         </DetailedForecastEntry>
                                     </div>
                                 </div>
@@ -179,23 +179,23 @@ export default function Show({
                         articleSlug={article.slug}
                         relatedMeta={relatedMeta}
                     />
-
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true }}
-                        variants={fadeUp}
-                        className="mt-14"
-                    >
-                        <Contenedor_productos
-                            productos={productos}
-                            eyebrow="Tienda S4"
-                            title="Material relacionado"
-                            description="Productos de nuestra tienda oficial que encajan con esta guía. Precios exclusivos para socios con taquilla activa."
-                            compact={false}
-                        />
-                    </motion.div>
                 </div>
+
+                <motion.div
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeUp}
+                    className="mt-14"
+                >
+                    <Contenedor_productos
+                        productos={productos}
+                        eyebrow="Tienda S4"
+                        title="Material relacionado"
+                        description="Productos de nuestra tienda oficial que encajan con esta guía. Precios exclusivos para socios con taquilla activa."
+                        compact={false}
+                    />
+                </motion.div>
             </TallerPageShell>
         </Layout1>
     );

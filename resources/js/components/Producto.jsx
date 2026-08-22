@@ -1,7 +1,7 @@
 import { Link, usePage, router } from "@inertiajs/react";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { toast } from "react-toastify";
-import { formatEur } from "@/utils/money";
+import { formatEur, eurosToCents, storeUnitPriceCents } from "@/utils/money";
 import { hasStoreAccess } from "@/utils/hasStoreAccess";
 import { demoCatalogImage, resolveCatalogImage } from "@/utils/demoCatalogImages";
 import StoreAccessPopover from "./StoreAccessPopover";
@@ -9,11 +9,14 @@ import StoreAddToCartButton, {
     StoreAddToCartLabel,
     storeAddToCartClassName,
 } from "./StoreAddToCartButton";
+import StoreCartQtyPrompt from "./StoreCartQtyPrompt";
+
+const REPEAT_ADD_WINDOW_MS = 5000;
 
 /**
  * Card de producto tienda S4 (superficie navy única).
  * @param {"full"|"compact"} [density]
- * @param {boolean} [compact] alias de density="compact" (slider ofertas / relacionados)
+ * @param {"light"|"dark"} [surface] — carousel claro (home/ficha) vs grid tienda oscura
  */
 const Producto = ({
     nombre,
@@ -25,8 +28,10 @@ const Producto = ({
     producto,
     density = "full",
     compact = false,
+    surface = "dark",
 }) => {
     const isCompact = compact || density === "compact";
+    const isLight = surface === "light";
     const { auth } = usePage().props;
     const user = auth?.user;
     const puedeComprar = hasStoreAccess(user);
@@ -43,26 +48,36 @@ const Producto = ({
 
     const precioNum = Number(precio || 0);
     const descuentoNum = Number(descuento || 0);
-    const precioFinal =
-        descuentoNum > 0 ? precioNum - (precioNum * descuentoNum) / 100 : precioNum;
-    const ahorro = Math.max(0, precioNum - precioFinal);
+    const unitCents = storeUnitPriceCents(precioNum, descuentoNum);
+    const precioFinal = unitCents / 100;
+    const ahorro = Math.max(0, (eurosToCents(precioNum) - unitCents) / 100);
     const stock = Number(unidades);
     const agotado = stock === 0;
     const stockBajo = stock > 0 && stock <= 3;
     const [addingToCart, setAddingToCart] = useState(false);
+    const [qtyPromptOpen, setQtyPromptOpen] = useState(false);
+    const [extraQty, setExtraQty] = useState(1);
+    const lastAddedAtRef = useRef(0);
     const needsAccess = !puedeComprar;
     const productHref = route("producto.ver", { productoId: producto.id });
+    const maxExtra = Math.max(1, stock);
 
-    const handleAgregarAlCarrito = (productoId, e) => {
-        e?.stopPropagation?.();
-        e?.preventDefault?.();
-        if (addingToCart) return;
+    const postAddToCart = (cantidad) => {
+        if (addingToCart || agotado) return;
         setAddingToCart(true);
         router.post(
-            route("carrito.agregar", productoId),
-            {},
+            route("carrito.agregar", producto.id),
+            { cantidad },
             {
-                onSuccess: () => toast.success("Producto agregado al carrito"),
+                onSuccess: () => {
+                    lastAddedAtRef.current = Date.now();
+                    setQtyPromptOpen(false);
+                    toast.success(
+                        cantidad > 1
+                            ? `Añadidas ${cantidad} unidades al carrito`
+                            : "Producto agregado al carrito",
+                    );
+                },
                 onError: () => toast.error("Hubo un problema al agregar el producto al carrito"),
                 preserveState: true,
                 preserveScroll: true,
@@ -71,16 +86,38 @@ const Producto = ({
         );
     };
 
+    const handleAgregarAlCarrito = (e) => {
+        e?.stopPropagation?.();
+        e?.preventDefault?.();
+        if (addingToCart || agotado) return;
+        if (qtyPromptOpen) {
+            postAddToCart(extraQty);
+            return;
+        }
+
+        if (lastAddedAtRef.current > 0 && Date.now() - lastAddedAtRef.current < REPEAT_ADD_WINDOW_MS) {
+            setExtraQty(1);
+            setQtyPromptOpen(true);
+            return;
+        }
+
+        postAddToCart(1);
+    };
+
     const padX = isCompact ? "px-2" : "px-3 sm:px-3.5";
 
-    const cardSurfaceClass = isCompact
-        ? "border-white/15 bg-slate-800/85 shadow-md shadow-black/25 hover:border-cyan-400/25 hover:bg-slate-800/95"
-        : "border-white/10 bg-white/5 hover:border-slate-500/60 hover:bg-white/[0.07] hover:shadow-[0_12px_36px_rgba(15,23,42,0.45)]";
+    const cardSurfaceClass = isLight
+        ? isCompact
+            ? "border-slate-200/90 bg-white shadow-sm hover:border-s4/25 hover:shadow-md"
+            : "border-slate-200/90 bg-white shadow-sm hover:border-s4/30 hover:shadow-md"
+        : isCompact
+          ? "border-white/15 bg-slate-800/85 shadow-md shadow-black/25 hover:border-cyan-400/25 hover:bg-slate-800/95"
+          : "border-white/10 bg-white/5 hover:border-slate-500/60 hover:bg-white/[0.07] hover:shadow-[0_12px_36px_rgba(15,23,42,0.45)]";
 
     return (
         <article
             className={[
-                "group relative flex h-full min-w-0 flex-col overflow-visible backdrop-blur-sm transition-all duration-300",
+                "group relative flex h-full min-w-0 flex-col overflow-hidden backdrop-blur-sm transition-all duration-300",
                 cardSurfaceClass,
                 isCompact ? "rounded-xl" : "rounded-2xl",
             ].join(" ")}
@@ -88,8 +125,7 @@ const Producto = ({
             <Link
                 href={productHref}
                 preserveState={false}
-                preserveScroll
-                className="flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className={`flex min-h-0 flex-1 flex-col outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 ${isLight ? "focus-visible:ring-offset-white" : "focus-visible:ring-offset-slate-950"}`}
             >
                 <div
                     className={[
@@ -149,7 +185,8 @@ const Producto = ({
                 >
                     <h3
                         className={[
-                            "line-clamp-2 font-bold leading-snug text-white",
+                            "line-clamp-2 font-bold leading-snug",
+                            isLight ? "text-slate-900" : "text-white",
                             isCompact
                                 ? "min-h-[2.25rem] text-xs"
                                 : "min-h-[2.5rem] text-sm sm:min-h-[2.75rem] sm:text-[15px]",
@@ -159,17 +196,17 @@ const Producto = ({
                     </h3>
 
                     {!isCompact ? (
-                        <div className="text-xs text-slate-400">
+                        <div className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>
                             {agotado ? (
-                                <span className="font-medium text-slate-500">Agotado</span>
+                                <span className={`font-medium ${isLight ? "text-slate-500" : "text-slate-500"}`}>Agotado</span>
                             ) : stockBajo ? (
-                                <span className="font-medium text-amber-400">
+                                <span className={`font-medium ${isLight ? "text-amber-700" : "text-amber-400"}`}>
                                     Últimas {stock} unidad{stock > 1 ? "es" : ""}
                                 </span>
                             ) : (
-                                <span className="inline-flex items-center gap-1.5 font-medium text-emerald-400/90">
+                                <span className={`inline-flex items-center gap-1.5 font-medium ${isLight ? "text-emerald-700" : "text-emerald-400/90"}`}>
                                     <span
-                                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400"
+                                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${isLight ? "bg-emerald-600" : "bg-emerald-400"}`}
                                         aria-hidden
                                     />
                                     En stock
@@ -185,7 +222,8 @@ const Producto = ({
                             <>
                                 <span
                                     className={[
-                                        "font-extrabold leading-none tracking-tight text-white tabular-nums",
+                                        "font-extrabold leading-none tracking-tight tabular-nums",
+                                        isLight ? "text-slate-900" : "text-white",
                                         isCompact ? "text-sm" : "text-lg sm:text-xl",
                                     ].join(" ")}
                                 >
@@ -193,14 +231,17 @@ const Producto = ({
                                 </span>
                                 <span
                                     className={[
-                                        "leading-none text-slate-400 line-through decoration-slate-400/80",
+                                        "leading-none line-through",
+                                        isLight
+                                            ? "text-slate-400 decoration-slate-400"
+                                            : "text-slate-400 decoration-slate-400/80",
                                         isCompact ? "text-[11px]" : "text-xs",
                                     ].join(" ")}
                                 >
                                     {formatEur(precioNum)}
                                 </span>
                                 {isCompact && ahorro > 0 ? (
-                                    <span className="text-[10px] font-semibold tabular-nums text-emerald-400/95">
+                                    <span className={`text-[10px] font-semibold tabular-nums ${isLight ? "text-emerald-700" : "text-emerald-400/95"}`}>
                                         −{formatEur(ahorro)}
                                     </span>
                                 ) : null}
@@ -208,7 +249,8 @@ const Producto = ({
                         ) : (
                             <span
                                 className={[
-                                    "font-extrabold leading-none tracking-tight text-white tabular-nums",
+                                    "font-extrabold leading-none tracking-tight tabular-nums",
+                                    isLight ? "text-slate-900" : "text-white",
                                     isCompact ? "text-sm" : "text-lg sm:text-xl",
                                 ].join(" ")}
                             >
@@ -226,23 +268,35 @@ const Producto = ({
                 ].join(" ")}
             >
                 {!needsAccess ? (
-                    <StoreAddToCartButton
-                        surface="dark"
-                        compact={isCompact}
-                        shortLabel={isCompact}
-                        disabled={agotado}
-                        loading={addingToCart}
-                        onClick={(e) => handleAgregarAlCarrito(producto.id, e)}
-                    >
-                        {agotado ? "Agotado" : undefined}
-                    </StoreAddToCartButton>
+                    <>
+                        <StoreCartQtyPrompt
+                            open={qtyPromptOpen}
+                            compact={isCompact}
+                            surface={isLight ? "light" : "dark"}
+                            value={extraQty}
+                            max={maxExtra}
+                            onChange={(n) => setExtraQty(Math.min(maxExtra, Math.max(1, n)))}
+                            onConfirm={() => postAddToCart(extraQty)}
+                            onCancel={() => setQtyPromptOpen(false)}
+                        />
+                        <StoreAddToCartButton
+                            surface={isLight ? "light" : "dark"}
+                            compact={isCompact}
+                            shortLabel={isCompact}
+                            disabled={agotado}
+                            loading={addingToCart}
+                            onClick={handleAgregarAlCarrito}
+                        >
+                            {agotado ? "Agotado" : undefined}
+                        </StoreAddToCartButton>
+                    </>
                 ) : (
                     <StoreAccessPopover
                         disabled={agotado}
                         portal={isCompact}
                         triggerClassName={storeAddToCartClassName({
                             disabled: agotado,
-                            surface: "dark",
+                            surface: isLight ? "light" : "dark",
                             compact: isCompact,
                         })}
                     >

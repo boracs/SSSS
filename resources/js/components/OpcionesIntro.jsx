@@ -104,9 +104,9 @@ function TileShell({ imagen, texto, children }) {
                 style={{ backgroundImage: `url(${imagen})` }}
                 aria-hidden
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25 transition-opacity duration-300 group-hover:from-black/70 group-hover:via-black/35" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/35 to-black/15 transition-opacity duration-300 group-hover:from-black/50 group-hover:via-black/25" />
             {children}
-            <span className="pointer-events-none absolute inset-0 flex items-end justify-center p-2 pb-2 text-center md:items-center md:p-2.5">
+            <span className="pointer-events-none absolute inset-0 flex items-center justify-center p-2 text-center md:p-2.5">
                 <span className="text-[9px] font-bold leading-tight tracking-wide text-white drop-shadow-sm sm:text-[10px] md:text-sm lg:text-base">
                     {texto}
                 </span>
@@ -141,8 +141,8 @@ function OpcionTile({ opcion }) {
                 style={{ backgroundImage: `url(${opcion.imagen})` }}
                 aria-hidden
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/25 transition-opacity duration-300 group-hover:from-black/70 group-hover:via-black/35" />
-            <span className="absolute inset-0 flex items-end justify-center p-2 pb-2 text-center md:items-center md:p-2.5">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/35 to-black/15 transition-opacity duration-300 group-hover:from-black/50 group-hover:via-black/25" />
+            <span className="absolute inset-0 flex items-center justify-center p-2 text-center md:p-2.5">
                 <span className="text-[9px] font-bold leading-tight tracking-wide text-white drop-shadow-sm sm:text-[10px] md:text-sm lg:text-base">
                     {opcion.texto}
                 </span>
@@ -151,15 +151,35 @@ function OpcionTile({ opcion }) {
     );
 }
 
+function chunkArray(items, size) {
+    const chunks = [];
+    for (let i = 0; i < items.length; i += size) {
+        chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+}
+
+function rowGridClass(count) {
+    if (count >= 4) return "grid-cols-4";
+    if (count === 3) return "grid-cols-3";
+    if (count === 2) return "grid-cols-2";
+    return "grid-cols-1";
+}
+
 function OpcionesRow({ opciones, ariaLabel }) {
+    const rows = chunkArray(opciones, 4);
+
     return (
-        <div
-            className="grid grid-cols-4 gap-px bg-gray-950 md:flex md:h-[160px] md:gap-0 md:bg-gray-800 lg:h-[190px]"
-            role="group"
-            aria-label={ariaLabel}
-        >
-            {opciones.map((opcion) => (
-                <OpcionTile key={opcion.texto} opcion={opcion} />
+        <div role="group" aria-label={ariaLabel} className="flex flex-col gap-px bg-gray-950">
+            {rows.map((row) => (
+                <div
+                    key={row.map((o) => o.texto).join("|")}
+                    className={`grid gap-px bg-gray-950 md:flex md:h-[160px] md:bg-gray-800 lg:h-[190px] ${rowGridClass(row.length)}`}
+                >
+                    {row.map((opcion) => (
+                        <OpcionTile key={opcion.texto} opcion={opcion} />
+                    ))}
+                </div>
             ))}
         </div>
     );
@@ -174,43 +194,32 @@ export default function OpcionesIntro({
     eyebrow = "Explora S4",
     title = "Todo lo que puedes hacer con nosotros",
     showHeading = true,
-    variant = "light",
 }) {
-    const isDark = variant === "dark";
-
     return (
         <section
-            className={`${isDark ? "bg-slate-950" : ""} ${className}`}
+            className={`relative overflow-hidden ${className}`}
             aria-labelledby={showHeading ? "opciones-intro-heading" : undefined}
         >
             {showHeading ? (
-                <div className="mx-auto max-w-6xl px-4 pb-5 pt-8 sm:px-6 sm:pb-6 sm:pt-10 lg:px-8">
-                    <p
-                        className={`text-[11px] font-bold uppercase tracking-[0.16em] sm:text-xs ${
-                            isDark ? "text-cyan-300/90" : "text-s4"
-                        }`}
-                    >
-                        {eyebrow}
-                    </p>
-                    <h2
-                        id="opciones-intro-heading"
-                        className={`mt-1 font-heading text-2xl font-extrabold tracking-tight sm:text-3xl ${
-                            isDark ? "text-white" : "text-slate-900"
-                        }`}
-                    >
-                        {title}
-                    </h2>
-                    <p
-                        className={`mt-2 max-w-2xl text-sm leading-relaxed ${
-                            isDark ? "text-slate-400" : "text-slate-600"
-                        }`}
-                    >
-                        Clases, material, club y herramientas para progresar — todo en un mismo sitio.
-                    </p>
+                <div className="relative z-[2] bg-white">
+                    <div className="mx-auto max-w-6xl px-4 pb-5 pt-12 sm:px-6 sm:pb-6 sm:pt-14 lg:px-8">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-s4 sm:text-xs">
+                            {eyebrow}
+                        </p>
+                        <h2
+                            id="opciones-intro-heading"
+                            className="mt-1 font-heading text-2xl font-extrabold tracking-tight text-slate-900 sm:text-3xl"
+                        >
+                            {title}
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+                            Clases, material, club y herramientas para progresar — todo en un mismo sitio.
+                        </p>
+                    </div>
                 </div>
             ) : null}
 
-            <nav className="flex flex-col gap-px bg-gray-950" aria-label="Accesos rápidos S4">
+            <nav className="relative z-[2] flex flex-col gap-px bg-gray-950" aria-label="Accesos rápidos S4">
                 <OpcionesRow opciones={OPCIONES_PRINCIPALES} ariaLabel="Servicios principales" />
                 <OpcionesRow opciones={OPCIONES_MAS} ariaLabel="Más servicios S4" />
             </nav>

@@ -120,7 +120,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
                                 href: `${safeRoute("servicios.webcams")}#parte-s4-hoy`,
                             },
                             {
-                                label: "Forecast 16 días",
+                                label: "Forecast / parte",
                                 href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
                             },
                         ],
@@ -335,7 +335,7 @@ function buildMenus({ isAdmin, isAuth, isVip, hasLocker }) {
             href: `${safeRoute("servicios.webcams")}#parte-s4-hoy`,
         },
         {
-            label: "Forecast 16 días",
+            label: "Forecast / parte",
             href: `${safeRoute("servicios.webcams")}#prevision-forecast`,
         },
     ];
@@ -830,9 +830,15 @@ export default function GlobalNav() {
                                     onClick={() =>
                                         setAccountOpen((v) => !v)
                                     }
-                                    className="relative z-10 inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
+                                    className="relative z-10 inline-flex h-9 items-center gap-0.5 rounded-full pl-1.5 pr-1.5 text-slate-200 transition-colors hover:bg-white/10 hover:text-cyan-300"
                                 >
-                                    <UserCircle className="h-6 w-6" />
+                                    <UserCircle className="h-6 w-6 shrink-0" aria-hidden />
+                                    <ChevronDown
+                                        className={`h-3.5 w-3.5 shrink-0 text-slate-400 transition-transform duration-200 ${
+                                            accountOpen ? "rotate-180 text-cyan-300" : ""
+                                        }`}
+                                        aria-hidden
+                                    />
                                 </button>
                                 <div
                                     role="menu"
@@ -1022,6 +1028,7 @@ export default function GlobalNav() {
                                     <PressRipple
                                         as="button"
                                         type="button"
+                                        aria-expanded={open}
                                         onClick={() =>
                                             setMobileSection(
                                                 open ? null : menu.id,

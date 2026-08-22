@@ -102,10 +102,14 @@ final class B2BRouterFiscalInvoiceIssuer implements FiscalInvoiceIssuerInterface
     /** @return array<string, mixed> */
     private function linePayload(FiscalInvoiceLineDto $line): array
     {
+        // unitPriceCents = importe cobrado (IVA incluido en tienda/Stripe).
+        // B2BRouter `price` es neto; si mandamos el bruto, vuelve a sumar el 21 %.
+        $netCents = MoneyCents::netFromGrossInclusiveVat($line->unitPriceCents, $line->vatPercent);
+
         return [
             'quantity'    => $line->quantity,
             'description' => $line->description,
-            'price'       => MoneyCents::centsToEuros($line->unitPriceCents),
+            'price'       => MoneyCents::centsToEuros($netCents),
             'taxes_attributes' => [
                 [
                     'name'     => 'IVA',

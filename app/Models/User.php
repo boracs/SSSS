@@ -234,9 +234,14 @@ class User extends Authenticatable implements MustVerifyEmailContract
 
     /**
      * Puede comprar en tienda con descuento de socio.
+     * VIP (con #500 virtual o taquilla física) o socio con casillero al día.
      */
     public function canAccessStoreWithMemberDiscount(): bool
     {
+        if ((bool) $this->is_vip) {
+            return true;
+        }
+
         if ($this->hasSharedLocker()) {
             return true;
         }

@@ -90,7 +90,7 @@ export default function MyInvoices({
                             Mis facturas
                         </h1>
                         <p className="mt-1 text-sm text-slate-500">
-                            Facturas fiscales TicketBAI de tus compras, bonos, taquillas, alquileres y clases.
+                            Facturas fiscales TicketBAI de tienda, bonos, taquillas, alquileres, clases, fotos y subastas.
                         </p>
                     </div>
 
@@ -165,13 +165,26 @@ export default function MyInvoices({
                                             {formatEurFromCents(invoice.amount_cents)}
                                         </span>
                                         <StatusBadge status={invoice.status} label={invoice.status_label} />
-                                        <div className="flex items-center gap-2">
-                                            <Link
-                                                href={invoice.detail_url}
-                                                className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
-                                            >
-                                                Ver
-                                            </Link>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {invoice.is_ready ? (
+                                                <Link
+                                                    href={invoice.detail_url}
+                                                    className="inline-flex items-center rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200"
+                                                >
+                                                    Ver TicketBAI
+                                                </Link>
+                                            ) : (
+                                                <Link
+                                                    href={invoice.detail_url}
+                                                    title="El TicketBAI se está registrando en Hacienda"
+                                                    className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100"
+                                                >
+                                                    <Clock className="h-3.5 w-3.5" aria-hidden />
+                                                    {invoice.status === "pending"
+                                                        ? "Pendiente de emisión"
+                                                        : "TicketBAI en proceso"}
+                                                </Link>
+                                            )}
                                             {invoice.pdf_url ? (
                                                 <a
                                                     href={invoice.pdf_url}
@@ -179,10 +192,17 @@ export default function MyInvoices({
                                                     rel="noopener noreferrer"
                                                     className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
                                                 >
-                                                    <Download className="h-3.5 w-3.5" />
-                                                    PDF
+                                                    <Download className="h-3.5 w-3.5" aria-hidden />
+                                                    Ver factura
                                                 </a>
-                                            ) : null}
+                                            ) : (
+                                                <span
+                                                    title="La factura PDF estará disponible cuando se emita"
+                                                    className="inline-flex items-center rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400 ring-1 ring-slate-100"
+                                                >
+                                                    Factura pendiente
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

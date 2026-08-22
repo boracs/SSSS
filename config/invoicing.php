@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
@@ -81,6 +82,7 @@ return [
         LessonUser::class => true,
         PagoCuota::class => true,
         PhotoSessionBooking::class => true,
+        Auction::class => true,
     ],
 
     /*

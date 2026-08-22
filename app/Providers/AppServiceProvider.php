@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Actions\Payments\InitiatePaymentAction;
 use App\Contracts\Invoicing\FiscalInvoiceIssuerInterface;
+use App\Contracts\Payments\StartsCheckout;
 use App\Events\Payments\PaymentConfirmed;
 use App\Events\LessonRequestedEvent;
 use App\Events\PrivateLessonRequestedEvent;
@@ -33,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Facturación fiscal (TicketBAI): driver configurable vía INVOICING_DRIVER.
+        $this->app->bind(StartsCheckout::class, InitiatePaymentAction::class);
+
         $this->app->bind(FiscalInvoiceIssuerInterface::class, function ($app) {
             $driver = config('invoicing.driver', 'b2brouter');
 

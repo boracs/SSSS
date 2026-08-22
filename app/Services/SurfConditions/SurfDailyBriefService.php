@@ -39,9 +39,12 @@ final class SurfDailyBriefService
         private readonly EuskalmetSeaForecastClient $euskalmet,
         private readonly SurfEnergyCalculator $energyCalculator,
         private readonly SurfLevelRecommender $levelRecommender,
+        private readonly SurfWindStateClassifier $windState,
         private readonly GoogleAIService $googleAI,
         private readonly SurfForecastTableService $forecastTable,
         private readonly SurfBriefReactionService $reactions,
+        private readonly ZurriolaSpotLogisticsService $logistics,
+        private readonly SurfLevelQualityStarsService $qualityStars,
     ) {}
 
     /**
@@ -69,7 +72,28 @@ final class SurfDailyBriefService
 
         $energyIndex = $this->energyCalculator->indexFor($snapshot);
         $energyLabel = $this->energyCalculator->labelFor($energyIndex);
-        $level = $this->levelRecommender->recommend($snapshot);
+        [$energyHeight, $energyPeriod] = $this->energyCalculator->resolveHeightPeriod(
+            $snapshot->waveHeightM,
+            $snapshot->wavePeriodS,
+            $snapshot->swellHeightM,
+            $snapshot->swellPeriodS,
+        );
+        $tidePack = $this->euskalmet->tidesForDate($today->toDateString());
+        $stars = $this->qualityStars->forSlot(
+            energyKj: $this->energyCalculator->energyKj($energyHeight, $energyPeriod),
+            waveHeightM: $snapshot->waveHeightM,
+            wavePeriodS: $snapshot->wavePeriodS,
+            windState: $this->windState->classify($snapshot->windSpeedKmh, $snapshot->windDirectionDeg),
+            windSpeedKmh: $snapshot->windSpeedKmh,
+            signal: $this->levelRecommender->recommendSignal($snapshot),
+            at: $snapshot->fetchedAt,
+            tidePhase: $this->qualityStars->tidePhaseAt(
+                $snapshot->fetchedAt,
+                is_array($tidePack) ? ($tidePack['events'] ?? []) : [],
+            ),
+            windDirectionDeg: $snapshot->windDirectionDeg,
+        );
+        $level = $this->levelRecommender->headlineFromStars($stars);
 
         [$summary, $source, $sections] = $this->buildSummary($snapshot, $level, $energyLabel);
 
@@ -276,7 +300,7 @@ final class SurfDailyBriefService
         $currentMessage = $this->formatDayForAI($snapshot, $level, $energyLabel);
 
         try {
-            $guide = $this->readGuide().$this->readLogisticsJsonBlock();
+            $guide = $this->readGuide().$this->logistics->jsonBlockForPrompt();
             // El parte devuelve un JSON con 5 campos (general + 3 niveles + aviso); 350 tokens (el
             // default pensado para respuestas cortas del chatbot) se queda corto y trunca el JSON.
             $raw = $this->googleAI->generateReply($guide, [], $currentMessage, maxOutputTokens: 900);
@@ -415,24 +439,6 @@ final class SurfDailyBriefService
         return $contents;
     }
 
-    /** JSON de reglas técnicas (viento por componente, energía kJ, marea, swell, periodo...). Opcional. */
-    private function readLogisticsJsonBlock(): string
-    {
-        $path = (string) config('services.zurriola_surf.logistics_json_path');
-
-        if ($path === '' || ! is_readable($path)) {
-            return '';
-        }
-
-        $contents = trim((string) file_get_contents($path));
-
-        if ($contents === '') {
-            return '';
-        }
-
-        return "\n\n# Reglas técnicas estructuradas de Zurriola (JSON)\n\n".$contents;
-    }
-
     /**
      * Construye el mensaje con el desglose mañana/tarde real de hoy (reutiliza
      * {@see SurfForecastTableService::todayDay()}, misma lógica que la tabla
@@ -456,10 +462,10 @@ final class SurfDailyBriefService
 
         $lines = ["Datos de hoy en Zurriola (franjas de la previsión horaria real):", ''];
         $lines[] = 'MAÑANA:';
-        $lines = array_merge($lines, array_map($this->formatSlotForAI(...), $morning));
+        $lines = array_merge($lines, array_map(fn (SurfForecastSlotDto $slot) => $this->formatSlotForAI($slot, $day), $morning));
         $lines[] = '';
         $lines[] = 'TARDE:';
-        $lines = array_merge($lines, array_map($this->formatSlotForAI(...), $afternoon));
+        $lines = array_merge($lines, array_map(fn (SurfForecastSlotDto $slot) => $this->formatSlotForAI($slot, $day), $afternoon));
         $lines[] = '';
         $lines[] = $this->formatTideEventsForAI($day);
         $euskalmetDay = $this->euskalmet->dayByDate($day->date);
@@ -483,18 +489,37 @@ final class SurfDailyBriefService
             $energyLabel,
             $level,
         );
+        $lines[] = sprintf(
+            'Estrellas del sistema para el mejor momento de hoy (mismas que la tabla; 1–5): iniciación %d, intermedio %d, avanzado %d. NO las contradigas ni las reinventes: explica el día alineado a esas notas.',
+            $day->qualityStarsIniciacion,
+            $day->qualityStarsIntermedio,
+            $day->qualityStarsAvanzado,
+        );
         $lines[] = '';
         $lines[] = 'Redacta el parte del día en el JSON obligatorio de la guía (general + iniciacion + intermedio + avanzado + aviso), con los kJ reales de cada franja y las reglas técnicas del spot.';
 
         return implode("\n", $lines);
     }
 
-    private function formatSlotForAI(SurfForecastSlotDto $slot): string
+    private function formatSlotForAI(SurfForecastSlotDto $slot, SurfForecastDayDto $day): string
     {
         $windKt = round($slot->windSpeedKmh / 1.852, 1);
+        $at = Carbon::parse($slot->time);
+        $phase = $this->qualityStars->tidePhaseAt($at, $day->tideEvents);
+        $stars = $this->qualityStars->forSlot(
+            energyKj: $slot->energyKj,
+            waveHeightM: $slot->waveHeightM,
+            wavePeriodS: $slot->wavePeriodS,
+            windState: $slot->windState,
+            windSpeedKmh: $slot->windSpeedKmh,
+            signal: $slot->signal,
+            at: $at,
+            tidePhase: $phase,
+            windDirectionDeg: $slot->windDirectionDeg,
+        );
 
         return sprintf(
-            '- %s: ola %.1f m / %.1f s dirección %s, viento %.0f km/h (~%s nudos) dirección %s [%s], energía ~%d kJ (etiqueta interna "%s").',
+            '- %s: ola %.1f m / %.1f s dirección %s, viento %.0f km/h (~%s nudos) dirección %s [%s], energía ~%d kJ (etiqueta interna "%s"), marea ~%s, estrellas Ini %d / Int %d / Ava %d.',
             $slot->hourLabel,
             $slot->waveHeightM,
             $slot->wavePeriodS,
@@ -505,6 +530,10 @@ final class SurfDailyBriefService
             $slot->windState,
             $slot->energyKj,
             $slot->energyLabel,
+            $phase ?? 'sin dato',
+            $stars->iniciacion,
+            $stars->intermedio,
+            $stars->avanzado,
         );
     }
 

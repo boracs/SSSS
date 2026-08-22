@@ -22,9 +22,9 @@ enum FiscalInvoiceStatus: string
     public function label(): string
     {
         return match ($this) {
-            self::Pending    => 'Pendiente',
-            self::Processing => 'En tramitación',
-            self::Registered => 'Registrada',
+            self::Pending    => 'Pendiente de emisión',
+            self::Processing => 'TicketBAI en proceso',
+            self::Registered => 'Emitida',
             self::Failed     => 'Fallida',
         };
     }

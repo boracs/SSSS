@@ -7,8 +7,8 @@ namespace App\DTOs\Invoicing;
 use InvalidArgumentException;
 
 /**
- * Línea de factura fiscal. El precio SIEMPRE en céntimos (int); la conversión a euros
- * solo ocurre en el client del proveedor (ver B2BRouterFiscalInvoiceIssuer).
+ * Línea de factura fiscal. unitPriceCents = total cobrado (IVA incluido).
+ * El emisor B2B extrae la base neta en la frontera (MoneyCents).
  */
 final readonly class FiscalInvoiceLineDto
 {

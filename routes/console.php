@@ -10,6 +10,8 @@ Schedule::command('rentals:release-no-shows')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
 // Fotos: cancela checkouts Stripe abandonados (expires_at).
 Schedule::command('photos:cancel-expired')->everyFiveMinutes();
+// Tienda: devuelve stock si el checkout Stripe se abandonó (margen config/store.php).
+Schedule::command('store:release-unpaid')->everyFiveMinutes();
 // Taquilla: borra cuotas pendientes cuyo checkout Stripe se abandonó.
 Schedule::command('taquilla:purge-expired-pending')->everyFiveMinutes();
 // Alquiler: cancela reservas pendientes si no se pagó el depósito online a tiempo.

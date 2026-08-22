@@ -1,13 +1,19 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import BunkerLogo from "./BunkerLogo";
 import YowLogo from "./YowLogo";
 import GipuzkoaLogo from "./GipuzkoaLogo";
 import OpenMeteoLogo from "./OpenMeteoLogo";
 
-function SponsorMark({ logo, logoVariant, className }) {
+/** Orden visual footer (sin subgrupos visibles). */
+const STRIP_ORDER = ["bunker", "yow", "gipuzkoa", "open_meteo"];
+
+function SponsorMark({ logo, logoVariant, className, strip = false }) {
     if (logo === "bunker") {
-        return <BunkerLogo variant="sponsorStrip" className={className} />;
+        // whiteMark/nav son oscuros sobre negro: solo sponsorStrip funciona en footer navy.
+        return (
+            <BunkerLogo variant="sponsorStrip" className={className} />
+        );
     }
     if (logo === "yow") {
         return <YowLogo variant="color" className={className} />;
@@ -19,6 +25,18 @@ function SponsorMark({ logo, logoVariant, className }) {
         return <OpenMeteoLogo variant="white" className={className} />;
     }
     return null;
+}
+
+function sponsorLabel(sponsor) {
+    return sponsor.tagline ? `${sponsor.name} — ${sponsor.tagline}` : sponsor.name;
+}
+
+function orderStripSponsors(items) {
+    const byLogo = Object.fromEntries(items.map((item) => [item.logo, item]));
+    const ordered = STRIP_ORDER.map((id) => byLogo[id]).filter(Boolean);
+    const known = new Set(STRIP_ORDER);
+    const extras = items.filter((item) => !known.has(item.logo));
+    return [...ordered, ...extras];
 }
 
 /**
@@ -37,6 +55,8 @@ export default function SponsorsStrip({
     const { sponsors = [] } = usePage().props;
     const items = Array.isArray(sponsors) ? sponsors.filter((s) => s?.active !== false) : [];
 
+    const stripItems = useMemo(() => orderStripSponsors(items), [items]);
+
     if (items.length === 0) {
         return null;
     }
@@ -48,62 +68,78 @@ export default function SponsorsStrip({
     const gridMarkClass =
         "mx-auto flex h-6 w-auto max-w-[88px] items-center justify-center sm:h-9 sm:max-w-[120px] [&_img]:h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
 
-    const stripMarkClass =
-        "flex h-7 w-auto max-w-[96px] items-center justify-center transition duration-200 group-hover:scale-[1.03] sm:h-9 sm:max-w-[128px] [&_img]:h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
+    /** Bunker usa wordmark horizontal (sponsorStrip); el resto, marks cuadrados. */
+    const stripMarkClassFor = (logoId) => {
+        if (logoId === "bunker") {
+            return "pointer-events-none flex h-9 w-auto max-w-[9.5rem] items-center justify-center sm:h-10 sm:max-w-[11rem] [&_img]:max-h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
+        }
+        return "pointer-events-none flex h-8 w-auto max-w-[5.25rem] items-center justify-center sm:h-9 sm:max-w-[6.25rem] [&_img]:max-h-full [&_img]:w-auto [&_img]:max-w-full [&_img]:object-contain";
+    };
 
-    const titleClass = `shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] sm:text-[11px] ${
-        isDark ? "text-cyan-300/75" : "text-[#0f5f74]"
+    const stripLinkClassFor = (logoId) => {
+        const base =
+            "group inline-flex min-h-11 items-center justify-center rounded-lg px-1 transition-opacity duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/45 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950";
+        if (logoId === "bunker") {
+            return `${base} min-w-[7rem] opacity-90 hover:opacity-100 sm:min-w-[8rem]`;
+        }
+        return `${base} min-w-[4.5rem] opacity-[0.55] hover:opacity-100`;
+    };
+
+    const titleClass = `text-[11px] font-bold uppercase tracking-[0.16em] ${
+        isDark ? "text-cyan-300/80" : "text-[#0f5f74]"
     }`;
 
     if (layout === "strip") {
         return (
-            <section className={className} aria-label={title}>
-                <div className="rounded-2xl border border-white/10 bg-slate-950/35 px-4 py-5 sm:px-6 sm:py-6">
-                    <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:gap-8">
-                        {showTitle ? <p className={titleClass}>{title}</p> : null}
-                        <ul
-                            className={`flex flex-wrap items-center justify-center gap-x-8 gap-y-5 sm:flex-1 sm:justify-end lg:justify-center lg:gap-x-10 ${
-                                showTitle ? "" : "w-full"
-                            }`}
-                        >
-                            {items.map((sponsor) => {
-                                const label = sponsor.tagline
-                                    ? `${sponsor.name} — ${sponsor.tagline}`
-                                    : sponsor.name;
-                                const mark = (
-                                    <SponsorMark
-                                        logo={sponsor.logo}
-                                        logoVariant={resolvedLogoVariant}
-                                        className={stripMarkClass}
-                                    />
-                                );
-                                const linkClass =
-                                    "group inline-flex items-center opacity-75 transition-opacity duration-200 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 rounded-lg";
+            <section
+                className={`min-w-0 ${className}`}
+                aria-label="Colaboradores y tecnología"
+            >
+                {showTitle ? (
+                    <p className={`${titleClass} text-center sm:text-left`}>{title}</p>
+                ) : null}
 
-                                return (
-                                    <li key={sponsor.id ?? sponsor.name}>
-                                        {sponsor.url ? (
-                                            <a
-                                                href={sponsor.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer sponsored"
-                                                className={linkClass}
-                                                aria-label={label}
-                                                title={label}
-                                            >
-                                                {mark}
-                                            </a>
-                                        ) : (
-                                            <span className="group inline-flex items-center opacity-75" title={label}>
-                                                {mark}
-                                            </span>
-                                        )}
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                </div>
+                <ul
+                    className={`flex min-w-0 flex-wrap items-center justify-center gap-x-8 gap-y-6 sm:justify-start md:gap-x-10 lg:justify-center lg:gap-x-12 ${
+                        showTitle ? "mt-5 sm:mt-6" : ""
+                    } max-w-[calc(100%-3.25rem)] sm:max-w-none`}
+                >
+                    {stripItems.map((sponsor) => {
+                        const label = sponsorLabel(sponsor);
+                        const mark = (
+                            <SponsorMark
+                                logo={sponsor.logo}
+                                logoVariant={resolvedLogoVariant}
+                                className={stripMarkClassFor(sponsor.logo)}
+                                strip
+                            />
+                        );
+
+                        return (
+                            <li key={sponsor.id ?? sponsor.name} className="shrink-0">
+                                {sponsor.url ? (
+                                    <a
+                                        href={sponsor.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer sponsored"
+                                        className={stripLinkClassFor(sponsor.logo)}
+                                        aria-label={label}
+                                        title={label}
+                                    >
+                                        {mark}
+                                    </a>
+                                ) : (
+                                    <span
+                                        className="inline-flex min-h-11 items-center opacity-55"
+                                        title={label}
+                                    >
+                                        {mark}
+                                    </span>
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
             </section>
         );
     }

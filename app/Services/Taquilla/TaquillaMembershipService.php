@@ -16,6 +16,7 @@ use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
 use App\Models\User;
 use App\Services\Chatbot\S4BusinessContextService;
+use App\Services\Invoicing\FiscalInvoiceAccessService;
 use App\Services\Payments\PaymentReceiptAccessService;
 use App\Support\MoneyCents;
 use App\Support\VipVirtualLocker;
@@ -32,6 +33,7 @@ class TaquillaMembershipService
         private readonly LockerPaymentIndexBuilder $lockerPaymentIndex,
         private readonly S4BusinessContextService $chatbotBusinessContext,
         private readonly PaymentReceiptAccessService $paymentReceipts,
+        private readonly FiscalInvoiceAccessService $fiscalInvoices,
     ) {}
 
     /**
@@ -225,6 +227,9 @@ class TaquillaMembershipService
 
             $locked->numeroTaquilla = null;
             $locked->taquilla_baja_solicitada_at = null;
+            if ((bool) $locked->is_vip) {
+                $locked->numeroTaquilla = VipVirtualLocker::defaultNumber();
+            }
             $locked->save();
 
             return $locked->fresh();
@@ -293,13 +298,13 @@ class TaquillaMembershipService
         $ultimoPago = $user->pagosCuotas->sortByDesc('periodo_fin')->first();
 
         $historialPagos = $user->pagosCuotas;
-        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
-            $historialPagos
-                ->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])
-                ->all(),
-        );
+        $payables = $historialPagos
+            ->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])
+            ->all();
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables($payables);
+        $fiscalMap = $this->fiscalInvoices->mapForPayables($payables);
 
-        $historialPagos = $historialPagos->map(function (PagoCuota $pago) use ($receiptMap): array {
+        $historialPagos = $historialPagos->map(function (PagoCuota $pago) use ($receiptMap, $fiscalMap): array {
             $manualProofUrl = ! empty($pago->payment_proof_path)
                 ? route('taquillas.pago.proof', $pago->id)
                 : null;
@@ -322,6 +327,7 @@ class TaquillaMembershipService
                 'periodo_fin' => optional($pago->periodo_fin)->toDateString(),
                 'proof_url' => $proof['proof_url'],
                 'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                ...$this->fiscalFieldsForPago($pago, $fiscalMap),
                 'plan' => [
                     'id' => $pago->plan->id ?? null,
                     'nombre' => $pago->plan->nombre ?? null,
@@ -809,9 +815,11 @@ class TaquillaMembershipService
             ->limit(50)
             ->get();
 
-        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables(
-            $rows->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])->all(),
-        );
+        $payables = $rows
+            ->map(fn (PagoCuota $pago) => ['type' => PagoCuota::class, 'id' => (int) $pago->id])
+            ->all();
+        $receiptMap = $this->paymentReceipts->proofMetaMapForPayables($payables);
+        $fiscalMap = $this->fiscalInvoices->mapForPayables($payables);
 
         return $rows
             ->filter(function (PagoCuota $p): bool {
@@ -822,7 +830,7 @@ class TaquillaMembershipService
 
                 return true;
             })
-            ->map(function (PagoCuota $p) use ($receiptMap): array {
+            ->map(function (PagoCuota $p) use ($receiptMap, $fiscalMap): array {
                 $manualProofUrl = ! empty($p->payment_proof_path)
                     ? route('taquilla.pagos.proof', $p->id)
                     : null;
@@ -844,6 +852,7 @@ class TaquillaMembershipService
                     'is_checked' => (bool) ($p->is_checked ?? false),
                     'proof_url' => $proof['proof_url'],
                     'proof_is_stripe_receipt' => $proof['proof_is_stripe_receipt'],
+                    ...$this->fiscalFieldsForPago($p, $fiscalMap),
                 ];
             })
             ->values()
@@ -1146,5 +1155,20 @@ class TaquillaMembershipService
 
             throw $e;
         }
+    }
+
+    /**
+     * @param  array<string, \App\DTOs\Invoicing\FiscalInvoicePublicDto>  $fiscalMap
+     * @return array{fiscal_invoice_url: ?string, fiscal_invoice_pdf_url: ?string, fiscal_invoice_ready: bool}
+     */
+    private function fiscalFieldsForPago(PagoCuota $pago, array $fiscalMap): array
+    {
+        $fiscal = $fiscalMap[$this->fiscalInvoices->cacheKey(PagoCuota::class, (int) $pago->id)] ?? null;
+
+        return [
+            'fiscal_invoice_url' => $fiscal?->detailUrl,
+            'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
+            'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
+        ];
     }
 }

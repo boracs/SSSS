@@ -6,6 +6,7 @@ import AuthenticatedLayout from "../../../layouts/AuthenticatedLayout";
 import Breadcrumbs from "../../../components/Breadcrumbs";
 import EmptyState from "../../../components/EmptyState";
 import SafeImage from "../../../components/SafeImage";
+import AccordionTrigger from "../../../components/ui/AccordionTrigger";
 import { BOARD_CATEGORIES, boardCategoryLabel } from "../../../lib/surfboardCategories";
 
 const inputClass =
@@ -69,20 +70,6 @@ function Badge({ children, tone = "slate" }) {
         >
             {children}
         </span>
-    );
-}
-
-function ChevronIcon({ open, className = "h-4 w-4" }) {
-    return (
-        <svg
-            className={`${className} transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-        >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
     );
 }
 
@@ -604,18 +591,18 @@ export default function Index({ surfboards }) {
                                                 }`}
                                             >
                                                 <div className="col-span-3 flex items-center gap-2 sm:gap-3">
-                                                    <button
-                                                        type="button"
-                                                        aria-expanded={isExpanded}
-                                                        aria-label={isExpanded ? "Cerrar detalle" : "Abrir detalle"}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleExpand(s.id);
-                                                        }}
+                                                    <AccordionTrigger
+                                                        open={isExpanded}
+                                                        onToggle={() =>
+                                                            toggleExpand(s.id)
+                                                        }
+                                                        panelId={`surfboard-panel-${s.id}`}
+                                                        labelOpen="Cerrar detalle"
+                                                        labelClosed="Abrir detalle"
+                                                        stopPropagation
                                                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-slate-100"
-                                                    >
-                                                        <ChevronIcon open={isExpanded} />
-                                                    </button>
+                                                        chevronClassName="h-4 w-4"
+                                                    />
                                                     <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-800 transition-all duration-300 ease-in-out group-hover:ring-2 group-hover:ring-cyan-500/40">
                                                         <SafeImage
                                                             src={imageUrlFor(s)}
@@ -678,6 +665,7 @@ export default function Index({ surfboards }) {
                                             <AnimatePresence initial={false}>
                                                 {isExpanded ? (
                                                     <motion.div
+                                                        id={`surfboard-panel-${s.id}`}
                                                         key={`panel-${s.id}`}
                                                         initial={{ height: 0, opacity: 0 }}
                                                         animate={{ height: "auto", opacity: 1 }}

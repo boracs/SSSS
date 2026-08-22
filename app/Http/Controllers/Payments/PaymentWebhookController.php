@@ -89,7 +89,7 @@ final class PaymentWebhookController extends Controller
 
         if (! $result['duplicate']) {
             try {
-                PaymentConfirmed::dispatch(
+                PaymentConfirmed::emit(
                     payableType: $result['payable_type'],
                     payableId: $result['payable_id'],
                     amountCents: $amountCents,

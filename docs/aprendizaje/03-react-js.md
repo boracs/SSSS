@@ -57,4 +57,31 @@
 
 ---
 
-> **Por ampliar:** 3.7+ (useActionState, Suspense, context, memoización, testing con Vitest…).
+## 3.7 Vite (`npm run dev`): el traductor de la vitrina
+
+- **Qué es:** **React** es una librería (caja de herramientas) para pintar pantallas. Escribe el aspecto de botones y páginas en archivos `.jsx`: parece HTML mezclado con lógica. El navegador **no come** ese formato crudo. **Vite** (el comando `npm run dev`) es el **traductor**: convierte esos archivos a JavaScript normal y se los sirve al Chrome. Mientras está encendido, si guardas un cambio, la página se actualiza sola (no hace falta F5 a cada rato).
+- **Por qué importa:** Laravel (el “mostrador” PHP) entrega la página. La vitrina bonita (React) la monta Vite. Si apagas Vite, o Laravel busca un traductor que ya no está (archivo `public/hot`) y ves **pantalla blanca**, o enseña una foto vieja de la vitrina (`public/build`).
+- **En tu proyecto:** pantallas en `resources/js/Pages/` y `components/`. Para enseñar a amigos por internet se apaga Vite y se hace una “foto” definitiva (`npm run share:tunnel`). Vite y túnel a la vez se pisan.
+- **Para recordar:** *React = cómo se pinta; Vite = traductor en vivo; Laravel = quién atiende al cliente.*
+
+---
+
+## 3.8 Componente canónico (el molde oficial)
+
+- **Qué es:** **canónico = la versión oficial**, la de referencia. En vez de copiar el mismo botón/acordeón en diez pantallas (diez códigos casi iguales), se crea **un molde** (`AccordionTrigger`) y las demás **lo usan**. El molde lleva lo común (botón, chevron que gira, `aria-expanded`). Los **detalles van uno a uno** en cada pantalla: colores, textos («Ver detalles», «Abrir»), tamaño.
+- **Por qué importa:** un bug o una mejora de accesibilidad se arregla **en un sitio**, no en diez. Unificar = extraer el código repetido a ese molde; cada página **llama** al molde, no reescribe el motor.
+- **En tu proyecto:** `resources/js/components/ui/AccordionTrigger.jsx` (y `ExpandableText.jsx` para «Leer más»). Lo usan Pedidos, Clients, Vigencia, Datáfono móvil, Surfboards admin, SurfBriefMini. SecondHand (Plus/Minus) y Bonos (`▼`) aún no: ahí el dibujo es otro, no solo el molde.
+- **Para recordar:** *canónico = molde oficial; las pantallas lo llaman y solo pintan sus matices.*
+
+---
+
+## 3.9 Disparador (trigger): frontend ≠ base de datos
+
+- **Qué es:** misma palabra, dos mundos. En **frontend**, *trigger* es el **gatillo de la pantalla**: un clic, un hover, un submit. Ese gesto llama a una función (`onClick`, `onToggle`) y se dispara la acción (abrir el acordeón). `AccordionTrigger` es ese **botón**, no un trigger de SQL. En **MySQL**, un `TRIGGER` es código **dentro de la BD** que corre solo cuando hay `INSERT`/`UPDATE`/`DELETE` (nadie pulsa nada). Tampoco es un **Event de Laravel** (`PaymentConfirmed`): eso es backend, “pasó un cobro → reacciona un listener”.
+- **Por qué importa:** si oyes “trigger” o “disparador”, pregunta **en qué capa**. Si no, mezclas el botón del acordeón con la base de datos.
+- **En tu proyecto:** el clic de `AccordionTrigger` abre el panel. Los cobros usan Events/Jobs (`02`), no triggers de MySQL.
+- **Para recordar:** *frontend = el usuario aprieta el gatillo; BD = MySQL reacciona solo al cambiar una fila.*
+
+---
+
+> **Por ampliar:** 3.10+ (useActionState, Suspense, context, memoización, testing con Vitest…).

@@ -1,8 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useId } from "react";
 import { Link } from "@inertiajs/react";
 import Layout1 from "../layouts/Layout1";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
+import AccordionTrigger from "../components/ui/AccordionTrigger";
 import {
     Wind,
     Dumbbell,
@@ -16,7 +17,6 @@ import {
     Star,
     Zap,
     ChevronRight,
-    ChevronDown,
     Wifi,
     Droplets,
     Plug,
@@ -238,25 +238,30 @@ function SectionLabel({ children }) {
 
 function BenefitVerMas({ detail, trigger = "Ver dinámica" }) {
     const [open, setOpen] = useState(false);
+    const panelId = useId();
 
     return (
         <span className="mt-2 block">
-            <button
-                type="button"
+            <AccordionTrigger
+                open={open}
+                onToggle={() => setOpen((v) => !v)}
+                panelId={panelId}
+                stopPropagation={false}
                 className="inline-flex items-center gap-1 rounded-md border border-orange-500/30 bg-orange-500/10 px-1.5 py-0.5 text-[11px] font-semibold text-orange-300 transition hover:bg-orange-500/20 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-                aria-expanded={open}
-                onClick={() => setOpen((v) => !v)}
+                chevronClassName="h-3 w-3"
             >
-                <Info className="h-3 w-3" />
+                <Info className="h-3 w-3" aria-hidden />
                 {trigger}
-                <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
-            </button>
+            </AccordionTrigger>
 
-            {open && (
-                <div className="mt-2 rounded-xl border border-orange-500/20 bg-slate-950/90 p-3 text-xs leading-relaxed text-slate-300 shadow-lg">
+            {open ? (
+                <div
+                    id={panelId}
+                    className="mt-2 rounded-xl border border-orange-500/20 bg-slate-950/90 p-3 text-xs leading-relaxed text-slate-300 shadow-lg"
+                >
                     {detail}
                 </div>
-            )}
+            ) : null}
         </span>
     );
 }

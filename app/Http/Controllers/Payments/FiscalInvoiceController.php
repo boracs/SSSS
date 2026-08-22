@@ -35,13 +35,18 @@ final class FiscalInvoiceController extends Controller
 
         $dto = $this->access->toPublicDto($fiscalInvoice);
 
+        $pendingMessage = match ($fiscalInvoice->status) {
+            FiscalInvoiceStatus::Processing => 'Hacienda aún no ha sellado el TicketBAI (código y QR). El PDF de la factura ya lo tienes en Mis facturas.',
+            FiscalInvoiceStatus::Pending => 'La factura fiscal se está preparando. El PDF aparecerá en Mis facturas en cuanto se emita.',
+            FiscalInvoiceStatus::Failed => 'No pudimos registrar el TicketBAI automáticamente. El pago está confirmado; el PDF de Mis facturas sigue siendo válido. Contacta con la escuela si necesitas el sello.',
+            default => null,
+        };
+
         return Inertia::render('Payments/FiscalInvoice', [
             'invoice' => $dto->toArray(),
-            'pending_message' => $fiscalInvoice->status === FiscalInvoiceStatus::Processing
-                ? 'Tu factura TicketBAI se está registrando. En unos minutos podrás ver el código y descargar el PDF.'
-                : ($fiscalInvoice->status === FiscalInvoiceStatus::Failed
-                    ? 'No pudimos emitir la factura fiscal automáticamente. El pago está confirmado; contacta con la escuela si necesitas el documento.'
-                    : null),
+            'pending_message' => $pendingMessage,
+            'back_url' => route('my-invoices.index'),
+            'back_label' => 'Volver a mis facturas',
         ]);
     }
 
@@ -52,11 +57,7 @@ final class FiscalInvoiceController extends Controller
             abort(403);
         }
 
-        if (
-            $fiscalInvoice->status !== FiscalInvoiceStatus::Registered
-            || ! is_string($fiscalInvoice->b2b_invoice_id)
-            || $fiscalInvoice->b2b_invoice_id === ''
-        ) {
+        if (! is_string($fiscalInvoice->b2b_invoice_id) || $fiscalInvoice->b2b_invoice_id === '') {
             abort(404, 'PDF aún no disponible.');
         }
 

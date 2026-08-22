@@ -4,7 +4,12 @@ function euros(cents) {
     return (Number(cents || 0) / 100).toFixed(2).replace(".", ",") + " €";
 }
 
-export default function FiscalInvoice({ invoice, pending_message = null }) {
+export default function FiscalInvoice({
+    invoice,
+    pending_message = null,
+    back_url = "/",
+    back_label = "Volver",
+}) {
     const ready = Boolean(invoice?.is_ready);
 
     return (
@@ -59,7 +64,7 @@ export default function FiscalInvoice({ invoice, pending_message = null }) {
                     ) : null}
 
                     <div className="mt-8 flex flex-col gap-3">
-                        {invoice?.pdf_url ? (
+                        {ready && invoice?.pdf_url ? (
                             <a
                                 href={invoice.pdf_url}
                                 target="_blank"
@@ -70,10 +75,10 @@ export default function FiscalInvoice({ invoice, pending_message = null }) {
                             </a>
                         ) : null}
                         <Link
-                            href="/"
+                            href={back_url}
                             className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/5"
                         >
-                            Volver al inicio
+                            {back_label}
                         </Link>
                     </div>
                 </div>

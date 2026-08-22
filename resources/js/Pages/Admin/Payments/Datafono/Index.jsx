@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import { ChevronDown } from "lucide-react";
 import Layout1 from "@/layouts/Layout1";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 import AdminTable from "@/components/admin/ui/AdminTable";
 import AdminStatusBadge from "@/components/admin/ui/AdminStatusBadge";
 import AdminButton from "@/components/admin/ui/AdminButton";
@@ -22,6 +22,40 @@ const SOURCE_LABELS = {
     tpv: "TPV",
     manual_cash: "Efectivo",
 };
+
+const HACIENDA_TONE = {
+    n_a: "text-slate-500",
+    tpv: "text-slate-300",
+    pending: "text-amber-300",
+    processing: "text-sky-300",
+    issued: "text-emerald-300",
+    failed: "text-rose-300",
+};
+
+function HaciendaCell({ payment, onCommunicate, busy }) {
+    const h = payment?.hacienda;
+    if (!h) {
+        return <span className="text-xs text-slate-500">—</span>;
+    }
+
+    return (
+        <div className="flex flex-col items-start gap-1.5">
+            <span className={`text-xs font-medium ${HACIENDA_TONE[h.code] || "text-slate-400"}`}>
+                {h.label}
+            </span>
+            {h.can_communicate ? (
+                <AdminButton
+                    className="px-2 py-1 text-[11px]"
+                    disabled={busy}
+                    title="Enviar TicketBAI a Hacienda vía B2B"
+                    onClick={() => onCommunicate(payment.id)}
+                >
+                    Comunicar a Hacienda
+                </AdminButton>
+            ) : null}
+        </div>
+    );
+}
 
 /** Nombre corto de terminal: "Datáfono 1 · Mostrador" → "Datáfono 1". */
 function terminalShortLabel(payment) {
@@ -187,6 +221,25 @@ export default function DatafonoPaymentsIndex({
         );
     };
 
+    const communicateHacienda = (paymentId) => {
+        if (
+            !window.confirm(
+                "¿Comunicar este cobro a Hacienda (TicketBAI vía B2B)?",
+            )
+        ) {
+            return;
+        }
+        setBusy(true);
+        router.post(
+            route("admin.payments.datafono.communicate-hacienda", paymentId),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setBusy(false),
+            },
+        );
+    };
+
     const submitCash = (payload) => {
         setBusy(true);
         router.post(route("admin.payments.datafono.store"), payload, {
@@ -301,13 +354,15 @@ export default function DatafonoPaymentsIndex({
                                     key={p.id}
                                     className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70"
                                 >
-                                    <button
-                                        type="button"
-                                        onClick={() =>
+                                    <AccordionTrigger
+                                        open={open}
+                                        onToggle={() =>
                                             toggleMobileExpanded(p.id)
                                         }
+                                        panelId={`datafono-mobile-${p.id}`}
+                                        stopPropagation={false}
                                         className="flex w-full items-start gap-2 px-3 py-2.5 text-left"
-                                        aria-expanded={open}
+                                        chevronClassName="mt-0.5 h-5 w-5 text-slate-400"
                                     >
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-baseline justify-between gap-2">
@@ -340,15 +395,12 @@ export default function DatafonoPaymentsIndex({
                                                 </span>
                                             </div>
                                         </div>
-                                        <ChevronDown
-                                            className={`mt-0.5 h-5 w-5 shrink-0 text-slate-400 transition-transform ${
-                                                open ? "rotate-180" : ""
-                                            }`}
-                                            aria-hidden
-                                        />
-                                    </button>
+                                    </AccordionTrigger>
                                     {open ? (
-                                        <div className="space-y-2.5 border-t border-white/10 px-3 py-2.5 text-xs text-slate-300">
+                                        <div
+                                            id={`datafono-mobile-${p.id}`}
+                                            className="space-y-2.5 border-t border-white/10 px-3 py-2.5 text-xs text-slate-300"
+                                        >
                                             <div className="grid grid-cols-[4.5rem_1fr] gap-x-2 gap-y-1">
                                                 <span className="text-slate-500">
                                                     Cobrado
@@ -436,6 +488,17 @@ export default function DatafonoPaymentsIndex({
                                                 </p>
                                             ) : null}
 
+                                            <div className="border-t border-white/5 pt-2">
+                                                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                                    Hacienda
+                                                </p>
+                                                <HaciendaCell
+                                                    payment={p}
+                                                    busy={busy}
+                                                    onCommunicate={communicateHacienda}
+                                                />
+                                            </div>
+
                                             {p.status === "pending_review" ? (
                                                 <div className="flex gap-2 pt-0.5">
                                                     <AdminButton
@@ -481,6 +544,7 @@ export default function DatafonoPaymentsIndex({
                             { key: "pagador", label: "Pagador" },
                             { key: "cliente", label: "Cliente" },
                             { key: "servicios", label: "Servicios", sortable: true },
+                            { key: "hacienda", label: "Hacienda" },
                             { key: "acciones", label: "Acciones" },
                         ]}
                         rows={sortedPayments}
@@ -604,6 +668,14 @@ export default function DatafonoPaymentsIndex({
                                         </ul>
                                     );
                                 }
+                                case "hacienda":
+                                    return (
+                                        <HaciendaCell
+                                            payment={p}
+                                            busy={busy}
+                                            onCommunicate={communicateHacienda}
+                                        />
+                                    );
                                 case "acciones":
                                     return p.status === "pending_review" ? (
                                         <div className="flex flex-wrap gap-2">

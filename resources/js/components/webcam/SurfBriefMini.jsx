@@ -4,10 +4,11 @@ import {
     ArrowRight,
     BookOpenCheck,
     CalendarRange,
-    ChevronDown,
     Loader2,
 } from "lucide-react";
 import WaveCrestIcon from "../icons/WaveCrestIcon";
+import AccordionTrigger from "../ui/AccordionTrigger";
+import ExpandableText from "../ui/ExpandableText";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 import SurfLevelAccordion from "./SurfLevelAccordion";
 import SurfBriefLevelBlocks from "./SurfBriefLevelBlocks";
@@ -202,28 +203,31 @@ export default function SurfBriefMini({ brief }) {
                                 <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
                                     Hoy en Zurriola
                                 </p>
-                                <p
-                                    id={expandId}
-                                    className={`mt-1 text-sm leading-relaxed text-slate-700 sm:text-[15px] ${
-                                        expanded ? "" : "line-clamp-3 sm:line-clamp-2"
-                                    }`}
-                                >
-                                    {generalText}
-                                </p>
-                                {hasLevels || generalText ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => setExpanded((v) => !v)}
-                                        aria-expanded={expanded}
-                                        aria-controls={expandId}
+                                {generalText ? (
+                                    <ExpandableText
+                                        text={generalText}
+                                        open={expanded}
+                                        onToggle={() =>
+                                            setExpanded((v) => !v)
+                                        }
+                                        id={expandId}
+                                        collapsedClassName="line-clamp-3 sm:line-clamp-2"
+                                        className="mt-1 text-sm leading-relaxed text-slate-700 sm:text-[15px]"
+                                        buttonClassName="mt-2 inline-flex items-center gap-1 text-xs font-bold text-s4 transition hover:text-cyan-800"
+                                    />
+                                ) : hasLevels ? (
+                                    <AccordionTrigger
+                                        open={expanded}
+                                        onToggle={() =>
+                                            setExpanded((v) => !v)
+                                        }
+                                        labelOpen="Leer menos"
+                                        labelClosed="Leer más"
                                         className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-s4 transition hover:text-cyan-800"
+                                        chevronClassName="h-3.5 w-3.5"
                                     >
                                         {expanded ? "Leer menos" : "Leer más"}
-                                        <ChevronDown
-                                            className={`h-3.5 w-3.5 transition ${expanded ? "rotate-180" : ""}`}
-                                            aria-hidden
-                                        />
-                                    </button>
+                                    </AccordionTrigger>
                                 ) : null}
                             </div>
                         </div>
@@ -281,7 +285,7 @@ export default function SurfBriefMini({ brief }) {
                         ) : (
                             <CalendarRange className="h-4 w-4" aria-hidden />
                         )}
-                        Ver forecast al detalle
+                        Ver forecast ampliado
                     </button>
                 </div>
             </div>

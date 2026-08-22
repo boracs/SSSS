@@ -15,20 +15,21 @@ import {
     Wrench,
 } from "lucide-react";
 import { formatEur } from "@/utils/money";
+import StoreFiscalInvoiceActions from "@/components/StoreFiscalInvoiceActions";
 
 const MICRO_SERVICIOS_URL = "/nosotros#micro-servicios-club";
 
 /** Misma rejilla en cabecera y filas: Plan | Importe | Periodo | Estado */
 const PLAN_TIMELINE_GRID =
-    "sm:grid-cols-[minmax(0,1.15fr)_6.75rem_10.5rem_minmax(5.5rem,auto)] sm:gap-x-3";
+    "sm:grid-cols-[minmax(0,1.1fr)_6.5rem_9.5rem_minmax(10.5rem,1.15fr)] sm:gap-x-3";
 
 const CLUB_AMENITIES = [
-    { icon: Lock, label: "1 taquilla privada", detail: "Espacio seguro a pie de playa" },
-    { icon: Waves, label: "2 tablas en rack", detail: "Almacenamiento a pie de Zurriola" },
-    { icon: Shirt, label: "2 trajes en secadero", detail: "Secado rápido en instalaciones del club" },
-    { icon: Bath, label: "Baños, duchas y calentamiento", detail: "TRX, foam rollers y zona pre-sesión" },
-    { icon: Percent, label: "Descuentos en tienda", detail: "Hasta 45% para socios · 50% con plan VIP anual" },
-    { icon: Wrench, label: "Reparación y micro-servicios", detail: "Taller de tablas + WiFi, cafetera, cargadores y más" },
+    { icon: Lock, label: "1 taquilla privada" },
+    { icon: Waves, label: "2 tablas en rack" },
+    { icon: Shirt, label: "2 trajes en secadero" },
+    { icon: Bath, label: "Baños, duchas y calentamiento" },
+    { icon: Percent, label: "Descuentos en tienda" },
+    { icon: Wrench, label: "Reparación y micro-servicios" },
 ];
 
 function fmt(v) {
@@ -195,27 +196,32 @@ function PlanTimelineRow({ row, kind, onProofClick, compact = false }) {
             <p className="hidden tabular-nums text-slate-400 whitespace-nowrap sm:block">
                 {fmtPeriod(row.periodo_inicio, row.periodo_fin)}
             </p>
-            <div className="flex items-center justify-end gap-1.5">
-                <span
-                    className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 sm:text-[10px] ${badge.cls}`}
-                >
-                    {badge.label}
-                </span>
-                {row.status === "confirmed" && row.proof_url ? (
-                    <button
-                        type="button"
-                        onClick={() => {
-                            if (row.proof_is_stripe_receipt) {
-                                window.open(row.proof_url, "_blank", "noopener,noreferrer");
-                                return;
-                            }
-                            onProofClick(row.proof_url);
-                        }}
-                        className="shrink-0 text-[9px] font-semibold text-emerald-400 hover:underline sm:text-[10px]"
-                        title="Ver recibo de pago"
+            <div className="flex min-w-0 flex-col items-stretch gap-1">
+                <div className="flex items-center justify-end">
+                    <span
+                        className={`inline-flex shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 sm:text-[10px] ${badge.cls}`}
                     >
-                        Recibo
-                    </button>
+                        {badge.label}
+                    </span>
+                </div>
+                {row.status === "confirmed" ? (
+                    <StoreFiscalInvoiceActions
+                        detailUrl={row.fiscal_invoice_url}
+                        pdfUrl={
+                            row.fiscal_invoice_pdf_url
+                            || (row.proof_is_stripe_receipt ? row.proof_url : null)
+                        }
+                        onPdfClick={
+                            !row.fiscal_invoice_pdf_url && row.proof_url && !row.proof_is_stripe_receipt
+                                ? () => onProofClick(row.proof_url)
+                                : undefined
+                        }
+                        ready={Boolean(row.fiscal_invoice_ready)}
+                        tone="dark"
+                        spread
+                        compact
+                        alwaysShow
+                    />
                 ) : null}
             </div>
             <p className="col-span-2 tabular-nums text-[10px] text-slate-500 sm:hidden">
@@ -566,37 +572,21 @@ export default function PlanesTaquillasClient({
                             Club de socios S4
                         </p>
                         <h1 className="mt-0.5 text-2xl font-extrabold tracking-tight sm:text-3xl">Planes y cuotas</h1>
-                        <p className="mt-1 max-w-2xl text-xs leading-snug text-slate-300 sm:text-sm">
-                            Gestiona tu cuota, renueva tu plan y consulta el historial de pagos.
-                        </p>
                     </div>
-                    <Link
-                        href={MICRO_SERVICIOS_URL}
-                        className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-white/15"
-                    >
-                        Micro-servicios
-                        <ExternalLink className="h-3 w-3" />
-                    </Link>
                 </header>
 
                 {/* Planes y pagos */}
                 {hasLocker ? (
                     <section className="rounded-xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm sm:p-4">
                         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                            <div>
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                                    Tus planes y pagos
-                                </h2>
-                                <p className="text-[10px] text-slate-500">
-                                    Preparado → en vigor → finalizados
-                                    {userData?.numero_taquilla ? (
-                                        <span className="text-slate-400">
-                                            {" "}
-                                            · Taquilla #{userData.numero_taquilla}
-                                        </span>
-                                    ) : null}
-                                </p>
-                            </div>
+                            <h2 className="flex flex-wrap items-baseline gap-x-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                                Tus planes y pagos
+                                {userData?.numero_taquilla ? (
+                                    <span className="font-semibold normal-case tracking-normal text-slate-300">
+                                        taquilla nº{userData.numero_taquilla}
+                                    </span>
+                                ) : null}
+                            </h2>
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${statusLabel.cls}`}>
                                 {statusLabel.text}
                             </span>
@@ -645,20 +635,14 @@ export default function PlanesTaquillasClient({
                 {/* Qué incluye todos los planes */}
                 <section>
                     <h2 className="text-lg font-bold text-white sm:text-xl">Qué incluye tu plan de socio</h2>
-                    <p className="mt-1 text-sm text-slate-400">
-                        Todos los planes desbloquean el pack completo del club. La diferencia está en la duración y el precio.
-                    </p>
-                    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {CLUB_AMENITIES.map(({ icon: Icon, label, detail }) => (
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                        {CLUB_AMENITIES.map(({ icon: Icon, label }) => (
                             <div
                                 key={label}
-                                className="flex gap-3 rounded-2xl border border-white/10 bg-white/5 p-4"
+                                className="flex min-h-[3.25rem] items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2"
                             >
-                                <Icon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
-                                <div>
-                                    <p className="text-sm font-semibold text-white">{label}</p>
-                                    <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{detail}</p>
-                                </div>
+                                <Icon className="h-4 w-4 shrink-0 text-emerald-400" />
+                                <p className="text-[11px] font-semibold leading-snug text-white sm:text-xs">{label}</p>
                             </div>
                         ))}
                     </div>

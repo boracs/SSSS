@@ -73,68 +73,69 @@ function AuctionCard({ auction }) {
     return (
         <Link
             href={route("auctions.show", auction.slug)}
-            className={`group relative flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] shadow-[0_4px_24px_rgba(0,0,0,0.25)] ring-1 ring-inset ring-white/5 backdrop-blur-md transition duration-300 hover:-translate-y-1 hover:border-orange-400/30 hover:shadow-[0_12px_40px_rgba(251,146,60,0.12)] ${cfg.ring}`}
+            className={`group relative flex flex-col overflow-hidden rounded-xl border border-white/[0.08] bg-gradient-to-b from-white/[0.07] to-white/[0.02] shadow-[0_4px_24px_rgba(0,0,0,0.25)] ring-1 ring-inset ring-white/5 backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:border-orange-400/30 hover:shadow-[0_12px_40px_rgba(251,146,60,0.12)] sm:rounded-2xl sm:hover:-translate-y-1 ${cfg.ring}`}
         >
-            <div className="relative aspect-[5/4] overflow-hidden bg-slate-900/80">
+            <div className="relative aspect-[5/4] overflow-hidden bg-gradient-to-b from-slate-200 to-slate-300 sm:bg-slate-900/80">
                 {auction.first_image ? (
                     <>
                         <img
                             src={auction.first_image}
                             alt={auction.title}
-                            className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]"
+                            className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-[1.04]"
                             loading="lazy"
                         />
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
                     </>
                 ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-800/80 to-slate-900">
-                        <Gavel className="h-12 w-12 text-slate-600/80" strokeWidth={1.25} />
-                        <span className="text-[10px] font-medium uppercase tracking-widest text-slate-600">Sin imagen</span>
+                    <div className="flex h-full flex-col items-center justify-center gap-1.5 bg-gradient-to-br from-slate-800/80 to-slate-900 sm:gap-2">
+                        <Gavel className="h-8 w-8 text-slate-600/80 sm:h-12 sm:w-12" strokeWidth={1.25} />
+                        <span className="text-[9px] font-medium uppercase tracking-widest text-slate-600 sm:text-[10px]">Sin imagen</span>
                     </div>
                 )}
 
-                <div className="absolute left-3 right-3 top-3 flex items-start justify-between gap-2">
-                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide backdrop-blur-md ${cfg.badge}`}>
+                <div className="absolute left-1.5 right-1.5 top-1.5 flex items-start justify-between gap-1 sm:left-3 sm:right-3 sm:top-3 sm:gap-2">
+                    <span className={`inline-flex max-w-[60%] items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide backdrop-blur-md sm:gap-1.5 sm:px-2.5 sm:py-1 sm:text-[10px] ${cfg.badge}`}>
                         {isLive ? (
-                            <span className={`relative flex h-2 w-2 ${cfg.dot} rounded-full`}>
+                            <span className={`relative flex h-1.5 w-1.5 shrink-0 sm:h-2 sm:w-2 ${cfg.dot} rounded-full`}>
                                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
                             </span>
                         ) : (
-                            <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${cfg.dot}`} />
                         )}
-                        {auction.status_label}
+                        <span className="truncate">{auction.status_label}</span>
                     </span>
                     {remaining && isLive ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[10px] font-semibold text-amber-100 backdrop-blur-md">
-                            <Clock className="h-3 w-3" />
+                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-white/10 bg-black/40 px-1.5 py-0.5 text-[9px] font-semibold text-amber-100 backdrop-blur-md sm:gap-1 sm:px-2 sm:py-1 sm:text-[10px]">
+                            <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                             {remaining}
                         </span>
                     ) : null}
                 </div>
 
-                <div className="absolute bottom-3 left-3 right-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-orange-300/90">
+                <div className="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-orange-300/90 sm:text-[10px] sm:tracking-[0.2em]">
                         {auction.category_label}
                     </p>
-                    <h2 className="mt-0.5 line-clamp-2 text-base font-bold leading-snug text-white drop-shadow-sm">
+                    <h2 className="mt-0.5 line-clamp-2 text-xs font-bold leading-snug text-white drop-shadow-sm sm:text-base">
                         {auction.title}
                     </h2>
                 </div>
             </div>
 
-            <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3.5">
-                <div>
-                    <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-500">Puja líder</p>
-                    <p className="text-xl font-extrabold tabular-nums tracking-tight text-white">
+            <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] px-2.5 py-2.5 sm:gap-3 sm:px-4 sm:py-3.5">
+                <div className="min-w-0">
+                    <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-[9px] sm:tracking-[0.15em]">Puja líder</p>
+                    <p className="truncate text-sm font-extrabold tabular-nums tracking-tight text-white sm:text-xl">
                         {fmt(auction.current_price_cents)}
                     </p>
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                    <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                        <Users className="h-3.5 w-3.5" />
-                        {auction.bid_count} {auction.bid_count === 1 ? "puja" : "pujas"}
+                <div className="flex shrink-0 flex-col items-end gap-0.5 sm:gap-1">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-slate-400 sm:gap-1 sm:text-xs">
+                        <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                        {auction.bid_count}
+                        <span className="hidden sm:inline"> {auction.bid_count === 1 ? "puja" : "pujas"}</span>
                     </span>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-300/90 opacity-0 transition group-hover:opacity-100">
+                    <span className="hidden items-center gap-1 text-xs font-semibold text-orange-300/90 opacity-0 transition group-hover:opacity-100 sm:inline-flex">
                         Ver lote
                         <ArrowUpRight className="h-3.5 w-3.5" />
                     </span>
@@ -277,7 +278,7 @@ export default function AuctionsIndex({ auctions = [] }) {
                             <p className="mt-1 text-sm text-slate-500">Prueba otro estado o vuelve más tarde.</p>
                         </div>
                     ) : (
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
                             {filtered.map((auction) => (
                                 <AuctionCard key={auction.id} auction={auction} />
                             ))}

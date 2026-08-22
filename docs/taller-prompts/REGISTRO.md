@@ -21,7 +21,39 @@ Por cada prompt completado, añade una entrada con este esquema:
 
 ## Iteraciones
 
-### 2026-08-12 — SEO/GEO home: plan → crítica Reasonix → prompt implementación Cursor
+### 2026-08-21 — S4 acordeones: refactor a AccordionTrigger/ExpandableText (a11y + consistencia) → Cursor
+
+- **Herramienta destino:** Cursor (implementación) + Reasonix (auditoría S4, prompts, verificación S11)
+- **Iteraciones:** S4 v1 (auditoría 6/10, ~14 copias manuales + kit Radix muerto) → 4 prompts (aria-expanded GlobalNav, a11y Clients/Vigencia, ContactBlock, refactor acordeones) → verificación S11 ×4 + `npm run build` OK
+- **Qué aportó Reasonix (este taller):** decisión de diseño clave — trigger propio en vez de Radix porque `Clients`/`Vigencia` expanden un `<tr>` (colSpan) y Radix renderiza divs; spec cerrada del componente (botón real, aria-expanded, aria-controls vía panelId/useId, ChevronDown rotate-180, stopPropagation configurable); migración por fases con parada; «sin cambios visuales» como restricción dura; Bonos al final por su estado múltiple.
+- **Qué aportó Cursor:** respetó la spec al pie (fases, panelId, stopPropagation=false en ExpandableText), conservó los 3 estados independientes de Bonos y la animación framer-motion de Surfboards, build OK.
+- **Lección aprendida:** en un patrón duplicado, componente canónico + migración por fases con parada vale más que un mega-prompt; la decisión «Radix vs trigger propio» se decide en el código (semántica de tabla), no en el papel.
+
+### 2026-08-21 — Prompt placement banner promo (full-bleed vs Volver) → Reasonix marketing
+
+- **Herramienta destino:** Reasonix `/marketing-diseno` (S1+S7; luego Cursor solo si gana A o C)
+- **Iteraciones:** v1 (Cursor prompt-forge)
+- **Qué aportó Cursor/taller:** layout real PDP (`max-w-6xl`, banner bajo Volver); veto CRO 08-16; archivo `PROMPT-UX-BANNER-PROMO-PLACEMENT.md`
+- **Decisión final:** no mover el banner hasta veredicto A/B/C
+- **Lección aprendida:** full-bleed bajo menú en ficha = decisión CRO (Añadir vs descubrimiento), no estética
+
+### 2026-08-19 — Prompt selector banner promo (dots vs CTA) → Reasonix marketing+UX
+
+- **Herramienta destino:** Reasonix `/marketing-diseno` (FASE A S1+S7 → FASE B S3+S5+S10; luego Cursor)
+- **Iteraciones:** v1 (Cursor prompt-forge)
+- **Qué aportó Cursor/taller:** estado real post-arreglo (pastilla + pb-14); 4 patrones cerrados; alcance solo chrome, no fotos; archivo `PROMPT-UX-BANNER-PROMO-SELECTOR.md`
+- **Decisión final:** no más UI a ciegas; marketing elige patrón; UX entrega specs + prompt S10
+- **Lección aprendida:** queja de «puntos pegados al CTA» = CRO de jerarquía (CTA primario) + a11y de hit, no solo estética de dots
+
+### 2026-08-16 — Prompt UX banner/slider subastas en Tienda (→ Reasonix marketing)
+
+- **Herramienta destino:** Reasonix / `/marketing-diseno` (luego Cursor implementa)
+- **Iteraciones:** v1 (Cursor prompt-forge)
+- **Qué aportó Cursor/taller:** rutas reales tienda/PDP/subastas; estados live/ended/settled; veto CRO a slider bajo menú en ficha; contrato de props; archivo `PROMPT-UX-BANNER-SUBASTAS-TIENDA.md`
+- **Decisión final:** diseño primero; implementación tras respuesta del diseñador
+- **Lección aprendida:** cross-sell de subastas = brief CRO + placement explícito antes de código
+
+---
 
 - **Herramienta destino:** Cursor (tras auditoría Reasonix)
 - **Iteraciones:** v1 (plan Cursor) → v2 (crítica Reasonix 8/10) → v3 (prompt implementación consolidado)

@@ -92,6 +92,12 @@ test('flag ON: flujo completo create+poll deja la factura registered con identif
         ->and($invoice->amount_cents)->toBe(6000);
 
     Http::assertSentCount(3); // 1 create + 2 sondeos (processing, registered)
+
+    $create = collect(Http::recorded())
+        ->first(fn (array $pair) => str_contains($pair[0]->url(), '/invoices') && $pair[0]->method() === 'POST');
+    expect($create)->not->toBeNull();
+    $price = data_get($create[0]->data(), 'invoice.invoice_lines_attributes.0.price');
+    expect($price)->toBe(49.59); // 60,00 € IVA incl. → neto 49,59 €
 });
 
 test('reintento del Job de creación no duplica factura ni repite la llamada de alta', function () {
@@ -171,9 +177,35 @@ test('cliente propietario puede ver la factura fiscal y un tercero recibe 403', 
             ->component('Payments/FiscalInvoice')
             ->where('invoice.tbai_identifier', 'TBAI-XYZ')
             ->where('invoice.is_ready', true)
+            ->where('back_url', route('my-invoices.index'))
+            ->where('pending_message', null)
         );
 
     $this->actingAs($other)
         ->get(route('payments.fiscal-invoices.show', $invoice))
         ->assertForbidden();
+});
+
+test('TicketBAI en proceso no promete el PDF en esta página', function () {
+    $owner = User::factory()->create(['role' => 'user']);
+    $pedido = Pedido::factory()->create(['user_id' => $owner->id, 'pagado' => true]);
+    $invoice = FiscalInvoice::query()->create([
+        'payable_type' => Pedido::class,
+        'payable_id' => $pedido->id,
+        'stripe_checkout_session_id' => 'cs_test_processing_page',
+        'amount_cents' => 3261,
+        'status' => FiscalInvoiceStatus::Processing,
+        'b2b_invoice_id' => 'inv_processing_1',
+    ]);
+
+    $this->actingAs($owner)
+        ->get(route('payments.fiscal-invoices.show', $invoice))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Payments/FiscalInvoice')
+            ->where('invoice.is_ready', false)
+            ->where(
+                'pending_message',
+                'Hacienda aún no ha sellado el TicketBAI (código y QR). El PDF de la factura ya lo tienes en Mis facturas.',
+            ));
 });

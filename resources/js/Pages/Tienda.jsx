@@ -6,6 +6,8 @@ import Layout1 from "../layouts/Layout1";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
 import { hasStoreAccess } from "@/utils/hasStoreAccess";
+import StorePromoBanner from "../components/store/StorePromoBanner";
+import useInertiaFlashToast from "@/hooks/useInertiaFlashToast";
 
 const SORT_OPTIONS = [
     { value: "nombre", label: "Nombre (A–Z)" },
@@ -16,9 +18,9 @@ const SORT_OPTIONS = [
 /** Lotes de 8 = 2 filas en xl (4 cols) / ~4 filas en móvil (2 cols). */
 const BATCH_SIZE = 8;
 
-const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
-    const { props } = usePage();
-    const { flash, auth } = props;
+const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo = null }) => {
+    const { auth } = usePage().props;
+    useInertiaFlashToast();
     const user = auth?.user || null;
     const puedeComprar = hasStoreAccess(user);
     const [contactOpen, setContactOpen] = useState(false);
@@ -26,22 +28,6 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
     const [tagActivo, setTagActivo] = useState("all");
     const [orden, setOrden] = useState("nombre");
-
-    const [mensajeToast, setMensajeToast] = useState("");
-    const [tipoToast, setTipoToast] = useState("");
-
-    React.useEffect(() => {
-        if (flash && flash.success) {
-            setMensajeToast(flash.success);
-            setTipoToast("success");
-            setTimeout(() => setMensajeToast(""), 4000);
-        }
-        if (flash && flash.error) {
-            setMensajeToast(flash.error);
-            setTipoToast("error");
-            setTimeout(() => setMensajeToast(""), 4000);
-        }
-    }, [flash]);
 
     const productosFiltrados = useMemo(() => {
         const base = [...productos].filter((producto) => {
@@ -73,55 +59,15 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
         setVisibleCount(BATCH_SIZE);
     }, [tagActivo, orden]);
 
-    const toastClasses =
-        tipoToast === "success"
-            ? "bg-green-100 border border-green-400 text-green-800"
-            : "bg-red-100 border border-red-400 text-red-800";
-    const toastIcon = tipoToast === "success" ? "✔ Éxito" : "❌ Error";
-
     return (
         <Layout1>
             <SeoHead seo={seo} />
-            {mensajeToast && (
-                <div
-                    className={`fixed top-5 right-5 px-4 py-3 rounded-lg shadow-lg animate-fade-in-down ${toastClasses} z-50`}
-                >
-                    <strong className="font-semibold">{toastIcon}</strong>
-                    <div className="text-sm">{mensajeToast}</div>
-                </div>
-            )}
-            <div className="mx-auto w-full max-w-[96rem] px-2 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-6">
-                <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
-                    <h1 className="text-xl font-extrabold tracking-tight text-slate-100 sm:text-2xl lg:text-3xl">
-                        Tienda · San Sebastián Surf School
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                        <label className="flex items-center gap-1.5 text-slate-400">
-                            <span className="sr-only">Ordenar productos</span>
-                            {orden.startsWith("descuento") ? (
-                                <ArrowDown className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden />
-                            ) : (
-                                <ArrowUpDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                            )}
-                            <select
-                                value={orden}
-                                onChange={(e) => setOrden(e.target.value)}
-                                aria-label="Ordenar productos"
-                                className="rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40 sm:text-xs"
-                            >
-                                {SORT_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </label>
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400 sm:text-xs">
-                            {productosFiltrados.length} productos
-                        </p>
-                    </div>
-                </div>
+            <StorePromoBanner slides={storePromoSlides} variant="bleed" />
 
+            <div className="mx-auto w-full max-w-[96rem] px-2 pt-1 sm:px-4 sm:pt-2 lg:px-6 lg:pb-6">
+                <h1 className="mb-4 text-xl font-extrabold tracking-tight text-slate-100 sm:mb-5 sm:text-2xl lg:text-3xl">
+                    Tienda · San Sebastián Surf School
+                </h1>
                 <aside
                     className={`mb-5 rounded-2xl border px-4 py-3 sm:mb-6 sm:px-5 ${
                         puedeComprar
@@ -174,41 +120,89 @@ const Tienda = ({ productos, productTagOptions = [], seo = null }) => {
                     </div>
                 </aside>
 
-                {productTagOptions.length > 0 ? (
-                    <div
-                        className="mb-4 flex gap-1.5 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mb-5 sm:flex-wrap sm:overflow-visible"
-                        role="group"
-                        aria-label="Filtrar por categoría"
-                    >
-                        <button
-                            type="button"
-                            onClick={() => setTagActivo("all")}
-                            aria-pressed={tagActivo === "all"}
-                            className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition sm:text-xs ${
-                                tagActivo === "all"
-                                    ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-                                    : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
-                            }`}
+                <div className="mb-4 min-w-0 sm:mb-5">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            {productTagOptions.length > 0 ? (
+                                <label className="flex min-w-0 items-center sm:hidden">
+                                    <span className="sr-only">Filtrar por categoría</span>
+                                    <select
+                                        value={tagActivo}
+                                        onChange={(e) => setTagActivo(e.target.value)}
+                                        aria-label="Filtrar por categoría"
+                                        className="max-w-[10.5rem] rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40"
+                                    >
+                                        <option value="all">Todos</option>
+                                        {productTagOptions.map((option) => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                            ) : null}
+                            <label className="flex min-w-0 items-center gap-1.5 text-slate-400">
+                                <span className="sr-only">Ordenar productos</span>
+                                {orden.startsWith("descuento") ? (
+                                    <ArrowDown className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden />
+                                ) : (
+                                    <ArrowUpDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                )}
+                                <select
+                                    value={orden}
+                                    onChange={(e) => setOrden(e.target.value)}
+                                    aria-label="Ordenar productos"
+                                    className="max-w-[9.5rem] rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40 sm:max-w-none sm:text-xs"
+                                >
+                                    {SORT_OPTIONS.map((option) => (
+                                        <option key={option.value} value={option.value}>
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                        <p className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400 sm:text-xs">
+                            {productosFiltrados.length} productos
+                        </p>
+                    </div>
+
+                    {productTagOptions.length > 0 ? (
+                        <div
+                            className="mt-3 hidden flex-wrap gap-1.5 sm:flex"
+                            role="group"
+                            aria-label="Filtrar por categoría"
                         >
-                            Todos
-                        </button>
-                        {productTagOptions.map((option) => (
                             <button
-                                key={option.value}
                                 type="button"
-                                onClick={() => setTagActivo(option.value)}
-                                aria-pressed={tagActivo === option.value}
-                                className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold transition sm:text-xs ${
-                                    tagActivo === option.value
+                                onClick={() => setTagActivo("all")}
+                                aria-pressed={tagActivo === "all"}
+                                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                                    tagActivo === "all"
                                         ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
                                         : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
                                 }`}
                             >
-                                {option.label}
+                                Todos
                             </button>
-                        ))}
-                    </div>
-                ) : null}
+                            {productTagOptions.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setTagActivo(option.value)}
+                                    aria-pressed={tagActivo === option.value}
+                                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                                        tagActivo === option.value
+                                            ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
+                                            : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
+                    ) : null}
+                </div>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
                     {productosVisibles.map((producto) => (

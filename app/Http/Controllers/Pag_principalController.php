@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Models\Producto;
 use App\Services\Seo\PublicPageSeoService;
 use App\Services\SurfConditions\SurfDailyBriefService;
-use App\Services\SurfConditions\ZurriolaGeoFactsService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,7 +16,6 @@ class Pag_principalController extends Controller
     public function __construct(
         private readonly SurfDailyBriefService $surfBriefService,
         private readonly PublicPageSeoService $pageSeo,
-        private readonly ZurriolaGeoFactsService $zurriolaGeoFacts,
     ) {}
 
     public function index(Request $request): Response
@@ -42,7 +40,6 @@ class Pag_principalController extends Controller
         return Inertia::render('Pag_principal', [
             'productos' => $productosPayload,
             'surfBrief' => $this->surfBriefService->publicPayload($request),
-            'zurriolaGeo' => $this->zurriolaGeoFacts->publicPayload(),
             'seo' => $this->pageSeo->home()->toArray(),
         ]);
     }

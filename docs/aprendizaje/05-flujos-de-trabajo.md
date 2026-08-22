@@ -12,6 +12,7 @@
 - 5.7 Cómo se consumen los tokens
 - 5.8 Cuándo abrir un chat nuevo (el "circulito")
 - 5.9 El aviso de reinicio de chat + ritual "guardar y reiniciar"
+- 5.14 Las 4 terminales locales (Vite, cola, schedule, serve)
 
 ---
 
@@ -174,4 +175,13 @@
 
 ---
 
-> **Por ampliar:** 5.14+ (cómo hacer code review, cómo leer logs, cómo testear…).
+## 5.14 Las 4 terminales (restaurante, no un solo programa)
+
+- **Qué es:** tu app en el PC son **cuatro empleados**. Cerrar una terminal = ese empleado se va. (1) `php artisan serve` = **mostrador**: atiende al navegador. (2) `npm run dev` = **traductor de la vitrina** (React). (3) `php artisan queue:work` = **cocina lenta**: facturas, mails, cosas que no deben hacer esperar al cliente. (4) `php artisan schedule:work` = **despertador**: cada poco mira si toca soltar stock, taquillas, o regenerar el parte de olas con IA.
+- **Por qué importa:** con solo el mostrador “la web abre”, pero la vitrina falla, las facturas no salen y el texto Ini/Int/Ava se queda del mediodía.
+- **En tu proyecto:** las cuatro, o `composer run dev` (las lanza juntas). XAMPP/MySQL tiene que estar encendido (la despensa).
+- **Para recordar:** *mostrador + vitrina + cocina + despertador. El despertador no es la cocina: uno mira el reloj, el otro hace encargos sueltos.* Vitrina [03 §3.7](03-react-js.md).
+
+---
+
+> **Por ampliar:** 5.15+ (cómo hacer code review, cómo leer logs, cómo testear…).

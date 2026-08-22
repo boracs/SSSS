@@ -21,4 +21,16 @@ final class PaymentConfirmed
         public readonly int $amountCents,
         public readonly string $stripeSessionId,
     ) {}
+
+    /**
+     * Laravel `dispatch()` usa func_get_args() y no acepta parámetros con nombre.
+     */
+    public static function emit(
+        string $payableType,
+        int $payableId,
+        int $amountCents,
+        string $stripeSessionId,
+    ): mixed {
+        return event(new self($payableType, $payableId, $amountCents, $stripeSessionId));
+    }
 }

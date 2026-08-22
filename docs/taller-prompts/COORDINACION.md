@@ -2,6 +2,8 @@
 
 **Contrato dúo:** `docs/taller-prompts/CONTRATO-IA.md` — roles, router y anti-pisotón; este documento es el pizarrón de estado compartido.
 
+**Backlog personal del dueño** (incompletos / “no olvidar”): `docs/TAREAS-PENDIENTES.md` — no confundir con este pizarrón de IAs.
+
 **Regla de oro: nadie toca nada sin analizar antes.** Antes de responder, proponer o editar archivos, leer: (1) este documento, (2) el estado real del código, (3) el mapa del proyecto. Así no se solapan, pisan ni rehacen cosas ya hechas.
 
 ## Cuándo se usa
@@ -67,6 +69,78 @@ Añadir/actualizar una fila en **Estado actual**:
 
 | Fecha      | Tarea                                                                                                                                                                                                                                                                                                                                          | Quién    | Estado                 | Archivos afectados                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-22 | PDP sticky: filete marca s4 + miniatura izq. + logo solo `sm+` | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
+| 2026-08-22 | PDP sticky: pill inline + miniatura 48/56px (marketing + UX) | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
+| 2026-08-22 | PDP sticky: «En tu carrito» sin recortar (miniatura a la dcha.) | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
+| 2026-08-22 | PDP: reducir hueco blanco entre relacionados y footer (móvil) | Cursor | HECHO | `ProductoVer.jsx` |
+| 2026-08-22 | PDP sticky: pill «En tu carrito: N» tras añadir (estado local) | Cursor | HECHO | `ProductoVer.jsx`, `store/ProductStickyPurchaseBar.jsx` |
+| 2026-08-16 | Refactor acordeones F2–F3: SecondHand, Rentals, Commander, Bonos, Nosotros | Cursor | HECHO | SecondHand, Rentals/Surfboards, Commander, Client/Bonos, Nosotros (+ AccordionTrigger API) |
+| 2026-08-16 | Refactor acordeón: AccordionTrigger + ExpandableText; migrar ChevronDown (sin SecondHand/Bonos) | Cursor | HECHO | `ui/AccordionTrigger.jsx`, `ui/ExpandableText.jsx`, Pedidos, SurfBriefMini, Clients, Vigencia, Datafono, Surfboards |
+| 2026-08-20 | Extraer ContactBlock (Edy/Willy) en servicios reparación | Cursor | HECHO | `ContactBlock.jsx`, `Servicios.jsx`, `Servicios_ReparacionNeoprenos.jsx` |
+| 2026-08-20 | a11y acordeón fila-cliente: Clients + Vigencia desktop | Cursor | HECHO | `Clients.jsx`, `Vigencia.jsx` |
+| 2026-08-21 | Banner promo: /tienda bleed bajo menú; H1 debajo; ficha tras la card | Cursor | HECHO | `StorePromoBanner.jsx`, `Tienda.jsx`, `ProductoVer.jsx` |
+| 2026-08-21 | Banner promo placement: full-bleed bajo menú vs Volver/crumbs (S1+S7) | Reasonix | HECHO (dueño + Cursor) | `PROMPT-UX-BANNER-PROMO-PLACEMENT.md` |
+| 2026-08-22 | Footer marca: Instagram + YouTube + Facebook + TikTok (config .env) | Cursor | HECHO | `FooterSocialLinks.jsx`, `AcademySocialLinks.php`, `Footer.jsx`, `config/services.php` |
+| 2026-08-20 | GlobalNav móvil: aria-expanded en secciones con submenú | Cursor | HECHO | `GlobalNav.jsx` |
+| 2026-08-21 | Banner promo: sin pastilla de precio (solo CTA) | Cursor | HECHO | `StorePromoBanner.jsx` |
+| 2026-08-21 | PDP ficha: «Precio socio» persistente + ancla precio tachado en sticky bar + hint cantidad sin duplicar stock | Reasonix | HECHO | `ProductoVer.jsx`, `ProductStickyPurchaseBar.jsx` |
+| 2026-08-21 | Scroll lateral PDP: guard `overflow-x: clip` global + blindaje breadcrumbs/título | Reasonix | HECHO | `app.css`, `Breadcrumbs.jsx`, `ProductoVer.jsx` |
+| 2026-08-20 | Planes socio: quitar copy redundante bajo «Qué incluye» | Cursor | HECHO | `PlanesTaquillasClient.jsx` |
+| 2026-08-20 | Planes socio: taquilla nº en la misma fila que el título | Cursor | HECHO | `PlanesTaquillasClient.jsx` |
+| 2026-08-21 | Mejora agente marketing: fixes skill↔MD, +S12, Sev/KPI, few-shot | Reasonix | HECHO | `AGENTE-MARKETING-DISENO.md`, `.reasonix/skills/marketing-diseno/SKILL.md` |
+| 2026-08-20 | Planes socio: hero sin subtítulo ni chip Micro-servicios | Cursor | HECHO | `PlanesTaquillasClient.jsx` |
+| 2026-08-20 | Planes socio: amenities solo título, 1 fila en lg | Cursor | HECHO | `PlanesTaquillasClient.jsx` |
+| 2026-08-20 | Taquilla planes: TicketBAI izq. + Factura (sin Recibo) | Cursor | HECHO | `StoreFiscalInvoiceActions.jsx`, `PlanesTaquillasClient.jsx` |
+| 2026-08-19 | Taquilla planes: factura + TicketBAI en historial | Cursor | HECHO | `TaquillaMembershipService.php`, `PlanesTaquillasClient.jsx`, `StoreFiscalInvoiceActions.jsx` |
+| 2026-08-19 | PDP sticky: justify-between (precio | foto | CTA) | Cursor | HECHO | `ProductStickyPurchaseBar.jsx` |
+| 2026-08-19 | Footer marca: quitar eslogan y Escríbenos duplicado | Cursor | HECHO | `Footer.jsx` |
+| 2026-08-19 | Chatbot: tono cercano + nombre BD + preguntar nivel | Cursor | HECHO | `S4BusinessContextService`, `ChatbotDisplayName`, `ChatbotAgentService` |
+| 2026-08-19 | Footer: quitar @ Instagram duplicado; «Escríbenos» bajo el icono | Cursor | HECHO | `Footer.jsx` |
+| 2026-08-19 | Banner promo selector: marketing (S1+S7) → UX (S3+S10) | Reasonix | EN CURSO | `PROMPT-UX-BANNER-PROMO-SELECTOR.md` |
+| 2026-08-19 | Banner promo: dots/selector más profesional y separado del CTA | Cursor | HECHO | `StorePromoBanner.jsx` |
+| 2026-08-19 | Nav: chevron en icono cuenta (menú pedidos/perfil) | Cursor | HECHO | `GlobalNav.jsx` |
+| 2026-08-20 | Banner promo: foto real producto + thumb + copy ahorro | Cursor | HECHO | `StorePromoBannerService`, `StorePromoSlideDto`, `StorePromoBanner.jsx` |
+| 2026-08-19 | UX Mis pedidos: rediseño tarjeta (estado protagonista, Link único) | Cursor | HECHO | `Pedidos.jsx` |
+| 2026-08-19 | Estrellas: bandas viento sur/norte × kJ (entrevista dueño) | Cursor | HECHO | `zurriola-spot-logistics.json`, `SurfLevelQualityStarsService` |
+| 2026-08-19 | Parte: mismo recetario estrellas/nivel/JSON (sin contradicciones) | Cursor | HECHO | logistics JSON, `SurfLevelRecommender`, `SurfDailyBriefService`, guía spot |
+| 2026-08-19 | Mis pedidos: solo `pagado=true` (no huérfanos Stripe) | Cursor | HECHO | `PedidoController.php`, `PedidoListTest.php` |
+| 2026-08-19 | Fusionar JSON spot + estrellas + parte Gemini | Cursor | HECHO | `zurriola-spot-logistics.json`, `SurfLevelQualityStarsService`, `SurfForecastTableService`, `SurfDailyBriefService` |
+| 2026-08-16 | Modo compartir: rebuild + túnel Cloudflare | Cursor | HECHO | `.env` APP_URL/TUNNEL_SHARE, `public/hot`, cloudflared, artisan serve |
+| 2026-08-16 | Datáfono: columna Hacienda + comunicar efectivo a B2B | Cursor | HECHO | `DatafonoHaciendaStatusDto`, reconciliation, controller, `Datafono/Index.jsx`, tests |
+| 2026-08-16 | VIP historial: créditos numéricos + layout móvil | Cursor | HECHO | `VipProfileDashboard.jsx` |
+| 2026-08-16 | Pedidos: Ver factura (PDF) + Ver TicketBAI | Cursor | HECHO | `PedidoController.php`, `Pedidos.jsx`, `Pedido.jsx`, `StoreFiscalInvoiceActions.jsx` |
+| 2026-08-16 | Mis facturas: Ver factura / Ver TicketBAI + estados pendientes claros | Cursor | HECHO | `MyInvoices.jsx`, `FiscalInvoiceStatus.php` |
+| 2026-08-16 | Carrito: confirmar cantidad al 2º clic + factura subastas en Mis facturas | Cursor | HECHO | `Producto.jsx`, `StoreCartQtyPrompt.jsx`, `FiscalInvoiceCategory`, builder, list service |
+| 2026-08-16 | Badge factura en trámite clicable en Mis pedidos | Cursor | HECHO | `Pedidos.jsx` |
+| 2026-08-16 | Fix TypeError PedidoController Producto typehint (namespace) | Cursor | HECHO | `PedidoController.php` |
+| 2026-08-16 | Fix PaymentConfirmed::dispatch named params (pago/exito 500) | Cursor | HECHO | `PaymentConfirmed.php`, `PaymentSuccessController.php`, webhook, sync command |
+| 2026-08-16 | Ops local: verificar cron `schedule` + cola (liberar stock tienda / facturas) | Cursor | HECHO | `StoreOrderStockService`, `composer.json` (`schedule:work`), tests |
+| 2026-08-16 | P2 checkout tienda: Action + banner promo configurable | Cursor | HECHO | `CreateStoreCheckoutAction`, `StartsCheckout`, `config/store.php`, `PedidoController` |
+| 2026-08-16 | P1 catálogo tienda: extraer lógica de ProductoController a Service | Cursor | HECHO | `StoreProductCatalogService`, `StoreProductWriteDto`, `ProductoController` |
+| 2026-08-16 | P0 dinero tienda: totales en céntimos + verificar total del carrito | Cursor | HECHO | `StoreProductPricing`, `StoreOrderStockService`, `CarritoController`, `PedidoController` |
+| 2026-08-16 | P0 stock tienda: lockForUpdate + liberar pedidos Stripe no pagados | Cursor | HECHO | `StoreOrderStockService`, `PedidoController`, `store:release-unpaid`, `config/store.php` |
+| 2026-08-16 | B2B: enviar neto (IVA incluido en web, no doblar 21%) | Cursor | HECHO | `MoneyCents.php`, `B2BRouterFiscalInvoiceIssuer.php` |
+| 2026-08-16 | Factura TBAI: reemitir pedido 21 + no perder evento en /pago/exito | Cursor | HECHO | `PaymentSuccessController.php` |
+| 2026-08-16 | Pedido Stripe: persistir payment_method=card | Cursor | HECHO | `PedidoController.php`, `PaymentGatewayService.php` |
+| 2026-08-16 | UX banner promo: overlay + WebP (spec diseñador) | Cursor | HECHO | `StorePromoBanner.jsx`, `StorePromoBannerService` (rutas .webp), `public/img/store/promo-*.webp` |
+| 2026-08-16 | UX banner promo: brief + 3 fotos IA + prompt diseñador | Cursor → Reasonix | HECHO | `public/img/store/promo-*.png`, `PROMPT-UX-BANNER-PROMO-TIENDA.md` |
+| 2026-08-16 | Banner promo tienda: 3 slides (bono / subasta / producto) | Cursor | HECHO | `StorePromoBannerService`, `StorePromoSlideDto`, `StorePromoBanner.jsx`, Tienda + ProductoVer |
+| 2026-08-16 | Banner subastas en Tienda: diseño UX (Reasonix) → luego Cursor | Reasonix → Cursor | HECHO | `SubastasBanner.jsx`, `TiendaController.php`, `ProductoController.php`, `Tienda.jsx`, `ProductoVer.jsx` |
+| 2026-08-16 | PDP: más aire arriba/abajo slider relacionados | Cursor | HECHO | `ProductoVer.jsx`, `Contenedor_productos.jsx` |
+| 2026-08-16 | Home: unir Explora S4 + teaser club (un solo bloque) | Cursor | HECHO | `HomeExploraDirectorio.jsx`, `Pag_principal.jsx` |
+| 2026-08-16 | Home: fundidos progresivos en más cortes (no solo Explora) | Cursor | HECHO | `SectionEdgeFade.jsx`, `Pag_principal.jsx`, `HomeExploraDirectorio.jsx`, `OpcionesIntro.jsx`, `Contenedor_productos.jsx` |
+| 2026-08-16 | Home: degradado Explora S4 → GEO (sin corte navy/blanco) | Cursor | HECHO | `HomeExploraDirectorio.jsx`, `Pag_principal.jsx`, `HomeGeoTeaser.jsx` |
+| 2026-08-16 | Home: quitar HomeGeoTeaser (ruido GEO duplicado) | Cursor | HECHO | `Pag_principal.jsx`, `Pag_principalController.php` |
+| 2026-08-16 | Tienda: VIP→#500 automático; taquilla física compra sin VIP | Cursor | HECHO | `VipMembershipService`, `User`, `VerificarTaquilla`, `TaquillaController` |
+| 2026-08-16 | Webcams/parte: botón Compartir (Web Share + copiar enlace) | Cursor | HECHO | `SharePageButton.jsx`, `Servicios_Webcams.jsx`, `SurfBriefParteToday.jsx` |
+| 2026-08-16 | PDP: quitar highlights genéricos (uso/recogida/precio) | Cursor | HECHO | `ProductDetailPageService.php`, `ProductoVer.jsx` |
+| 2026-08-16 | Home: full-bleed Explora+Nosotros; fusionar ofertas↔OpcionesIntro (sin franja blanca) | Cursor | HECHO | `Pag_principal.jsx`, `HomeExploraDirectorio.jsx`, `Contenedor_productos.jsx` |
+| 2026-08-16 | Ofertas socios: banda full-bleed (fondo navy a todo el ancho) | Cursor | HECHO | `Contenedor_productos.jsx`, `Pag_principal`, Taller, `ProductoVer` |
+| 2026-08-16 | Ofertas socios: variante clara (fondo blanco + cards light en home/PDP/Taller) | Cursor | HECHO | `Contenedor_productos.jsx`, `Producto.jsx` |
+| 2026-08-16 | Home directorio: flecha CompactLink visible en móvil (no solo hover) | Cursor | HECHO | `HomeExploraDirectorio.jsx` |
+| 2026-08-16 | PDP producto: quitar hint carrito + copy ventajas exclusivas | Cursor | HECHO | `ProductPurchaseCta.jsx`, `ProductoVer.jsx` |
+| 2026-08-15 | Subastas: grid 2 cols móvil + cards densas (familia tienda/2ª mano) | Cursor | HECHO | `Auctions/Index.jsx` |
+| 2026-08-14 | 2ª mano: grid 2 cols móvil + cards densas (patrón tienda) | Cursor | HECHO | `SecondHand/Index.jsx` |
 | 2026-08-12 | FAB móvil: chat+↑ también con sesión admin; scrollY robusto | Cursor | HECHO | `Chatbot.jsx`, `PublicLayout.jsx` |
 | 2026-08-12 | Taller: apartado escuela (marea, parte, momento) en artículo reservar clase | Cursor | HECHO | `taller_articles.php` + BD |
 | 2026-08-12 | Taller: omitir cierre débil «S4 Academia / checklist» en artículo reservar clase | Cursor | HECHO | `taller_articles.php` + BD |
@@ -103,7 +177,7 @@ Añadir/actualizar una fila en **Estado actual**:
 | 2026-08-11 | Auditoría del trabajo de Cursor (rebrand + UX) + **9 mejoras pendientes** (privacidad admin, chatbot, SEO, seeders, hash-links, Commander, GlobalNav, modal a11y, llave de emergencia routes) — prompts uno a uno en chat                                                                                                                      | Reasonix | EN CURSO               | ver memoria `mejoras-pendientes-auditoria-0811`                                                                        |
 | 2026-08-11 | Brand SEO: San Sebastián Surf School (1ª mención) + S4 en UI                                                                                                                                                                                                                                                                                   | Cursor   | HECHO                  | `PublicPageSeoService.php`, home, nosotros, clases, tienda, landings servicios                                         |
 | 2026-08-11 | Taller: legibilidad tipográfica (H1 + cuerpo + cards)                                                                                                                                                                                                                                                                                          | Cursor   | HECHO                  | `Show.jsx`, `TallerArticleCard.jsx`, `tallerTitle.js`, seeder, BD                                                      |
-| 2026-08-12 | Parte S4 — fases A–C CRO/UX (CTA, Taller, nivel, home)                                                                                                                                                                                                                          | Cursor   | HECHO                  | `SurfBriefParteToday.jsx`, `SurfBriefMini.jsx`, `SurfBriefLevelBlocks.jsx`, `SurfBriefParteCta.jsx`, `surfBriefCta.js`, `useSurfLevelPreference.js` |
+| 2026-08-13 | Ficha producto (`ProductoVer`) — scroll, nav móvil, CTA acceso | Cursor   | HECHO                  | `ProductoVer.jsx`, `Producto.jsx`, `ProductPurchaseCta.jsx` |
 | 2026-08-12 | Home: auditoría marketing «¿Por qué S4?» → eliminar (ruido, sin CTA, duplica teaser/testimonios)                                                                                                                                                                                                                                               | Cursor   | HECHO                  | `Pag_principal.jsx`, `Por_que_escogernos_motivo.jsx` (borrado)                                                         |
 | 2026-08-12 | FAB: rediseño profesional botón subir + stack chatbot (marketing/UX)                                                                                                                                                                                                                                                                           | Cursor   | HECHO                  | `Chatbot.jsx`                                                                                                          |
 | 2026-08-11 | Consola del día: lista clases del día + acordeón alumnos/WhatsApp                                                                                                                                                                                                                                                                              | Cursor   | HECHO                  | `Commander.jsx`, `AcademyController.php`                                                                               |
@@ -142,13 +216,116 @@ Añadir/actualizar una fila en **Estado actual**:
 
 ## Última actividad
 
+- **2026-08-22** — Cursor: sticky PDP — identidad de marca sin gastar ancho: filete superior 3px `border-s4`, miniatura al extremo izquierdo, `BrandLogo navyNav h-7` solo `sm+`. Descartado (marketing): logo en móvil (56px de coste sobre 19px de holgura a 360px) y centrar la fila (rompe patrón precio-izq./CTA-dcha. + Fitts). Extra: ancla tachada oculta bajo 380px (no truncar cifras) y `min-w-[96px]` en CTA Agotado/Entrar/Taquilla. HECHO.
+
+- **2026-08-22** — Cursor (consulta marketing S1/S6 + UX frontend): sticky PDP — precio en 2 líneas (grande + ancla tachado inline), pill «En carrito · N» a la derecha del label sin wrap (10px, `aria-hidden` + `sr-only` con `aria-live`), miniatura 48px / 56px `sm` decorativa, CTA `min-w-[96px]`. `--s4-sticky-purchase-bar-h` se queda en 5rem (barra baja a ~71px, sin solape con el FAB). HECHO.
+
+- **2026-08-22** — Cursor: PDP — menos padding bajo «También te puede interesar» (`pb-14`→`pb-2`, sticky `pb-24`→`pb-20`). HECHO.
+
+- **2026-08-22** — Cursor: sticky PDP — pill «En tu carrito» en la misma fila que «Precio socio» (sin extra altura). HECHO.
+
+- **2026-08-22** — Cursor: PDP sticky — pill «En tu carrito: N» (estado local + toast; offset chat 6.25rem con pill). HECHO.
+
+- **2026-08-16** — Cursor: pase criterio post-F3 — Commander flex-1, Bonos th sin «+», Pedidos label dinámico, Datafono/ExpandableText stopPropagation=false + label a11y. HECHO.
+
+- **2026-08-16** — Cursor: cierre F2–F3 acordeones — SecondHand (ChevronDown), Rentals <lg, Commander, Bonos (3 estados + ChevronDown), Nosotros BenefitVerMas via AccordionTrigger. HECHO.
+
+- **2026-08-16** — Cursor: `AccordionTrigger` + `ExpandableText`; migrados Pedidos, SurfBriefMini, Clients, Vigencia, Datafono móvil, Surfboards admin. Pendiente (iconografía): SecondHand Plus/Minus, Bonos ▼, Rentals pill, Commander/Nosotros. HECHO.
+
+- **2026-08-21** — Cursor: `/tienda` — banner full-bleed justo bajo el menú; H1 «Tienda · …» debajo del banner. Ficha: banner tras la card. HECHO.
+
+- **2026-08-20** — Cursor: extraído `ContactBlock` (pill + panel Edy/Willy); usado en tablas y neoprenos. Sin cambio visual. HECHO.
+- **2026-08-20** — Cursor: a11y — chevron de fila en Clients + Vigencia desktop como `<button aria-expanded>` (patrón Surfboards interior; sin role en `<tr>`). HECHO.
+- **2026-08-21** — Cursor: brief `PROMPT-UX-BANNER-PROMO-PLACEMENT.md` — marketing decide si el banner va full-bleed bajo el menú (encima de Volver/crumbs). No implementar hasta veredicto. EN CURSO Reasonix.
+
+- **2026-08-20** — Cursor: GlobalNav móvil — `aria-expanded={open}` en triggers de sección con submenú (mismo patrón que «Mi espacio»). HECHO.
+- **2026-08-21** — Cursor: banner promo — sin pastilla de precio ni miniatura; debajo del copy solo el CTA (Consultar oferta / Ver subasta / Ver producto). HECHO.
+
+- **2026-08-20** — Cursor: «Qué incluye tu plan» — sin el párrafo de pack/duración/precio. HECHO.
+
+- **2026-08-20** — Cursor: «Tus planes y pagos» + «taquilla nºX» en la misma fila; sin «Preparado → en vigor → finalizados». HECHO.
+
+- **2026-08-20** — Cursor: hero planes socio — solo «Club de socios S4» + «Planes y cuotas»; sin subtítulo ni chip Micro-servicios (el CTA sigue más abajo). HECHO.
+
+- **2026-08-20** — Cursor: «Qué incluye tu plan» — solo títulos (sin detalle); rejilla compacta `lg:grid-cols-6` (una fila en desktop). HECHO.
+
+- **2026-08-20** — Cursor: planes taquilla — ya no pone «Recibo»; **TicketBAI a la izquierda**, **Factura a la derecha**. Si no hay PDF fiscal aún, Factura abre el justificante/Stripe. HECHO.
+
+- **2026-08-19** — Cursor: historial «Tus planes y pagos» — Ver factura (izq.) + Ver TicketBAI (der.) por cuota, mismo patrón que pedidos. Recibo Stripe solo si aún no hay factura. HECHO.
+
+- **2026-08-19** — Cursor: barra sticky PDP — `justify-between` (precio izq., miniatura centro, CTA der.); sin `flex-1` que pegaba la foto al botón. HECHO.
+
+- **2026-08-19** — Cursor: Concha = **recomendación** (no orden) para iniciación/intermedio si quieren baño tranquilo y seguro. JSON spot + parte + chatbot.
+
+- **2026-08-19** — Cursor: footer marca — logo, nombre e Instagram; sin eslogan ni «Escríbenos» duplicado (el CTA sigue en Contacto / banda móvil). HECHO.
+
+- **2026-08-19** — Cursor: banner promo — dots en pastilla (blur + hit area), padding bajo el CTA para que no se peguen; flechas laterales con hover. HECHO.
+
+- **2026-08-19** — Cursor: icono cuenta del nav (desktop) con chevron a la derecha; gira al abrir el menú. HECHO.
+
+- **2026-08-19** — Cursor: 70–99 kJ: ini 5 (buen viento); int 4 glass / 3 sur; ava tope 3, si viento malo máx. 2.
+
+- **2026-08-19** — Cursor: parte/JSON — titular del parte sale de las estrellas (no de 0,8 m); JSON desfasado/sur alineados; viento pesa más que kJ (G6). Tests 9/9. HECHO.
+
+- **2026-08-20** — Cursor: **banner promo slide producto** — foto real del SKU (fondo + thumb entre precio y CTA), subtítulo con ahorro € y stock bajo; `fetchPriority` slide 1. Marketing P0/P1. HECHO.
+- **2026-08-19** — Cursor: **Mis pedidos** — `mostrarPedidos()` filtra `pagado=true` (coherente con gestor admin; no muestra huérfanos Stripe hasta cron). Test Feature. HECHO. Reasonix OK. P2/P3 copiados a `TAREAS-PENDIENTES.md` **sin implementar**.
+- **2026-08-19** — **Sincronización dúo (auditoría tienda):** Reasonix confirmó informe desactualizado. **Ya hecho:** banner bono → `config/store.php` (`title_template` + `STORE_PROMO_BONO_CENTS`); checkout → `StoreCartCheckoutValidator` en `CreateStoreCheckoutAction`. **Backlog P2/P3:** `unique(user_id)` en `carritos`; float residual `MoneyCents::centsToEuros` / pivot céntimos; bonos 150€/600€ hardcode en clases JSX.
+
+- **2026-08-19** — Cursor: fusion cuaderno Zurriola — estrellas leen JSON (kJ/viento/verano/rip); Gemini recibe esas notas en el parte. Tests 5/5. HECHO.
+
+- **2026-08-16** — Cursor: modo compartir — Vite parado, `share:tunnel`, túnel Cloudflare `https://recovered-conflicts-workflow-responses.trycloudflare.com`. HTML con `/build/assets` (sin `public/hot`). HECHO.
+
+- **2026-08-16** — Cursor: historial VIP — créditos solo número (1/2); en móvil filas-tarjeta; SKU bajo la clase / columna desde lg. HECHO.
+
+- **2026-08-16** — Cursor: datáfono — columna **Hacienda** + botón **Comunicar a Hacienda** (efectivo pendiente); efectivo → B2B aunque TPV tenga TBAI propio; TPV = «Cubierto por TPV». Tests 7/7. HECHO.
+- **2026-08-16** — Cursor: en Mis pedidos, dos chips como en Mis facturas: **Ver factura** (PDF) y **TicketBAI en proceso / Ver TicketBAI**. Tests 2/2. HECHO.
+
+- **2026-08-16** — Cursor: pantalla TicketBAI en proceso ya no enseña el PDF (está en Mis facturas); el verde solo sale con sello de Hacienda. Volver → `/mis-facturas`. Tests 2/2. HECHO.
+
+- **2026-08-16** — Cursor: Mis facturas — «Ver factura» (PDF) + «Ver TicketBAI»; si no listo: «Pendiente de emisión» / «TicketBAI en proceso»; labels enum fiscales aclarados. HECHO.
+- **2026-08-16** — Cursor: 2º clic al carrito en 5s pide unidades extra (cards tienda). Mis facturas: chip **Subastas** (cobro Stripe). 2ª mano no (WhatsApp, sin TBAI). Tests 4/4. HECHO.
+
+- **2026-08-16** — Cursor: «Factura en trámite» en Mis pedidos era un span sin enlace; ahora va a `/pagos/facturas/{id}` (página de estado TBAI). Tests 2/2. HECHO.
+
+- **2026-08-16** — Cursor: `/pedidos` TypeError — el typehint `Producto` apuntaba al namespace del controller, no al modelo. Añadido `use App\Models\Producto`. Test 1/1. HECHO.
+
+- **2026-08-16** — Cursor: `/pago/exito` 500 `Unknown named parameter $payableType` — Laravel `Event::dispatch()` no acepta nombres; sustituido por `PaymentConfirmed::emit()`. Test 1/1. HECHO.
+- **2026-08-16** — Cursor: P2 checkout — `CreateStoreCheckoutAction` reserva + Stripe + vacía carrito solo si hay sesión; banner bono en `config/store.php`. Tests 2/2. HECHO.
+- **2026-08-16** — Cursor: P1 catálogo — `ProductoController` delgado; alta/edición/ocultar/imagen en `StoreProductCatalogService` + DTO; listado admin sin Eloquent crudo; precio redondeado a céntimo. Tests 5/5. HECHO.
+- **2026-08-16** — Cursor: P0 dinero tienda — descuento/total en céntimos (`StoreProductPricing`); el `total` del carrito debe coincidir o se aborta; Stripe/datáfono/ficha usan la misma fórmula. Tests 9/9. HECHO.
+- **2026-08-16** — Cursor: P0 stock tienda — `lockForUpdate` al reservar; cron `store:release-unpaid` (24 h) libera checkout Stripe abandonado; si falla crear sesión Stripe se suelta al momento. Tests Feature. HECHO.
+- **2026-08-16** — Cursor: banner promo — overlay más claro, text-shadow, CTA 44px, fotos WebP (~240 KB las 3). HECHO.
+- **2026-08-16** — Cursor: 3 fotos promo (bono/subasta/producto) en `public/img/store/` + brief UX `PROMPT-UX-BANNER-PROMO-TIENDA.md` para Reasonix. Pendiente diseño → implementación.
+- **2026-08-16** — Cursor: banner publicidad tienda/ficha — 3 slides (bono recomendado 250€, mejor subasta, producto más ofertado) con imagen a fondo. HECHO.
+- **2026-08-16** — Cursor: banner subastas en Tienda — strip bajo H1 en `/tienda` + compact encima de relacionados en ficha; `featuredAuctions` vía `AuctionCatalogService::publicCatalog`. HECHO.
+- **2026-08-16** — Cursor: prompt UX banner/slider subastas en Tienda para Reasonix (`PROMPT-UX-BANNER-SUBASTAS-TIENDA.md`) + pendiente en `TAREAS-PENDIENTES.md`. Diseño primero → luego implementación.
+- **2026-08-16** — Cursor: B2B — el importe cobrado (IVA incl.) se convierte a neto antes del POST; 60,00 € → price 49,59 € + 21 %. Tests 6/6. HECHO.
+- **2026-08-16** — Cursor: pedido #21 — reemitido PaymentConfirmed (el webhook confirmó el cobro y no se encoló la factura); /pago/exito ahora reintenta si no hay fiscal_invoice. HECHO.
+- **2026-08-16** — Cursor: pedido Stripe — se guarda `payment_method=card` al crear/confirmar; 3 pedidos pagados huérfanos actualizados. UI: «Pago: Con tarjeta». HECHO.
+- **2026-08-16** — Cursor: home — eliminados fundidos `SectionEdgeFade` (componente borrado); cortes secos entre bandas. HECHO.
+- **2026-08-16** — Cursor: PDP — más margen arriba/abajo del slider «También te puede interesar» + más padding interno compact del carrusel. HECHO.
+- **2026-08-16** — Cursor: OpcionesIntro — última fila incompleta (1–3 tiles) reparte a todo el ancho (`grid-cols-1/2/3`). HECHO.
+- **2026-08-16** — Cursor: home OpcionesIntro — oculto heading «Explora S4 / Todo lo que puedes…» (`showHeading={false}`); quedan solo las tiles clicables. HECHO.
+- **2026-08-16** — Cursor: home — Explora S4 y teaser del club/instalaciones en una sola banda (sin corte entre directorio y «San Sebastian Surf School»). HECHO.
+- **2026-08-16** — Cursor: home — fundidos más altos/progresivos (`SectionEdgeFade`) en hero→claro, claro↔Explora+club, claro→OpcionesIntro; sin fade agresivo corto. HECHO.
+- **2026-08-16** — Cursor: home — fade navy→slate-50 al pie de Explora S4 (quita corte seco antes del teaser GEO). HECHO.
+- **2026-08-16** — Cursor: tienda checkout — validación `productos_json` vs carrito BD (`StoreCartCheckoutValidator`); pricing int céntimos; bono 250€ desde `config/store.php` + clases sincronizadas. Tests 26/26 store. HECHO.
+- **2026-08-16** — Cursor: home — Explora S4 + Nosotros a full-bleed; ofertas fusionadas con OpcionesIntro (sin franja blanca entre oscuros). Cards de contenido (parte, GEO, testimonios) siguen en flujo claro. HECHO.
+- **2026-08-16** — Cursor: botón Compartir en webcam (`#webcam-directo`) y Parte S4 (`#parte-s4-hoy`); Web Share API + copiar enlace. HECHO.
+- **2026-08-16** — Cursor: ficha producto — quitados highlights genéricos (uso/recogida/precio) y el cierre del summary que los repetía; esas ventajas quedan solo en el trust strip. HECHO.
+- **2026-08-16** — Cursor: ofertas socios — variante clara (`tone="light"`): sección blanca + cards `surface="light"` (texto slate, botón light); coherente en home, ficha producto y Taller. Grid `/tienda` sigue oscuro. HECHO.
+- **2026-08-16** — Cursor: ofertas socios — banda full-bleed (fondo navy a todo el ancho; contenido en `max-w-6xl`); sacado del contenedor estrecho en home/Taller/PDP. HECHO.
+- **2026-08-16** — Cursor: home directorio — flecha en `CompactLink` visible en móvil (`opacity-80`); en `md+` más sutil hasta hover. HECHO.
+- **2026-08-16** — Cursor: ficha producto — quitado hint «ajustar cantidades en el carrito»; trust strip → ventajas exclusivas (Acceso exclusivo / Precio de socio / Recogida en Zurriola) y visible también en móvil. HECHO.
+- **2026-08-15** — Cursor: subastas — grid `grid-cols-2` móvil (familia tienda/2ª mano) + cards densas; badges estado/tiempo/pujas intactos. HECHO.
+- **2026-08-14** — Cursor: 2ª mano — grid `grid-cols-2` móvil (patrón tienda) + cards más densas; specs compactas en móvil. HECHO.
 - **2026-08-12** — Cursor: FAB público — ya no se oculta el dock entero si hay sesión admin (antes ↑ y chat desaparecían juntos); scrollY más robusto en móvil. HECHO.
 - **2026-08-12** — Cursor: Taller «reservar clase» — nuevo H2 qué mira la escuela (marea medias/bajas vs altas en vivas/orillera; parte adecuado; franjas con menos gente). Seeder + BD. HECHO.
 - **2026-08-12** — Cursor: Taller «reservar clase» — quitado párrafo final débil (S4 Academia / WhatsApp / checklist). Seeder + BD. HECHO.
 - **2026-08-12** — Cursor: Taller artículo — «Lectura estimada» ya no fuerza 3 min; calcula por palabras (~200/min, mín. 1). HECHO.
 - **2026-08-12** — Cursor: `ZurriolaGeoFactsService` — cache `remember` 1 h con clave `zurriola.geo_facts.v1.{filemtime}` (invalida al editar el JSON). HECHO.
 - **2026-08-12** — Cursor: GEO webcams — quitada card «Día de clase» (llegada/material + Ver clases/Contacto); H2 → «lugar, temporada y condiciones». Datos siguen en JSON/FAQ. HECHO.
-- **2026-08-12** — Cursor: Parte S4 fases A–C — CTA contextual por señal, link Taller, empty state CTAs, selector «Mi nivel» (localStorage), badge «Recomendado hoy», prueba social 👍, home alineada (`SurfBriefMini`). Build OK. HECHO.
+- **2026-08-13** — Cursor: ficha producto — fix `preserveScroll` en grid tienda; scroll top al entrar; nav móvil compacta (sin breadcrumb); CTA guest/login/taquilla/contacto (`ProductPurchaseCta`). Build OK. HECHO.
 - **2026-08-12** — Cursor: CTA «Ver tiempo» bajo título webcam (fuera del player); `WeatherDetailPanel` tras el stream; eliminado duplicado bajo forecast. Build OK. HECHO.
 - **2026-08-12** — Cursor: forecast — `CloudRain` junto al % (prob. lluvia); CTA «Ver forecast al detalle» con subtítulo «olas · sol · lluvia» (mismo panel; sin 3er botón). Build OK. HECHO.
 - **2026-08-12** — Cursor: FAQ GEO — título fuera de la card; quitada caja envolvente (alineado Temporada/Energía). Brief marketing→UX en chat para Reasonix. HECHO quick win.
@@ -220,5 +397,14 @@ Añadir/actualizar una fila en **Estado actual**:
 - **2026-08-10** — Cursor: compatibilidad dúo Reasonix/DeepSeek ↔ Cursor — nuevo `CONTRATO-IA.md` (roles, router único, anti-pisotón); espejado en `AGENTS.md`, `.cursorrules`, `MASTER-PROMPT-DEEPSEEK.md`, `PROTOCOLO.md` y mapa. HECHO.
 - **2026-08-10** — Cursor: Tienda — paginación Anterior/Siguiente sustituida por «Ver más» (lotes de 8; se acumulan; al filtrar/ordenar se resetea). Contador «Mostrando X de Y». HECHO.
 - **2026-08-10** — Cursor: Tienda (`/tienda`) — fotos de producto con fondo blanco sobre card navy: pozo de imagen en gris suave (`from-slate-200 to-slate-300`) + `object-contain` con padding (en vez de `object-cover` sobre `bg-slate-800`). Afecta grid tienda y slider de ofertas vía `Producto.jsx`. HECHO.
+
+- **2026-08-21** — Reasonix: análisis del agente de marketing → mejoras aplicadas: +S12 `critica_prompt_rediseno`, plantilla única con Sev/KPI, escala de nota anti-inflación, fórmula de prioridad, disparos S4/S5, checklist de contexto R2, AP numerados, few-shot §8; skill `/marketing-diseno` sincronizado. HECHO.
+- **2026-08-21** — Reasonix (implementación autorizada por el dueño): PDP ficha — etiqueta «Precio socio» siempre visible en bloque de precio, precio normal tachado como ancla en sticky bar (guests ven el ahorro), hint de cantidad solo con info nueva (máx. por pedido). Build OK (40s). HECHO.
+- **2026-08-21** — Reasonix: scroll lateral PDP — guard `overflow-x: clip` en html/body (app.css; no rompe sticky), `min-w-0`+`break-words` en Breadcrumbs y H1 de ficha. Build OK (30s). HECHO.
+- **2026-08-21** — Reasonix: H4 cerrado sin cambios (verdict S6: split «Añadir»/«Añadir al carrito» es el patrón correcto). H5: prompt feedback carrito en sticky bar entregado en chat (estado local, UI-only). Hallazgo: badge carrito header lee `props.cart.count` que nadie comparte → nunca se actualiza (pendiente decidir fix).
+
+- **2026-08-21** — Reasonix: cierre de sesión — 4 tareas del S4 acordeones cerradas y verificadas (GlobalNav a11y, Clients/Vigencia a11y, ContactBlock, refactor AccordionTrigger/ExpandableText ×11 archivos) + build OK. `HANDOFF.md` actualizado. Siguiente pendiente: #9 mejoras 08-11 y SEO Donostia.
+- **2026-08-21** — Reasonix: verificación #9 mejoras 08-11 — ya implementada por Cursor 2026-08-12 (`EnsureAdminVerified` + `ADMIN_REQUIRE_EMAIL_VERIFIED` + allowlist `ADMIN_EMERGENCY_EMAILS`, config/auth.php documentado, tests 4/4). Lista 08-11 completa; solo falta confirmación del dueño para #7 GlobalNav. Sin cambios de código.
+- **2026-08-21** — Reasonix: #7 GlobalNav CONFIRMADA por el dueño — admins no ven menú cliente (Mis Pedidos/Reservas/Facturas/Carrito); premisa: admin solo gestiona back-office (subastas, pedidos, forecast, webcam…), para comprar usa cuenta user aparte. Typo "Fotografía" OK. Auditoría 08-11 CERRADA al 100%.
 
 > Historial completo (actividad 2026-08-03 → 2026-08-09 y filas HECHO anteriores): `docs/taller-prompts/COORDINACION-ARCHIVO.md` (poda 2026-08-10).

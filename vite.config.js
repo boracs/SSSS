@@ -85,10 +85,10 @@ export default defineConfig({
     },
   },
   server: {
-    // Compatible con local Windows y Docker. En local, Vite sirve en localhost:5173 (ver public/hot).
-    host: "localhost",
+    // 127.0.0.1 (IPv4): en Windows `localhost` a veces solo abre [::1] y la app en 127.0.0.1:8000 queda en blanco.
+    host: "127.0.0.1",
     port: 5173,
     strictPort: true,
-    hmr: { host: "localhost" },
+    hmr: { host: "127.0.0.1" },
   },
 });

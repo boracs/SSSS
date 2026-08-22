@@ -6,6 +6,7 @@ namespace App\Services\Invoicing;
 
 use App\DTOs\Invoicing\FiscalInvoicePublicDto;
 use App\Enums\FiscalInvoiceStatus;
+use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\FiscalInvoice;
 use App\Models\LessonUser;
@@ -78,6 +79,7 @@ final class FiscalInvoiceAccessService
             $payable instanceof UserBono => (int) $payable->user_id === (int) $user->id,
             $payable instanceof PagoCuota => (int) $payable->user_id === (int) $user->id,
             $payable instanceof Pedido => (int) $payable->user_id === (int) $user->id,
+            $payable instanceof Auction => (int) $payable->winner_user_id === (int) $user->id,
             $payable instanceof \App\Models\PhotoSessionBooking => (int) $payable->user_id === (int) $user->id,
             default => false,
         };
@@ -86,7 +88,7 @@ final class FiscalInvoiceAccessService
     public function toPublicDto(FiscalInvoice $invoice): FiscalInvoicePublicDto
     {
         $ready = $invoice->status === FiscalInvoiceStatus::Registered;
-        $hasPdf = $ready && is_string($invoice->b2b_invoice_id) && $invoice->b2b_invoice_id !== '';
+        $hasPdf = is_string($invoice->b2b_invoice_id) && $invoice->b2b_invoice_id !== '';
 
         return new FiscalInvoicePublicDto(
             id: (int) $invoice->id,

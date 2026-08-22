@@ -1,18 +1,16 @@
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
+import ContactBlock from "../components/ContactBlock";
 import {
     ArrowRight,
     Banknote,
     CheckCircle2,
-    ChevronDown,
     ClipboardList,
     ExternalLink,
     FilePen,
-    Mail,
     MapPin,
     MessageCircle,
-    Phone,
     Pin,
     ShieldCheck,
     Sparkles,
@@ -138,67 +136,14 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                                 ¿Dudas sobre si merece la pena reparar? ¿Quieres fijar un tope de precio antes de que
                                 Willy recoja el traje? Escríbele y evita malentendidos.
                             </p>
-                            <button
-                                type="button"
-                                onClick={() => setWillyContactOpen((v) => !v)}
-                                className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-500 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md transition hover:bg-amber-400"
-                                aria-expanded={willyContactOpen}
-                            >
-                                Contactar con {willy.name || "Willy"}
-                                <ChevronDown
-                                    className={`h-4 w-4 transition-transform ${willyContactOpen ? "rotate-180" : ""}`}
-                                />
-                            </button>
-                            {willyContactOpen ? (
-                                <div className="mt-4 space-y-3 rounded-xl border border-amber-500/20 bg-slate-950/40 p-4">
-                                    {willy.phone && willy.phoneTel ? (
-                                        <a
-                                            href={`tel:${willy.phoneTel}`}
-                                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
-                                        >
-                                            <Phone className="h-5 w-5 shrink-0 text-amber-300" />
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                                    Teléfono
-                                                </p>
-                                                <p className="text-sm font-semibold text-white">{willy.phone}</p>
-                                            </div>
-                                        </a>
-                                    ) : null}
-                                    {willy.email ? (
-                                        <a
-                                            href={`mailto:${willy.email}?subject=${encodeURIComponent("Consulta reparación de neopreno")}`}
-                                            className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:bg-white/10"
-                                        >
-                                            <Mail className="h-5 w-5 shrink-0 text-violet-300" />
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                                    Correo
-                                                </p>
-                                                <p className="text-sm font-semibold text-white">{willy.email}</p>
-                                            </div>
-                                        </a>
-                                    ) : null}
-                                    {willy.whatsappUrl ? (
-                                        <a
-                                            href={willy.whatsappUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 transition hover:bg-emerald-500/15"
-                                        >
-                                            <MessageCircle className="h-5 w-5 shrink-0 text-emerald-300" />
-                                            <div>
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                                                    WhatsApp
-                                                </p>
-                                                <p className="text-sm font-semibold text-white">
-                                                    Escribir a {willy.name || "Willy"}
-                                                </p>
-                                            </div>
-                                        </a>
-                                    ) : null}
-                                </div>
-                            ) : null}
+                            <ContactBlock
+                                contact={willy}
+                                open={willyContactOpen}
+                                onToggle={() => setWillyContactOpen((v) => !v)}
+                                mailSubject="Consulta reparación de neopreno"
+                                mailIconClassName="text-violet-300"
+                                fallbackName="Willy"
+                            />
                         </div>
                     ) : null}
 

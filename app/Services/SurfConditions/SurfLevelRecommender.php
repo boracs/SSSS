@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\SurfConditions;
 
 use App\DTOs\SurfConditions\SurfConditionsSnapshotDto;
+use App\DTOs\SurfConditions\SurfLevelStarsDto;
 use App\Models\SurfDailyBrief;
 
 /**
@@ -142,5 +143,27 @@ final class SurfLevelRecommender
             self::LEVEL_AVANZADO => 'Solo nivel avanzado',
             default => 'No recomendable hoy',
         };
+    }
+
+    /**
+     * Titular del parte: el nivel para el que el día “es” según las estrellas
+     * (mismo recetario JSON). Empate iniciación/intermedio → intermedio (mayoría del alumnado).
+     */
+    public function headlineFromStars(SurfLevelStarsDto $stars): string
+    {
+        $max = max($stars->iniciacion, $stars->intermedio, $stars->avanzado);
+        if ($max <= 1) {
+            return self::LEVEL_NO_RECOMENDADO;
+        }
+
+        if ($stars->avanzado === $max && $stars->avanzado > $stars->intermedio && $stars->avanzado > $stars->iniciacion) {
+            return self::LEVEL_AVANZADO;
+        }
+
+        if ($stars->intermedio === $max) {
+            return self::LEVEL_INTERMEDIO;
+        }
+
+        return self::LEVEL_INICIACION;
     }
 }

@@ -8,6 +8,7 @@ use App\DTOs\Seo\SeoMetaDto;
 use App\Models\Article;
 use App\Models\Surfboard;
 use App\Services\SurfConditions\ZurriolaGeoFactsService;
+use App\Support\AcademySocialLinks;
 use App\Support\MoneyCents;
 
 /**
@@ -600,9 +601,7 @@ final class PublicPageSeoService
             'url' => $this->absoluteUrl('/'),
             'logo' => $this->absoluteUrl('/img/brand/logo-navy-mark.png'),
             'email' => (string) config('services.academy.contact_email', 'info@sansebastiansurfschool.com'),
-            'sameAs' => array_values(array_filter([
-                $this->instagramUrl(),
-            ])),
+            'sameAs' => AcademySocialLinks::sameAsUrls(),
         ];
     }
 
@@ -920,16 +919,5 @@ final class PublicPageSeoService
         }
 
         return $base.'/'.ltrim($path, '/');
-    }
-
-    private function instagramUrl(): ?string
-    {
-        $handle = trim((string) config('services.academy.instagram_handle', ''));
-        if ($handle === '') {
-            return null;
-        }
-        $user = ltrim($handle, '@');
-
-        return $user !== '' ? 'https://www.instagram.com/'.$user.'/' : null;
     }
 }

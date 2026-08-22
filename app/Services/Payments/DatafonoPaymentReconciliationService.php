@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Payments;
 
 use App\Actions\Photos\ConfirmPhotoBookingPaymentAction;
+use App\DTOs\Payments\DatafonoHaciendaStatusDto;
 use App\DTOs\Payments\TpvPaymentIngestDto;
+use App\Enums\FiscalInvoiceStatus;
 use App\Events\Payments\PaymentConfirmed;
 use App\Models\Booking;
 use App\Models\DatafonoPayment;
+use App\Models\FiscalInvoice;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\MostradorTicket;
@@ -28,6 +31,7 @@ use App\Services\AvailabilityService;
 use App\Services\BonoService;
 use App\Services\BookingService;
 use App\Services\Photos\PhotoBookingService;
+use App\Services\Store\StoreProductPricing;
 use App\Services\Taquilla\TaquillaMembershipService;
 use App\Support\BusinessDateTime;
 use App\Support\MoneyCents;
@@ -42,7 +46,11 @@ use Throwable;
 
 /**
  * Ledger de cobros de datáfono + conciliación hacia payables de negocio.
- * Si el terminal tiene `emite_ticketbai_propio`, no se dispara B2B (TicketBAI ya lo hace el TPV).
+ *
+ * Fiscal:
+ * - TPV con `emite_ticketbai_propio`: Hacienda la cubre el terminal; la app no dispara B2B.
+ * - Efectivo (`manual_cash`): la app dispara B2B (PaymentConfirmed → TicketBAI), aunque el
+ *   terminal tenga TBAI propio (el TPV no ve el metálico solo registrado en S4).
  */
 final class DatafonoPaymentReconciliationService
 {
@@ -357,12 +365,41 @@ final class DatafonoPaymentReconciliationService
             return $locked->fresh(['terminal', 'assignedUser', 'payable', 'ticket.lines']);
         });
 
-        // Fuera de la TX: mismo camino fiscal que Stripe (PaymentConfirmed →
-        // DispatchB2BRouterInvoiceListener → CreateB2BRouterInvoiceJob → IssueFiscalInvoiceAction).
-        // Si el terminal ya emite TicketBAI propio (Kutxabank), no se dispara.
-        $this->maybeDispatchFiscalInvoice($assigned);
+        // Fuera de la TX: efectivo → B2B; TPV con TBAI propio → no (lo hace el terminal).
+        $this->dispatchFiscalInvoicesForPayment($assigned);
 
         return $assigned;
+    }
+
+    /**
+     * Admin: forzar comunicación a Hacienda (B2B) para un cobro de efectivo ya asignado.
+     */
+    public function communicateToHacienda(DatafonoPayment $payment): DatafonoPayment
+    {
+        $payment->loadMissing(['terminal', 'ticket.lines']);
+
+        if ($payment->status !== DatafonoPayment::STATUS_ASSIGNED) {
+            throw ValidationException::withMessages([
+                'payment' => ['Solo se puede comunicar a Hacienda un cobro ya asignado.'],
+            ]);
+        }
+
+        if ($this->isCoveredByTpvTicketBai($payment)) {
+            throw ValidationException::withMessages([
+                'payment' => ['Este cobro lo cubre el TicketBAI del datáfono; no hace falta comunicarlo desde la app.'],
+            ]);
+        }
+
+        $targets = $this->fiscalTargetsForPayment($payment);
+        if ($targets === []) {
+            throw ValidationException::withMessages([
+                'payment' => ['Este cobro no tiene servicio asignado para facturar.'],
+            ]);
+        }
+
+        $this->dispatchFiscalInvoicesForPayment($payment);
+
+        return $payment->fresh(['terminal', 'assignedUser', 'payable', 'ticket.lines']);
     }
 
     /**
@@ -457,7 +494,10 @@ final class DatafonoPaymentReconciliationService
             $q->where('payment_terminal_id', $terminalId);
         }
 
-        return $q->get()->map(function (DatafonoPayment $p): array {
+        $payments = $q->get();
+        $invoiceMap = $this->fiscalInvoiceMapForPayments($payments);
+
+        return $payments->map(function (DatafonoPayment $p) use ($invoiceMap): array {
             $assignedName = $p->assignedUser
                 ? trim("{$p->assignedUser->nombre} {$p->assignedUser->apellido}")
                 : null;
@@ -483,6 +523,8 @@ final class DatafonoPaymentReconciliationService
                 )))
                 : [];
 
+            $hacienda = $this->resolveHaciendaStatus($p, $invoiceMap);
+
             return [
                 'id' => $p->id,
                 'terminal_id' => $p->payment_terminal_id,
@@ -503,6 +545,7 @@ final class DatafonoPaymentReconciliationService
                 'domains' => $domains,
                 'ticket_lines' => $lines,
                 'notes' => $p->notes,
+                'hacienda' => $hacienda->toArray(),
             ];
         })->all();
     }
@@ -559,11 +602,11 @@ final class DatafonoPaymentReconciliationService
     }
 
     /**
-     * @param  array<string, mixed>  $payload
+     * Dispara facturación B2B cuando corresponde (efectivo o TPV sin TBAI propio).
      */
     public function dispatchFiscalForPayment(DatafonoPayment $payment): void
     {
-        $this->maybeDispatchFiscalInvoice($payment);
+        $this->dispatchFiscalInvoicesForPayment($payment);
     }
 
     /**
@@ -1664,9 +1707,9 @@ final class DatafonoPaymentReconciliationService
             ]);
         }
 
-        /** @var list<array{producto: Producto, cantidad: int, descuento: float, precio_pagado: float, subtotal: float}> $lines */
+        /** @var list<array{producto: Producto, cantidad: int, descuento: float, precio_pagado: float, unit_cents: int}> $lines */
         $lines = [];
-        $catalogTotalEuros = 0.0;
+        $catalogTotalCents = 0;
 
         foreach ($productos as $prod) {
             if ((bool) $prod->eliminado) {
@@ -1682,23 +1725,18 @@ final class DatafonoPaymentReconciliationService
                 ]);
             }
 
-            // Misma fórmula que PedidoController (tienda).
-            $precioBase = (float) $prod->precio;
             $descuento = (float) ($prod->descuento ?? 0);
-            $precioFinal = round($precioBase - ($precioBase * ($descuento / 100)), 2);
-            $subtotal = round($precioFinal * $cantidad, 2);
-            $catalogTotalEuros += $subtotal;
+            $unitCents = StoreProductPricing::unitPriceCents($prod->precio, $descuento);
+            $catalogTotalCents += $unitCents * $cantidad;
 
             $lines[] = [
                 'producto' => $prod,
                 'cantidad' => $cantidad,
                 'descuento' => $descuento,
-                'precio_pagado' => $precioFinal,
-                'subtotal' => $subtotal,
+                'precio_pagado' => MoneyCents::centsToEuros($unitCents),
+                'unit_cents' => $unitCents,
             ];
         }
-
-        $catalogTotalCents = MoneyCents::eurosToCents($catalogTotalEuros);
         $paymentCents = $chargeAmountCents;
 
         if ($catalogTotalCents !== $paymentCents) {
@@ -1712,7 +1750,7 @@ final class DatafonoPaymentReconciliationService
             ]);
         }
 
-        $precioTotal = round($catalogTotalEuros, 2);
+        $precioTotal = MoneyCents::centsToEuros($catalogTotalCents);
 
         $pedido = Pedido::query()->create([
             'user_id' => $user?->id,
@@ -1738,40 +1776,217 @@ final class DatafonoPaymentReconciliationService
         return $pedido->fresh();
     }
 
-    private function maybeDispatchFiscalInvoice(DatafonoPayment $payment): void
+    /**
+     * Dispara B2B para cada payable del cobro (líneas de ticket o payable 1:1).
+     * No-op si el cobro TPV ya lo cubre el TicketBAI del terminal.
+     */
+    public function dispatchFiscalInvoicesForPayment(DatafonoPayment $payment): void
     {
-        $terminal = PaymentTerminal::query()->find($payment->payment_terminal_id);
+        $payment->loadMissing(['terminal', 'ticket.lines']);
 
-        // Solo saltar B2B cuando el TPV emite TicketBAI propio (true estricto).
-        if ($terminal === null || $terminal->emite_ticketbai_propio === true) {
+        if ($this->isCoveredByTpvTicketBai($payment)) {
             return;
+        }
+
+        foreach ($this->fiscalTargetsForPayment($payment) as $target) {
+            $sessionId = 'datafono-'.$payment->id.$target['session_suffix'];
+
+            try {
+                event(new PaymentConfirmed(
+                    payableType: $target['payable_type'],
+                    payableId: $target['payable_id'],
+                    amountCents: $target['amount_cents'],
+                    stripeSessionId: $sessionId,
+                ));
+            } catch (Throwable $e) {
+                Log::error('DatafonoPaymentReconciliationService: PaymentConfirmed falló', [
+                    'datafono_payment_id' => $payment->id,
+                    'payable_type' => $target['payable_type'],
+                    'payable_id' => $target['payable_id'],
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * TPV con TicketBAI propio: Hacienda la gestiona el datáfono, no B2B.
+     * Efectivo siempre pasa por B2B (el TPV no registra el metálico de la app).
+     */
+    private function isCoveredByTpvTicketBai(DatafonoPayment $payment): bool
+    {
+        if ($payment->source === DatafonoPayment::SOURCE_MANUAL_CASH) {
+            return false;
+        }
+
+        $terminal = $payment->terminal ?? PaymentTerminal::query()->find($payment->payment_terminal_id);
+
+        return $terminal === null || $terminal->emite_ticketbai_propio === true;
+    }
+
+    /**
+     * @return list<array{payable_type: string, payable_id: int, amount_cents: int, session_suffix: string}>
+     */
+    private function fiscalTargetsForPayment(DatafonoPayment $payment): array
+    {
+        $payment->loadMissing('ticket.lines');
+        $lines = $payment->ticket?->lines;
+
+        if ($lines !== null && $lines->isNotEmpty()) {
+            $targets = [];
+            foreach ($lines as $line) {
+                if ($line->payable_type === null || $line->payable_id === null) {
+                    continue;
+                }
+                $targets[] = [
+                    'payable_type' => (string) $line->payable_type,
+                    'payable_id' => (int) $line->payable_id,
+                    'amount_cents' => (int) $line->amount_cents,
+                    'session_suffix' => '-L'.$line->id,
+                ];
+            }
+
+            return $targets;
         }
 
         if ($payment->payable_type === null || $payment->payable_id === null) {
-            return;
+            return [];
         }
 
-        // Idempotencia fiscal reutiliza stripe_checkout_session_id UNIQUE → prefijo datafono-.
-        // Camino: PaymentConfirmed → DispatchB2BRouterInvoiceListener → CreateB2BRouterInvoiceJob
-        // → IssueFiscalInvoiceAction (no-op seguro si INVOICING_ENABLED=false).
-        $sessionId = 'datafono-'.$payment->id;
+        return [[
+            'payable_type' => (string) $payment->payable_type,
+            'payable_id' => (int) $payment->payable_id,
+            'amount_cents' => (int) $payment->amount_cents,
+            'session_suffix' => '',
+        ]];
+    }
 
-        try {
-            event(new PaymentConfirmed(
-                payableType: (string) $payment->payable_type,
-                payableId: (int) $payment->payable_id,
-                amountCents: (int) $payment->amount_cents,
-                stripeSessionId: $sessionId,
-            ));
-        } catch (Throwable $e) {
-            // El cobro ya está asignado; no revertir.
-            Log::error('DatafonoPaymentReconciliationService: PaymentConfirmed falló tras conciliar', [
-                'datafono_payment_id' => $payment->id,
-                'payable_type' => $payment->payable_type,
-                'payable_id' => $payment->payable_id,
-                'error' => $e->getMessage(),
-            ]);
+    /**
+     * @param  Collection<int, DatafonoPayment>  $payments
+     * @return array<string, FiscalInvoice>
+     */
+    private function fiscalInvoiceMapForPayments(Collection $payments): array
+    {
+        $pairs = [];
+        foreach ($payments as $payment) {
+            foreach ($this->fiscalTargetsForPayment($payment) as $target) {
+                $key = $target['payable_type'].'#'.$target['payable_id'];
+                $pairs[$key] = [$target['payable_type'], $target['payable_id']];
+            }
         }
+
+        if ($pairs === []) {
+            return [];
+        }
+
+        $query = FiscalInvoice::query();
+        $query->where(function ($outer) use ($pairs): void {
+            foreach ($pairs as [$type, $id]) {
+                $outer->orWhere(function ($inner) use ($type, $id): void {
+                    $inner->where('payable_type', $type)->where('payable_id', $id);
+                });
+            }
+        });
+
+        $map = [];
+        foreach ($query->get() as $invoice) {
+            $map[$invoice->payable_type.'#'.$invoice->payable_id] = $invoice;
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, FiscalInvoice>  $invoiceMap
+     */
+    private function resolveHaciendaStatus(DatafonoPayment $payment, array $invoiceMap): DatafonoHaciendaStatusDto
+    {
+        if ($payment->status !== DatafonoPayment::STATUS_ASSIGNED) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'n_a',
+                label: '—',
+                canCommunicate: false,
+                detailUrl: null,
+            );
+        }
+
+        if ($this->isCoveredByTpvTicketBai($payment)) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'tpv',
+                label: 'Cubierto por TPV',
+                canCommunicate: false,
+                detailUrl: null,
+            );
+        }
+
+        $targets = $this->fiscalTargetsForPayment($payment);
+        if ($targets === []) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'n_a',
+                label: '—',
+                canCommunicate: false,
+                detailUrl: null,
+            );
+        }
+
+        $invoices = [];
+        foreach ($targets as $target) {
+            $key = $target['payable_type'].'#'.$target['payable_id'];
+            if (isset($invoiceMap[$key])) {
+                $invoices[] = $invoiceMap[$key];
+            }
+        }
+
+        if ($invoices === []) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'pending',
+                label: 'Pendiente de comunicar',
+                canCommunicate: true,
+                detailUrl: null,
+            );
+        }
+
+        $statuses = array_map(
+            fn (FiscalInvoice $invoice) => $invoice->status,
+            $invoices,
+        );
+
+        $allRegistered = count($invoices) === count($targets)
+            && collect($statuses)->every(fn (FiscalInvoiceStatus $s) => $s === FiscalInvoiceStatus::Registered);
+
+        if ($allRegistered) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'issued',
+                label: 'Emitida',
+                canCommunicate: false,
+                detailUrl: null,
+            );
+        }
+
+        if (collect($statuses)->contains(FiscalInvoiceStatus::Failed)) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'failed',
+                label: 'Error Hacienda',
+                canCommunicate: true,
+                detailUrl: null,
+            );
+        }
+
+        if (count($invoices) < count($targets)) {
+            return new DatafonoHaciendaStatusDto(
+                code: 'pending',
+                label: 'Pendiente de comunicar',
+                canCommunicate: true,
+                detailUrl: null,
+            );
+        }
+
+        return new DatafonoHaciendaStatusDto(
+            code: 'processing',
+            label: 'TicketBAI en proceso',
+            canCommunicate: false,
+            detailUrl: null,
+        );
     }
 
     private function assertOwnership(Model $payable, ?User $user, bool $allowAnonymousWithoutUser = false): void

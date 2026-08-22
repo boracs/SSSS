@@ -24,20 +24,6 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
 
         $user = Auth::user();
 
-        // VIP con taquilla compartida (#500, #600…): tienda con descuento sin cuota de casillero.
-        if ($user->hasSharedLocker()) {
-            return $next($request);
-        }
-
-        // 2. Verificar si el usuario tiene asignado un número de taquilla física.
-        if (! $user->hasPhysicalLocker()) {
-            return redirect()->route('tienda')->with(
-                'access_alert',
-                'Debes tener una taquilla asignada para acceder al carrito y completar pedidos.',
-            );
-        }
-
-        // 3. Cuota al día: obligatorio para compras; la renovación sigue accesible.
         $renewalRoutes = [
             'taquillas.pago.client',
             'taquillas.pago.pay',
@@ -46,10 +32,16 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
             'emergency-key.request',
         ];
 
-        if (
-            ! $request->routeIs(...$renewalRoutes)
-            && ! $user->isLockerPaymentUpToDate()
-        ) {
+        // VIP (#500 virtual o is_vip) o socio con taquilla física al día.
+        if ($user->canAccessStoreWithMemberDiscount()) {
+            return $next($request);
+        }
+
+        if ($request->routeIs(...$renewalRoutes) && $user->hasPhysicalLocker()) {
+            return $next($request);
+        }
+
+        if ($user->hasPhysicalLocker() && ! $user->isLockerPaymentUpToDate()) {
             return redirect()
                 ->route('taquillas.index.client')
                 ->with(
@@ -58,6 +50,9 @@ class VerificarTaquilla // ESTE DEBE SER EL NOMBRE DE CLASE EXACTO
                 );
         }
 
-        return $next($request);
+        return redirect()->route('tienda')->with(
+            'access_alert',
+            'Debes tener una taquilla asignada para acceder al carrito y completar pedidos.',
+        );
     }
 }

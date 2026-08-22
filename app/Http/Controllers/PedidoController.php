@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Actions\Payments\InitiatePaymentAction;
-use App\DTOs\Payments\InitiatePaymentDto;
-use App\DTOs\Payments\PaymentLineItemDto;
+use App\Actions\Store\CreateStoreCheckoutAction;
+use App\DTOs\Store\CreateStoreCheckoutDto;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Services\Invoicing\FiscalInvoiceAccessService;
@@ -14,8 +13,6 @@ use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 class PedidoController extends Controller
 {
     public function __construct(
-        private readonly InitiatePaymentAction $initiatePayment,
+        private readonly CreateStoreCheckoutAction $createStoreCheckout,
         private readonly FiscalInvoiceAccessService $fiscalInvoices,
     ) {}
 
@@ -55,108 +52,18 @@ class PedidoController extends Controller
             ? Carbon::createFromFormat('d/m/Y', (string) $request->input('fecha_entrega'))->format('Y-m-d')
             : null;
 
-        // 1. Crear el pedido en estado "pendiente" dentro de una transacción
-        $pedido = DB::transaction(function () use ($user, $productosCarrito, $fechaEntrega) {
-            $pedido = Pedido::create([
-                'user_id'      => $user->id,
-                'precio_total' => 0,
-                'pagado'       => false,
-                'entregado'    => false,
-                'fecha_entrega' => $fechaEntrega,
-            ]);
-
-            $total = 0.0;
-
-            foreach ($productosCarrito as $idx => $item) {
-                if (! isset($item['id'], $item['cantidad'])) {
-                    throw new \InvalidArgumentException("Carrito inválido en la posición {$idx}.");
-                }
-
-                $prod = Producto::query()->find($item['id']);
-
-                if ($prod === null) {
-                    throw new \InvalidArgumentException("El producto con ID {$item['id']} no existe.");
-                }
-
-                if ($prod->unidades < $item['cantidad']) {
-                    throw new \InvalidArgumentException(
-                        "No hay stock suficiente para '{$prod->nombre}'."
-                    );
-                }
-
-                $precioBase      = (float) $prod->precio;
-                $descuento       = (float) $prod->descuento;
-                $precioFinal     = $precioBase - ($precioBase * ($descuento / 100));
-                $subtotal        = $precioFinal * (int) $item['cantidad'];
-                $total          += $subtotal;
-
-                $pedido->productos()->attach($prod->id, [
-                    'cantidad'           => (int) $item['cantidad'],
-                    'descuento_aplicado' => $descuento,
-                    'precio_pagado'      => round($precioFinal, 2),
-                ]);
-
-                $prod->decrement('unidades', $item['cantidad']);
-            }
-
-            $pedido->update(['precio_total' => round($total, 2)]);
-
-            // El carrito se vacía solo tras crear la sesión Stripe (si falla, el cliente
-            // no pierde la cesta ni el stock queda “comido” sin pago).
-
-            return $pedido;
-        });
-
-        // 2. Construir líneas para Stripe Checkout
-        $pedido->load('productos');
-        $lineItems = $pedido->productos->map(function (Producto $prod) {
-            $precioCents = (int) round((float) $prod->pivot->precio_pagado * 100);
-
-            return new PaymentLineItemDto(
-                name: $prod->nombre,
-                description: 'Compra tienda S4',
-                unitAmountCents: $precioCents,
-                quantity: (int) $prod->pivot->cantidad,
-            );
-        })->values()->all();
-
-        $dto = new InitiatePaymentDto(
-            payableType:   Pedido::class,
-            payableId:     $pedido->id,
-            lineItems:     $lineItems,
-            successPath:   '/pago/exito',
-            cancelPath:    '/tienda',
-            customerEmail: $user->email,
-            metadata:      ['pedido_id' => (string) $pedido->id],
-        );
-
         try {
-            $checkoutUrl = $this->initiatePayment->execute($dto);
+            $checkoutUrl = $this->createStoreCheckout->execute(new CreateStoreCheckoutDto(
+                userId: (int) $user->id,
+                cartLines: $productosCarrito,
+                quotedTotalEuros: $request->input('total'),
+                fechaEntregaYmd: $fechaEntrega,
+            ));
+        } catch (\InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         } catch (\RuntimeException $e) {
-            Log::error('PedidoController::crear error al crear sesión Stripe', [
-                'pedido_id' => $pedido->id,
-                'user_id'   => $user->id,
-                'error'     => $e->getMessage(),
-            ]);
-
-            // Revertir stock + borrar pedido pendiente; el carrito sigue intacto.
-            DB::transaction(function () use ($pedido) {
-                $pedido->load('productos');
-                foreach ($pedido->productos as $prod) {
-                    $prod->increment('unidades', (int) $prod->pivot->cantidad);
-                }
-                $pedido->productos()->detach();
-                $pedido->delete();
-            });
-
-            return back()->with(
-                'error',
-                'No se pudo abrir el pago con tarjeta. Tu carrito sigue intacto; inténtalo de nuevo.'
-            );
+            return back()->with('error', $e->getMessage());
         }
-
-        // Stripe OK → vaciar carrito y redirigir
-        $user->carrito()->delete();
 
         return $this->redirectToStripeCheckout($checkoutUrl);
     }
@@ -187,6 +94,7 @@ class PedidoController extends Controller
         $user_id = auth()->id();
 
         $pedidos = Pedido::where('user_id', $user_id)
+            ->where('pagado', true)
             ->with(['productos.imagenes'])
             ->orderBy('id', 'desc')
             ->get();
@@ -306,6 +214,7 @@ class PedidoController extends Controller
             'created_at'        => optional($pedido->created_at)->toIso8601String(),
             'proof_uploaded_at' => optional($pedido->proof_uploaded_at)->toIso8601String(),
             'fiscal_invoice_url' => $fiscal?->detailUrl,
+            'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
             'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
             'cliente'           => [
                 'nombre'   => trim(($pedido->usuario->nombre ?? '').' '.($pedido->usuario->apellido ?? '')),
@@ -330,6 +239,7 @@ class PedidoController extends Controller
             'created_at'      => optional($pedido->created_at)->toIso8601String(),
             'total_articulos' => (int) $pedido->productos->sum(fn ($p) => (int) $p->pivot->cantidad),
             'fiscal_invoice_url' => $fiscal?->detailUrl,
+            'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
             'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
             'productos'       => $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
                 return [

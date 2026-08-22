@@ -66,12 +66,40 @@ class Producto extends Model
     }
 
     /**
+     * URL pública de una imagen de producto (misma regla en tienda, home y ficha).
+     */
+    public static function publicImageUrl(?string $ruta): ?string
+    {
+        if ($ruta === null || trim($ruta) === '') {
+            return null;
+        }
+
+        $ruta = trim($ruta);
+
+        if (str_starts_with($ruta, 'http://') || str_starts_with($ruta, 'https://')) {
+            return $ruta;
+        }
+
+        if (str_starts_with($ruta, '/storage/')) {
+            return asset(ltrim($ruta, '/'));
+        }
+
+        if (str_starts_with($ruta, '/')) {
+            return asset(ltrim($ruta, '/'));
+        }
+
+        return asset('storage/'.ltrim($ruta, '/'));
+    }
+
+    /**
      * Payload mínimo para listados de tienda / home.
      *
      * @return array<string, mixed>
      */
     public function toStorePayload(?string $imagenRuta = null): array
     {
+        $imagenUrl = self::publicImageUrl($imagenRuta);
+
         return [
             'id' => $this->id,
             'nombre' => (string) $this->nombre,
@@ -80,8 +108,9 @@ class Producto extends Model
             'descuento' => $this->descuento,
             'tags' => $this->normalizedTags(),
             'tag_labels' => ProductTag::labelsFor($this->normalizedTags()),
-            'imagen' => $imagenRuta,
-            'imagenPrincipal' => $imagenRuta,
+            'imagen' => $imagenUrl,
+            'imagenPrincipal' => $imagenUrl,
+            'imagen_principal' => $imagenUrl,
         ];
     }
 

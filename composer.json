@@ -59,7 +59,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fdba74\" \"php -d upload_max_filesize=128M -d post_max_size=300M -d max_execution_time=300 artisan serve\" \"php artisan queue:listen --tries=1\" \"npm run dev\" --names='server,queue,vite'"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#86efac,#fdba74\" \"php -d upload_max_filesize=128M -d post_max_size=300M -d max_execution_time=300 artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan schedule:work\" \"npm run dev\" --names='server,queue,schedule,vite'"
         ],
         "serve": [
             "@php -d upload_max_filesize=128M -d post_max_size=300M -d max_execution_time=300 artisan serve"

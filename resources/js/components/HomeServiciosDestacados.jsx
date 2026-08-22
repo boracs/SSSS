@@ -68,7 +68,7 @@ function Tile({ item }) {
                 loading="lazy"
             />
             <div
-                className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent"
+                className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/25 to-transparent"
                 aria-hidden
             />
             <div

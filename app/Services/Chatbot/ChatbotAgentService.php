@@ -11,6 +11,7 @@ use App\Exceptions\Chatbot\GeminiUnavailableException;
 use App\Jobs\Chatbot\PersistChatbotHistoryJob;
 use App\Models\ChatbotInteraction;
 use App\Models\User;
+use App\Support\ChatbotDisplayName;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -461,8 +462,8 @@ final class ChatbotAgentService
             return null;
         }
 
-        $name = trim((string) ($user->nombre ?? ''));
+        $name = ChatbotDisplayName::firstFromFull((string) ($user->nombre ?? ''));
 
-        return $name !== '' ? $name : null;
+        return $name;
     }
 }

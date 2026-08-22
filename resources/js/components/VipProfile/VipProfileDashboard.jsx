@@ -140,10 +140,11 @@ function skuColorToken(sku = "") {
 
 function creditConsumptionBadgeClass(units) {
     const uc = Math.max(1, Number(units || 1));
-    if (uc >= 2) {
-        return "rounded-full bg-red-500/20 px-2.5 py-0.5 text-xs font-semibold text-red-200 ring-1 ring-red-400/35";
-    }
-    return "rounded-full bg-amber-500/25 px-2.5 py-0.5 text-xs font-semibold text-amber-100 ring-1 ring-amber-400/45";
+    const tone =
+        uc >= 2
+            ? "bg-red-500/20 text-red-200 ring-red-400/35"
+            : "bg-amber-500/25 text-amber-100 ring-amber-400/45";
+    return `inline-flex min-w-[1.75rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ${tone}`;
 }
 
 function WalletSection({ step, title, children, accent = "orange" }) {
@@ -1286,13 +1287,51 @@ export default function VipProfileDashboard({
                             </div>
                         ) : null}
                         <div className="overflow-hidden rounded-xl border border-slate-700/80">
-                            <table className="min-w-full text-sm">
+                            <ul className="divide-y divide-slate-700/70 md:hidden">
+                                {consumptionHistoryRows.map((h) => {
+                                    const tone = skuColorToken(h.bono_sku);
+                                    const uc = Math.max(1, Number(h.uc_cost || 1));
+                                    return (
+                                        <li key={h.id} className={`px-3 py-3 ${tone.bg}`}>
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs text-slate-400">
+                                                        {h.lesson?.starts_at
+                                                            ? formatDateMadrid(h.lesson.starts_at)
+                                                            : "—"}
+                                                    </p>
+                                                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-100">
+                                                        {h.lesson?.title || "Sesión"}
+                                                    </p>
+                                                    <p
+                                                        className={`mt-0.5 truncate text-[11px] font-semibold ${tone.skuText}`}
+                                                    >
+                                                        {h.bono_sku || "—"}
+                                                    </p>
+                                                </div>
+                                                <div className="flex shrink-0 flex-col items-end gap-1">
+                                                    <span className={creditConsumptionBadgeClass(uc)}>
+                                                        {uc}
+                                                    </span>
+                                                    <p className="text-[10px] uppercase tracking-wide text-slate-500">
+                                                        Saldo
+                                                    </p>
+                                                    <p className="-mt-0.5 text-sm font-bold tabular-nums text-teal-300">
+                                                        {h.remaining_after}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <table className="hidden min-w-full text-sm md:table">
                                 <thead className="bg-slate-800 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
                                     <tr>
                                         <th className="px-3 py-2.5 text-left">Fecha</th>
                                         <th className="px-3 py-2.5 text-left">Clase</th>
-                                        <th className="px-3 py-2.5 text-left">SKU</th>
-                                        <th className="px-3 py-2.5 text-left">Créditos</th>
+                                        <th className="hidden px-3 py-2.5 text-left lg:table-cell">SKU</th>
+                                        <th className="px-3 py-2.5 text-center">Créditos</th>
                                         <th className="px-3 py-2.5 text-right">Restante</th>
                                     </tr>
                                 </thead>
@@ -1310,20 +1349,22 @@ export default function VipProfileDashboard({
                                                         ? formatDateMadrid(h.lesson.starts_at)
                                                         : "—"}
                                                 </td>
-                                                <td className="px-3 py-2.5 font-medium text-slate-100">
-                                                    {h.lesson?.title || "Sesión"}
+                                                <td className="min-w-0 px-3 py-2.5 font-medium text-slate-100">
+                                                    <p className="truncate">{h.lesson?.title || "Sesión"}</p>
+                                                    <p
+                                                        className={`truncate text-[11px] font-semibold lg:hidden ${tone.skuText}`}
+                                                    >
+                                                        {h.bono_sku || "—"}
+                                                    </p>
                                                 </td>
                                                 <td
-                                                    className={`px-3 py-2.5 text-[11px] font-semibold ${tone.skuText}`}
+                                                    className={`hidden px-3 py-2.5 text-[11px] font-semibold lg:table-cell ${tone.skuText}`}
                                                 >
                                                     {h.bono_sku || "—"}
                                                 </td>
-                                                <td className="px-3 py-2.5">
-                                                    <span
-                                                        className={creditConsumptionBadgeClass(uc)}
-                                                    >
-                                                        Consumo: {uc}{" "}
-                                                        {uc === 1 ? "Crédito" : "Créditos"}
+                                                <td className="px-3 py-2.5 text-center">
+                                                    <span className={creditConsumptionBadgeClass(uc)}>
+                                                        {uc}
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-2.5 text-right tabular-nums font-bold text-teal-300">

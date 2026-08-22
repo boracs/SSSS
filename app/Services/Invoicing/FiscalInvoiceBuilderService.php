@@ -9,6 +9,7 @@ use App\DTOs\Invoicing\FiscalInvoiceDraftDto;
 use App\DTOs\Invoicing\FiscalInvoiceLineDto;
 use App\Exceptions\Invoicing\MissingFiscalDataException;
 use App\Exceptions\Invoicing\UnsupportedFiscalPayableException;
+use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
@@ -42,6 +43,7 @@ final class FiscalInvoiceBuilderService
             LessonUser::class => $this->fromLessonUser($payableId, $amountCents, $stripeSessionId),
             PagoCuota::class => $this->fromPagoCuota($payableId, $amountCents, $stripeSessionId),
             PhotoSessionBooking::class => $this->fromPhotoSessionBooking($payableId, $amountCents, $stripeSessionId),
+            Auction::class => $this->fromAuction($payableId, $amountCents, $stripeSessionId),
             default => throw new UnsupportedFiscalPayableException(
                 "Tipo de payable no soportado por FiscalInvoiceBuilderService: {$payableType}"
             ),
@@ -193,12 +195,30 @@ final class FiscalInvoiceBuilderService
         );
     }
 
+    private function fromAuction(int $auctionId, int $amountCents, string $stripeSessionId): FiscalInvoiceDraftDto
+    {
+        $auction = Auction::query()->with('winner')->find($auctionId);
+
+        if ($auction === null || $auction->winner === null) {
+            throw new MissingFiscalDataException("Subasta #{$auctionId} no encontrada o sin ganador.");
+        }
+
+        return new FiscalInvoiceDraftDto(
+            payableType: Auction::class,
+            payableId: $auction->id,
+            stripeSessionId: $stripeSessionId,
+            invoiceDate: Carbon::now()->toDateString(),
+            contact: $this->buildContact($auction->winner),
+            lines: [$this->line('Subasta — '.$auction->title, $amountCents)],
+        );
+    }
+
     private function line(string $description, int $amountCents): FiscalInvoiceLineDto
     {
         return new FiscalInvoiceLineDto(
             description: $description,
             quantity: 1.0,
-            unitPriceCents: $amountCents,
+            unitPriceCents: $amountCents, // importe Stripe / web, IVA incluido
             vatPercent: (float) config('invoicing.default_vat_percent', 21.0),
             vatCategory: (string) config('invoicing.default_vat_category', 'S'),
         );

@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Head, router } from "@inertiajs/react";
-import { ChevronDown, Download, ExternalLink, FileText, LogOut, TriangleAlert, X } from "lucide-react";
+import { Download, ExternalLink, FileText, LogOut, TriangleAlert, X } from "lucide-react";
 import Layout1 from "@/layouts/Layout1";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 import { SortableTh, compareRows } from "@/components/SortableTable";
 import { whatsappUrlFromPhone } from "@/lib/whatsapp";
 import {
@@ -838,23 +839,17 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                         />
                                                     )}
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
+                                                <AccordionTrigger
+                                                    open={isOpen}
+                                                    onToggle={() =>
                                                         openUserHistory(u.id)
                                                     }
-                                                    aria-expanded={isOpen}
-                                                    aria-label={
-                                                        isOpen
-                                                            ? "Ocultar historial de pagos"
-                                                            : "Ver historial de pagos"
-                                                    }
+                                                    panelId={`vigencia-history-m-${u.id}`}
+                                                    labelOpen="Ocultar historial de pagos"
+                                                    labelClosed="Ver historial de pagos"
                                                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-300"
-                                                >
-                                                    <ChevronDown
-                                                        className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                                                    />
-                                                </button>
+                                                    chevronClassName="h-4 w-4"
+                                                />
                                             </div>
                                         </div>
                                         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-400">
@@ -903,7 +898,10 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                             />
                                         </div>
                                         {isOpen ? (
-                                            <div className="mt-3 border-t border-white/10 pt-3">
+                                            <div
+                                                id={`vigencia-history-m-${u.id}`}
+                                                className="mt-3 border-t border-white/10 pt-3"
+                                            >
                                                 {isLoading ? (
                                                     <p className="text-sm text-slate-400">
                                                         Cargando historial…
@@ -1170,21 +1168,25 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                             </div>
                                                         </td>
                                                         <td className="px-2 py-2 text-right">
-                                                            <ChevronDown
-                                                                className={`ml-auto h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-180 text-cyan-400" : ""}`}
-                                                                aria-hidden
+                                                            <AccordionTrigger
+                                                                open={isOpen}
+                                                                onToggle={() =>
+                                                                    openUserHistory(u.id)
+                                                                }
+                                                                panelId={`vigencia-history-d-${u.id}`}
+                                                                labelOpen="Ocultar historial"
+                                                                labelClosed="Ver historial de pagos"
+                                                                stopPropagation
+                                                                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                                                                chevronClassName={`h-4 w-4 ${isOpen ? "text-cyan-400" : ""}`}
                                                             />
-                                                            <span className="sr-only">
-                                                                {isOpen
-                                                                    ? "Ocultar historial"
-                                                                    : "Ver historial de pagos"}
-                                                            </span>
                                                         </td>
                                                     </tr>
                                                     {isOpen ? (
                                                         <tr className="border-t border-white/5 bg-slate-950/50">
                                                             <td
                                                                 colSpan={8}
+                                                                id={`vigencia-history-d-${u.id}`}
                                                                 className="px-3 py-2.5"
                                                             >
                                                                 {isLoading ? (

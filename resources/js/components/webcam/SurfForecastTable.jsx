@@ -612,15 +612,10 @@ export default function SurfForecastTable({
                             type="button"
                             onClick={() => onOpenDetailedTimeline?.()}
                             title="Oleaje, sol, temperatura y probabilidad de lluvia cada 2 horas"
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-cyan-400/30 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-cyan-200 shadow-sm transition hover:bg-slate-900 sm:w-auto sm:px-3.5 sm:text-sm"
+                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-500 sm:w-auto sm:px-3.5 sm:text-sm"
                         >
                             <CloudSun className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-                            <span className="flex min-w-0 flex-col items-start leading-tight">
-                                <span className="truncate">Ver forecast al detalle</span>
-                                <span className="text-[10px] font-medium text-cyan-200/65">
-                                    olas · sol · lluvia
-                                </span>
-                            </span>
+                            <span className="truncate">Ver forecast ampliado</span>
                         </button>
                         <button
                             type="button"

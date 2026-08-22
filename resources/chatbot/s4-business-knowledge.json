@@ -1,6 +1,6 @@
 {
   "meta": {
-    "version": "1.3.0",
+    "version": "1.3.1",
     "locale": "es",
     "status": "draft_unconfirmed",
     "disclaimer": "ENTORNO DE PRUEBA. Precios y políticas marcados como unconfirmed no son oficiales hasta confirmación de San Sebastián Surf School. Los packs VIP y planes de taquilla se leen en vivo de la BD; este JSON no los hardcodea."
@@ -47,6 +47,7 @@
     ],
     "online_payment_note": "En la web, la reserva de clase de grupo suele cobrar solo la señal (máximo según config, por defecto 30€). La clase particular cobra online un 30% del precio total del grupo y el resto se abona en la escuela el día de la clase. No confundir la señal online con el precio total de la clase.",
     "mal_mar_policy": "Si la escuela cancela por mal mar, temporal o seguridad: siempre se reprograma o se devuelve el importe / clase del bono. Nunca se penaliza al alumno.",
+    "la_concha_recommendation": "Si el alumno es iniciación o intermedio y busca un baño tranquilo y seguro, se recomienda La Concha (no es una orden). Avanzado: no mandar a Concha por defecto.",
     "cancel_student_policy": "Cancelación online con devolución de clase/bono solo si avisas con al menos cancel_cutoff_hours de antelación (por defecto 4h). Con menos tiempo la cancelación online puede no estar disponible; contactar por WhatsApp.",
     "bono_credit_rules": [
       { "case": "particular", "units": 2, "text": "Clase particular consume 2 clases del bono." },
@@ -73,6 +74,7 @@
       "numbers": [500, 600],
       "effects": [
         "Permiten comprar en tienda y acceder a subastas sin casillero físico.",
+        "Al activar VIP sin casillero se asigna #500 automáticamente; varios VIP pueden compartirla.",
         "No dan derecho a llave de emergencia ni a plan de taquilla física."
       ]
     },
@@ -94,7 +96,7 @@
   },
   "store": {
     "requires_active_locker": true,
-    "note": "Solo usuarios con taquilla activa (física o VIP 500/600) pueden comprar productos físicos en la tienda online."
+    "note": "Pueden comprar: socio con taquilla física al día (sin ser VIP) o VIP. Al activar VIP sin casillero se asigna taquilla virtual #500 automáticamente."
   },
   "repairs": {
     "shared": {

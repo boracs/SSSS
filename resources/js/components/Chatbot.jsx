@@ -22,11 +22,16 @@ const LOCAL_CHAT_KEY = "s4_anon_chat_v1";
 const ANON_SESSION_TOKEN_KEY = "s4_anon_chat_token";
 
 const CHAT_Z = "z-[850]";
+/** Comparte offset con barra sticky PDP (`ProductStickyPurchaseBar`). */
+const STICKY_AWARE_BOTTOM =
+    "bottom-[calc(max(1.25rem,env(safe-area-inset-bottom,0px))+var(--s4-sticky-purchase-bar-h,0px))]";
+const STICKY_AWARE_BOTTOM_SM =
+    "sm:bottom-[calc(1.5rem+var(--s4-sticky-purchase-bar-h,0px))]";
 /** Mostrar «subir» tras pasar ~un viewport corto (vuelta rápida al menú). */
 const SCROLL_TOP_AFTER_PX = 360;
 
 const fabDockClass =
-    `fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] sm:bottom-6 sm:right-6 ${CHAT_Z}`;
+    `fixed ${STICKY_AWARE_BOTTOM} right-[max(1rem,env(safe-area-inset-right,0px))] ${STICKY_AWARE_BOTTOM_SM} sm:right-6 transition-[bottom] duration-200 ease-out motion-reduce:transition-none ${CHAT_Z}`;
 
 const chatFabClass =
     "relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0f5f74] text-white " +
@@ -58,7 +63,7 @@ const fieldInput =
     "min-w-0 flex-1 border-0 bg-transparent py-1 text-[15px] text-slate-900 outline-none placeholder:text-slate-400";
 
 const panelShell =
-    "fixed bottom-[max(1.25rem,env(safe-area-inset-bottom,0px))] right-[max(1rem,env(safe-area-inset-right,0px))] sm:bottom-6 sm:right-6 flex w-[calc(100%-2rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-cyan-900/10 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.28)] transition-all duration-300 " +
+    `fixed ${STICKY_AWARE_BOTTOM} right-[max(1rem,env(safe-area-inset-right,0px))] ${STICKY_AWARE_BOTTOM_SM} sm:right-6 flex w-[calc(100%-2rem)] max-w-sm flex-col overflow-hidden rounded-[1.75rem] border border-cyan-900/10 bg-white shadow-[0_24px_60px_-28px_rgba(15,95,116,0.28)] transition-all duration-300 ` +
     CHAT_Z;
 
 const useChatbot = () => {

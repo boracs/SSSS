@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\AcademyContact;
+use App\Support\MoneyCents;
 use App\Http\Controllers\ArticleController;
 use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\Admin\AuctionController as AdminAuctionController;
@@ -194,8 +195,15 @@ Route::get('/servicios/reparacion-neoprenos', function (PublicPageSeoService $pa
     ]);
 })->name('servicios.reparacionNeoprenos');
 Route::get('/servicios/surf', function (PublicPageSeoService $pageSeo) {
+    $bono10Cents = max(0, (int) config('store.promo_bono.price_cents', 25000));
+    $perClassCents = (int) round($bono10Cents / 10);
+
     return Inertia::render('Servicios_ClasesDeSurf', [
         'seo' => $pageSeo->serviciosSurf()->toArray(),
+        'pricingLabels' => [
+            'bono10' => MoneyCents::formatEurosLabel($bono10Cents),
+            'bono10PerClass' => MoneyCents::formatEurosLabel($perClassCents),
+        ],
     ]);
 })->name('servicios.surf');
 Route::get('/servicios/surf-skate', function (PublicPageSeoService $pageSeo) {
@@ -503,6 +511,7 @@ Route::middleware(['auth', 'admin', 'admin.verified', 'can:manage-vips'])->group
         Route::post('payments/datafono/lessons', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'storeLesson'])->name('payments.datafono.lessons.store');
         Route::post('payments/datafono/{datafonoPayment}/assign', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'assign'])->name('payments.datafono.assign');
         Route::post('payments/datafono/{datafonoPayment}/ignore', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'ignore'])->name('payments.datafono.ignore');
+        Route::post('payments/datafono/{datafonoPayment}/communicate-hacienda', [\App\Http\Controllers\Admin\DatafonoPaymentController::class, 'communicateHacienda'])->name('payments.datafono.communicate-hacienda');
         Route::get('photos', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'index'])->name('photos.index');
         Route::post('photos/sessions', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'storeSession'])->name('photos.sessions.store');
         Route::patch('photos/sessions/{photoSession}', [\App\Http\Controllers\Admin\PhotoSessionAdminController::class, 'updateSession'])->name('photos.sessions.update');

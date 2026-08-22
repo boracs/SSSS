@@ -8,6 +8,7 @@ use App\DTOs\Invoicing\ClientFiscalInvoiceCategoryOptionDto;
 use App\DTOs\Invoicing\ClientFiscalInvoiceListPageDto;
 use App\DTOs\Invoicing\ClientFiscalInvoiceRowDto;
 use App\Enums\Invoicing\FiscalInvoiceCategory;
+use App\Models\Auction;
 use App\Models\Booking;
 use App\Models\FiscalInvoice;
 use App\Models\LessonUser;
@@ -75,6 +76,7 @@ final class ClientFiscalInvoiceListService
             LessonUser::class => ['lesson'],
             PagoCuota::class => ['plan'],
             PhotoSessionBooking::class => ['session'],
+            Auction::class => [],
         ]);
 
         $items = $paginator->getCollection()
@@ -105,6 +107,14 @@ final class ClientFiscalInvoiceListService
     private function ownedPayableIds(FiscalInvoiceCategory $category, User $user): array
     {
         $modelClass = $category->payableType();
+
+        if ($category === FiscalInvoiceCategory::Subastas) {
+            return Auction::query()
+                ->where('winner_user_id', $user->id)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+        }
 
         return $modelClass::query()
             ->where('user_id', $user->id)
@@ -145,6 +155,7 @@ final class ClientFiscalInvoiceListService
             $payable instanceof LessonUser => $payable->lesson?->title ?: 'Clase de surf',
             $payable instanceof PagoCuota => 'Taquilla — '.($payable->plan?->nombre ?? 'Plan de taquilla'),
             $payable instanceof PhotoSessionBooking => 'Fotos — '.($payable->session?->nombre ?? 'Sesión'),
+            $payable instanceof Auction => 'Subasta — '.($payable->title ?: '#'.$payable->id),
             default => 'Compra #'.$invoice->payable_id,
         };
     }

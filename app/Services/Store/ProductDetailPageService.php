@@ -7,7 +7,7 @@ namespace App\Services\Store;
 use App\Enums\ProductTag;
 use App\Models\Producto;
 use App\Services\Seo\PublicPageSeoService;
-use Illuminate\Support\Facades\Storage;
+use App\Support\MoneyCents;
 
 /**
  * Orquestación de la ficha pública de producto (Inertia ProductoVer).
@@ -56,7 +56,7 @@ final class ProductDetailPageService
         $imagenes = $producto->imagenes
             ->map(static fn ($img): array => [
                 'id' => $img->id,
-                'ruta' => asset('storage/'.$img->ruta),
+                'ruta' => Producto::publicImageUrl($img->ruta) ?? asset('img/placeholder.svg'),
                 'es_principal' => (bool) $img->es_principal,
             ])
             ->sortByDesc('es_principal')
@@ -65,24 +65,23 @@ final class ProductDetailPageService
         $gallery = $imagenes->pluck('ruta')->filter()->values()->all();
         $principal = $gallery[0] ?? asset('img/placeholder.svg');
 
-        $precio = round((float) $producto->precio, 2);
+        $precio = StoreProductPricing::catalogEuros($producto->precio);
         $descuento = max(0.0, (float) ($producto->descuento ?? 0));
-        $precioFinal = $descuento > 0
-            ? round($precio - ($precio * $descuento / 100), 2)
-            : $precio;
-        $ahorro = round($precio - $precioFinal, 2);
+        $precioFinal = StoreProductPricing::unitPriceEuros($producto->precio, $descuento);
+        $ahorro = MoneyCents::centsToEuros(
+            MoneyCents::eurosToCents($precio) - MoneyCents::eurosToCents($precioFinal),
+        );
         $stock = (int) $producto->unidades;
         $inStock = $stock > 0;
         $lowStock = $stock > 0 && $stock <= 3;
         $tags = $producto->normalizedTags();
         $tagLabels = ProductTag::labelsFor($tags);
-        $copy = $this->clubCopyFor((string) $producto->nombre, $tags, $tagLabels);
+        $summary = $this->clubSummaryFor((string) $producto->nombre, $tags, $tagLabels);
 
         return [
             'id' => $producto->id,
             'nombre' => (string) $producto->nombre,
-            'summary' => $copy['summary'],
-            'highlights' => $copy['highlights'],
+            'summary' => $summary,
             'precio' => $precio,
             'precio_final' => $precioFinal,
             'ahorro' => $ahorro,
@@ -107,12 +106,12 @@ final class ProductDetailPageService
 
     /**
      * Copy seguro de club (sin inventar materiales ni precios).
+     * Recogida, precio de socio y acceso van en el trust strip de la ficha, no aquí.
      *
      * @param  list<string>  $tags
      * @param  list<string>  $tagLabels
-     * @return array{summary: string, highlights: list<string>}
      */
-    private function clubCopyFor(string $nombre, array $tags, array $tagLabels): array
+    private function clubSummaryFor(string $nombre, array $tags, array $tagLabels): string
     {
         $name = trim($nombre) !== '' ? trim($nombre) : 'Este artículo';
         $categoryHint = $tagLabels !== []
@@ -127,22 +126,12 @@ final class ProductDetailPageService
             in_array(ProductTag::CAMISETAS->value, $tags, true),
             in_array(ProductTag::BANADORES->value, $tags, true),
             in_array(ProductTag::PANTALONES->value, $tags, true),
-            in_array(ProductTag::CALZADO->value, $tags, true) => 'Prenda del club S4, disponible para socios con taquilla activa.',
-            default => 'Artículo de la tienda oficial S4 para socios del club.',
+            in_array(ProductTag::CALZADO->value, $tags, true) => 'Prenda del club S4.',
+            default => 'Artículo de la tienda oficial S4.',
         };
 
-        $summary = $name.' forma parte de la tienda de socios de San Sebastián Surf School ('
-            .$categoryHint.'). '.$focus
-            .' El precio mostrado es el de club; recogida en nuestras instalaciones a pie de Zurriola.';
-
-        return [
-            'summary' => $summary,
-            'highlights' => [
-                'Uso y disponibilidad en el club S4 (Zurriola, Donostia).',
-                'Recogida en la escuela, a pie de playa.',
-                'Precio de socios con taquilla activa.',
-            ],
-        ];
+        return $name.' forma parte de la tienda de socios de San Sebastián Surf School ('
+            .$categoryHint.'). '.$focus;
     }
 
     /**
@@ -161,9 +150,7 @@ final class ProductDetailPageService
                 $ruta = $p->imagenPrincipal?->ruta ?? $p->imagenPrincipal?->nombre;
                 $imagen = null;
                 if ($ruta !== null && $ruta !== '') {
-                    $imagen = str_starts_with((string) $ruta, 'http')
-                        ? (string) $ruta
-                        : Storage::disk('public')->url(ltrim((string) $ruta, '/'));
+                    $imagen = Producto::publicImageUrl((string) $ruta);
                 }
 
                 $precio = round((float) $p->precio, 2);

@@ -9,9 +9,8 @@ import SeoHead from "../components/seo/SeoHead";
 import SurfBriefMini from "../components/webcam/SurfBriefMini";
 import HomeServiciosDestacados from "../components/HomeServiciosDestacados";
 import HomeExploraDirectorio from "../components/HomeExploraDirectorio";
-import HomeGeoTeaser from "../components/HomeGeoTeaser";
 import OpcionesIntro from "../components/OpcionesIntro";
-import { ArrowRight, Waves, Quote, Star } from "lucide-react";
+import { Waves, Quote, Star } from "lucide-react";
 
 const testimonios = [
     {
@@ -34,7 +33,7 @@ const testimonios = [
     },
 ];
 
-const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = null }) => {
+const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
     return (
         <Layout1 className="bg-transparent">
             <SeoHead seo={seo} />
@@ -65,14 +64,14 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                     </picture>
                     <div
                         aria-hidden
-                        className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/62 to-slate-950/38"
+                        className="absolute inset-0 bg-gradient-to-r from-slate-950/75 via-slate-950/45 to-slate-950/20"
                     />
                     <div
                         aria-hidden
-                        className="absolute inset-0 bg-gradient-to-t from-slate-950/50 via-slate-950/8 to-slate-950/15"
+                        className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-slate-950/5 to-transparent"
                     />
 
-                    <div className="relative mx-auto flex min-h-[calc(100svh-4.5rem)] max-w-6xl flex-col justify-center gap-3 px-4 py-10 sm:gap-4 sm:px-6 sm:py-16 lg:px-8">
+                    <div className="relative z-[2] mx-auto flex min-h-[calc(100svh-4.5rem)] max-w-6xl flex-col justify-center gap-3 px-4 py-10 sm:gap-4 sm:px-6 sm:py-16 lg:px-8">
                         <BrandLogo
                             variant="whiteHero"
                             className="home-hero__brand h-14 w-auto sm:h-24 lg:h-28"
@@ -142,97 +141,20 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                 </section>
 
             <div className="relative overflow-hidden s4-surface-light">
-                <main className="relative mx-auto max-w-6xl px-4 pb-10 pt-8 sm:px-6 sm:pb-12 sm:pt-10 lg:px-8">
-                    {/* ── Oferta principal (4 servicios; escaparate CRO, justo bajo el hero) ── */}
+                {/* Bloque claro inicial */}
+                <div className="relative mx-auto max-w-6xl px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8">
                     <HomeServiciosDestacados />
-
-                    {/* ── Parte S4 (resumen de expertos, bajo la oferta) ── */}
                     <SurfBriefMini brief={surfBrief} />
+                </div>
 
-                    {/* ── Hub Explora S4 (bento por intención) ── */}
+                {/* Explora S4 + club/instalaciones — una sola banda */}
+                <div className="mt-10 sm:mt-12">
                     <HomeExploraDirectorio />
+                </div>
 
-                    {/* ── GEO Zurriola (hechos citables + enlace a guía) ── */}
-                    <HomeGeoTeaser facts={zurriolaGeo} />
-
-                    {/* ── Sobre nosotros teaser ── */}
-                    <section
-                        className="mt-14 sm:mt-16"
-                        aria-labelledby="sobre-nosotros-heading"
-                    >
-                        <div className="grid overflow-hidden rounded-3xl border border-slate-200/80 bg-gradient-to-br from-slate-900 via-s4 to-slate-900 shadow-xl lg:grid-cols-5">
-                            <div className="relative hidden lg:col-span-2 lg:block">
-                                <img
-                                    src="/img/nosotros/galeria/instalaciones-01.png"
-                                    alt="Instalaciones premium de San Sebastián Surf School en Zurriola"
-                                    className="h-full w-full object-cover opacity-90"
-                                    loading="lazy"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-s4/90" />
-                            </div>
-                            <div className="p-6 sm:p-8 lg:col-span-3">
-                                <h2
-                                    id="sobre-nosotros-heading"
-                                    className="font-heading text-2xl font-extrabold text-white sm:text-3xl"
-                                >
-                                    San Sebastian Surf School
-                                    <span className="mt-1 block text-lg font-bold text-cyan-200 sm:text-xl">
-                                        Tu escuela y club en el Cantábrico
-                                    </span>
-                                </h2>
-                                <p className="mt-3 max-w-xl text-xs leading-snug text-slate-300 sm:text-sm">
-                                    Escuela de surf en Zurriola: clases,
-                                    alquiler, tienda, club y muchos más
-                                    servicios a pie de playa.
-                                </p>
-
-                                <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                                    {[
-                                        {
-                                            value: "1 año",
-                                            label: "Instalaciones nuevas",
-                                        },
-                                        {
-                                            value: "200+",
-                                            label: "Socios activos",
-                                        },
-                                        { value: "98%", label: "Satisfacción" },
-                                        {
-                                            value: "Top",
-                                            label: "Material premium",
-                                        },
-                                    ].map((stat) => (
-                                        <div
-                                            key={stat.label}
-                                            className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-center backdrop-blur-sm"
-                                        >
-                                            <p className="text-base font-black text-cyan-300 sm:text-lg">
-                                                {stat.value}
-                                            </p>
-                                            <p className="mt-0.5 text-[10px] font-medium leading-tight text-white/85">
-                                                {stat.label}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <S4Button
-                                    href={route("nosotros")}
-                                    variant="onMedia"
-                                    className="mx-auto mt-5 w-fit lg:mx-0"
-                                >
-                                    Ver instalaciones y club
-                                    <ArrowRight className="h-4 w-4" />
-                                </S4Button>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* ── Testimonios ── */}
-                    <section
-                        className="mt-16 sm:mt-20"
-                        aria-labelledby="testimonios-heading"
-                    >
+                {/* Testimonios + galería */}
+                <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-12 lg:px-8">
+                    <section aria-labelledby="testimonios-heading">
                         <div className="mb-8 text-center">
                             <p className="text-xs font-bold uppercase tracking-[0.18em] text-s4">
                                 Comunidad
@@ -248,8 +170,8 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                                 <span className="font-semibold text-slate-800">
                                     5.000 alumnos
                                 </span>{" "}
-                                han confiado en San Sebastián Surf School para
-                                dar su primer take-off en el Cantábrico.
+                                han confiado en San Sebastián Surf School para dar su primer take-off en el
+                                Cantábrico.
                             </p>
                         </div>
 
@@ -264,15 +186,13 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                                         aria-hidden
                                     />
                                     <div className="mb-3 flex gap-0.5">
-                                        {Array.from({ length: t.rating }).map(
-                                            (_, i) => (
-                                                <Star
-                                                    key={i}
-                                                    className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-                                                    aria-hidden
-                                                />
-                                            ),
-                                        )}
+                                        {Array.from({ length: t.rating }).map((_, i) => (
+                                            <Star
+                                                key={i}
+                                                className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                                                aria-hidden
+                                            />
+                                        ))}
                                     </div>
                                     <p className="text-sm leading-relaxed text-slate-700">
                                         &ldquo;{t.quote}&rdquo;
@@ -285,9 +205,7 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                                             <p className="text-sm font-bold text-slate-900">
                                                 {t.author}
                                             </p>
-                                            <p className="text-xs text-slate-500">
-                                                {t.role}
-                                            </p>
+                                            <p className="text-xs text-slate-500">{t.role}</p>
                                         </div>
                                     </div>
                                 </article>
@@ -295,7 +213,6 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                         </div>
                     </section>
 
-                    {/* ── Experiencia visual ── */}
                     <section className="mt-16 sm:mt-20">
                         <div className="grid gap-4 sm:grid-cols-3">
                             {[
@@ -334,18 +251,18 @@ const Pag_principal = ({ productos = [], surfBrief, zurriolaGeo = null, seo = nu
                             ))}
                         </div>
                     </section>
+                </div>
 
-                    {/* ── Ofertas socios ── */}
-                    {productos.length > 0 ? (
-                        <div className="mt-16 sm:mt-20">
-                            <Contenedor_productos productos={productos} />
-                        </div>
-                    ) : null}
-                </main>
-
-                {/* ── Exploración visual (antes del footer) ── */}
-                {/* ── Exploración visual (fusionada con el footer) ── */}
-                <OpcionesIntro variant="dark" className="mt-10 sm:mt-14" />
+                {/* Ofertas (claras) → mosaico accesos (corte seco blanco → tiles) */}
+                {productos.length > 0 ? (
+                    <div className="mx-auto mt-12 max-w-6xl px-4 sm:mt-14 sm:px-6 lg:px-8">
+                        <Contenedor_productos productos={productos} compact />
+                    </div>
+                ) : null}
+                <OpcionesIntro
+                    showHeading={false}
+                    className={productos.length > 0 ? "mt-10 sm:mt-12" : "mt-10 sm:mt-14"}
+                />
             </div>
         </Layout1>
     );

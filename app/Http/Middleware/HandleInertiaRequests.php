@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Services\Academy\PrivateLessonPricingService;
 use App\Support\AcademyContact;
+use App\Support\AcademySocialLinks;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -85,6 +86,9 @@ class HandleInertiaRequests extends Middleware
             'academyWhatsappDisplay' => AcademyContact::whatsappDisplay(),
             /** URL base wa.me de la escuela (sin mensaje). */
             'academyWhatsappUrl' => AcademyContact::whatsappBaseUrl(),
+
+            /** Redes públicas (footer): solo entradas con URL configurada. */
+            'socialLinks' => AcademySocialLinks::publicLinks(),
 
             // 🔥 Flash messages (nunca enviar pegados de código / cadenas enormes al cliente)
             'flash' => [

@@ -22,6 +22,7 @@ import {
     Waves,
     Wrench,
 } from "lucide-react";
+import S4Button from "./S4Button";
 
 /** Temas por intención: color sin repetir cajas idénticas. */
 const GROUP_THEMES = {
@@ -239,7 +240,7 @@ function CompactLink({ item, theme }) {
                 ) : null}
             </span>
             <ArrowRight
-                className="h-3.5 w-3.5 shrink-0 text-slate-500 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100"
+                className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-80 transition group-hover:translate-x-0.5 group-hover:text-slate-200 group-hover:opacity-100 md:opacity-50 md:group-hover:opacity-100"
                 aria-hidden
             />
         </Link>
@@ -279,26 +280,17 @@ function CategoryPanel({ grupo }) {
 }
 
 /**
- * Hub de exploración home: bento por intención (clases, mar, material, club).
- * Sustituye el directorio plano de filas blancas.
+ * Hub home: directorio de servicios + teaser del club/instalaciones
+ * en una sola banda navy (sin corte entre ambos).
  */
 export default function HomeExploraDirectorio() {
     return (
         <section
-            className="relative mt-12 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-950 via-[#0a2230] to-slate-950 px-5 py-8 shadow-2xl shadow-slate-900/30 sm:mt-14 sm:px-8 sm:py-10"
+            className="relative w-full overflow-hidden bg-[#0b2230] px-4 pb-16 pt-16 sm:px-6 sm:pb-20 sm:pt-20 lg:px-8"
             aria-labelledby="directorio-servicios-heading"
         >
-            <div
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(34,211,238,0.12),_transparent_50%)]"
-                aria-hidden
-            />
-            <div
-                className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(52,211,153,0.08),_transparent_55%)]"
-                aria-hidden
-            />
-
-            <div className="relative mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-end sm:justify-between">
-                <div className="max-w-xl">
+            <div className="relative z-[2] mx-auto max-w-6xl">
+                <div className="mb-8 max-w-xl sm:mb-10">
                     <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300/90">
                         Explora S4
                     </p>
@@ -316,19 +308,72 @@ export default function HomeExploraDirectorio() {
                         no por menú infinito.
                     </p>
                 </div>
-                <Link
-                    href={route("nosotros")}
-                    className="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-white/25 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 sm:self-auto"
-                >
-                    Conoce el club
-                    <ArrowRight className="h-4 w-4" aria-hidden />
-                </Link>
-            </div>
 
-            <div className="relative grid gap-4 lg:grid-cols-2 lg:gap-5">
-                {directorioServicios.map((grupo) => (
-                    <CategoryPanel key={grupo.title} grupo={grupo} />
-                ))}
+                <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+                    {directorioServicios.map((grupo) => (
+                        <CategoryPanel key={grupo.title} grupo={grupo} />
+                    ))}
+                </div>
+
+                <div
+                    className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] sm:mt-10 lg:grid lg:grid-cols-5"
+                    aria-labelledby="sobre-nosotros-heading"
+                >
+                    <div className="relative hidden min-h-[12rem] lg:col-span-2 lg:block">
+                        <img
+                            src="/img/nosotros/galeria/instalaciones-01.png"
+                            alt="Instalaciones premium de San Sebastián Surf School en Zurriola"
+                            className="h-full w-full object-cover opacity-90"
+                            loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-slate-950/80" />
+                    </div>
+                    <div className="p-5 sm:p-7 lg:col-span-3 lg:px-8 lg:py-8">
+                        <h3
+                            id="sobre-nosotros-heading"
+                            className="font-heading text-xl font-extrabold text-white sm:text-2xl"
+                        >
+                            San Sebastian Surf School
+                            <span className="mt-1 block text-base font-bold text-cyan-200 sm:text-lg">
+                                Tu escuela y club en el Cantábrico
+                            </span>
+                        </h3>
+                        <p className="mt-3 max-w-xl text-xs leading-snug text-slate-300 sm:text-sm">
+                            Escuela de surf en Zurriola: clases, alquiler, tienda, club y muchos más
+                            servicios a pie de playa.
+                        </p>
+
+                        <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {[
+                                { value: "1 año", label: "Instalaciones nuevas" },
+                                { value: "200+", label: "Socios activos" },
+                                { value: "98%", label: "Satisfacción" },
+                                { value: "Top", label: "Material premium" },
+                            ].map((stat) => (
+                                <div
+                                    key={stat.label}
+                                    className="rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-center"
+                                >
+                                    <p className="text-base font-black text-cyan-300 sm:text-lg">
+                                        {stat.value}
+                                    </p>
+                                    <p className="mt-0.5 text-[10px] font-medium leading-tight text-white/85">
+                                        {stat.label}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <S4Button
+                            href={route("nosotros")}
+                            variant="onMedia"
+                            className="mx-auto mt-5 w-fit lg:mx-0"
+                        >
+                            Ver instalaciones y club
+                            <ArrowRight className="h-4 w-4" />
+                        </S4Button>
+                    </div>
+                </div>
             </div>
         </section>
     );

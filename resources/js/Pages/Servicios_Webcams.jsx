@@ -11,6 +11,7 @@ import useDetailedForecast from "../components/webcam/useDetailedForecast";
 import WeatherDetailPanel from "../components/webcam/WeatherDetailPanel";
 import ZurriolaGeoGuide from "../components/webcam/ZurriolaGeoGuide";
 import SeoHead from "../components/seo/SeoHead";
+import SharePageButton from "../components/SharePageButton";
 import { FORECAST_GUIDE_ARTICLE_SLUG } from "../components/webcam/surfMetricHelp";
 
 const GIPUZKOA_WEBCAM_URL =
@@ -162,17 +163,26 @@ export default function ServiciosWebcams({
                             </p>
                         </div>
                     </div>
-                    <p className="shrink-0 text-left text-[11px] leading-snug text-slate-500 sm:text-right sm:text-xs lg:max-w-[17rem]">
-                        <a
-                            href={GIPUZKOA_WEBCAM_URL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 font-medium text-cyan-400/90 hover:text-cyan-300"
-                        >
-                            Fuente oficial Gipuzkoa
-                            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-                        </a>
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                        <SharePageButton
+                            variant="dark"
+                            label="Compartir webcam"
+                            title="Webcam Zurriola en directo · S4"
+                            text="Señal en directo de la playa de la Zurriola (Donostia)."
+                            path={`${route("servicios.webcams")}#webcam-directo`}
+                        />
+                        <p className="shrink-0 text-left text-[11px] leading-snug text-slate-500 sm:text-right sm:text-xs lg:max-w-[17rem]">
+                            <a
+                                href={GIPUZKOA_WEBCAM_URL}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 font-medium text-cyan-400/90 hover:text-cyan-300"
+                            >
+                                Fuente oficial Gipuzkoa
+                                <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+                            </a>
+                        </p>
+                    </div>
                 </div>
 
                 <ZurriolaWebcamPlayer />

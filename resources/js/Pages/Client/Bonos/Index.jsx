@@ -2,6 +2,7 @@ import { Head, router, usePage } from "@inertiajs/react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { formatEur } from "@/utils/money";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 import { whatsappUrlWithMessage } from "@/lib/whatsapp";
 
 function ConsumptionDetailsPanel({ details }) {
@@ -96,17 +97,18 @@ function LoadMoreButton({ label, onClick, remaining }) {
     );
 }
 
-function CollapseToggle({ open, onClick, children, className = "" }) {
+function CollapseToggle({ open, onClick, children, className = "", panelId }) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-expanded={open}
+        <AccordionTrigger
+            open={open}
+            onToggle={onClick}
+            panelId={panelId}
+            stopPropagation={false}
             className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition ${className}`}
+            chevronClassName="h-3 w-3"
         >
             {children}
-            <span className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
-        </button>
+        </AccordionTrigger>
     );
 }
 
@@ -348,6 +350,7 @@ export default function ClientBonosIndex({
                                 <CollapseToggle
                                     open={showHistory}
                                     onClick={toggleHistory}
+                                    panelId="bonos-historial-panel"
                                     className={
                                         showHistory
                                             ? "border-amber-500/40 bg-amber-500/15 text-amber-100"
@@ -361,6 +364,7 @@ export default function ClientBonosIndex({
                                 <CollapseToggle
                                     open={showMyBonos}
                                     onClick={toggleMyBonos}
+                                    panelId="bonos-mis-bonos-panel"
                                     className={
                                         showMyBonos
                                             ? "border-indigo-500/40 bg-indigo-500/15 text-indigo-100"
@@ -375,7 +379,7 @@ export default function ClientBonosIndex({
                 </section>
 
                 {showHistory ? (
-                <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-950 via-gray-900 to-teal-950/50 p-[1px] shadow-xl shadow-amber-900/20">
+                <div id="bonos-historial-panel" className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-950 via-gray-900 to-teal-950/50 p-[1px] shadow-xl shadow-amber-900/20">
                     <div className="rounded-2xl bg-gray-950/90 px-4 pb-4 pt-3">
                         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                             <div>
@@ -479,41 +483,35 @@ export default function ClientBonosIndex({
                                                     </td>
                                                     <td className="px-3 py-2.5 text-center">
                                                         {isConsumption ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => toggleConsumptionDetails(row.id)}
-                                                                aria-expanded={isExpanded}
+                                                            <AccordionTrigger
+                                                                open={isExpanded}
+                                                                onToggle={() => toggleConsumptionDetails(row.id)}
+                                                                panelId={`bonos-consumo-${row.id}`}
+                                                                stopPropagation={false}
                                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                     isExpanded
                                                                         ? "bg-teal-500/20 text-teal-100 ring-1 ring-teal-400/40"
                                                                         : "bg-gray-800/80 text-amber-100/90 ring-1 ring-amber-500/25 hover:bg-gray-700/80"
                                                                 }`}
+                                                                chevronClassName="h-3 w-3"
                                                             >
                                                                 {isExpanded ? "Ocultar" : "Ver más"}
-                                                                <span
-                                                                    className={`text-[10px] transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                                                                >
-                                                                    ▼
-                                                                </span>
-                                                            </button>
+                                                            </AccordionTrigger>
                                                         ) : isPurchase || isPurchasePending ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => toggleConsumptionDetails(row.id)}
-                                                                aria-expanded={isExpanded}
+                                                            <AccordionTrigger
+                                                                open={isExpanded}
+                                                                onToggle={() => toggleConsumptionDetails(row.id)}
+                                                                panelId={`bonos-consumo-${row.id}`}
+                                                                stopPropagation={false}
                                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                     isExpanded
                                                                         ? "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/40"
                                                                         : "bg-gray-800/80 text-emerald-100/90 ring-1 ring-emerald-500/25 hover:bg-gray-700/80"
                                                                 }`}
+                                                                chevronClassName="h-3 w-3"
                                                             >
                                                                 {isExpanded ? "Ocultar" : "Ver más"}
-                                                                <span
-                                                                    className={`text-[10px] transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                                                                >
-                                                                    ▼
-                                                                </span>
-                                                            </button>
+                                                            </AccordionTrigger>
                                                         ) : (
                                                             <span className="text-xs text-gray-500">—</span>
                                                         )}
@@ -521,14 +519,22 @@ export default function ClientBonosIndex({
                                                 </tr>
                                                 {isExpanded && isConsumption ? (
                                                     <tr className="bg-teal-950/20">
-                                                        <td colSpan={5} className="border-t border-teal-500/15 px-4 py-4">
+                                                        <td
+                                                            colSpan={5}
+                                                            id={`bonos-consumo-${row.id}`}
+                                                            className="border-t border-teal-500/15 px-4 py-4"
+                                                        >
                                                             <ConsumptionDetailsPanel details={row.details} />
                                                         </td>
                                                     </tr>
                                                 ) : null}
                                                 {isExpanded && (isPurchase || isPurchasePending) ? (
                                                     <tr className={isPurchase ? "bg-emerald-950/25" : "bg-amber-950/20"}>
-                                                        <td colSpan={5} className="border-t border-white/5 px-4 py-3 text-sm text-slate-300">
+                                                        <td
+                                                            colSpan={5}
+                                                            id={`bonos-consumo-${row.id}`}
+                                                            className="border-t border-white/5 px-4 py-3 text-sm text-slate-300"
+                                                        >
                                                             <p>
                                                                 <span className="font-semibold text-white">
                                                                     {row.purchase?.pack_name || row.lesson_name}
@@ -571,7 +577,7 @@ export default function ClientBonosIndex({
                 ) : null}
 
                 {showMyBonos ? (
-                <div ref={myBonosSectionRef} className="scroll-mt-24 rounded-xl border border-gray-700 bg-gray-900 p-4">
+                <div ref={myBonosSectionRef} id="bonos-mis-bonos-panel" className="scroll-mt-24 rounded-xl border border-gray-700 bg-gray-900 p-4">
                     <div className="mb-3">
                         <h2 className="text-lg font-semibold text-white">Detalle por bono</h2>
                         <p className="mt-1 text-xs text-gray-400">
@@ -631,24 +637,28 @@ export default function ClientBonosIndex({
                                                     {b.fiscal_invoice_ready ? "Factura TBAI" : "Factura…"}
                                                 </a>
                                             ) : null}
-                                            <button
-                                                type="button"
-                                                onClick={() => togglePurchaseDetails(b.id)}
-                                                aria-expanded={isExpanded}
+                                            <AccordionTrigger
+                                                open={isExpanded}
+                                                onToggle={() => togglePurchaseDetails(b.id)}
+                                                panelId={`bonos-compra-${b.id}`}
+                                                stopPropagation={false}
                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                     isExpanded
                                                         ? "bg-teal-500/20 text-teal-100 ring-1 ring-teal-400/40"
                                                         : "bg-gray-900/80 text-amber-100/90 ring-1 ring-amber-500/25 hover:bg-gray-700/80"
                                                 }`}
+                                                chevronClassName="h-3 w-3"
                                             >
                                                 {isExpanded ? "Ocultar" : "Ver más"}
-                                                <span className={`text-[10px] transition-transform ${isExpanded ? "rotate-180" : ""}`}>▼</span>
-                                            </button>
+                                            </AccordionTrigger>
                                         </div>
                                     </div>
 
                                     {isExpanded ? (
-                                        <div className="border-t border-white/5 bg-gray-900/50 px-3 py-3">
+                                        <div
+                                            id={`bonos-compra-${b.id}`}
+                                            className="border-t border-white/5 bg-gray-900/50 px-3 py-3"
+                                        >
                                             <div className="mb-3 grid gap-2 text-xs text-gray-400 sm:grid-cols-2">
                                                 <p>
                                                     <span className="font-semibold uppercase tracking-wide text-gray-500">Comprado</span>
@@ -688,13 +698,16 @@ export default function ClientBonosIndex({
                                                                 <th className="px-2 py-2 text-left">Clase</th>
                                                                 <th className="px-2 py-2 text-center">Créd.</th>
                                                                 <th className="px-2 py-2 text-right">Saldo</th>
-                                                                <th className="px-2 py-2 text-center">+</th>
+                                                                <th className="px-2 py-2 text-center">
+                                                                    <span className="sr-only">Detalle</span>
+                                                                </th>
                                                             </tr>
                                                         </thead>
                                                         <tbody className="divide-y divide-white/5 text-gray-100">
                                                             {bonoClasses.map((row) => {
                                                                 const uc = Math.max(1, Number(row.credits_consumed ?? 1));
                                                                 const classKey = `${b.id}:${row.id}`;
+                                                                const classPanelId = `bonos-clase-${b.id}-${row.id}`;
                                                                 const classExpanded = expandedPurchaseClassKey === classKey;
                                                                 const ucBadge =
                                                                     uc >= 2
@@ -715,23 +728,34 @@ export default function ClientBonosIndex({
                                                                                 {row.remaining_after}
                                                                             </td>
                                                                             <td className="px-2 py-2 text-center">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    onClick={() => togglePurchaseClassDetails(b.id, row.id)}
-                                                                                    aria-expanded={classExpanded}
-                                                                                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                                                                                <AccordionTrigger
+                                                                                    open={classExpanded}
+                                                                                    onToggle={() =>
+                                                                                        togglePurchaseClassDetails(
+                                                                                            b.id,
+                                                                                            row.id,
+                                                                                        )
+                                                                                    }
+                                                                                    panelId={classPanelId}
+                                                                                    labelOpen="Ocultar detalle"
+                                                                                    labelClosed="Ver detalle"
+                                                                                    stopPropagation={false}
+                                                                                    className={`inline-flex h-6 w-6 items-center justify-center rounded-md ${
                                                                                         classExpanded
                                                                                             ? "bg-teal-500/20 text-teal-100"
                                                                                             : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                                                                                     }`}
-                                                                                >
-                                                                                    {classExpanded ? "−" : "+"}
-                                                                                </button>
+                                                                                    chevronClassName="h-3 w-3"
+                                                                                />
                                                                             </td>
                                                                         </tr>
                                                                         {classExpanded ? (
                                                                             <tr className="bg-teal-950/15">
-                                                                                <td colSpan={5} className="border-t border-teal-500/10 px-3 py-3">
+                                                                                <td
+                                                                                    colSpan={5}
+                                                                                    id={classPanelId}
+                                                                                    className="border-t border-teal-500/10 px-3 py-3"
+                                                                                >
                                                                                     <ConsumptionDetailsPanel details={row.details} />
                                                                                 </td>
                                                                             </tr>

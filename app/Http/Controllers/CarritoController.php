@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Carrito;
+use App\Services\Store\StoreProductPricing;
 use App\Support\AcademyContact;
+use App\Support\MoneyCents;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use App\Models\Producto;
@@ -52,19 +54,18 @@ class CarritoController extends Controller
             return $item->productos->map(function ($producto) {
                 $cantidad = (int) $producto->pivot->cantidad;
                 $descuento = (float) $producto->descuento;
-                $precioBase = (float) $producto->precio;
-                $precioConDescuento = $precioBase - ($precioBase * ($descuento / 100));
-                $subtotal = $precioConDescuento * $cantidad;
+                $unitCents = StoreProductPricing::unitPriceCents($producto->precio, $descuento);
+                $lineCents = $unitCents * $cantidad;
 
                 return [
                     'id' => $producto->id,
                     'nombre' => $producto->nombre,
-                    'precio' => $precioConDescuento,
+                    'precio' => MoneyCents::centsToEuros($unitCents),
                     // Precio de catálogo sin descuento: el front lo muestra tachado
                     // cuando hay oferta (anclaje de ahorro); no entra en el total.
-                    'precio_original' => round($precioBase, 2),
+                    'precio_original' => StoreProductPricing::catalogEuros($producto->precio),
                     'cantidad' => $cantidad,
-                    'subtotal' => round($subtotal, 2),
+                    'subtotal' => MoneyCents::centsToEuros($lineCents),
                     'descuento' => $descuento,
                     'stock' => (int) $producto->unidades,
                     // Ruta relativa de la imagen principal (o null); el front resuelve /storage/…
@@ -73,13 +74,14 @@ class CarritoController extends Controller
             });
         });
 
-        $total = $productos->reduce(function (float $acc, array $producto): float {
-            return $acc + (float) $producto['subtotal'];
-        }, 0.0);
+        $totalCents = $productos->reduce(
+            static fn (int $acc, array $producto): int => $acc + MoneyCents::eurosToCents($producto['subtotal']),
+            0,
+        );
 
         return Inertia::render('Carrito', array_merge([
             'productos' => $productos->values()->all(),
-            'total' => round($total, 2),
+            'total' => MoneyCents::centsToEuros($totalCents),
             'canCheckout' => (bool) $user->hasActiveLocker(),
         ], $paymentProps));
     }
@@ -135,7 +137,7 @@ class CarritoController extends Controller
                     $carrito->productos()->attach($productoId, ['cantidad' => $cantidadAAgregar]);
                 }
 
-                return back()->with('success', 'Producto agregado al carrito exitosamente.');
+                return back();
             });
         } catch (\Throwable $e) {
             Log::error('Error al agregar al carrito: '.$e->getMessage());

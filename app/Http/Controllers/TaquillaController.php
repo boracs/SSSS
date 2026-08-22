@@ -99,6 +99,8 @@ class TaquillaController extends Controller
             if ($desasignarVip && (bool) $target->is_vip) {
                 $target->is_vip = false;
                 $vipRemoved = true;
+            } elseif ((bool) $target->is_vip) {
+                $target->numeroTaquilla = VipVirtualLocker::defaultNumber();
             }
 
             $target->save();

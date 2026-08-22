@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, router } from "@inertiajs/react";
 import { ChevronDown, RotateCcw } from "lucide-react";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 import EmptyState from "../../../components/EmptyState";
 import ImageLightbox from "../../../components/ImageLightbox";
 import SafeImage from "../../../components/SafeImage";
@@ -574,6 +575,7 @@ export default function Index({
                                                     ? `${parseFloat(s.volumen)} L`
                                                     : null,
                                             ].filter(Boolean);
+                                            const panelId = `rental-board-panel-${s.id}`;
                                             return (
                                                 /* Tarjeta + acordeón en el mismo celda: en <lg el detalle cae justo debajo */
                                                 <div
@@ -587,18 +589,32 @@ export default function Index({
                                                                 : "border-slate-700 bg-slate-900 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-sm"
                                                         }`}
                                                     >
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
+                                                        <AccordionTrigger
+                                                            open={selected}
+                                                            onToggle={() =>
                                                                 handleCardClick(
                                                                     s.id,
                                                                 )
                                                             }
-                                                            aria-expanded={
+                                                            panelId={panelId}
+                                                            label={
                                                                 selected
+                                                                    ? `Cerrar detalles de ${name}`
+                                                                    : `Abrir detalles de ${name}`
                                                             }
-                                                            aria-label={`${selected ? "Cerrar" : "Abrir"} detalles de ${name}`}
+                                                            stopPropagation={false}
+                                                            showChevron={!isLgUp}
                                                             className="flex w-full items-start gap-3 text-left"
+                                                            chevronClassName="h-5 w-5"
+                                                            chevronWrapperClassName={
+                                                                !isLgUp
+                                                                    ? `mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
+                                                                          selected
+                                                                              ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
+                                                                              : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
+                                                                      }`
+                                                                    : undefined
+                                                            }
                                                         >
                                                             <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:h-24 sm:w-24">
                                                                 <SafeImage
@@ -628,24 +644,7 @@ export default function Index({
                                                                     </p>
                                                                 ) : null}
                                                             </div>
-                                                            {!isLgUp ? (
-                                                                <span
-                                                                    className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
-                                                                        selected
-                                                                            ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
-                                                                            : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
-                                                                    }`}
-                                                                    aria-hidden="true"
-                                                                >
-                                                                    <ChevronDown
-                                                                        className={`h-5 w-5 transition-transform duration-300 ${selected ? "rotate-180" : ""}`}
-                                                                        strokeWidth={
-                                                                            2.5
-                                                                        }
-                                                                    />
-                                                                </span>
-                                                            ) : null}
-                                                        </button>
+                                                        </AccordionTrigger>
                                                         <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
                                                             <Link
                                                                 href={route(
@@ -664,7 +663,10 @@ export default function Index({
 
                                                     {/* Acordeón: solo en <lg, montado justo debajo de ESTA tarjeta */}
                                                     {selected && !isLgUp ? (
-                                                        <div className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5">
+                                                        <div
+                                                            id={panelId}
+                                                            className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5"
+                                                        >
                                                             <SurfboardPublicDetail
                                                                 board={s}
                                                                 onImageClick={

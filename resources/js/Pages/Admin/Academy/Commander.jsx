@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import { User } from "lucide-react";
 import Breadcrumbs from "../../../components/Breadcrumbs";
+import AccordionTrigger from "../../../components/ui/AccordionTrigger";
 import TimePicker24h from "../../../components/Academy/TimePicker24h";
 import { addMinutesToHhmm, formatDateTimeMadrid, formatTimeMadrid } from "../../../lib/madridTime";
 import { whatsappUrlFromPhone } from "../../../lib/whatsapp";
@@ -805,13 +806,16 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                     expanded ? "border-cyan-500/40" : "hover:border-sky-600/40",
                                 ].join(" ")}
                             >
-                                <button
-                                    type="button"
-                                    onClick={() => toggleLessonAccordion(lesson.id)}
-                                    aria-expanded={expanded}
+                                <AccordionTrigger
+                                    open={expanded}
+                                    onToggle={() => toggleLessonAccordion(lesson.id)}
+                                    panelId={`commander-lesson-${lesson.id}`}
+                                    stopPropagation={false}
                                     className="flex w-full flex-wrap items-start justify-between gap-4 p-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800"
+                                    chevronClassName="h-4 w-4"
+                                    chevronWrapperClassName="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-gray-300"
                                 >
-                                    <div>
+                                    <div className="min-w-0 flex-1">
                                         <span className="text-sm font-medium text-gray-400">
                                             {formatTimeMadrid(lesson.starts_at)}
                                         </span>
@@ -860,13 +864,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                             ) : null}
                                         </div>
                                     </div>
-                                    <span
-                                        className={`mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 text-gray-300 transition-transform ${expanded ? "rotate-180" : ""}`}
-                                        aria-hidden
-                                    >
-                                        ▾
-                                    </span>
-                                </button>
+                                </AccordionTrigger>
 
                                 <div className="flex flex-wrap gap-2 border-t border-gray-700/80 px-5 py-3">
                                         <button
@@ -918,7 +916,10 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                 </div>
 
                                 {expanded ? (
-                                    <div className="space-y-4 border-t border-gray-700 px-5 pb-5 pt-4">
+                                    <div
+                                        id={`commander-lesson-${lesson.id}`}
+                                        className="space-y-4 border-t border-gray-700 px-5 pb-5 pt-4"
+                                    >
                                         <div>
                                             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
                                                 Alumnos

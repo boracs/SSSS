@@ -32,19 +32,20 @@
 
 ## 2.4 Events y Listeners (desacoplar efectos secundarios)
 
-- **Qué es:** cuando pasa algo importante (p.ej. alguien pide una clase), el código **emite un evento** (`LessonRequestedEvent`) y un **listener** reacciona (enviar email). El código que emite no sabe quién escucha.
-- **Por qué importa:** separa "lo que pasa" de "lo que se hace después"; añadir una reacción nueva no toca el flujo original.
-- **En tu proyecto:** `app/Events/` → `LessonRequestedEvent`, `LessonProofUploadedEvent`, `PagoTaquillaConfirmado`… (los eventos de taquilla se emiten tras el commit).
-- **Para recordar:** *evento = "ha pasado algo"; listener = "qué hago con ello".*
+- **Qué es:** cuando pasa algo importante (pago, reserva, clase), el código **emite un evento** (`PaymentConfirmed`, `LessonRequestedEvent`…) y un **listener** reacciona (mail, factura). Quien emite no sabe quién escucha.
+- **Por qué importa:** añadir una reacción nueva no toca el flujo de compra. Si el listener lleva `ShouldQueue`, el trabajo **no** se hace en el mismo clic: se **escribe** en la tabla `jobs` y sigue el usuario.
+- **En tu proyecto:** `app/Events/` + `AppServiceProvider` (p.ej. `PaymentConfirmed` → factura B2B y recibo Stripe). Compra/reserva **invocan el evento**; no consultan `jobs` para “ver qué toca”.
+- **Para recordar:** *evento = “ha pasado”; listener = “qué hago”. Si va a cola, el evento deja el papel; no lo busca.*
 
 ---
 
 ## 2.5 Jobs y Colas (trabajo en segundo plano)
 
-- **Qué es:** un Job es una tarea que se **encola** (`dispatch`) y se ejecuta en segundo plano, fuera de la petición web que la lanzó.
-- **Por qué importa:** el usuario no debe esperar a que se envíe un email, se llame a una API externa o se sincronice Firestore. La petición responde rápido y el trabajo pesado ocurre después, con reintentos.
-- **En tu proyecto:** `app/Console/Commands/` (cron: `photos:cancel-expired`, `rentals:release-no-shows`…) y Jobs para sincronización externa (facturación B2BRouter, emails). Regla V3: los Jobs van **fuera** del `lockForUpdate`.
-- **Para recordar:** *lo que no es crítico para responder al usuario → a la cola.*
+- **Qué es:** un Job es una tarea en segundo plano. La **cola** es la bandeja (`.env`: `QUEUE_CONNECTION=database` → tabla `jobs`). No es un GET de página.
+- **Sentido del flujo (compra):** 1) el evento/`dispatch` **mete** una fila en `jobs`. 2) `php artisan queue:work` **saca** esa fila y la ejecuta. La web no “mira `jobs` para adivinar el evento”; el obrero mira `jobs` para ejecutar lo ya dejado.
+- **Por qué importa:** factura TicketBAI, mail, recibo Stripe no deben bloquear el redirect de éxito.
+- **En tu proyecto:** `app/Jobs/` (`CreateB2BRouterInvoiceJob`…). Sin worker, la bandeja se llena.
+- **Para recordar:** *evento escribe `jobs`; worker lee `jobs`.* Detalle de pago+factura: [07](07-pagos-facturacion.md).
 
 ---
 
@@ -66,4 +67,24 @@
 
 ---
 
-> **Por ampliar:** 2.8+ (middlewares, service providers, scopes, casts…). Se añade cada vez que salga un concepto nuevo.
+## 2.8 Workers: 1 job a la vez (estándar)
+
+- **Qué es:** un `queue:work` = **1 trabajador / 1 proceso**. Modelo mental: casi un “segundo proceso” junto a la web, pero **no** un segundo servidor HTTP; comparten la cola (BD).
+- **Regla estándar:** **1 trabajador = 1 job a la vez**. Cuando termina, coge el siguiente. No es multitarea dentro del mismo worker.
+- **Paralelismo:** varios trabajadores (varias terminales o Horizon) = varios jobs a la vez. Misma **familia** que la concurrencia/multi-hilo (no bloquear), pero en Laravel/PHP local suele ser **multi-proceso**, no hilos dentro del PHP de la home.
+- **Extras nuevos** (`--concurrency`, etc.): existen; no son el modelo base. En Windows suelen ser flojos. Para más paralelismo en local: más workers.
+- **Para recordar:** *estándar = una tarea por trabajador; varios trabajadores = varios jobs en paralelo.*
+
+---
+
+## 2.9 El reloj (`schedule`) no es la cola (`queue`)
+
+- **Qué es:** `routes/console.php` lista tareas a hora fija (cron). `store:release-unpaid` está cada 5 min. Eso **no corre solo**: hace falta un despertador.
+- **Por qué importa:** la cola cobra facturas/mails (`queue:work`). El schedule suelta stock, cancela Stripe abandonado, parte de olas… Son **dos procesos**. En Windows no hay crontab: `php artisan schedule:work` (llama a `schedule:run` cada minuto). En servidor: crontab `* * * * * php artisan schedule:run`.
+- **Matiz (no son el mismo “pendiente”):** el **worker** mira la tabla `jobs` (“¿hay un papel que dejó un pago?”). El **cron** mira el **reloj** (“¿ya pasaron 5 min para soltar stock?”). El cron **no** vacía la cola. Familia parecida (trabajo fuera del clic del usuario); disparador distinto.
+- **En tu proyecto:** la lista está en **`routes/console.php`** (archivo PHP, **no** una tabla “de agentes”). Ej.: `store:release-unpaid` cada 5 min. Un comando del cron *puede* encolar un Job; entonces sí entra `jobs`. Local: 4.ª terminal o `composer run dev`.
+- **Para recordar:** *evento escribe `jobs`; cron mira el reloj + `console.php` y corre el comando.*
+
+---
+
+> **Por ampliar:** 2.10+ (middlewares, service providers, scopes, casts…). Se añade cada vez que salga un concepto nuevo.

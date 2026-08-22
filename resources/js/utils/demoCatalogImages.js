@@ -48,5 +48,8 @@ export function resolveCatalogImage(imagen, { id, nombre = "" } = {}) {
     if (!valid) return demoCatalogImage(id, nombre);
 
     if (raw.startsWith("http") || raw.startsWith("/")) return raw;
+    if (raw.startsWith("storage/") || raw.startsWith("productos/")) {
+        return `/storage/${raw.replace(/^(storage\/|productos\/)/, "productos/")}`;
+    }
     return `/storage/productos/${raw.replace(/^productos\/?/, "")}`;
 }

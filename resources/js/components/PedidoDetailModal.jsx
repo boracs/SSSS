@@ -26,8 +26,8 @@ const formatDate = (value) => {
 const paymentLabel = (method) => {
     if (!method) return "Pasarela / tarjeta";
     const map = {
-        card: "Tarjeta",
-        stripe: "Tarjeta (Stripe)",
+        card: "Con tarjeta",
+        stripe: "Con tarjeta (Stripe)",
         datafono: "Datáfono",
         cash: "Efectivo",
     };

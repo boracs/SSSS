@@ -11,8 +11,8 @@ namespace App\Services\SurfConditions;
  * "off"/"on" se miden como distancia angular al centro offshore configurado
  * (`zurriola_surf.offshore_wind_center_deg`); el cuarteo 45/90/135° es la
  * convención estándar del sector, no un dato de negocio. El umbral de
- * "glassy" (viento flojo, da igual la dirección) sí es config porque
- * depende de cuánto abrigo tiene el spot.
+ * "glassy" es calma: ≤ `wind_glassy_max_kmh` (Zurriola: ±5 km/h norte/sur).
+ * Si pasa de 5 km/h al sur o al norte, ya se clasifica off/on.
  */
 final class SurfWindStateClassifier
 {
@@ -28,7 +28,7 @@ final class SurfWindStateClassifier
 
     public function classify(float $windSpeedKmh, int $windDirectionDeg): string
     {
-        $glassyMax = (float) config('services.zurriola_surf.wind_glassy_max_kmh', 8);
+        $glassyMax = (float) config('services.zurriola_surf.wind_glassy_max_kmh', 5);
 
         if ($windSpeedKmh <= $glassyMax) {
             return self::GLASSY;

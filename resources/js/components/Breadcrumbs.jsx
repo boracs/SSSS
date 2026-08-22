@@ -16,19 +16,19 @@ export default function Breadcrumbs({ items = [], className = "", variant = "lig
         : "transition-colors duration-300 ease-in-out hover:text-brand-primary";
 
     return (
-        <nav aria-label="Breadcrumb" className={className}>
-            <ol className={`flex flex-wrap items-center gap-1 text-sm ${rootClass}`}>
+        <nav aria-label="Breadcrumb" className={`min-w-0 ${className}`}>
+            <ol className={`flex min-w-0 flex-wrap items-center gap-1 text-sm ${rootClass}`}>
                 {items.map((item, i) => {
                     const isLast = i === items.length - 1;
                     return (
-                        <li key={i} className="flex items-center gap-1">
+                        <li key={i} className="flex min-w-0 items-center gap-1">
                             {i > 0 && (
                                 <span className={separatorClass} aria-hidden>
                                     /
                                 </span>
                             )}
                             {isLast || !item.href ? (
-                                <span className={currentClass}>
+                                <span className={`${currentClass} min-w-0 break-words`}>
                                     {item.label}
                                 </span>
                             ) : (

@@ -8,36 +8,31 @@
 
 | Campo | Valor |
 |---|---|
-| Cerrado | 2026-08-11 ~16:58 (Europe/Madrid) |
-| Canal | Cursor |
-| Tema | UI pública S4: home, nosotros, menú usuario, clases surf + ritual tokens/handoff |
+| Cerrado | 2026-08-21 (Reasonix) |
+| Canal | Reasonix |
+| Tema | Análisis/mejora agente marketing + S4 acordeones + 4 tareas cerradas (a11y y refactor) |
 
 ## Hecho (esta sesión)
 
-- **Home:** directorio de servicios (sin carrusel pills); teaser Sobre nosotros sin eyebrow; stats «1 año / Instalaciones nuevas»; copy corto.
-- **`/nosotros` + planes:** micro-servicios +6 (forecast 16d, niveles, subastas, webcam, AutoCoach, calentamiento); flecha › solo si hay destino; deep-links `#webcam-directo` / `#parte-s4-hoy` / `#prevision-forecast`.
-- **Menú usuario normal:** `Inicio · Clases · La Zurriola · Club · Tienda · Reparaciones · Más · Contacto` (`GlobalNav.jsx`; Guía surfskate en Clases; Reparaciones fuera de Más; admin intacto).
-- **`/servicios/surf`:** listas de beneficios en cards particulares/bonos; «Equipo incluido» en ambas.
-- **Tokens:** puente de continuidad + ritual «fin de chat» → `HANDOFF.md` (sin matching por hora); cableado contrato/router/mapa/`AGENTS.md`.
-- Varios rebuilds `npm run share:tunnel` (sigue `TUNNEL_SHARE=true` si aplica).
+- **Agente marketing mejorado** (`docs/taller-prompts/AGENTE-MARKETING-DISENO.md`): +S12 `critica_prompt_rediseno`, plantilla única de hallazgos con **Sev (P0/P1/P2)** y **KPI***, escala de nota 0–10 con anti-inflación, fórmula de prioridad (impacto×frecuencia/esfuerzo), disparos S4/S5, checklist de contexto R2, anti-patrones AP-1..AP-6, ejemplo few-shot §8. Skill `/marketing-diseno` sincronizado (S1–S12, tabla 8 columnas).
+- **S4 auditoría de consistencia — acordeones:** ~14 copias manuales del patrón expandible, kit Radix `ui/accordion.tsx` sin usar, nota 6/10 → 4 tareas al backlog.
+- **4 tareas cerradas y verificadas (S11), build `npm run build` OK (29.68s):**
+  1. `GlobalNav.jsx:1031` — `aria-expanded={open}` en trigger móvil con submenú (patrón «Mi espacio»).
+  2. a11y `Clients.jsx:134` + `Vigencia.jsx:1173` — chevron de fila como `<button type="button" aria-expanded aria-label>` (patrón Surfboards); `<tr>` sin role/tabIndex; sr-only retirado.
+  3. `ContactBlock.jsx` (nuevo) — bloque «Contactar con Edy/Willy» extraído de `Servicios.jsx` y `Servicios_ReparacionNeoprenos.jsx` (props: contact, open, onToggle, mailSubject, mailIconClassName, fallbackName).
+  4. **Refactor acordeones:** `ui/AccordionTrigger.jsx` + `ui/ExpandableText.jsx` (spec: botón real, aria-expanded, aria-controls vía panelId/useId, ChevronDown rotate-180, stopPropagation configurable). Migrados 11 archivos: Pedidos, SurfBriefMini, Clients, Vigencia (×2), Datafono, Surfboards, SecondHand, Rentals, Commander, Bonos (×4), Nosotros. Icono único ChevronDown (adiós Plus/Minus/▼); Bonos conserva sus 3 estados independientes; animación framer-motion de Surfboards intacta.
+- `docs/TAREAS-PENDIENTES.md` actualizado: 4 → Hechas; Abiertas solo **P3 bonos** (deuda técnica, no tocar).
 
 ## A medias / siguiente
 
-- Nada bloqueante abierto en este chat.
-- Posible siguiente: menú admin «Gestión» (otra pasada); afinar copy/UX clases o home si el dueño pide.
+- **#9 de mejoras Cursor 08-11** (última pendiente; falta confirmar #7) — siguiente prompt del taller si el dueño lo pide.
+- **SEO Donostia:** análisis de keywords pendiente + plan SEO/rebrand (recordatorio: `docs/COMPETENCIA_SEO_DONOSTIA.md`).
+- `ui/accordion.tsx` (Radix) sigue sin usarse — no borrar; posible migración futura si se necesita estado múltiple + animación nativa.
+- Nota menor: existe un `ContactBlock` **local** en `components/Footer.jsx` (función distinta, `onOpenContact`/`className`) — candidato a unificar con `components/ContactBlock.jsx` algún día.
 
 ## Archivos clave
 
-- `resources/js/components/GlobalNav.jsx`
-- `resources/js/Pages/Pag_principal.jsx`
-- `resources/js/Pages/Nosotros.jsx`
-- `resources/js/Pages/PlanesTaquillasPublic.jsx`
-- `resources/js/Pages/Servicios_ClasesDeSurf.jsx`
-- `resources/js/Pages/Servicios_Webcams.jsx`
-- `docs/taller-prompts/HANDOFF.md`
-- `docs/taller-prompts/COORDINACION.md`
-- `docs/taller-prompts/CONTRATO-IA.md`
-
-## Nota modo túnel
-
-Si `TUNNEL_SHARE=true`, tras cambios JSX: `npm run share:tunnel` + Ctrl+Shift+R.
+- `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` · `.reasonix/skills/marketing-diseno/SKILL.md`
+- `resources/js/components/ui/AccordionTrigger.jsx` · `ui/ExpandableText.jsx` · `components/ContactBlock.jsx`
+- `resources/js/components/GlobalNav.jsx` · `Pages/Admin/Payments/Clients.jsx` · `Pages/Admin/Taquillas/Vigencia.jsx`
+- `docs/TAREAS-PENDIENTES.md` · `docs/taller-prompts/COORDINACION.md`

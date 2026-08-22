@@ -48,7 +48,14 @@ class UserController extends Controller
         $updated = $this->vipMembershipService->toggle($user);
 
         if ((bool) $updated->is_vip) {
-            return back()->with('success', "Usuario VIP activado para {$updated->email}. Asigna taquilla compartida (#500/#600) desde el mapa si necesita descuento en tienda.");
+            $locker = $updated->numeroTaquilla;
+            $lockerNote = $updated->hasSharedLocker()
+                ? " Taquilla virtual #{$locker} asignada para comprar en tienda."
+                : ($updated->hasPhysicalLocker()
+                    ? " Conserva su taquilla física #{$locker}."
+                    : '');
+
+            return back()->with('success', "Usuario VIP activado para {$updated->email}.{$lockerNote}");
         }
 
         return back()->with('success', "VIP desactivado para {$updated->email}.");

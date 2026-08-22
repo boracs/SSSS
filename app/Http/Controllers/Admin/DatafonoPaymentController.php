@@ -348,4 +348,15 @@ final class DatafonoPaymentController extends Controller
 
         return back()->with('success', 'Cobro marcado como ignorado.');
     }
+
+    public function communicateHacienda(DatafonoPayment $datafonoPayment): RedirectResponse
+    {
+        try {
+            $this->reconciliation->communicateToHacienda($datafonoPayment);
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        return back()->with('success', 'Comunicación a Hacienda encolada (TicketBAI vía B2B).');
+    }
 }

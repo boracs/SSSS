@@ -13,9 +13,8 @@ namespace App\DTOs\SurfConditions;
  * atmosférico no está disponible para esa franja (Open-Meteo caído, flag
  * desactivada...): el oleaje se sigue mostrando igual, nunca se inventa tiempo.
  *
- * Estrellas por nivel (1–5): cada fila responde “¿qué tal esta franja para
- * alguien de ese nivel?”. `qualityStars` = intermedio (compat). Ini usa curva
- * distinta a la calibración “surfista real” (ver CALIBRACION_ESTRELLAS.csv).
+ * Estrellas por nivel (1–5): {@see \App\Services\SurfConditions\SurfLevelQualityStarsService}
+ * (JSON del spot). `qualityStars` = intermedio (compat).
  */
 final readonly class SurfDetailedSlotDto
 {

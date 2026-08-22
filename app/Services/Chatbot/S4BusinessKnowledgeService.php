@@ -539,6 +539,10 @@ final class S4BusinessKnowledgeService
         $lines[] = '- '.trim((string) ($academy['cancel_student_policy'] ?? ''))
             .' (cutoff actual: '.$cancelCutoff.' h).';
         $lines[] = '- '.trim((string) ($academy['mal_mar_policy'] ?? ''));
+        $concha = trim((string) ($academy['la_concha_recommendation'] ?? ''));
+        if ($concha !== '') {
+            $lines[] = '- Playas: '.$concha;
+        }
 
         foreach ($academy['bono_credit_rules'] ?? [] as $rule) {
             if (! is_array($rule)) {

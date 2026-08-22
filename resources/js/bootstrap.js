@@ -60,3 +60,12 @@ window.fetch = function patchedFetch(input, init) {
 
     return originalFetch(input, initObj);
 };
+
+// PWA: registrar SW mínimo (Chrome exige fetch handler para ofrecer «Instalar app»).
+if (typeof window !== "undefined" && "serviceWorker" in navigator && window.isSecureContext) {
+    window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js").catch(() => {
+            /* ignore: local sin HTTPS, o SW bloqueado */
+        });
+    });
+}

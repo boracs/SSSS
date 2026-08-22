@@ -50,22 +50,22 @@ export default function Index({ articles = [], productos = [], seo = null }) {
                             ))}
                         </div>
                     </div>
-
-                    <motion.div
-                        initial="hidden"
-                        whileInView="visible"
-                        viewport={{ once: true }}
-                        variants={fadeUp}
-                        className="mt-14"
-                    >
-                        <Contenedor_productos
-                            productos={productos}
-                            eyebrow="Material recomendado"
-                            title="Equipamiento de la tienda S4"
-                            description="Accesorios, trajes y material seleccionado por nuestro equipo — ideal para complementar lo que lees en el Taller."
-                        />
-                    </motion.div>
                 </div>
+
+                <motion.div
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    variants={fadeUp}
+                    className="mt-14"
+                >
+                    <Contenedor_productos
+                        productos={productos}
+                        eyebrow="Material recomendado"
+                        title="Equipamiento de la tienda S4"
+                        description="Accesorios, trajes y material seleccionado por nuestro equipo — ideal para complementar lo que lees en el Taller."
+                    />
+                </motion.div>
             </TallerPageShell>
         </Layout1>
     );

@@ -5,6 +5,7 @@ import SurfBriefReactions from "./SurfBriefReactions";
 import SurfLevelAccordion from "./SurfLevelAccordion";
 import SurfBriefLevelBlocks from "./SurfBriefLevelBlocks";
 import SurfBriefParteCta from "./SurfBriefParteCta";
+import SharePageButton from "../SharePageButton";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 
 function UnifiedAlert({ note, aviso }) {
@@ -113,16 +114,25 @@ export default function SurfBriefParteToday({
                         </p>
                     ) : null}
                 </div>
-                {signalMeta ? (
-                    <span
-                        className={`inline-flex max-w-[min(100%,20rem)] shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold leading-snug ${signalMeta.tableBadge}`}
-                    >
-                        {signalMeta.badge}
-                        {signal?.is_manual ? (
-                            <span className="ml-1.5 opacity-80">· S4</span>
-                        ) : null}
-                    </span>
-                ) : null}
+                <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+                    <SharePageButton
+                        variant="light"
+                        label="Compartir"
+                        title="Parte S4 de hoy · Zurriola"
+                        text="Resumen del monitor S4 para surfear en Zurriola (Donostia)."
+                        path={`${route("servicios.webcams")}#parte-s4-hoy`}
+                    />
+                    {signalMeta ? (
+                        <span
+                            className={`inline-flex max-w-[min(100%,20rem)] shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold leading-snug ${signalMeta.tableBadge}`}
+                        >
+                            {signalMeta.badge}
+                            {signal?.is_manual ? (
+                                <span className="ml-1.5 opacity-80">· S4</span>
+                            ) : null}
+                        </span>
+                    ) : null}
+                </div>
             </header>
 
             <UnifiedAlert note={signal?.note} aviso={summarySections?.aviso} />

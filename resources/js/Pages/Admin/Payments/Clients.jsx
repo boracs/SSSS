@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Head, router } from "@inertiajs/react";
-import { ChevronDown, ChevronRight, FileText, FileX, Receipt, Search, Star } from "lucide-react";
+import { FileText, FileX, Receipt, Search, Star } from "lucide-react";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 
 const ENTITY_LABELS = {
     tienda: "bg-sky-900/40 text-sky-100 ring-sky-600/30",
@@ -131,7 +132,18 @@ export default function Clients({ clients = [], pagination = { current_page: 1, 
                                                 onClick={() => toggleClient(client.id)}
                                             >
                                                 <td className="px-3 py-3 text-gray-400">
-                                                    {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                                    <AccordionTrigger
+                                                        open={isOpen}
+                                                        onToggle={() =>
+                                                            toggleClient(client.id)
+                                                        }
+                                                        panelId={`client-history-${client.id}`}
+                                                        labelOpen="Cerrar detalle"
+                                                        labelClosed="Abrir detalle"
+                                                        stopPropagation
+                                                        className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/10 hover:text-gray-100"
+                                                        chevronClassName="h-4 w-4"
+                                                    />
                                                 </td>
                                                 <td className="px-4 py-3 font-medium text-gray-100">
                                                     <span className="inline-flex items-center gap-1.5">
@@ -149,7 +161,11 @@ export default function Clients({ clients = [], pagination = { current_page: 1, 
                                             </tr>
                                             {isOpen ? (
                                                 <tr className="border-t border-gray-800 bg-gray-950/60">
-                                                    <td colSpan={5} className="px-4 py-4">
+                                                    <td
+                                                        colSpan={5}
+                                                        id={`client-history-${client.id}`}
+                                                        className="px-4 py-4"
+                                                    >
                                                         {isLoading ? (
                                                             <p className="text-sm text-gray-400">Cargando historial…</p>
                                                         ) : hasError ? (

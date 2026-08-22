@@ -39,7 +39,7 @@ export default function HomeGeoTeaser({ facts = null }) {
 
     return (
         <section
-            className="mt-10 max-h-[9.5rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3.5 py-3 sm:mt-12 sm:max-h-none sm:px-5 sm:py-4"
+            className="mt-6 max-h-[9.5rem] overflow-hidden rounded-2xl border border-slate-200/80 bg-slate-50/90 px-3.5 py-3 sm:mt-8 sm:max-h-none sm:px-5 sm:py-4"
             aria-labelledby="home-geo-heading"
         >
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">

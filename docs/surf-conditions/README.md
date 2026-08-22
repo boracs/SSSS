@@ -77,8 +77,10 @@ markdown y colapsa saltos de línea por si el modelo no lo respeta al 100%.
 | `app/Services/SurfConditions/OpenMeteoMarineClient.php` | HTTP puro hacia Open-Meteo (oleaje + viento horario). Sin lógica de negocio. |
 | `app/Services/SurfConditions/EuskalmetSeaForecastClient.php` | HTTP/XML Euskalmet marítimo (mareas oficiales costa vasca). Fallback → Open-Meteo. |
 | `app/Services/SurfConditions/SurfEnergyCalculator.php` | P ≈ 0.5×Hs²×Tp (kW/m, indexado como kJ en UI); índice verbal (`energy_bands`). |
-| `app/Services/SurfConditions/SurfLevelRecommender.php` | Recomendación de nivel rápida (config `level_thresholds` + `offshore_wind_*`). |
-| `app/Services/SurfConditions/SurfDailyBriefService.php` | Orquestador: fetch → cálculo → Gemini/fallback → persistencia → único punto de lectura (`today()`, `publicPayload()`). Inyecta `SurfForecastTableService` para el desglose mañana/tarde del prompt. |
+| `app/Services/SurfConditions/SurfLevelRecommender.php` | Badge 4 colores + nivel orientativo (config `level_thresholds`). |
+| `app/Services/SurfConditions/ZurriolaSpotLogisticsService.php` | Carga el JSON del spot (estrellas por kJ, modificadores, textos de ayuda). |
+| `app/Services/SurfConditions/SurfLevelQualityStarsService.php` | Termómetro 1–5 Ini/Int/Ava (JSON, sin Gemini). |
+| `app/Services/SurfConditions/SurfDailyBriefService.php` | Orquestador: fetch → cálculo → Gemini (recibe estrellas ya calculadas) → BD. |
 | `resources/surf-guide/zurriola-spot-guide.md` | **Guía editable del spot** — rol/tono/formato (ver arriba). |
 | `resources/surf-guide/zurriola-spot-logistics.json` | **Reglas técnicas editables del spot** (viento/energía/marea/swell/periodo/seguridad) — ver arriba. |
 | `app/Console/Commands/GenerateSurfDailyBrief.php` | Comando `surf:generate-daily-brief {--force}`. |

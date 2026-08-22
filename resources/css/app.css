@@ -8,6 +8,13 @@ body {
     font-family: "Inter", "Poppins", system-ui, sans-serif;
 }
 
+/* Guard anti scroll lateral: ningún contenido puede empujar el ancho del documento.
+   `clip` (no `hidden`) para no crear scroll container y no romper position:sticky/fixed. */
+html,
+body {
+    overflow-x: clip;
+}
+
 html.dark body {
     background-color: #030712;
     color: #e5e7eb;

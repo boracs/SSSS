@@ -137,15 +137,14 @@ return [
         // Sin madrugada (0/2/4): nadie surfea; el slider empieza a las 06:00.
         'forecast_detailed_slot_hours' => [6, 8, 10, 12, 14, 16, 18, 20, 22],
 
-        // Viento por debajo de este umbral se considera "glassy" (sin apenas efecto),
-        // sea cual sea su dirección.
-        'wind_glassy_max_kmh' => env('ZURRIOLA_WIND_GLASSY_MAX_KMH', 8),
+        // Glassy = calma real (±5 km/h: sur −5 / 0 / norte +5). A 8 km/h ya no es glass.
+        'wind_glassy_max_kmh' => env('ZURRIOLA_WIND_GLASSY_MAX_KMH', 5),
 
         // Rangos de color en la tabla de previsión.
-        // Viento: 3 tonos (green/yellow/red) alineados con wind_north_component (nudos → km/h).
+        // Viento: 3 tonos alineados con wind_north_component (km/h).
         'forecast_wind_color_kmh' => [
-            'green_max' => 9,   // ≤ ~5 nudos
-            'yellow_max' => 19, // ≤ ~10 nudos
+            'green_max' => 10,  // norte 0–10: bien
+            'yellow_max' => 15, // 10–15: empieza a picar; >15 rojo (mar roto)
         ],
         // Energía/kJ: escala granular (primera banda con max >= kJ gana). UI mapea tone → Tailwind.
         'forecast_energy_color_kj' => [
@@ -200,6 +199,16 @@ return [
         'getting_here' => env('ACADEMY_GETTING_HERE', 'Llega 10–15 minutos antes de tu clase. Punto de encuentro en Zurriola, junto a las instalaciones del club.'),
         /** Instagram público (opcional). */
         'instagram_handle' => env('ACADEMY_INSTAGRAM_HANDLE', '@sansebastiansurfschool'),
+        /**
+         * URLs completas de redes (footer + JSON-LD sameAs).
+         * Deja vacío en .env lo que aún no exista; no se muestra el icono.
+         */
+        'social' => [
+            'instagram' => env('ACADEMY_SOCIAL_INSTAGRAM_URL'),
+            'youtube' => env('ACADEMY_SOCIAL_YOUTUBE_URL', 'https://www.youtube.com/@sansebastiansurfschool'),
+            'facebook' => env('ACADEMY_SOCIAL_FACEBOOK_URL', 'https://www.facebook.com/sansebastiansurfschool'),
+            'tiktok' => env('ACADEMY_SOCIAL_TIKTOK_URL', 'https://www.tiktok.com/@sansebastiansurfschool'),
+        ],
     ],
 
     /**

@@ -27,13 +27,14 @@ function datafonoTerminal(bool $emiteTicketBai = true): PaymentTerminal
     ]);
 }
 
-function pendingCobro(PaymentTerminal $terminal, int $amountCents): DatafonoPayment
+function pendingCobro(PaymentTerminal $terminal, int $amountCents, string $source = DatafonoPayment::SOURCE_MANUAL_CASH): DatafonoPayment
 {
     return DatafonoPayment::query()->create([
         'payment_terminal_id' => $terminal->id,
         'amount_cents' => $amountCents,
         'paid_at' => BusinessDateTime::now(),
         'status' => DatafonoPayment::STATUS_PENDING_REVIEW,
+        'source' => $source,
     ]);
 }
 
@@ -112,11 +113,11 @@ test('terminal sin TicketBAI propio dispara PaymentConfirmed tras conciliar', fu
         return $event->payableType === \App\Models\Pedido::class
             && $event->payableId === (int) $result->payable_id
             && $event->amountCents === $amountCents
-            && $event->stripeSessionId === 'datafono-'.$result->id;
+            && str_starts_with($event->stripeSessionId, 'datafono-'.$result->id);
     });
 });
 
-test('terminal con TicketBAI propio no dispara PaymentConfirmed', function () {
+test('terminal con TicketBAI propio no dispara PaymentConfirmed en cobro TPV', function () {
     Event::fake([PaymentConfirmed::class]);
 
     $user = User::factory()->create(['role' => 'user']);
@@ -127,7 +128,7 @@ test('terminal con TicketBAI propio no dispara PaymentConfirmed', function () {
         'eliminado' => false,
     ]);
     $terminal = datafonoTerminal(true);
-    $payment = pendingCobro($terminal, MoneyCents::eurosToCents(7.00));
+    $payment = pendingCobro($terminal, MoneyCents::eurosToCents(7.00), DatafonoPayment::SOURCE_TPV);
 
     $this->service->reconcile($payment, $user, [
         'category' => 'producto',
@@ -135,4 +136,78 @@ test('terminal con TicketBAI propio no dispara PaymentConfirmed', function () {
     ]);
 
     Event::assertNotDispatched(PaymentConfirmed::class);
+});
+
+test('efectivo dispara PaymentConfirmed aunque el terminal tenga TicketBAI propio', function () {
+    Event::fake([PaymentConfirmed::class]);
+
+    $user = User::factory()->create(['role' => 'user']);
+    $producto = Producto::factory()->create([
+        'precio' => 7.00,
+        'descuento' => 0,
+        'unidades' => 2,
+        'eliminado' => false,
+    ]);
+    $terminal = datafonoTerminal(true);
+    $payment = pendingCobro($terminal, MoneyCents::eurosToCents(7.00), DatafonoPayment::SOURCE_MANUAL_CASH);
+
+    $result = $this->service->reconcile($payment, $user, [
+        'category' => 'producto',
+        'product_ids' => [$producto->id],
+    ]);
+
+    Event::assertDispatched(PaymentConfirmed::class, function (PaymentConfirmed $event) use ($result) {
+        return $event->payableType === \App\Models\Pedido::class
+            && $event->payableId === (int) $result->payable_id
+            && str_starts_with($event->stripeSessionId, 'datafono-'.$result->id);
+    });
+});
+
+test('communicateToHacienda encola B2B en cobro efectivo asignado', function () {
+    Event::fake([PaymentConfirmed::class]);
+
+    $user = User::factory()->create(['role' => 'user']);
+    $producto = Producto::factory()->create([
+        'precio' => 9.00,
+        'descuento' => 0,
+        'unidades' => 2,
+        'eliminado' => false,
+    ]);
+    $terminal = datafonoTerminal(true);
+    $payment = pendingCobro($terminal, MoneyCents::eurosToCents(9.00), DatafonoPayment::SOURCE_MANUAL_CASH);
+
+    $assigned = $this->service->reconcile($payment, $user, [
+        'category' => 'producto',
+        'product_ids' => [$producto->id],
+    ]);
+
+    Event::fake([PaymentConfirmed::class]);
+
+    $this->service->communicateToHacienda($assigned->fresh(['terminal', 'ticket.lines']));
+
+    Event::assertDispatched(PaymentConfirmed::class);
+});
+
+test('listPayments incluye estado Hacienda pendiente en efectivo sin factura', function () {
+    $user = User::factory()->create(['role' => 'user']);
+    $producto = Producto::factory()->create([
+        'precio' => 6.00,
+        'descuento' => 0,
+        'unidades' => 2,
+        'eliminado' => false,
+    ]);
+    $terminal = datafonoTerminal(true);
+    $payment = pendingCobro($terminal, MoneyCents::eurosToCents(6.00), DatafonoPayment::SOURCE_MANUAL_CASH);
+
+    Event::fake([PaymentConfirmed::class]);
+    $this->service->reconcile($payment, $user, [
+        'category' => 'producto',
+        'product_ids' => [$producto->id],
+    ]);
+
+    $row = collect($this->service->listPayments())->firstWhere('id', $payment->id);
+
+    expect($row)->not->toBeNull()
+        ->and($row['hacienda']['code'])->toBe('pending')
+        ->and($row['hacienda']['can_communicate'])->toBeTrue();
 });

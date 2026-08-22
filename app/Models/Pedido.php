@@ -24,6 +24,7 @@ class Pedido extends Model
         'payment_proof_path',
         'payment_method',
         'proof_uploaded_at',
+        'fecha_entrega',
     ];
 
     protected $casts = [

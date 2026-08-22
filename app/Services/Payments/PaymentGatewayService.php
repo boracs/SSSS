@@ -413,10 +413,17 @@ final class PaymentGatewayService
         }
 
         if ((bool) $pedido->pagado === true) {
+            if ($pedido->payment_method === null || $pedido->payment_method === '') {
+                $pedido->update(['payment_method' => 'card']);
+            }
+
             return true;
         }
 
-        $pedido->update(['pagado' => true]);
+        $pedido->update([
+            'pagado' => true,
+            'payment_method' => $pedido->payment_method ?: 'card',
+        ]);
 
         return true;
     }

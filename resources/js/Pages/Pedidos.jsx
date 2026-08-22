@@ -3,20 +3,53 @@ import { Head, usePage, Link } from "@inertiajs/react";
 import {
     Package,
     Truck,
-    ChevronRight,
     ShoppingBag,
     ImageOff,
+    CreditCard,
+    Calendar,
 } from "lucide-react";
 import Layout1 from "../layouts/Layout1";
 import { formatEur } from "@/utils/money";
+import StoreFiscalInvoiceActions from "@/components/StoreFiscalInvoiceActions";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 
 const formatDate = (value) => {
     if (!value) return "—";
     return new Date(value).toLocaleDateString("es-ES", {
         year: "numeric",
-        month: "long",
+        month: "short",
         day: "numeric",
     });
+};
+
+const formatPurchaseDate = (value) => {
+    if (!value) return "—";
+    return new Date(value).toLocaleDateString("es-ES", {
+        weekday: "short",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+
+const MetaItem = ({ icon: Icon, label, value }) => (
+    <div className="flex min-w-[8.5rem] flex-1 items-start gap-2 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/80">
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+        <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                {label}
+            </p>
+            <p className="text-sm font-semibold text-slate-800">{value}</p>
+        </div>
+    </div>
+);
+
+const paymentLabel = (method) => {
+    if (!method) return "No especificado";
+    const map = { card: "Con tarjeta", datafono: "Datáfono", cash: "Efectivo" };
+    return map[method] ?? method;
 };
 
 const StatusPill = ({ active, activeLabel, inactiveLabel, icon: Icon }) => (
@@ -51,123 +84,225 @@ const Thumb = ({ src, alt }) => {
     );
 };
 
+function FiscalInvoiceBadge({ pedido }) {
+    return (
+        <StoreFiscalInvoiceActions
+            detailUrl={pedido.fiscal_invoice_url}
+            pdfUrl={pedido.fiscal_invoice_pdf_url}
+            ready={Boolean(pedido.fiscal_invoice_ready)}
+        />
+    );
+}
+
+function PedidoAccordionPanel({ pedido }) {
+    const productos = pedido.productos || [];
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+                <MetaItem
+                    icon={Calendar}
+                    label="Fecha de compra"
+                    value={formatPurchaseDate(pedido.created_at)}
+                />
+                <MetaItem
+                    icon={CreditCard}
+                    label="Forma de pago"
+                    value={paymentLabel(pedido.payment_method)}
+                />
+            </div>
+
+            <ul className="divide-y divide-slate-100 rounded-xl bg-slate-50/80">
+                {productos.map((producto) => {
+                    const lineTotal = producto.precio_pagado * producto.cantidad;
+
+                    return (
+                        <li
+                            key={producto.id}
+                            className="flex items-center gap-3 px-3 py-3 first:pt-3 last:pb-3"
+                        >
+                            <Thumb src={producto.imagen} alt={producto.nombre} />
+                            <div className="min-w-0 flex-1">
+                                <Link
+                                    href={route("producto.ver", producto.id)}
+                                    className="truncate text-sm font-semibold text-slate-800 hover:text-s4"
+                                >
+                                    {producto.nombre}
+                                </Link>
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    {producto.cantidad} × {formatEur(producto.precio_pagado)}
+                                </p>
+                                {producto.descuento_aplicado > 0 ? (
+                                    <span className="mt-1 inline-flex items-center rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-semibold text-orange-600 ring-1 ring-orange-200">
+                                        -{parseInt(producto.descuento_aplicado, 10)}% dto.
+                                    </span>
+                                ) : null}
+                            </div>
+                            <p className="shrink-0 text-sm font-semibold tabular-nums text-slate-900">
+                                {formatEur(lineTotal)}
+                            </p>
+                        </li>
+                    );
+                })}
+            </ul>
+
+            <div className="flex justify-end text-sm">
+                <span className="font-semibold tabular-nums text-slate-900">
+                    Total {formatEur(pedido.precio_total)}
+                </span>
+            </div>
+        </div>
+    );
+}
+
 const MostrarPedidos = () => {
     const { pedidos = [] } = usePage().props;
+    const [expandedId, setExpandedId] = useState(null);
+
+    const toggleExpanded = (id) => {
+        setExpandedId((prev) => (prev === id ? null : id));
+    };
 
     return (
         <Layout1>
             <Head title="Mis pedidos" />
-            <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+            <div className="min-h-screen s4-surface-light px-4 py-10 sm:px-6">
                 <div className="mx-auto w-full max-w-3xl">
                     {/* Cabecera */}
-                    <div className="mb-6">
-                        <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                    <div className="mb-8">
+                        <div className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-s4 shadow-sm ring-1 ring-slate-200/80">
+                            <Package className="h-3.5 w-3.5" aria-hidden />
+                            Tienda socios
+                        </div>
+                        <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                             Mis pedidos
                         </h1>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1.5 max-w-lg text-sm text-slate-600">
                             Consulta el estado y el detalle de tus compras.
                         </p>
                     </div>
 
                     {pedidos.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center rounded-2xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-slate-200">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400">
-                                <Package className="h-7 w-7" />
+                        <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white text-center shadow-[0_24px_60px_-28px_rgba(15,23,42,0.2)]">
+                            <div
+                                className="h-1 w-full bg-gradient-to-r from-s4 via-cyan-500 to-teal-400"
+                                aria-hidden
+                            />
+                            <div className="flex flex-col items-center px-6 py-16">
+                                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-400 ring-1 ring-slate-200/80">
+                                    <Package className="h-7 w-7" />
+                                </div>
+                                <h2 className="mt-4 text-lg font-semibold text-slate-800">
+                                    Aún no tienes pedidos
+                                </h2>
+                                <p className="mt-1 max-w-sm text-sm text-slate-500">
+                                    Cuando realices tu primera compra, aparecerá aquí
+                                    con todo su detalle.
+                                </p>
+                                <Link
+                                    href={route("tienda")}
+                                    className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                >
+                                    <ShoppingBag className="h-4 w-4" />
+                                    Ir a la tienda
+                                </Link>
                             </div>
-                            <h2 className="mt-4 text-lg font-semibold text-slate-800">
-                                Aún no tienes pedidos
-                            </h2>
-                            <p className="mt-1 max-w-sm text-sm text-slate-500">
-                                Cuando realices tu primera compra, aparecerá aquí
-                                con todo su detalle.
-                            </p>
-                            <Link
-                                href={route("tienda")}
-                                className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
-                            >
-                                <ShoppingBag className="h-4 w-4" />
-                                Ir a la tienda
-                            </Link>
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {pedidos.map((pedido) => (
-                                <Link
-                                    key={pedido.id}
-                                    href={route("mostrar.pedido", pedido.id)}
-                                    className="group block overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition-all hover:shadow-md hover:ring-slate-300"
-                                >
-                                    {/* Cabecera de la tarjeta */}
-                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
-                                        <div>
-                                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                                Pedido
-                                            </p>
-                                            <p className="text-base font-bold text-slate-900">
-                                                #{pedido.id}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                                {formatDate(pedido.created_at)}
-                                            </p>
-                                            <p className="text-lg font-extrabold text-slate-900">
-                                                {formatEur(pedido.precio_total)}
-                                            </p>
-                                        </div>
-                                    </div>
+                            {pedidos.map((pedido) => {
+                                const isOpen = expandedId === pedido.id;
+                                const productos = pedido.productos || [];
+                                const nombres =
+                                    productos.map((p) => p.nombre).join(", ") ||
+                                    "Sin productos";
 
-                                    {/* Cuerpo */}
-                                    <div className="flex items-center justify-between gap-4 px-5 py-4">
-                                        <div className="flex min-w-0 items-center gap-3">
-                                            {/* Miniaturas de productos */}
-                                            <div className="flex -space-x-2">
-                                                {(pedido.productos || [])
-                                                    .slice(0, 3)
-                                                    .map((producto) => (
+                                return (
+                                    <article
+                                        key={pedido.id}
+                                        className={`rounded-2xl bg-white p-5 ring-1 transition ${
+                                            isOpen
+                                                ? "ring-s4/20"
+                                                : "ring-slate-200 hover:ring-slate-300"
+                                        }`}
+                                    >
+                                        <div className="space-y-3">
+                                            {/* Cabecera */}
+                                            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-sm">
+                                                <p className="font-semibold text-slate-900">
+                                                    Pedido #{pedido.id}
+                                                </p>
+                                                <p className="text-center text-slate-500">
+                                                    {formatDate(pedido.created_at)}
+                                                </p>
+                                                <p className="text-right font-semibold tabular-nums text-slate-900">
+                                                    {formatEur(pedido.precio_total)}
+                                                </p>
+                                            </div>
+
+                                            {/* Estado protagonista */}
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <StatusPill
+                                                    active={pedido.entregado}
+                                                    activeLabel="Entregado"
+                                                    inactiveLabel="Pendiente de envío"
+                                                    icon={Truck}
+                                                />
+                                                <FiscalInvoiceBadge pedido={pedido} />
+                                            </div>
+
+                                            {/* Cuerpo */}
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className="flex -space-x-2">
+                                                    {productos.slice(0, 3).map((producto) => (
                                                         <Thumb
                                                             key={producto.id}
                                                             src={producto.imagen}
                                                             alt={producto.nombre}
                                                         />
                                                     ))}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-sm font-medium text-slate-700">
+                                                        {nombres}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {pedido.total_articulos}{" "}
+                                                        {pedido.total_articulos === 1
+                                                            ? "artículo"
+                                                            : "artículos"}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="min-w-0">
-                                                <p className="truncate text-sm font-medium text-slate-700">
-                                                    {(pedido.productos || [])
-                                                        .map((p) => p.nombre)
-                                                        .join(", ") || "Sin productos"}
-                                                </p>
-                                                <p className="text-xs text-slate-500">
-                                                    {pedido.total_articulos}{" "}
-                                                    {pedido.total_articulos === 1
-                                                        ? "artículo"
-                                                        : "artículos"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <ChevronRight className="h-5 w-5 shrink-0 text-slate-300 transition-colors group-hover:text-slate-500" />
-                                    </div>
 
-                                    {/* Pie con estados */}
-                                    <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-slate-50/60 px-5 py-3">
-                                        <StatusPill
-                                            active={pedido.entregado}
-                                            activeLabel="Entregado"
-                                            inactiveLabel="Pendiente de envío"
-                                            icon={Truck}
-                                        />
-                                        {pedido.fiscal_invoice_url ? (
-                                            <span className="inline-flex items-center rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-200">
-                                                {pedido.fiscal_invoice_ready ? "Factura TBAI" : "Factura en trámite"}
-                                            </span>
+                                            {/* Pie: acordeón */}
+                                            <AccordionTrigger
+                                                open={isOpen}
+                                                onToggle={() =>
+                                                    toggleExpanded(pedido.id)
+                                                }
+                                                panelId={`pedido-panel-${pedido.id}`}
+                                                stopPropagation={false}
+                                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                                                chevronClassName="h-3.5 w-3.5"
+                                            >
+                                                {isOpen
+                                                    ? "Ocultar detalles"
+                                                    : "Ver detalles"}
+                                            </AccordionTrigger>
+                                        </div>
+
+                                        {isOpen ? (
+                                            <div
+                                                id={`pedido-panel-${pedido.id}`}
+                                                className="mt-4 pt-4"
+                                            >
+                                                <PedidoAccordionPanel pedido={pedido} />
+                                            </div>
                                         ) : null}
-                                        <span className="ml-auto text-xs font-semibold text-slate-400 transition-colors group-hover:text-slate-600">
-                                            Ver detalles
-                                        </span>
-                                    </div>
-                                </Link>
-                            ))}
+                                    </article>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

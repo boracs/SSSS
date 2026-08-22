@@ -14,6 +14,12 @@ final class VipVirtualLocker
         return array_values(array_unique(array_map('intval', (array) $numbers)));
     }
 
+    /** Taquilla virtual por defecto para VIP sin casillero físico (#500). */
+    public static function defaultNumber(): int
+    {
+        return self::sharedNumbers()[0] ?? 500;
+    }
+
     public static function isShared(mixed $numeroTaquilla): bool
     {
         if ($numeroTaquilla === null || $numeroTaquilla === '' || $numeroTaquilla === '0' || $numeroTaquilla === 0) {

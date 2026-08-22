@@ -51,7 +51,7 @@
 └─────────────────┴──────────────────────────────┴────────────────────────────────────┘
 ```
 
-**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `Chatbot` lazy/`Suspense` (no-admin; único FAB — WhatsAppFloatingButton retirado). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global. Páginas vía `import.meta.glob` diferido en `app.jsx` (chunks por ruta).
+**Shell global:** `layouts/PublicLayout.jsx` → `components/Header.jsx` (navegación única) + `Footer` + `PwaInstallBanner` (solo si no instalada) + `Chatbot` lazy/`Suspense` (único FAB). `layouts/AuthenticatedLayout.jsx` es alias de `PublicLayout`. Auth (`Auth/*`) sin shell global. Páginas vía `import.meta.glob` diferido en `app.jsx` (chunks por ruta).
 
 **Roles y flags:** `user.role === 'admin'` | `user.is_vip` | `user.has_active_locker` / `has_locker` — condicionan menú (`GlobalNav.jsx` vía `Header.jsx`) y políticas.
 
@@ -96,6 +96,8 @@ maider_0/
 │   ├── Actions/Chatbot/
 │   │   └── ProcessChatbotQueryAction.php   ──► ChatbotInteractionQueryDto → ChatbotAgentService (guard + FAQ + derivación)
 │   │
+│   ├── Actions/Store/
+│   │   └── CreateStoreCheckoutAction.php   ──► Reserva stock + Stripe Checkout; vacía carrito solo si hay sesión
 │   ├── Actions/Invoicing/
 │   │   ├── IssueFiscalInvoiceAction.php    ──► Idempotente por stripe_checkout_session_id; crea factura en B2BRouter (HTTP fuera de lockForUpdate)
 │   │   └── SyncFiscalTaxReportAction.php   ──► Sondea tax_report; registered/error → persiste; nunca revierte el pago Stripe
@@ -112,6 +114,7 @@ maider_0/
 │   │       ├── MakeUserVip.php
 │   │       ├── OperationalSanityCheckCommand.php
 │   │       ├── ReleaseRentalNoShowsCommand.php  ──► rentals:release-no-shows (--dry-run); libera solo no pagadas del todo (respeta prepago completo); barrido OFF hasta que exista check-in (config/rentals.php)
+│   │       ├── ReleaseUnpaidStoreOrdersCommand.php ──► `store:release-unpaid` (solo card no pagado/no entregado; schedule everyFiveMinutes)
 │   │       ├── SyncAutoCoachReferenceVideos.php ──► Sincroniza catálogo vídeos referencia
 │   │       └── SyncStripeCheckoutSessionCommand.php ──► Recupera pagos Stripe pending (webhook perdido)
 │   │
@@ -122,6 +125,10 @@ maider_0/
 │   │   │   ├── RentalTariffRowDto.php          ──► Fila de tarifas: categoría + precios en céntimos por pack (null = no ofertado)
 │   │   │   ├── RentalTariffTableDto.php        ──► Tabla pública de tarifas (columnas horas/días, filas, notas de condiciones)
 │   │   │   └── RentalWindowDto.php             ──► Ventana resuelta: pickupAt→returnAt (cobrado) vs blockEnd (inventario, +buffer)
+│   │   ├── Store/
+│   │   │   ├── StorePromoSlideDto.php          ──► Slide banner promo tienda (readonly)
+│   │   │   ├── StoreProductWriteDto.php        ──► Alta/edición catálogo (precio redondeado a céntimo)
+│   │   │   └── CreateStoreCheckoutDto.php      ──► Entrada Action checkout tienda (líneas + total cotizado)
 │   │   ├── Seo/
 │   │   │   ├── SeoMetaDto.php                  ──► title/description/canonical/OG/robots/jsonLd (readonly)
 │   │   │   └── SitemapUrlDto.php               ──► loc + lastmod/changefreq/priority (readonly)
@@ -158,6 +165,8 @@ maider_0/
 │   │
 │   ├── Contracts/Invoicing/
 │   │   └── FiscalInvoiceIssuerInterface.php    ──► Puerto facturación fiscal; createIssuedInvoice()/getTaxReport(); bind en AppServiceProvider según invoicing.driver
+│   ├── Contracts/Payments/
+│   │   └── StartsCheckout.php                  ──► Puerto abrir Checkout; bind → InitiatePaymentAction (tests pueden fake)
 │   │
 │   ├── Exceptions/
 │   │   ├── EmergencyKeyNotEligibleException.php
@@ -312,7 +321,7 @@ maider_0/
 │   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() descriptivo
 │   │   ├── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
 │   │   └── Invoicing/
-│   │       └── FiscalInvoiceCategory.php   ──► Tienda|BonosClases|BonosTaquilla|Alquileres|Clases; isEnabled() lee config('invoicing.payable_types') (nunca hardcodeado)
+│   │       └── FiscalInvoiceCategory.php   ──► Tienda|BonosClases|BonosTaquilla|Alquileres|Clases|Fotos|Subastas; isEnabled() lee config
 │   │
 │   ├── Jobs/
 │   │   ├── SendContactMessageJob.php       ──► ShouldQueue; delega a ContactMessageService; 3 reintentos
@@ -413,9 +422,9 @@ maider_0/
 │   │   ├── [DOMINIO: FOTOS] Services/Photos/
 │   │   │   └── PhotoBookingService.php           ──► packs fotos (base+plus×personas), createBooking, confirm/reject, payloads
 │   │   ├── Invoicing/
-│   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (+ PhotoSessionBooking) → FiscalInvoiceDraftDto; fallback contacto invitado
+│   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (+ PhotoSessionBooking, Auction) → FiscalInvoiceDraftDto
 │   │   │   ├── FiscalInvoiceAccessService.php    ──► Vista cliente: ownership + DTO público (TBAI id, QR, PDF URL)
-│   │   │   ├── ClientFiscalInvoiceListService.php ──► "Mis facturas" (/mis-facturas): paginado + filtro por FiscalInvoiceCategory; ownership por user_id; reusa FiscalInvoiceAccessService::toPublicDto()
+│   │   │   ├── ClientFiscalInvoiceListService.php ──► "Mis facturas"; ownership user_id (subastas: winner_user_id)
 │   │   │   ├── B2BRouterClient.php               ──► HTTP fino: POST invoices, GET tax_reports, GET PDF; headers X-B2B-API-Key/Version
 │   │   │   └── B2BRouterFiscalInvoiceIssuer.php   ──► Adapter FiscalInvoiceIssuerInterface; única conversión céntimos→euros (MoneyCents)
 │   │   ├── Rentals/
@@ -427,6 +436,13 @@ maider_0/
 │   │   │   └── LockerPaymentIndexBuilder.php   ──► Indice agregado anti-N+1 cola admin
 │   │   ├── Vip/
 │   │   │   └── VipMembershipService.php        ──► Activar/desactivar VIP; taquilla virtual #500 si sin casillero
+│   │   ├── Store/
+│   │   │   ├── ProductDetailPageService.php    ──► Ficha ProductoVer (precios/stock/galería + relacionados + seo)
+│   │   │   ├── StoreProductPricing.php         ──► Precio socio en céntimos (descuento sobre catálogo)
+│   │   │   ├── StoreProductCatalogService.php  ──► Alta/edición/ocultar/imagen principal (admin); listado sin Eloquent crudo
+│   │   │   ├── StorePromoBannerService.php     ──► 3 slides promo tienda/ficha
+│   │   │   ├── StoreCartCheckoutValidator.php  ──► Checkout: líneas POST = carrito persistido
+│   │   │   └── StoreOrderStockService.php      ──► Reserva stock lockForUpdate; libera pedidos Stripe no pagados; total en céntimos
 │   │   ├── Taller/
 │   │   │   └── TallerArticleService.php        ──► Listado + related paginado (load more JSON) + productos tip tienda
 │   │   ├── Chatbot/
@@ -448,6 +464,7 @@ maider_0/
 │   │
 │   └── Support/
 │       ├── AcademyContact.php                ──► WhatsApp escuela: dígitos, wa.me base/url, urlForPhone()
+│       ├── ChatbotDisplayName.php            ──► Nombre de pila para el chatbot (ficha User.nombre)
 │       ├── AutoCoach/
 │       │   └── VideoDurationProbe.php        ──► Duración MP4/MOV (mvhd) / ffprobe opcional
 │       ├── ChatbotQueryNormalizer.php        ──► Normalización consultas chatbot (acentos + raíces verbales ES)
@@ -455,7 +472,8 @@ maider_0/
 │       └── StaffVisualIdentity.php             ──► Iniciales + color estable por monitor
 │       ├── IniSize.php                         ──► Parseo upload/post limits de php.ini
 │       ├── LessonBonoCreditUnits.php           ──► Unidades crédito bono por modalidad edad
-│       ├── MoneyCents.php                      ──► Conversion EUR <-> centimos (taquillas)
+│       ├── MoneyCents.php                      ──► EUR ↔ céntimos; neto desde total IVA incluido (B2B); formatEurosLabel
+│       ├── StoreCartLines.php                  ──► Normaliza {id,cantidad} del checkout tienda
 │       └── VipVirtualLocker.php                ──► Número reservado taquilla virtual VIP (config vip.php)
 │
 ├── bootstrap/
@@ -467,16 +485,17 @@ maider_0/
 │   ├── filesystems.php, google.php, logging.php, mail.php
 │   ├── queue.php, sanctum.php, services.php, chatbot_pages.php, chatbot_faq.php, session.php, vip.php
 │   ├── rentals.php  ──► Buffer rotación (30m, no cobrado), flexibilidad recogida ±30m, no-show (grace + kill-switch + lookback), hora modo día (12:00), señal %, paso DP, caducidad pending: 45m (pública/Stripe, pending_unpaid_expiration_minutes) vs 7 días (admin/pago manual, pending_expiration_days)
+│   ├── store.php  ──► unpaid_hold_minutes + promo_bono (copy/precio céntimos) + promo_images
 │   └── invoicing.php  ──► INVOICING_ENABLED (kill-switch), driver, credenciales B2BRouter, payable_types whitelist, IVA default, backoff sondeo
 │
 ├── database/
 │   ├── factories/          (10) — … PriceSchemaFactory (tarifa Softboards de referencia + onlyPacks), SurfboardFactory, BookingFactory (hourWindow/dayWindow/depositPaid/fullyPaid para tests de alquiler)
-│   ├── migrations/         (79) — … payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions; restructure_price_schema_packs; split_hard_surfboard_categories; add_rental_window_fields_to_bookings
+│   ├── migrations/         (81) — … add_fecha_entrega_to_pedidos; add_performance_indexes; payment_webhook_idempotency; payment_receipts; auctions; auction_bids; fiscal_invoices; autocoach_reference_videos; emergency_lock_settings; chatbot_interactions; restructure_price_schema_packs; split_hard_surfboard_categories; add_rental_window_fields_to_bookings
 │   └── seeders/            (27) — AuctionDemoSeeder (15 lotes: 4 live · 6 settled · 5 draft), CoherentDemoSeeder, ClassManagerSummer2026Seeder, BorjaReservationsSeeder, PriceSchemaSeeder (3 esquemas canónicos + reasignación tablas por categoría), …
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
-│   ├── aprendizaje/                         ← Libro de Aprendizaje (cuaderno compartido Cursor+DeepSeek): INDICE.md + temas 01-06; skill Reasonix `/profesor-aprendizaje`
+│   ├── aprendizaje/                         ← Libro de Aprendizaje (cuaderno compartido Cursor+DeepSeek): INDICE.md + temas 01-07; skill Reasonix `/profesor-aprendizaje`
 │   ├── ia/
 │   │   ├── 01-cto-protocol.md
 │   │   └── 02-master-prompt-v3-ultra.md
@@ -502,7 +521,12 @@ maider_0/
 │   │   ├── REGISTRO.md                         ← iteraciones de prompts (aprendizaje mutuo)
 │   │   ├── MASTER-PROMPT-DEEPSEEK.md           ← núcleo para DeepSeek-web (espejo .cursorrules)
 │   │   ├── AGENTE-MARKETING-DISENO.md          ← persona UI/UX/CRO (skill Reasonix `/marketing-diseno`)
-│   │   └── PLANTILLA-UX-MODAL.md               ← plantilla prompts UX modal (UI-only)
+│   │   ├── PLANTILLA-UX-MODAL.md               ← plantilla prompts UX modal (UI-only)
+│   │   ├── PROMPT-UX-BANNER-SUBASTAS-TIENDA.md ← brief UX banner/slider subastas en Tienda (→ Reasonix; luego Cursor)
+│   │   ├── PROMPT-UX-BANNER-PROMO-TIENDA.md  ← rediseño banner 3 fotos (bono/subasta/producto) → Reasonix UX
+│   │   ├── PROMPT-UX-BANNER-PROMO-SELECTOR.md ← marketing+UX selector dots/flechas vs CTA → Reasonix; luego Cursor
+│   │   └── PROMPT-UX-BANNER-PROMO-PLACEMENT.md ← CRO full-bleed bajo menú vs Volver/crumbs → Reasonix; luego Cursor
+│   ├── TAREAS-PENDIENTES.md                    ← backlog personal del dueño (añadir / listar / quitar con la IA)
 │   ├── RESUMEN-PARA-GEMINI.md                  ← resumen compacto del proyecto (pegar en Gemini; el árbol no, 83 KB)
 │   ├── PROJECT_TREE.md
 │   ├── INFORME_TECNICO_COTIZACION.md           ← informe estructural/funcional para cotización
@@ -515,6 +539,7 @@ maider_0/
 │   │   ├── zurriola-surf-sunset-{960,1280,1920}.{webp,jpg} ──► Hero home responsive (LCP)
 │   │   ├── opciones/       — tiles fila 2 OpcionesIntro (`opcion-*.{webp,jpg}`)
 │   │   ├── taller/         — héroes artículos Taller SEO (16 APROBADO `*.webp` IA; #1/#15 POSPONER)
+│   │   ├── store/          — fotos promo banner tienda (`promo-bono|subasta|producto.webp`)
 │   │   ├── tienda/demo/    — placeholders prueba catálogo (productos + tablas)
 │   │   ├── webcam/         — fallback offline Zurriola (`zurriola-offline.webp` + `.jpg`)
 │   │   └── sponsors/
@@ -524,7 +549,7 @@ maider_0/
 │   │       ├── gipuzkoa/   — crédito webcams Diputación (SVG wordmark)
 │   │       └── open-meteo/ — crédito datos Open-Meteo (SVG)
 │   │   └── placeholder.svg
-│   ├── favicon.ico, favicon.svg, favicon-*.png, apple-touch-icon.png, site.webmanifest
+│   ├── favicon.ico, favicon.svg, favicon-*.png, apple-touch-icon.png, site.webmanifest, sw.js (PWA instalable)
 │   ├── index.php
 │   ├── .user.ini           — límites PHP upload/post para AutoCoach (Apache/XAMPP)
 │   └── storage/            — symlink → storage/app/public
@@ -571,29 +596,36 @@ maider_0/
 | `BookingService`                                   | Domain service (SSOT)     | `priceForMinutes` (DP sobre packs, paso 30 min) · `buildWindow`/`normalizeDayRange` (12:00→12:00) · buffer de rotación no cobrado (`block_end`) · `isAvailable` con solape estricto + `lockForUpdate` · `createPendingBooking` rechaza tablas `is_active=false` dentro del lock; caducidad corta (`expiresInMinutes`) para el flujo público Stripe vs larga (7 días) para admin/pago manual · `releaseNoShows` (OFF por defecto; solo libera si `Booking::isRentalFullyPaid()` es false). Espejo JS: `resources/js/lib/rentalPricing.js` (paridad verificada en `tests/Unit/Rentals/RentalPricingJsParityTest`). Contrato fijado en `tests/Unit/Rentals/*` y `tests/Feature/Rentals/*`. |
 | `PaymentGatewayService`                            | Pasarela Stripe           | `createCheckoutSession(InitiatePaymentDto): CheckoutSessionResultDto`; metadata con `idempotency_token`; `registerPaymentIntent` + `confirmPaymentFromWebhook` con `lockForUpdate`. |
 | `InitiatePaymentAction`                            | Action pagos              | DTO → PaymentGatewayService → PaymentInitiated (graceful) → URL checkout. |
+| `CreateStoreCheckoutAction` (`Actions/Store/`) | Action tienda | Reserva stock + líneas Stripe + vacía carrito solo si hay sesión; si Stripe falla libera stock. |
 | `PaymentWebhookController`                         | Webhook Stripe            | Firma HMAC → confirmPaymentFromWebhook → PaymentConfirmed (graceful). POST /webhooks/stripe. |
 | `DatafonoIngestWebhookController` (`Http/Controllers/Payments/`) | Webhook TPV firmado | POST /webhooks/datafono/ingest (sin CSRF/auth, firma HMAC-SHA256 propia `X-Datafono-Signature` con `config('services.datafono.ingest_secret')`). Decodifica JSON → `TpvPaymentIngestDto::fromArray` → `DatafonoPaymentReconciliationService::ingestTpvPayment`. 401 firma inválida, 422 payload/terminal inválido, 503 si `DATAFONO_INGEST_ENABLED=false`. |
 | `TpvPaymentIngestDto` (`DTOs/Payments/`)            | DTO readonly              | `amountCents`, `paidAt` (ISO8601), `externalReference`, `terminalCodigo?`, `notes?`, `rawPayload` (payload completo, auditoría). `fromArray()` valida obligatorios. |
 | `MostradorTicketLineDto` (`DTOs/Payments/`)         | DTO readonly              | Línea de ticket: `category`, `amountCents`, `payload` (ids dominio). |
+| `DatafonoHaciendaStatusDto` (`DTOs/Payments/`)      | DTO readonly              | Estado Hacienda en listado datáfono: `code`, `label`, `canCommunicate`. |
 | `MostradorTicket` / `MostradorTicketLine`          | Modelos                   | Ticket 1:1 con `datafono_payments`; N líneas con morph payable + payload JSON. |
 | `MostradorTicketService`                           | Ticket multi-servicio     | `closeCashTicket` / `assignTpvTicket`: suma líneas, perfiles guest/VIP/locker, materializa N payables atómicos. |
 | `DatafonoPaymentReconciliationService::ingestTpvPayment` | Ingesta TPV | Resuelve terminal por `terminal_codigo` o `config('services.datafono.default_terminal_codigo')` (404/inactivo → ValidationException) → delega en `registerRawPayment()` (source=tpv, idempotente por `external_reference`, ya en Fase 1). |
 | `RedirectsToStripeCheckout` (trait Controller)     | Redirección Inertia 2     | `Inertia::location()` si X-Inertia; `redirect()->away()` si no. |
-| `PaymentSuccessController`                         | Retorno Stripe            | Página de aterrizaje tras pago: lee session_id → redirige contextualmente. |
-| `MyFiscalInvoicesController` / `ClientFiscalInvoiceListService` | Panel cliente | `/mis-facturas`; filtro por las 5 categorías (tienda, bonos_clases, alquileres, clases, bonos_taquilla). Las 5 ramas están implementadas en `FiscalInvoiceBuilderService`, pero `FiscalInvoiceCategory::isEnabled()` exige además `INVOICING_ENABLED=true`; con el flag en `false` (entorno de prueba actual) todas se muestran como "Próximamente". |
+| `PaymentSuccessController`                         | Retorno Stripe            | session_id → sync idempotente → `PaymentConfirmed::emit` (no `dispatch` con nombre) → Success.jsx. |
+| `MyFiscalInvoicesController` / `ClientFiscalInvoiceListService` | Panel cliente | `/mis-facturas`; filtro por categoría (tienda, bonos, taquillas, alquileres, clases, fotos, **subastas**). 2ª mano no: se vende por WhatsApp, no hay cobro Stripe. `isEnabled()` exige `INVOICING_ENABLED=true`. |
 | `AutoReleaseService`                               | Batch + lock              | `lockForUpdate` sobre pending sin `payment_proof_path`; grace 30min (<4h clase) o 120min.                                                                                                                                 |
 | `FirestoreService`                                 | Singleton REST            | Cliente inyectado; `transport => 'rest'` en `AppServiceProvider`. Legacy artifacts; **chatbot ya no usa Firestore** (MySQL + localStorage).                                                     |
 | `GoogleAIService`                                  | HTTP Guzzle               | Modelo `gemini-2.5-flash-preview-05-20`; falla en boot si falta `GEMINI_API_KEY`. `generationConfig.thinkingConfig.thinkingBudget=0` (fix 2026-07-17: sin esto, el modelo consumía casi todo `maxOutputTokens` en "thinking" interno y devolvía texto cortado). |
 | `PublicPageSeoService` (`Services/Seo/`) | Sync, sin APIs externas | SEO/GEO: landings + catálogo + taller (`tallerIndex`/`tallerArticle`) + `preloadImages` (LCP). JSON-LD Organization/LocalBusiness/Service/Course/Product/Offer/Article. `SeoHead`. Regla: `.cursor/rules/seo-geo-public.mdc`. |
 | `ProductDetailPageService` (`Services/Store/`) | Sync | Ficha `ProductoVer`: precios/stock/galería + relacionados + `seo` DTO. Controller delgado. |
+| `StorePromoBannerService` (`Services/Store/`) | Sync | 3 slides promo tienda/ficha: bono recomendado 10×1,5h/250€, mejor subasta, producto más ofertado. DTO `StorePromoSlideDto`. |
+| `StoreOrderStockService` (`Services/Store/`) | Sync + lock | Reserva stock de carrito con `lockForUpdate` (ids ordenados); `releaseUnpaid` / `releaseExpiredUnpaid` (cron `store:release-unpaid`: `payment_method=card`, no entregado, margen `config/store.php`). Totales vía `StoreProductPricing` + `MoneyCents`; el `total` del carrito debe coincidir. |
+| `StoreProductPricing` (`Services/Store/`) | Sync | Precio unitario/línea en céntimos (descuento sobre catálogo). Usado por carrito, checkout, ficha, banner y datáfono tienda. |
+| `StoreProductCatalogService` (`Services/Store/`) | Sync + lock | CRUD admin de producto + imágenes; DTO `StoreProductWriteDto`. `ProductoController` delgado. |
 | `PublicSitemapService` (`Services/Seo/`) | Sync + Cache 1h | `robots.txt` (Allow/Disallow + Sitemap) y `sitemap.xml` (landings + taller + productos + 2ª mano available + alquiler activos). Rutas `seo.robots` / `seo.sitemap`. |
 | `ZurriolaGeoFactsService` (`Services/SurfConditions/`) | Sync, JSON local | Hechos GEO públicos (`zurriola-geo-facts.json`): lugar, 20 m escuela↔playa, temporada, kJ, material, FAQs. DTO `ZurriolaGeoFactsDto`; UI `ZurriolaGeoGuide.jsx` en webcams; FAQPage en SEO. Cancelación = null hasta redactar. |
 | `SurfDailyBriefService` (`Services/SurfConditions/`) | Cron cada 6 h + Gemini | "Parte S4 de Zurriola": Open-Meteo (ola/viento) + mareas/texto Euskalmet vía tabla → energía/nivel → Gemini. `afterResponse` si falta parte. Ver `docs/surf-conditions/README.md`. |
 | `SurfBriefReactionService` (`Services/SurfConditions/`) | Voto sesión + throttle | 👍/👎 del parte del día (`surf_brief_votes` + contadores en `surf_daily_briefs`). Un voto/sesión, toggle y cambio de sentido. Ruta `POST servicios.webcams.parte.reaccion`. |
 | `EuskalmetSeaForecastClient` (`Services/SurfConditions/`) | Cache XML 30 min | Predicción marítima Euskalmet (Open Data Euskadi XML público, sin API key): pleamar/bajamar a minutos + texto/temp agua. DTO `EuskalmetSeaDayDto`. |
-| `SurfForecastTableService` (`Services/SurfConditions/`) | Cache::remember 1h (tabla) / 45 min (`detailedPayload()`) | Tabla previsión (compacta, `forecast_slot_hours` = diurno cada 2h): oleaje/viento horario Open-Meteo; **mareas preferente Euskalmet** (fallback `TideExtremaCalculator` sobre `sea_level_height_msl`). Energía/viento como antes. Distinto de `SurfDailyBriefService`. Se invalida junto al parte en `SurfBriefController::regenerate()` (`forget()` limpia también la caché del slider detallado). Cada slot lleva además `signal` (reusa `SurfLevelRecommender::recommendSignal()`, misma escala good/espigon/caution/closed que el badge de "hoy"); cada día expone `bestSignal`/`qualityStars`/`bestSlotTime` para el resumen fusionado "Ver forecast completo" (`SurfFullForecastOverlay.jsx`). `qualityStars` (día) usa `intermediateQualityStars()`: heurística para **nivel intermedio** (mayoría del alumnado), tamaño de ola (umbrales `level_thresholds`) + viento (`SurfWindStateClassifier`), tope 2★ si "closed" o tamaño > techo "avanzado". `detailedPayload()` (método nuevo) expone además el slider "cada 2h · todos los días" con `qualityStars` por FRANJA vía `surferQualityStars()` (nivel intermedio/avanzado: más tamaño = mejor nota si el viento acompaña). |
+| `SurfForecastTableService` (`Services/SurfConditions/`) | Cache::remember 1h (tabla) / 45 min (`detailedPayload()`) | Tabla previsión (slots diurnos 2h): Open-Meteo + mareas Euskalmet. Estrellas Ini/Int/Ava vía `SurfLevelQualityStarsService` (JSON `stars` + `wind_energy_rules`). Distinto del parte Gemini. Caché `forecast_table.v16` / `detailed_timeline.v9`. |
+| `ZurriolaSpotLogisticsService` + `SurfLevelQualityStarsService` (`Services/SurfConditions/`) | JSON local + PHP | Cuaderno `zurriola-spot-logistics.json` (kJ, viento, verano, rip). Termómetro de estrellas sin IA. DTO `SurfLevelStarsDto`. Gemini recibe esas notas en el prompt del parte. |
 | `ZurriolaWeatherForecastService` + `OpenMeteoWeatherClient` (`Services/SurfConditions/`) | Cache::remember 45 min, on-demand | Panel "Tiempo detallado" (horario 24/48h + 7 días) en `/servicios/webcams`: `OpenMeteoWeatherClient::fetchForecast()` (`api/forecast`, `Http::timeout(10)`, `wind_speed_unit=kmh`) → DTOs `ZurriolaWeatherHourDto`/`ZurriolaWeatherDayDto`/`ZurriolaWeatherForecastDto`. Flag `zurriola_surf.weather_detail_enabled`; fallo → `{ok:false,message}` + `Log::warning`, nunca 500. Controller fino `SurfConditions\ZurriolaWeatherController` → `GET servicios.webcams.weather`. Front: botón amber + fetch SOLO al primer clic (cero peso en carga inicial), `WeatherDetailPanel.jsx`. `OpenMeteoWeatherClient::fetchDetailedForecast(days)` es la variante SIN recorte desde "ahora" ni tope de puntos, usada por `SurfForecastTableService::detailedPayload()` (ver fila siguiente). |
-| `SurfDetailedForecastController` (`Http/Controllers/`) | Cache::remember 45 min (vía `SurfForecastTableService`), on-demand | Slider "Ver forecast al detalle" (cada 2h · todos los días): fusiona oleaje + tiempo franja a franja (`forecast_detailed_slot_hours`). DTOs `SurfDetailedSlotDto`/`SurfDetailedDayDto`. `GET servicios.webcams.forecast_detailed`. Front: `SurfDetailedForecastSlider.jsx` + `LevelStars.jsx` (3 filas Ini/Int/Ava). Estrellas: `starsForIniciacion` / `starsForIntermedio` / `starsForAvanzado` (`level_thresholds`); payload `qualityStarsIniciacion|Intermedio|Avanzado` (`qualityStars` = intermedio, compat). |
+| `SurfDetailedForecastController` (`Http/Controllers/`) | Cache::remember 45 min (vía `SurfForecastTableService`), on-demand | Slider "Ver forecast al detalle": oleaje+tiempo. Estrellas `SurfLevelQualityStarsService` (mismo recetario que la tabla y el parte). Payload `qualityStarsIniciacion|Intermedio|Avanzado`. |
 | `VipStudentPerformanceService`                     | Read-heavy agregador      | Consultas amplias por mes bono; usar con `loadHistory` consciente en admin.                                                                                                                                               |
 | `LessonProofStorageService`                        | Filesystem                | Privado; no exponer URL directa sin policy.                                                                                                                                                                               |
 | `AutoCoachUploadService`                           | Upload + cuotas IP/disco | Throttle + MIME + duración (≤30s) + máx. 7/tanda; `config/autocoach.php`; `VideoDurationProbe`; uploads en `storage/app/public/autocoach/uploads` |
@@ -671,7 +703,7 @@ resources/
     │   └── demoCatalogImages.js ──► placeholders prueba tienda/tablas (`/img/tienda/demo`)
     │
     ├── layouts/
-    │   ├── PublicLayout.jsx          ──► Header + main + Footer + FlashErrorModal + Chatbot lazy (único FAB flotante)
+    │   ├── PublicLayout.jsx          ──► Header + main + Footer + FlashErrorModal + PwaInstallBanner + Chatbot lazy
     │   ├── AuthenticatedLayout.jsx   ──► Alias de PublicLayout
     │   ├── GuestLayout.jsx           ──► Auth Breeze (sin Header global)
     │   ├── Layout1.jsx               ──► Wrapper contenido (sin nav; suele ir dentro de PublicLayout)
@@ -680,12 +712,17 @@ resources/
     │
     ├── components/
     │   ├── Header.jsx                ──► Shell: GlobalNav (sin OpcionesIntro)
-    │   ├── GlobalNav.jsx             ──► Navegación única; menú flyout por rol; admin Gestión (Servicios + Pagos cobros + resto)/Extras; CTA Acceder/Salir; PressRipple cyan al clic
+    │   ├── GlobalNav.jsx             ──► Navegación única; cuenta desktop = UserCircle + chevron; menú flyout por rol
     │   ├── admin/
     │   │   └── CatalogOfferTabs.jsx  ──► Tabs Gestor de servicios → Taquillas / Bonos VIP / Clases / Fotos / Surfskate
     │   ├── PressRipple.jsx           ──► Rail vertical izquierdo cyan (barra + flyout + móvil; sin fondo; reduced-motion)
+    │   ├── ContactBlock.jsx          ──► Pill «Contactar con X» + panel tel/correo/WhatsApp (Edy/Willy; estado controlado)
+    │   ├── ui/
+    │   │   ├── AccordionTrigger.jsx  ──► Botón controlado acordeón (aria-expanded/controls + ChevronDown)
+    │   │   └── ExpandableText.jsx    ──► Texto con clamp + Leer más/menos (usa AccordionTrigger)
     │   ├── HomeServiciosDestacados.jsx ──► Escaparate oferta home (4: clases, taquillas, surfskate, fotos); post-`SurfBriefMini`
-    │   ├── HomeGeoTeaser.jsx ──► Teaser GEO Zurriola en home (hechos de `zurriolaGeo` → `#zurriola-guia`)
+    │   ├── HomeExploraDirectorio.jsx ──► Home: directorio servicios + teaser club/instalaciones (una banda navy)
+    │   ├── HomeGeoTeaser.jsx ──► Teaser GEO Zurriola (componente; guía completa en webcams `#zurriola-guia`)
     │   ├── OpcionesIntro.jsx         ──► Mosaico accesos S4 (home); tile "Forecast al detalle" abre panel on-demand; assets `/img/opciones/*.webp`
     │   ├── S4Button.jsx              ──► CTA marca S4 (tokens .s4-btn* en app.css)
     │   ├── seo/
@@ -698,6 +735,10 @@ resources/
     │   ├── SponsorsStrip.jsx         ──► Bloque patrocinadores (footer, home): bunker, yow, gipuzkoa, open_meteo
     │   ├── Footer.jsx
     │   ├── Chatbot.jsx                 ──► FAB chat; captura móvil al derivar a humano; POST contact-phone + wa.me escuela
+    │   ├── PwaInstallBanner.jsx        ──► CTA «Instalar app» solo si no standalone + beforeinstallprompt
+    │   ├── SharePageButton.jsx         ──► Compartir página (Web Share / copiar URL); usado en webcams + parte S4
+    │   ├── store/
+    │   │   └── StorePromoBanner.jsx    ──► Banner publicidad tienda/ficha: imagen a fondo + 3 slides (bono / subasta / producto)
     │   ├── webcam/
     │   │   ├── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa); fallback `/img/webcam/zurriola-offline.webp` si cae el stream
     │   │   ├── ZurriolaGeoGuide.jsx ──► Bloque GEO citables (props `zurriolaGeo`; sin lógica)
@@ -739,6 +780,8 @@ resources/
     │   ├── FlashErrorModal.jsx ──► Modal rojo bloqueante por `flash.access_alert` (cuota vencida / sin taquilla → carrito); montado en PublicLayout
     │   ├── StoreAccessPopover.jsx ──► Gate compra socios (popover + ContactChannelsModal topic=store)
     │   ├── StoreAddToCartButton.jsx ──► CTA «Añadir al carrito» (Producto)
+    │   ├── StoreCartQtyPrompt.jsx ──► 2º clic en 5s: pide unidades extra
+    │   ├── StoreFiscalInvoiceActions.jsx ──► Ver factura (PDF) + Ver TicketBAI
     │   ├── Breadcrumbs.jsx, SafeImage.jsx, ImageLightbox.jsx, EmptyState.jsx, SortableTable.jsx (SortableTh + compareRows)
     │   ├── icons/WhatsAppIcon.jsx ──► SVG WhatsApp compartido (taquillas admin + asignar)
     │   ├── icons/WaveCrestIcon.jsx ──► ola crestada (métrica oleaje forecast al detalle)
@@ -757,7 +800,7 @@ resources/
     └── Pages/                        ──► Resolución: ./Pages/{name}.jsx (eager glob)
         │
         ├── [DOMINIO: MARKETING / CMS]
-        │   ├── Pag_principal.jsx       ──► Hero + Parte S4 + `HomeServiciosDestacados` + directorio + `HomeGeoTeaser` + teaser club + `OpcionesIntro` + SeoHead
+        │   ├── Pag_principal.jsx       ──► Hero + Parte S4 + `HomeServiciosDestacados` + directorio + teaser club + `OpcionesIntro` + SeoHead
         │   ├── Nosotros.jsx            ──► Landing page premium club: Bento Grid instalaciones, tabla de ahorro socio, timeline Edy Mulder (dark/glassmorphic)
         │   ├── Contacto.jsx
         │   ├── Servicios.jsx                    ──► Reparación tablas (Edy Mulder)
@@ -777,7 +820,8 @@ resources/
         ├── [DOMINIO: TIENDA]
         │   ├── Tienda.jsx
         │   ├── Productos.jsx
-        │   ├── ProductoVer.jsx         ──► Ficha PDP light (`ProductDetailPageService` + `SeoHead`)
+        │   ├── ProductPurchaseCta.jsx  ──► CTAs ficha producto (guest / sin taquilla / carrito)
+        │   ├── ProductoVer.jsx         ──► Ficha PDP light: nav compacta móvil, scroll top, `ProductPurchaseCta`
         │   ├── CrearProducto.jsx
         │   ├── Edit.jsx
         │   ├── ProductoCreado.jsx

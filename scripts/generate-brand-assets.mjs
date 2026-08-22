@@ -108,45 +108,56 @@ async function exportVariant(pipeline, baseName, height) {
     return { webp, png, width: meta.width, height: meta.height };
 }
 
-async function buildFavicons(whitePipeline) {
-    const iconBase = await whitePipeline
-        .clone()
-        .resize({ height: 120, withoutEnlargement: true })
-        .extend({
-            top: 20,
-            bottom: 20,
-            left: 20,
-            right: 20,
-            background: { r: 7, g: 19, b: 38, alpha: 1 },
-        })
-        .resize(512, 512, { fit: "contain", background: { r: 7, g: 19, b: 38, alpha: 1 } });
+async function buildFavicons(navyPipeline) {
+    // Logo navy/color sobre fondo blanco → legible en splash PWA (fondo claro).
+    const logoMaster = await navyPipeline.clone().trim().png().toBuffer();
+    const bg = { r: 255, g: 255, b: 255, alpha: 1 };
 
-    const sizes = [16, 32, 48, 180, 192];
-    for (const size of sizes) {
-        await iconBase
-            .clone()
-            .resize(size, size)
+    async function makeIcon(size, paddingRatio, fileName) {
+        const inner = Math.round(size * (1 - paddingRatio * 2));
+        const logo = await sharp(logoMaster)
+            .resize(inner, inner, {
+                fit: "contain",
+                background: { r: 0, g: 0, b: 0, alpha: 0 },
+            })
+            .png()
+            .toBuffer();
+
+        await sharp({
+            create: { width: size, height: size, channels: 4, background: bg },
+        })
+            .composite([{ input: logo, gravity: "centre" }])
             .png({ compressionLevel: 9 })
-            .toFile(path.join(publicDir, size === 180 ? "apple-touch-icon.png" : `favicon-${size}.png`));
+            .toFile(path.join(publicDir, fileName));
     }
 
-    await sharp(path.join(publicDir, "favicon-32.png"))
-        .resize(32, 32)
-        .toFile(path.join(publicDir, "favicon.ico"));
+    await makeIcon(16, 0.06, "favicon-16.png");
+    await makeIcon(32, 0.06, "favicon-32.png");
+    await makeIcon(48, 0.06, "favicon-48.png");
+    await makeIcon(180, 0.08, "apple-touch-icon.png");
+    await makeIcon(192, 0.08, "favicon-192.png");
+    await makeIcon(512, 0.08, "favicon-512.png");
+    await makeIcon(512, 0.18, "favicon-512-maskable.png");
 
-    await iconBase.clone().webp({ quality: 85 }).toFile(path.join(brandDir, "og-share.webp"));
-    await iconBase.clone().jpeg({ quality: 82, mozjpeg: true }).toFile(path.join(brandDir, "og-share.jpg"));
+    await sharp(path.join(publicDir, "favicon-32.png")).toFile(path.join(publicDir, "favicon.ico"));
+
+    await sharp(path.join(publicDir, "favicon-512.png"))
+        .webp({ quality: 85 })
+        .toFile(path.join(brandDir, "og-share.webp"));
+    await sharp(path.join(publicDir, "favicon-512.png"))
+        .jpeg({ quality: 82, mozjpeg: true })
+        .toFile(path.join(brandDir, "og-share.jpg"));
 }
 
 async function buildFaviconSvg() {
+    // SVG = logo real embebido (nada de ola/placeholder genérico).
+    const png = await sharp(path.join(publicDir, "favicon-192.png")).png().toBuffer();
+    const b64 = png.toString("base64");
     const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="S4 Surf School">
-  <rect width="64" height="64" rx="14" fill="#071326"/>
-  <circle cx="32" cy="32" r="26" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <path d="M18 26c6-4 12-4 18 0s12 4 18 0" fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round"/>
-  <text x="32" y="36" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="700">SURF</text>
-  <text x="32" y="44" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif" font-size="7" font-weight="700">SCHOOL</text>
-</svg>`;
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 192 192" role="img" aria-label="San Sebastián Surf School">
+  <image width="192" height="192" xlink:href="data:image/png;base64,${b64}"/>
+</svg>
+`;
     await writeFile(path.join(publicDir, "favicon.svg"), svg, "utf8");
 }
 
@@ -179,7 +190,7 @@ async function main() {
         console.log(`✓ ${label} (master)`);
     }
 
-    await buildFavicons(whitePipeline);
+    await buildFavicons(navyPipeline);
     await buildFaviconSvg();
     console.log("✓ favicons + og-share generados en public/");
 }

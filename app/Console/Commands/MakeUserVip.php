@@ -28,13 +28,15 @@ class MakeUserVip extends Command
         }
 
         if ((bool) $user->is_vip) {
-            $this->info("Usuario {$user->email} ya era VIP.");
+            $updated = $this->vipMembershipService->activate($user);
+            $this->info("Usuario {$updated->email} ya era VIP (taquilla #{$updated->numeroTaquilla}).");
             return self::SUCCESS;
         }
 
         $updated = $this->vipMembershipService->activate($user);
 
-        $this->info("Usuario {$updated->email} marcado como VIP correctamente.");
+        $locker = $updated->numeroTaquilla;
+        $this->info("Usuario {$updated->email} marcado como VIP correctamente (taquilla #{$locker}).");
 
         return self::SUCCESS;
     }

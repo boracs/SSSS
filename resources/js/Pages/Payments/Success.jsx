@@ -7,6 +7,7 @@ const PAYABLE_LABELS = {
     LessonUser: { label: "tu clase", icon: "🌊", link: "/mis-reservas" },
     UserBono: { label: "tu bono VIP", icon: "⭐", link: "/bonos" },
     PagoCuota: { label: "tu plan de taquilla", icon: "🔐", link: "/taquillas" },
+    Auction: { label: "tu subasta", icon: "🔨", link: "/subastas" },
 };
 
 export default function PaymentSuccess({ status, payableType, payableId, redirectTo, fiscalInvoice = null }) {

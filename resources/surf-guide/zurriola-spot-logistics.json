@@ -3,36 +3,105 @@
   "location": "Donostia / San Sebastián",
   "orientation": "NW",
   "critical_disclaimer": "Los fondos son de arena (beach break) y cambian constantemente debido a temporales y corrientes. Este modelo es una orientación estadística y empírica, la certeza absoluta no existe.",
+  "ai_priority": "Si choca energy_kj.level con stars / level_recommendation_by_energy_kj, mandan las estrellas y esas rules. energy_kj es relato de zona, no otra nota.",
   "variables": {
-    "wind_north_component": [
-      {
-        "min_knots": 0,
-        "max_knots": 5,
-        "quality": "Good / Acceptable",
-        "description": "Viento flojo. El mar no se pica significativamente. Si el periodo es bueno, las condiciones son óptimas."
-      },
-      {
-        "min_knots": 6,
-        "max_knots": 10,
-        "quality": "Mediocre",
-        "description": "Mar rizándose ligeramente. Condiciones aceptables pero la cara de la ola pierde limpieza."
-      },
-      {
-        "min_knots": 11,
-        "max_knots": 15,
-        "quality": "Bad",
-        "description": "Mar picado (choppy). Calidad notablemente reducida, ola desordenada."
-      },
-      {
-        "min_knots": 16,
-        "max_knots": 100,
-        "quality": "Unrideable",
-        "description": "Condiciones muy malas. Rompiente caótica y excesivo movimiento de agua en superficie."
-      }
-    ],
+    "wind_north_component": {
+      "units": "km/h (no nudos)",
+      "description": "Onshore. Bandas aproximadas; el mar no corta a un km/h exacto.",
+      "bands": [
+        {
+          "min_kmh": 0,
+          "max_kmh": 10,
+          "quality": "Bien",
+          "description": "Norte flojo. El mar no se pica de verdad; se pueden leer las líneas."
+        },
+        {
+          "min_kmh": 10,
+          "max_kmh": 15,
+          "quality": "Empieza a picar",
+          "description": "Empieza a estar algo picado. Aún se surfea, pero la cara pierde limpieza."
+        },
+        {
+          "min_kmh": 15,
+          "max_kmh": 100,
+          "quality": "Demasiado / mar roto",
+          "description": "Demasiado norte: mar roto. Se puede surfear, pero cuesta ver las líneas de las olas, está revuelto y todo es improvisado: no da tiempo a leer el mar. La ola buena, si la hay, la ves cuando la tienes encima; hay que girar rápido y remarla de un momento a otro."
+        }
+      ]
+    },
     "wind_south_component": {
       "effect": "Offshore (Terral)",
-      "description": "Limpia la cara de la ola, abre las secciones y retrasa la rotura. Propicia condiciones excelentes."
+      "units": "km/h",
+      "description": "Bandas aproximadas cruzadas con kJ. Ver `wind_energy_rules.south`. Sur limpia y abre tubo SOLO si hay fuerza de mar; si no, frena."
+    },
+    "wind_energy_rules": {
+      "description": "Estrellas PHP: viento × kJ. Números orientativos, no milimétricos. Mandan sobre el blend genérico glassy/off/on.",
+      "glassy": {
+        "max_kmh": 5,
+        "description": "Solo calma: −5 / 0 / +5 km/h. Si pasa de 5 km/h al sur o al norte, ya no es glass (8 km/h tampoco).",
+        "ini_int_min_kj": 100,
+        "ini_int_max_kj": 500,
+        "ini_int_stars": 5,
+        "ava_ideal_min_kj": 400,
+        "ava_ideal_max_kj": 1000,
+        "ava_ideal_stars": 5,
+        "ava_calm_max_kmh": 1,
+        "ava_north_light_stars": 4,
+        "ava_small_min_kj": 100,
+        "ava_small_max_kj": 400,
+        "ava_small_stars": 4
+      },
+      "south": {
+        "strong_min_kmh": 20,
+        "not_worth_min_kmh": 25,
+        "not_worth_max_kj": 400,
+        "not_worth_stars": 1,
+        "tubes_min_kj": 400,
+        "tubes_iniciacion": 3,
+        "tubes_intermedio": 5,
+        "tubes_avanzado": 5,
+        "ava_sweet_min_kj": 400,
+        "ava_sweet_max_kj": 1000,
+        "ava_sweet_stars": 5,
+        "brake_min_kmh": 10,
+        "brake_max_kmh": 20,
+        "brake_min_kj": 200,
+        "brake_max_kj": 400,
+        "brake_stars": 3,
+        "light_max_kmh": 15,
+        "light_min_kj": 100,
+        "light_max_kj": 400,
+        "light_iniciacion": 5,
+        "light_intermedio": 5,
+        "light_avanzado": 4
+      },
+      "north": {
+        "good_max_kmh": 10,
+        "good_wind_score": 4,
+        "choppy_max_kmh": 15,
+        "choppy_wind_score": 3,
+        "choppy_star_cap": 4,
+        "too_much_min_kmh": 15,
+        "too_much_star_cap": 2
+      },
+      "kj_70_99": {
+        "description": "Mar pequeño: iniciación perfecto; intermedio escaso; avanzado pequeño. Luego el viento. Sur ≥25 sigue siendo 1★ (no merece).",
+        "min_kj": 70,
+        "max_kj": 99,
+        "good_iniciacion": 5,
+        "glassy_intermedio": 4,
+        "south_intermedio": 3,
+        "good_avanzado": 3,
+        "bad_wind_intermedio_cap": 2,
+        "bad_wind_avanzado_cap": 2
+      }
+    },
+    "la_concha_recommendation": {
+      "tone": "recomendar, no ordenar",
+      "when": "Si iniciación o intermedio buscan un baño tranquilo y seguro (Zurriola gorda, desfasada, mucha corriente, o ellos lo piden).",
+      "copy": "Se recomienda La Concha: suele estar más protegida y el baño es más tranquilo y seguro. No es una orden: quien quiera Zurriola con criterio, que lo valore.",
+      "not_for": "Avanzado no se manda a Concha por defecto; solo si también quiere calma o Zurriola está al límite (≥1500 kJ / Pico del Loro).",
+      "from_kj_hint": 1500
     },
     "energy_kj": [
       {
@@ -57,7 +126,7 @@
         "label": "Muy pequeño (avanzado posible)",
         "level": "Iniciación / Avanzado (escaso pero posible)",
         "zone_recommendation": "Cualquiera",
-        "notes": "A partir de ~70-80 kJ el avanzado YA PUEDE salir, aunque sigue escaso. Ideal para quien quiera algo de ola sin fuerza. Intermedio: todavía corto de fuerza."
+        "notes": "Iniciación: perfecto. Intermedio: escaso. Avanzado: pequeño. El viento decide las estrellas (glass/sur vs norte malo)."
       },
       {
         "min": 100,
@@ -95,9 +164,9 @@
         "min": 2501,
         "max": 9999,
         "label": "Desfasado",
-        "level": "Ninguno (No surfeable)",
-        "zone_recommendation": "Evitar Zurriola. Ir a Playa de La Concha",
-        "notes": "Playa saturada. Demasiada masa de agua en movimiento, corrientes incontrolables y olas cerrando en barra. Peligroso."
+        "level": "Mayoría: evitar Zurriola (Concha). Avanzado: al límite, no siempre 1★",
+        "zone_recommendation": "Iniciación/intermedio: La Concha. Avanzado: valorar Zurriola al límite o Pico del Loro",
+        "notes": "Playa saturada para la mayoría: mucha masa de agua, corrientes y riesgo de barra. Aviso: iniciación e intermedio fuera. Un avanzado puede tener sesión al límite (estrellas ~3); no digas que nadie puede."
       }
     ],
     "level_skill_profiles": {
@@ -107,10 +176,11 @@
       "avanzado": "Rema fuerte y lee la playa: elige pico, se posiciona antes de que rompa, encadena maniobras y aprovecha secciones técnicas. Solo busca fuerza real; con energía baja no encuentra reto ni beneficio."
     },
     "level_recommendation_by_energy_kj": {
-      "description": "Criterio S4 de recomendación por nivel según energía (kJ). Usar esto al redactar el parte cuando digas para quién merece la pena el día.",
+      "description": "Criterio S4 de recomendación por nivel según energía (kJ). El PHP usa `stars` (1–5) para la tabla; Gemini usa los textos. Misma banda = misma ciencia.",
       "rules": [
         {
           "max_kj": 49,
+          "stars": { "iniciacion": 4, "intermedio": 1, "avanzado": 1 },
           "iniciacion": "Sí — fuerza mínima; espumas y olas pequeñas sin romper (Zurriola). Ideal primer contacto / niños.",
           "intermedio": "Escaso — poca ola útil para progresar.",
           "avanzado": "No merece la pena."
@@ -118,6 +188,7 @@
         {
           "min_kj": 50,
           "max_kj": 69,
+          "stars": { "iniciacion": 5, "intermedio": 2, "avanzado": 1 },
           "iniciacion": "Sí — espumas y/o olas pequeñas sin romper; ponerse de pie.",
           "intermedio": "Escaso.",
           "avanzado": "Aún no merece la pena de forma general."
@@ -125,13 +196,15 @@
         {
           "min_kj": 70,
           "max_kj": 99,
+          "stars": { "iniciacion": 5, "intermedio": 2, "avanzado": 2 },
           "iniciacion": "Sí — espumas y olas verdes pequeñas suaves.",
-          "intermedio": "Todavía corto de fuerza.",
-          "avanzado": "Escaso pero ya posible (a partir de ~70-80 kJ)."
+          "intermedio": "Escaso — corto de fuerza; con glass ~4★, con sur ~3★.",
+          "avanzado": "Pequeño: con glass/sur tope 3★; si el viento no es bueno, máximo 2★."
         },
         {
           "min_kj": 100,
           "max_kj": 400,
+          "stars": { "iniciacion": 5, "intermedio": 5, "avanzado": 3 },
           "iniciacion": "Sí — pueden surfear todos (seguir en zona segura; no solo espuma).",
           "intermedio": "Sí — olas nobles para progresar.",
           "avanzado": "Sí — ola pequeña y muy técnica, ideal para mejorar la técnica."
@@ -139,31 +212,91 @@
         {
           "min_kj": 401,
           "max_kj": 800,
+          "stars": { "iniciacion": 3, "intermedio": 5, "avanzado": 4 },
           "iniciacion": "Solo cerca del espigón (zona resguardada); empieza a haber fuerza real y buen baño.",
           "intermedio": "Sí — fuerza real y buen baño para progresar.",
-          "avanzado": "Sí — buen baño; entra en la franja usable (~500+)."
+          "avanzado": "Sí — a partir de ~400 kJ el tamaño ya está bien; 5★ con calma o sur (puede haber tubo). Norte ~5 km/h: 4★."
         },
         {
           "min_kj": 801,
           "max_kj": 1500,
+          "stars": { "iniciacion": 2, "intermedio": 4, "avanzado": 5 },
           "iniciacion": "Solo espigón y con precaución; fuerza considerable y corrientes.",
           "intermedio": "Sí — con buena forma física y lectura de corrientes.",
-          "avanzado": "Sí — franja ideal orientativa (~500–1300 kJ); precaución y lectura de playa."
+          "avanzado": "Sí — franja fuerte; con buen viento (calma o sur) sigue 5★ hasta ~1000 kJ. Precaución y lectura de playa."
         },
         {
           "min_kj": 1501,
           "max_kj": 2500,
+          "stars": { "iniciacion": 2, "intermedio": 2, "avanzado": 4 },
           "iniciacion": "Espumas posibles; no subir arriba (corrientes peligrosas). Playa al límite.",
-          "intermedio": "Límite — sesión muy exigente; valorar viento/marea.",
+          "intermedio": "Límite — sesión muy exigente. Si quiere baño tranquilo y seguro, se recomienda La Concha (no es una orden).",
           "avanzado": "Posible al límite; a partir de ~1500 kJ valorar Pico del Loro (La Concha) como alternativa."
         },
         {
           "min_kj": 2501,
-          "iniciacion": "Evitar Zurriola — saturación, corrientes incontrolables.",
+          "stars": { "iniciacion": 1, "intermedio": 1, "avanzado": 3 },
+          "iniciacion": "1★. Solo orilla y espumas, agua máximo rodillas/cadera. Evitar huecos sin olas (corriente al mar); quedaros en mucha espuma (tira a tierra). Zurriola: marea baja o media. Si está alta, id a La Concha. Primeros 3 días puede ser un buen rato solo si cumplís esto.",
           "intermedio": "Evitar Zurriola — peligroso.",
-          "avanzado": "Evitar Zurriola; ir a Playa de La Concha u otra opción."
+          "avanzado": "Evitar Zurriola; ir a Playa de La Concha u otra opción. No aplastar a 1★ si un experto aún puede valorar la sesión al límite."
         }
       ]
+    },
+    "iniciacion_foam_protocol_extreme_kj": {
+      "description": "No es otra franja de kJ: es el protocolo de orilla cuando la energía es extrema (≥2501). Estrellas iniciación = 1 (aviso). El texto puede explicar la excepción de los primeros 3 días.",
+      "applies_min_kj": 2501,
+      "stars_iniciacion": 1,
+      "zone": "Solo orilla y espumas. Nunca el pico ni entrar más adentro.",
+      "depth_max": "Agua como máximo hasta las rodillas o la cadera. No más profundo.",
+      "currents_avoid": "Corrientes que arrastran hacia el mar (entrantes). Suelen ser las zonas donde no hay olas (huecos, canales).",
+      "currents_prefer": "Donde la corriente tira hacia la orilla: suele haber mucha espuma.",
+      "tide_zurriola": "En Zurriola este protocolo solo con marea baja o media: con alta apenas hay zona de poca profundidad.",
+      "tide_high_recommend": "Si la marea está alta, recomendar La Concha (más playa poco profunda), no forzar Zurriola.",
+      "first_three_days": "Si estáis en los primeros 3 días (puesta en pie / coger espumas), puede compensar y pasar un buen rato SOLO cumpliendo orilla, profundidad y corrientes. Si no se puede cumplir, no entrar."
+    },
+    "large_swell_tide_zones": {
+      "description": "Con mar gordo (desde ~2000 kJ) la marea NO cambia si hay ola, cambia DÓNDE. Estrellas: iniciación más baja (peligroso); intermedio/avanzado pueden subir un poco en baja (pico de atrás) y en alta (piscina del espigón). No aplica a iniciación como 'sitio bueno'.",
+      "min_kj": 2000,
+      "looking_from_sand_to_sea": "Izquierda / derecha según miras el agua desde la arena.",
+      "low": {
+        "intermedio_avanzado": "Lo ideal: atrás del todo, fuera del espigón, lado izquierdo de la playa. Ola más en el fondo.",
+        "iniciacion": "Peligroso. No es su zona."
+      },
+      "mid": {
+        "intermedio_avanzado": "La ola de atrás se suaviza; empieza a haber más oleaje en el centro de la playa.",
+        "iniciacion": "Sigue peligroso."
+      },
+      "high": {
+        "intermedio_avanzado": "Centro de la playa y lado izquierdo cerca del espigón. En el espigón hay como una piscina con mucha agua: la ola casi no rompe; sirve para remontar y subir al pico por ahí.",
+        "iniciacion": "Peligroso y con alta apenas hay poca profundidad; valorar La Concha."
+      },
+      "star_iniciacion_cap_low_mid": 2,
+      "star_iniciacion_cap_high": 1,
+      "star_int_ava_adjust_low": 1,
+      "star_int_ava_adjust_mid": 0,
+      "star_int_ava_adjust_high": 1
+    },
+    "star_modifiers": {
+      "description": "Ajustes PHP encima de `stars` por banda. El cruce viento×kJ está en `wind_energy_rules` (no aquí). Rip, verano, cerrado.",
+      "wind_state_score": {
+        "glassy": 5,
+        "off": 5,
+        "cross-off": 4,
+        "cross-on": 2,
+        "on": 1
+      },
+      "energy_weight": 1,
+      "wind_weight": 2,
+      "closed_star_cap": 2,
+      "rip_current_star_caps": {
+        "iniciacion": 2,
+        "intermedio": 4,
+        "avanzado": 5
+      },
+      "summer_long_period_seconds": 12,
+      "summer_long_period_subtract": 1,
+      "summer_very_long_period_seconds": 14,
+      "summer_very_long_iniciacion_extra_subtract": 1
     },
     "tide_strategy": {
       "very_low_under_100": "Marea media o baja. Fuerza mínima; con alta apenas queda ola aprovechable.",
@@ -248,7 +381,7 @@
     "oleaje": "Qué es: altura de la ola (metros) y dirección (flecha = de dónde viene el mar).\n\nEn Zurriola (abre al NW): si el swell llega de NW entra de lleno y se nota más tamaño. Si viene rotado (S u otras direcciones), gran parte de la energía se pierde por la costa y la playa queda más pequeña de lo que sugiere el número.\n\nCómo leerlo: mira la flecha + los metros juntos; un 0,5 m de NW no es lo mismo que 0,5 m de sur.",
     "periodo": "Qué es: segundos entre una ola y la siguiente (Tp).\n\nEn Zurriola:\n• 6–9 s → mar de viento: olas seguidas, fofas, poca fuerza real.\n• 10–13 s → óptimo: mar de fondo ordenado, secciones abiertas.\n• ≥14 s → mucha energía de fondo; en arena de verano sube el riesgo de que cierre en barra.\n\nPeriodo largo + poca altura aún puede tener fuerza; periodo corto aunque haya algo de altura suele ser chop.",
     "energia": "Qué es: índice de punch del oleaje (convención tipo apps de previsión), calculado sobre datos Open-Meteo — no es un dato oficial de Surf-Forecast.\n\nFórmula: kJ ≈ factor × 0.5 × H² × T (H en pies; factor de calibración S4 ≈ 2.4 para acercar el orden de magnitud en periodo corto). Usamos la ola combinada (wave) del modelo.\n\nUmbrales S4 en Zurriola (orientativos, misma escala):\n• <50 → intermedio: escaso; avanzado: no merece la pena.\n• ~70–80 → avanzado: escaso pero ya posible.\n• ≥100 → pueden surfear todos; para avanzado es ola pequeña y muy técnica.\n\nEl color del valor indica intensidad relativa del oleaje (kJ).",
-    "viento": "Qué es: velocidad (km/h) y dirección (flecha = de dónde sopla).\n\nEn Zurriola (NW): componente sur = offshore/terral; componente norte = más onshore.\n\nOffshore: ordena el mar, deja la cara más limpia y legible, facilita anticipar la ola y colocarte a tiempo en el pico.\n\nOnshore: suele aplanar y abofar la ola, pica la superficie, dificulta leer y anticipar sets, y complica situarte en el sitio correcto para cogerlas.\n\nIntensidad (aprox. en nudos):\n• ≤5 → flojo / glassy.\n• 6–10 → riza la superficie.\n• 11–15 → choppy.\n• ≥16 → muy malo.\n\nColores en la tabla: verde flojo, amarillo medio, rojo fuerte. La flecha importa tanto como el número.",
+    "viento": "Qué es: velocidad (km/h) y dirección (flecha = de dónde sopla).\n\nEn Zurriola (NW): componente sur = offshore/terral; componente norte = más onshore.\n\nGlassy = calma: −5 / 0 / +5 km/h. Si pasa de 5 km/h al sur o al norte, ya no es glass (8 km/h tampoco).\n\nOffshore: ordena el mar, deja la cara más limpia y legible, facilita anticipar la ola y colocarte a tiempo en el pico.\n\nOnshore: suele aplanar y abofar la ola, pica la superficie, dificulta leer y anticipar sets, y complica situarte en el sitio correcto para cogerlas.\n\nNorte (km/h): 0–10 bien; 10–15 empieza a picar; >15 mar roto.\n\nColores en la tabla: verde flojo (≤10), amarillo (≤15), rojo fuerte. La flecha importa tanto como el número.",
     "marea": "Qué ves bajo cada día:\n\n1) Lista de extremos (normalmente 2 altas + 2 bajas):\n• Flecha ↑ Alta / ↓ Baja + hora + altura (m respecto al nivel medio del modelo).\n• Entre paréntesis (+Xm / −Xm): cuánto subió o bajó el nivel desde el extremo anterior (amplitud de esa media marea).\n\n2) Coeficientes del día (abajo):\n• Sube +Xm = media de las subidas hacia las altas de ese día (cuánto crece el agua al llenar).\n• Baja −Xm = media de las bajadas hacia las bajas (cuánto baja al vaciar).\n\nCriterio Zurriola: con poca energía vale cualquier marea; con energía media prioriza media-alta; con mucha fuerza, marea alta (efecto piscina) o baja solo resguardado en el espigón."
   }
 }

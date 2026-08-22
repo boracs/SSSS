@@ -54,18 +54,18 @@ function BoardCard({ board }) {
     return (
         <Link
             href={route("second-hand.show", board.id)}
-            className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-orange-400/40 hover:bg-white/10 hover:shadow-[0_8px_32px_rgba(251,146,60,0.15)]"
+            className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm transition-all duration-300 hover:border-orange-400/40 hover:bg-white/10 hover:shadow-[0_8px_32px_rgba(251,146,60,0.15)] sm:rounded-2xl"
         >
-            <div className="relative aspect-[4/3] overflow-hidden bg-slate-800/60">
+            <div className="relative aspect-[5/4] overflow-hidden bg-gradient-to-b from-slate-200 to-slate-300 sm:aspect-[4/3]">
                 {board.first_image ? (
                     <img
                         src={board.first_image}
                         alt={board.name}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        className="h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                     />
                 ) : (
-                    <div className="flex h-full items-center justify-center">
-                        <svg className="h-16 w-16 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1}>
+                    <div className="flex h-full items-center justify-center bg-slate-800/60">
+                        <svg className="h-10 w-10 text-slate-500 sm:h-14 sm:w-14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1}>
                             <path d="M12 2C6 2 3 7 3 12s3 10 9 10 9-5 9-10S18 2 12 2z" />
                             <path d="M9 9l6 6M15 9l-6 6" />
                         </svg>
@@ -73,42 +73,45 @@ function BoardCard({ board }) {
                 )}
 
                 {hasDiscount && (
-                    <div className="absolute left-2 top-2 rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                    <div className="absolute left-1.5 top-1.5 rounded-full bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow sm:left-2 sm:top-2 sm:px-2 sm:text-[11px]">
                         -{board.discount_pct}%
                     </div>
                 )}
             </div>
 
-            <div className="flex flex-1 flex-col p-4">
-                <div className="mb-2">
+            <div className="flex flex-1 flex-col p-2.5 sm:p-4">
+                <div className="mb-1.5 sm:mb-2">
                     {board.brand && (
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-orange-400">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-orange-400 sm:text-[11px]">
                             {board.brand}
                         </p>
                     )}
-                    <h3 className="text-sm font-bold leading-tight text-white line-clamp-2">
+                    <h3 className="text-xs font-bold leading-snug text-white line-clamp-2 sm:text-sm sm:leading-tight">
                         {board.name}
                     </h3>
                 </div>
 
-                <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
+                <div className="mb-2 hidden grid-cols-2 gap-x-3 gap-y-1.5 sm:mb-3 sm:grid">
                     <SpecPill icon={Ruler} label={`${formatHeight(board.height)} × ${board.width}"`} />
                     <SpecPill icon={Ruler} label={`${board.thickness}"`} suffix="grosor" />
                     <SpecPill icon={Droplets} label={`${board.volume} L`} />
                 </div>
+                <p className="mb-2 text-[10px] leading-snug text-slate-400 sm:hidden">
+                    {formatHeight(board.height)} · {board.volume} L
+                </p>
 
                 <div className="mt-auto">
                     {hasDiscount ? (
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-lg font-extrabold text-orange-400">
+                        <div className="flex flex-wrap items-baseline gap-1.5 sm:gap-2">
+                            <span className="text-base font-extrabold text-orange-400 sm:text-lg">
                                 {formatEur(board.effective_price)}
                             </span>
-                            <span className="text-xs text-slate-400 line-through">
+                            <span className="text-[10px] text-slate-400 line-through sm:text-xs">
                                 {formatEur(board.sale_price)}
                             </span>
                         </div>
                     ) : (
-                        <span className="text-lg font-extrabold text-cyan-300">
+                        <span className="text-base font-extrabold text-cyan-300 sm:text-lg">
                             {formatEur(board.sale_price)}
                         </span>
                     )}
@@ -351,7 +354,7 @@ export default function SecondHandIndex({ boards, seo = null }) {
                         ) : null}
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-4 xl:gap-5">
                         {filtered.map((board) => (
                             <BoardCard key={board.id} board={board} />
                         ))}

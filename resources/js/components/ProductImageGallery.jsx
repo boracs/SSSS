@@ -201,7 +201,7 @@ const ProductImageGallery = ({
                             ref={thumbListRef}
                             role="tablist"
                             aria-label={`Galería de ${productName}`}
-                            className="flex snap-x snap-mandatory gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                            className="flex max-w-full snap-x snap-mandatory gap-1.5 overflow-x-auto overscroll-x-contain pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden"
                         >
                             {images.map((src, index) => {
                                 const selected = index === safeIndex;

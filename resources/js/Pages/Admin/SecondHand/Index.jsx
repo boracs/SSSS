@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 import {
     PlusCircle,
-    Plus,
-    Minus,
     Pencil,
     Trash2,
     RotateCcw,
@@ -18,6 +16,7 @@ import {
     Filter,
     X,
 } from "lucide-react";
+import AccordionTrigger from "@/components/ui/AccordionTrigger";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -217,21 +216,21 @@ function BoardDetailPanel({ board }) {
     );
 }
 
-function ExpandToggle({ expanded, onClick }) {
+function ExpandToggle({ expanded, onClick, panelId }) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-expanded={expanded}
-            aria-label={expanded ? "Ocultar detalle" : "Ver detalle"}
+        <AccordionTrigger
+            open={expanded}
+            onToggle={onClick}
+            panelId={panelId}
+            labelOpen="Ocultar detalle"
+            labelClosed="Ver detalle"
             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border transition ${
                 expanded
                     ? "border-orange-500/40 bg-orange-500/15 text-orange-300"
                     : "border-white/10 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"
             }`}
-        >
-            {expanded ? <Minus className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-        </button>
+            chevronClassName="h-3.5 w-3.5"
+        />
     );
 }
 
@@ -307,6 +306,7 @@ function BoardMobileCard({
     onRequestStatusChange,
 }) {
     const inactive = board.is_active === false;
+    const panelId = `secondhand-panel-m-${board.id}`;
 
     return (
         <article
@@ -319,7 +319,11 @@ function BoardMobileCard({
             }`}
         >
             <div className="flex gap-2.5 p-2.5">
-                <ExpandToggle expanded={expanded} onClick={() => onToggleExpand(board.id)} />
+                <ExpandToggle
+                    expanded={expanded}
+                    onClick={() => onToggleExpand(board.id)}
+                    panelId={panelId}
+                />
                 <BoardThumb board={board} size="sm" />
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
@@ -365,7 +369,11 @@ function BoardMobileCard({
                     </div>
                 </div>
             </div>
-            {expanded ? <BoardDetailPanel board={board} /> : null}
+            {expanded ? (
+                <div id={panelId}>
+                    <BoardDetailPanel board={board} />
+                </div>
+            ) : null}
         </article>
     );
 }
@@ -382,6 +390,7 @@ function BoardRow({
 }) {
     const profit = board.profit_cents;
     const inactive = board.is_active === false;
+    const panelId = `secondhand-panel-d-${board.id}`;
 
     return (
         <>
@@ -395,7 +404,11 @@ function BoardRow({
                 }`}
             >
                 <td className="w-10 px-2 py-2.5">
-                    <ExpandToggle expanded={expanded} onClick={() => onToggleExpand(board.id)} />
+                    <ExpandToggle
+                        expanded={expanded}
+                        onClick={() => onToggleExpand(board.id)}
+                        panelId={panelId}
+                    />
                 </td>
                 <td className="px-3 py-2.5">
                     <div className="flex items-center gap-2.5">
@@ -458,7 +471,7 @@ function BoardRow({
             </tr>
             {expanded ? (
                 <tr>
-                    <td colSpan={7} className="p-0">
+                    <td colSpan={7} id={panelId} className="p-0">
                         <BoardDetailPanel board={board} />
                     </td>
                 </tr>

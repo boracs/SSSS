@@ -26,7 +26,11 @@ import {
 
 import { privateLessonPriceRows } from "../lib/privateLessonPricing";
 
-const BONOS = [
+const buildBonos = (pricingLabels = {}) => {
+    const bono10 = pricingLabels.bono10 ?? "250 €";
+    const bono10PerClass = pricingLabels.bono10PerClass ?? "25 €";
+
+    return [
     {
         titulo: "Bono 5 clases",
         descripcion:
@@ -47,9 +51,9 @@ const BONOS = [
         detalles: [
             "10 clases de 1,5 h",
             "Tabla y neopreno incluidos",
-            "Equivale a 25 €/clase",
+            `Equivale a ${bono10PerClass}/clase`,
         ],
-        precio: "250 €",
+        precio: bono10,
         nota: "10 clases",
         icon: Sparkles,
         destacado: true,
@@ -68,6 +72,35 @@ const BONOS = [
         icon: UserCheck,
     },
 ];
+};
+
+const buildAsistencia = (pricingLabels = {}) => {
+    const bono10 = pricingLabels.bono10 ?? "250 €";
+    const bono10PerClass = pricingLabels.bono10PerClass ?? "25 €";
+    const perClassNum = parseFloat(String(bono10PerClass).replace(" €", "").replace(",", "."));
+    const doubleClass =
+        Number.isFinite(perClassNum) && perClassNum > 0
+            ? `${(perClassNum * 2).toFixed(2).replace(".", ",")} €`
+            : "50 €";
+
+    return [
+        {
+            personas: "2 a 6 alumnos en la franja",
+            consumo: "1 clase del bono",
+            equivalente: `${bono10PerClass}/clase`,
+            detalle: `Precio estándar del bono de 10 clases (${bono10} ÷ 10)`,
+            destacado: false,
+        },
+        {
+            personas: "Solo tú en la franja",
+            consumo: "2 clases del bono",
+            equivalente: doubleClass,
+            detalle:
+                "Excepción: nadie más se apuntó — sesión como particular a precio superoferta",
+            destacado: true,
+        },
+    ];
+};
 
 const PASOS = [
     {
@@ -184,24 +217,6 @@ const PLANNING = [
             { hora: "13:00", nivel: "Avanzado" },
             { hora: "17:00", nivel: "Intermedio" },
         ],
-    },
-];
-
-const ASISTENCIA = [
-    {
-        personas: "2 a 6 alumnos en la franja",
-        consumo: "1 clase del bono",
-        equivalente: "25 €/clase",
-        detalle: "Precio estándar del bono de 10 clases (250 € ÷ 10)",
-        destacado: false,
-    },
-    {
-        personas: "Solo tú en la franja",
-        consumo: "2 clases del bono",
-        equivalente: "50 €",
-        detalle:
-            "Excepción: nadie más se apuntó — sesión como particular a precio superoferta",
-        destacado: true,
     },
 ];
 
@@ -517,9 +532,17 @@ const InvitadoAmigoCard = () => {
     );
 };
 
-export default function ServiciosClasesDeSurf({ seo = null }) {
+export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null }) {
     const [contactOpen, setContactOpen] = useState(false);
     const [contactTopic, setContactTopic] = useState("academy");
+
+    const bonos = useMemo(() => buildBonos(pricingLabels ?? {}), [pricingLabels]);
+    const asistencia = useMemo(
+        () => buildAsistencia(pricingLabels ?? {}),
+        [pricingLabels],
+    );
+    const bono10Price = pricingLabels?.bono10 ?? "250 €";
+    const bono10PerClass = pricingLabels?.bono10PerClass ?? "25 €";
 
     const privateLessonPricing = usePage().props.academyPrivateLesson ?? null;
     const PARTICULARES = useMemo(
@@ -781,7 +804,7 @@ export default function ServiciosClasesDeSurf({ seo = null }) {
                         Elige tu pack
                     </p>
                     <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        {BONOS.map((bono) => (
+                        {bonos.map((bono) => (
                             <BonoCard
                                 key={bono.titulo}
                                 bono={bono}
@@ -901,7 +924,7 @@ export default function ServiciosClasesDeSurf({ seo = null }) {
                         </div>
 
                         <div className="mt-4 space-y-3">
-                            {ASISTENCIA.map((a) => (
+                            {asistencia.map((a) => (
                                 <div
                                     key={a.personas}
                                     className={`rounded-xl border px-4 py-3.5 ${
@@ -935,11 +958,11 @@ export default function ServiciosClasesDeSurf({ seo = null }) {
                                 <strong className="text-white">Ejemplo:</strong>{" "}
                                 el bono de 10 clases cuesta{" "}
                                 <strong className="text-emerald-300">
-                                    250 €
+                                    {bono10Price}
                                 </strong>{" "}
                                 — cada sesión de grupo equivale a{" "}
                                 <strong className="text-emerald-300">
-                                    25 €
+                                    {bono10PerClass}
                                 </strong>
                                 . Si te apuntas a una franja y{" "}
                                 <strong className="text-white">

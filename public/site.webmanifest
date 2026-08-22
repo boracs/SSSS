@@ -1,20 +1,37 @@
 {
+    "id": "/",
     "name": "San Sebastián Surf School",
     "short_name": "S4 Surf",
     "description": "Escuela de surf en Zurriola, Donostia.",
+    "start_url": "/",
+    "scope": "/",
     "icons": [
         {
             "src": "/favicon-192.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/favicon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/favicon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
         },
         {
             "src": "/apple-touch-icon.png",
             "sizes": "180x180",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any"
         }
     ],
     "theme_color": "#071326",
-    "background_color": "#071326",
+    "background_color": "#ffffff",
     "display": "standalone"
 }

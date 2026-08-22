@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Payments;
 
+use App\Contracts\Payments\StartsCheckout;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\Events\Payments\PaymentInitiated;
 use App\Services\Payments\PaymentGatewayService;
@@ -15,7 +16,7 @@ use Throwable;
  *
  * Flujo: DTO → PaymentGatewayService → Event → URL de redirección
  */
-final class InitiatePaymentAction
+final class InitiatePaymentAction implements StartsCheckout
 {
     public function __construct(
         private readonly PaymentGatewayService $gateway,

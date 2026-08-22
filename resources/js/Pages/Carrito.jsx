@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Head, Link, usePage, router } from "@inertiajs/react";
+import { toast } from "react-toastify";
 import {
-    AlertCircle,
     ArrowLeft,
-    CheckCircle2,
     Minus,
     Plus,
     ShoppingBag,
@@ -16,6 +15,7 @@ import ImageLightbox from "../components/ImageLightbox";
 import SafeImage from "../components/SafeImage";
 import Layout1 from "../layouts/Layout1";
 import { resolveCatalogImage } from "../utils/demoCatalogImages";
+import useInertiaFlashToast from "@/hooks/useInertiaFlashToast";
 
 function formatCartEur(value) {
     const n = parseFloat(String(value ?? 0).replace(",", "."));
@@ -87,41 +87,19 @@ function EmptyCartView() {
 }
 
 const Carrito = () => {
-    // 1. Obtener los props y el objeto flash directamente de usePage()
-    // Inertia se encarga de que estos props se actualicen automáticamente después de las visitas.
     const { props } = usePage();
+    useInertiaFlashToast();
     const {
         productos = [],
         total = 0,
-        flash,
         canCheckout = false,
         whatsappHelpUrl = null,
     } = props;
-
-    // Estado local para el mensaje de notificación (Toast)
-    const [mensajeToast, setMensajeToast] = useState("");
-    const [tipoToast, setTipoToast] = useState(""); // 'success' o 'error'
 
     // Estado para los modales
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [productoAEliminar, setProductoAEliminar] = useState(null);
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-
-    // --- EFECTO: Manejar mensajes flash de Laravel (incluye el mensaje de éxito de eliminar) ---
-    useEffect(() => {
-        // Muestra el mensaje de éxito enviado por el controlador
-        if (flash.success) {
-            setMensajeToast(flash.success);
-            setTipoToast("success");
-            setTimeout(() => setMensajeToast(""), 4000);
-        }
-        // Muestra el mensaje de error enviado por el controlador
-        if (flash.error) {
-            setMensajeToast(flash.error);
-            setTipoToast("error");
-            setTimeout(() => setMensajeToast(""), 4000);
-        }
-    }, [flash]); // Se ejecuta cada vez que el objeto flash cambia (después de una visita de Inertia)
 
     // --- Modal eliminar producto ---
     const abrirModal = (productoId) => {
@@ -182,9 +160,7 @@ const Carrito = () => {
     const iniciarPagoStripe = () => {
         const totalNumerico = parseFloat(String(total).replace(",", "."));
         if (isNaN(totalNumerico) || totalNumerico <= 0) {
-            setMensajeToast("El total del pedido no es válido.");
-            setTipoToast("error");
-            setTimeout(() => setMensajeToast(""), 4000);
+            toast.error("El total del pedido no es válido.");
             return;
         }
         setProcesandoPago(true);
@@ -208,9 +184,7 @@ const Carrito = () => {
                         errors.general ||
                         errors.productos_json ||
                         "Error al procesar el pedido. Inténtalo de nuevo.";
-                    setMensajeToast(errorMessage);
-                    setTipoToast("error");
-                    setTimeout(() => setMensajeToast(""), 4000);
+                    toast.error(errorMessage);
                 },
                 onFinish: () => {
                     // Si Stripe redirige fuera, da igual; si volvemos al carrito (error), desbloquea.
@@ -223,28 +197,6 @@ const Carrito = () => {
     return (
         <Layout1>
             <Head title="Carrito" />
-            {mensajeToast ? (
-                <div
-                    className={`fixed right-5 top-5 z-50 flex items-center gap-2 rounded-lg border px-4 py-3 shadow-lg ${
-                        tipoToast === "success"
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                            : "border-rose-300 bg-rose-50 text-rose-800"
-                    }`}
-                >
-                    {tipoToast === "success" ? (
-                        <CheckCircle2
-                            className="h-4 w-4 shrink-0 text-emerald-600"
-                            aria-hidden="true"
-                        />
-                    ) : (
-                        <AlertCircle
-                            className="h-4 w-4 shrink-0 text-rose-600"
-                            aria-hidden="true"
-                        />
-                    )}
-                    <span className="text-sm">{mensajeToast}</span>
-                </div>
-            ) : null}
 
             {productos.length === 0 ? (
                 <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
@@ -274,7 +226,7 @@ const Carrito = () => {
                             </p>
                         </div>
 
-                        <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200 sm:p-8">
+                        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-8">
                             <ul>
                                 {productos.map((producto) => {
                                     // cantidad = valor del selector (+/−), nunca el descuento.
@@ -301,9 +253,9 @@ const Carrito = () => {
                                     return (
                                     <li
                                         key={producto.id}
-                                        className="flex flex-col gap-3 border-b border-slate-100 py-4 last:border-0 sm:flex-row sm:items-start sm:justify-between"
+                                        className="flex items-start justify-between gap-2 border-b border-slate-100 py-4 last:border-0 sm:gap-4"
                                     >
-                                        <div className="flex min-w-0 flex-1 gap-3">
+                                        <div className="flex min-w-0 flex-1 gap-2 sm:gap-3">
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -313,7 +265,7 @@ const Carrito = () => {
                                                     })
                                                 }
                                                 aria-label={`Ampliar imagen de ${producto.nombre}`}
-                                                className="group relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition hover:border-cyan-400/60 sm:h-[4.5rem] sm:w-[4.5rem]"
+                                                className="group relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50 transition hover:border-cyan-400/60 sm:h-[4.5rem] sm:w-[4.5rem]"
                                             >
                                                 <SafeImage
                                                     src={imageSrc}
@@ -332,11 +284,11 @@ const Carrito = () => {
                                                 </span>
                                             </button>
                                             <div className="min-w-0 flex-1">
-                                            <p className="font-semibold text-slate-900">
+                                            <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">
                                                 {producto.nombre}
                                             </p>
-                                            <div className="mt-0.5 flex flex-wrap items-center gap-3">
-                                                <p className="text-sm text-slate-500">
+                                            <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3">
+                                                <p className="text-xs text-slate-500 sm:text-sm">
                                                     Cantidad:{" "}
                                                     <span className="font-bold tabular-nums text-slate-900">
                                                         {cantidad}
@@ -391,27 +343,27 @@ const Carrito = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex shrink-0 items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-start">
+                                        <div className="flex shrink-0 flex-col items-end gap-1 sm:gap-2">
                                             <div className="text-right">
                                                 {Number(producto.descuento) >
                                                     0 &&
                                                 Number(
                                                     producto.precio_original,
                                                 ) > Number(producto.precio) ? (
-                                                    <p className="text-xs tabular-nums text-slate-400 line-through">
+                                                    <p className="text-[10px] tabular-nums text-slate-400 line-through sm:text-xs">
                                                         {formatCartEur(
                                                             producto.precio_original,
                                                         )}{" "}
                                                         €
                                                     </p>
                                                 ) : null}
-                                                <p className="text-sm tabular-nums text-slate-500">
+                                                <p className="text-xs tabular-nums text-slate-500 sm:text-sm">
                                                     {formatCartEur(
                                                         producto.precio,
                                                     )}{" "}
                                                     € / ud
                                                 </p>
-                                                <p className="font-semibold tabular-nums text-slate-900">
+                                                <p className="text-sm font-semibold tabular-nums text-slate-900 sm:text-base">
                                                     {formatCartEur(
                                                         producto.subtotal,
                                                     )}{" "}
@@ -425,7 +377,7 @@ const Carrito = () => {
                                                 }
                                                 aria-label="Descartar producto"
                                                 title="Descartar"
-                                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-rose-600 transition hover:bg-rose-50 hover:text-rose-700"
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-600 transition hover:bg-rose-50 hover:text-rose-700 sm:h-9 sm:w-9"
                                             >
                                                 <Trash2
                                                     className="h-4 w-4"
