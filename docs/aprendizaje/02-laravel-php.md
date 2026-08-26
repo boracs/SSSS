@@ -87,4 +87,22 @@
 
 ---
 
-> **Por ampliar:** 2.10+ (middlewares, service providers, scopes, casts…). Se añade cada vez que salga un concepto nuevo.
+## 2.10 Miniaturas: se generan una vez y se guardan (no en cada visita)
+
+- **Qué es:** una miniatura (thumbnail) es un **archivo nuevo** más pequeño, derivado de la foto original. No es la misma foto “vista en pequeño” en el CSS: el CSS solo encoge en pantalla; el navegador sigue bajando los megas.
+- **Por qué importa:** redimensionar con GD es trabajo de CPU. Si se hiciera al abrir `/segunda-mano`, cada visitante repetiría el mismo recálculo. Correcto: generar **al subir** (o en un Job justo después) y **guardar** el `.webp`/`.jpg` pequeño. La página solo manda la URL; Apache/nginx sirve el fichero estático.
+- **En tu proyecto (hoy):** aún no hay thumbs. Al crear una tabla, `Admin\SecondHandBoardController` hace `$file->store('segunda-mano', 'public')` y el listado usa esa original (`SecondHandBoard::firstImage()` → `toPublicArray()`). Cuando exista el servicio: escribir el thumb junto al original (p. ej. `segunda-mano/thumbs/…`) y apuntar `first_image` del catálogo a esa ruta. Fotos ya subidas: un comando artisan **una vez**, no en cada GET.
+- **Para recordar:** *subir → crear y guardar thumb → el catálogo solo lee el archivo. Nunca GD por visita.*
+
+---
+
+## 2.11 No borrar el original a cambio de un thumb de card
+
+- **Qué es:** ahorrar disco no es “dejar solo la miniatura”. El original del móvil (3–8 MB, 4000 px) sí se puede tirar. Lo que debe quedar es un **máster web**: una sola foto ~1600 px, WebP, calidad alta. El thumb (~640 px) es opcional, para las cards.
+- **Por qué importa:** en tu ficha hay galería + lightbox (`ProductImageGallery.jsx`, botón ampliar). Un thumb de catálogo se ve bien en la card y **mal** a pantalla completa / retina. Además no se puede “volver atrás”: si más tarde quieres un recorte más grande, el RAW ya no existe. Open Graph (compartir) también pide ~1200 px.
+- **En tu proyecto:** las subidas siguen siendo el JPEG/WebP tal cual (`store('productos'|'segunda-mano'|'subastas'|'surfboards')`). Aún no hay máster ni thumb. Disco: 50 productos × 4 fotos × 4 MB ≈ 800 MB; los mismos en máster web ~150 KB ≈ 30 MB. Casi el mismo ahorro que “solo thumb”, sin romper la ficha.
+- **Para recordar:** *borra el RAW del móvil, no la única copia nítida. Máster web (ficha) ± thumb (listado).*
+
+---
+
+> **Por ampliar:** 2.12+ (middlewares, service providers, scopes, casts…). Se añade cada vez que salga un concepto nuevo.

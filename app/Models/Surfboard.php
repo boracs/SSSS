@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Media\CatalogImageService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,7 +55,7 @@ class Surfboard extends Model
         'volumen' => 'float',
     ];
 
-    protected $appends = ['first_image_url'];
+    protected $appends = ['first_image_url', 'first_thumb_url'];
 
     /**
      * URL pública de la primera imagen (Storage::url) para uso en frontend.
@@ -80,6 +81,38 @@ class Surfboard extends Model
             return $first;
         }
         return Storage::disk('public')->url($first);
+    }
+
+    public function getFirstThumbUrlAttribute(): ?string
+    {
+        $master = $this->firstStoredLocalPath();
+        if ($master === null) {
+            return $this->first_image_url;
+        }
+
+        return app(CatalogImageService::class)->publicThumbUrl($master);
+    }
+
+    private function firstStoredLocalPath(): ?string
+    {
+        if (empty($this->image_url)) {
+            return null;
+        }
+        $paths = is_string($this->image_url) ? json_decode($this->image_url, true) : $this->image_url;
+        if (! is_array($paths) || empty($paths)) {
+            $single = is_string($this->image_url) ? $this->image_url : null;
+            if ($single && ! str_starts_with($single, 'http')) {
+                return ltrim($single, '/');
+            }
+
+            return null;
+        }
+        $first = $paths[0];
+        if (! is_string($first) || str_starts_with($first, 'http')) {
+            return null;
+        }
+
+        return ltrim($first, '/');
     }
 
     protected static function booted(): void
@@ -118,7 +151,7 @@ class Surfboard extends Model
 
         foreach ($paths as $path) {
             if (is_string($path) && ! str_starts_with($path, 'http')) {
-                Storage::disk('public')->delete($path);
+                app(CatalogImageService::class)->deletePair($path);
             }
         }
     }

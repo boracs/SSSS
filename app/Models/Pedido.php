@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\MoneyCents;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -18,7 +20,7 @@ class Pedido extends Model
         'user_id',
         'guest_name',
         'guest_email',
-        'precio_total',
+        'precio_total_cents',
         'pagado',
         'entregado',
         'payment_proof_path',
@@ -29,7 +31,16 @@ class Pedido extends Model
 
     protected $casts = [
         'proof_uploaded_at' => 'datetime',
+        'precio_total_cents' => 'integer',
     ];
+
+    /**
+     * Expone el total en euros (cálculo exacto desde céntimos) para la API y el front.
+     */
+    protected function precioTotal(): Attribute
+    {
+        return Attribute::get(fn (): float => MoneyCents::centsToEuros((int) ($this->precio_total_cents ?? 0)));
+    }
 
     /**
      * Relación con la tabla de usuarios (un pedido pertenece a un usuario).
@@ -65,7 +76,7 @@ class Pedido extends Model
     public function productos()
     {
         return $this->belongsToMany(Producto::class, 'pedido_producto', 'id_pedido', 'id_producto')
-            ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado') // Incluye las columnas adicionales de la tabla pivote
+            ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado_cents') // Incluye las columnas adicionales de la tabla pivote
             ->withTimestamps(); // Registra las marcas de tiempo en la tabla pivote
     }
 }

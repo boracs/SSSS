@@ -60,6 +60,12 @@ export function formatWeekdayShort(dateStr) {
     return date.toLocaleDateString("es-ES", { weekday: "short" });
 }
 
+function formatDayNumber(dateStr) {
+    const date = new Date(`${dateStr}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return "";
+    return String(date.getDate());
+}
+
 function hourDateKey(time) {
     return String(time ?? "").slice(0, 10);
 }
@@ -100,6 +106,10 @@ export default function WeatherDetailPanel({ panelId, open, data, loading, error
         ? formatWeekdayShort(selectedDate)
         : null;
 
+    const selectedDay = selectedDate
+        ? daily.find((day) => day.date === selectedDate) ?? null
+        : null;
+
     const selectDay = (date) => {
         const hours = hoursByDate.get(date) ?? [];
         if (hours.length === 0) return;
@@ -116,11 +126,13 @@ export default function WeatherDetailPanel({ panelId, open, data, loading, error
     return (
         <div
             id={panelId}
-            className={`overflow-hidden transition-[max-height,opacity] duration-200 ease-out ${
-                open ? "max-h-[min(80vh,720px)] opacity-100" : "max-h-0 opacity-0"
+            className={`min-w-0 transition-[max-height,opacity] duration-200 ease-out ${
+                open
+                    ? "max-h-[min(80vh,720px)] overflow-x-hidden overflow-y-auto opacity-100"
+                    : "max-h-0 overflow-hidden opacity-0"
             }`}
         >
-            <div className="mt-3 rounded-2xl border border-amber-500/20 bg-slate-900/80 p-4 backdrop-blur-sm sm:p-5">
+            <div className="mt-3 min-w-0 overflow-x-hidden rounded-2xl border border-amber-500/20 bg-slate-900/80 p-3 backdrop-blur-sm sm:p-5">
                 {loading && (
                     <p className="flex items-center gap-2 text-sm text-amber-200/80">
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -132,16 +144,116 @@ export default function WeatherDetailPanel({ panelId, open, data, loading, error
 
                 {!loading && !error && hourly.length > 0 && (
                     <div className="space-y-5">
-                        <section id={`${panelId}-horario`}>
-                            <div className="mb-2 flex items-center justify-between gap-2">
-                                <h3 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-300">
+                        <section>
+                            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-300">
+                                <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+                                Próximos 7 días
+                            </h3>
+
+                            <div className="grid min-w-0 grid-cols-4 gap-1.5 md:grid-cols-7 md:gap-2">
+                                {daily.map((day, idx) => {
+                                    const { icon: Icon, tone } = weatherIconMeta(day.weather_code);
+                                    const dayHours = hoursByDate.get(day.date) ?? [];
+                                    const hasHours = dayHours.length > 0;
+                                    const isSelected = selectedDate === day.date;
+                                    const weekday = formatWeekdayShort(day.date);
+                                    const dayNumber = formatDayNumber(day.date);
+                                    const baseClass =
+                                        "min-w-0 w-full overflow-hidden rounded-xl border p-1.5 text-center transition sm:p-2";
+                                    const activeClass = isSelected
+                                        ? "border-amber-400/50 bg-amber-500/15 ring-1 ring-amber-400/40"
+                                        : hasHours
+                                          ? "border-amber-500/20 bg-amber-500/[0.06] hover:border-amber-400/40 hover:bg-amber-500/10"
+                                          : "cursor-not-allowed border-white/5 bg-white/[0.02] opacity-55";
+
+                                    const inner = (
+                                        <>
+                                            <p className="truncate text-[10px] font-medium capitalize text-slate-300 sm:text-[11px]">
+                                                {weekday}
+                                                {dayNumber ? (
+                                                    <span className="ml-0.5 font-normal tabular-nums text-slate-500">
+                                                        {dayNumber}
+                                                    </span>
+                                                ) : null}
+                                            </p>
+                                            <Icon
+                                                className={`mx-auto mt-1 h-5 w-5 ${tone}`}
+                                                strokeWidth={1.75}
+                                                aria-hidden
+                                            />
+                                            <p className="mt-1 text-[11px] leading-tight tabular-nums text-white sm:text-xs">
+                                                {Math.round(day.temp_max_c)}°
+                                            </p>
+                                            <p className="text-[10px] leading-tight tabular-nums text-slate-400">
+                                                {Math.round(day.temp_min_c)}°
+                                            </p>
+                                            <p className="inline-flex items-center justify-center gap-0.5 text-[10px] tabular-nums text-sky-300">
+                                                <CloudRain
+                                                    className="h-2.5 w-2.5 shrink-0 text-sky-400/90"
+                                                    aria-hidden
+                                                />
+                                                <span className="sr-only">
+                                                    Probabilidad de lluvia{" "}
+                                                </span>
+                                                {Math.round(day.precip_probability_max_pct ?? 0)}%
+                                            </p>
+                                        </>
+                                    );
+
+                                    return hasHours ? (
+                                        <button
+                                            key={`${day.date}-${idx}`}
+                                            type="button"
+                                            onClick={() => selectDay(day.date)}
+                                            aria-pressed={isSelected}
+                                            aria-controls={`${panelId}-horario`}
+                                            aria-label={`Ver horario del ${weekday} ${dayNumber}`.trim()}
+                                            className={`${baseClass} ${activeClass}`}
+                                        >
+                                            {inner}
+                                        </button>
+                                    ) : (
+                                        <div
+                                            key={`${day.date}-${idx}`}
+                                            className={`${baseClass} ${activeClass}`}
+                                            aria-disabled="true"
+                                        >
+                                            {inner}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {selectedDay ? (
+                                <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] tabular-nums text-slate-400">
+                                    <span className="inline-flex items-center gap-1">
+                                        <Sunrise className="h-3 w-3 shrink-0" aria-hidden />
+                                        <span className="sr-only">Amanecer </span>
+                                        {formatClock(selectedDay.sunrise)}
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <Sunset className="h-3 w-3 shrink-0" aria-hidden />
+                                        <span className="sr-only">Atardecer </span>
+                                        {formatClock(selectedDay.sunset)}
+                                    </span>
+                                </p>
+                            ) : null}
+                        </section>
+
+                        <section id={`${panelId}-horario`} className="scroll-mt-2">
+                            <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+                                <h3 className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs font-semibold uppercase tracking-widest text-amber-300">
                                     <Clock className="h-3.5 w-3.5" aria-hidden />
                                     Horario
                                     {selectedLabel ? (
                                         <span className="normal-case tracking-normal text-amber-200/90">
                                             · {selectedLabel}
                                         </span>
-                                    ) : null}
+                                    ) : (
+                                        <span className="normal-case tracking-normal text-amber-200/90">
+                                            · próximas {show48h ? "48 h" : "24 h"}
+                                        </span>
+                                    )}
                                 </h3>
                                 <div className="flex items-center gap-2">
                                     {selectedDate ? (
@@ -166,7 +278,7 @@ export default function WeatherDetailPanel({ panelId, open, data, loading, error
 
                             {visibleHours.length > 0 ? (
                                 <ForecastSlider key={selectedDate ?? (show48h ? "48" : "24")}>
-                                    <div className="flex gap-2 px-1 pb-1">
+                                    <div className="flex w-max flex-nowrap gap-2 px-1 pb-1">
                                         {visibleHours.map((hour, idx) => {
                                             const { icon: Icon, tone } = weatherIconMeta(
                                                 hour.weather_code,
@@ -210,93 +322,6 @@ export default function WeatherDetailPanel({ panelId, open, data, loading, error
                                     No hay franjas horarias para este día.
                                 </p>
                             )}
-                        </section>
-
-                        <section>
-                            <h3 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-amber-300">
-                                <CalendarDays className="h-3.5 w-3.5" aria-hidden />
-                                Próximos 7 días
-                            </h3>
-                            <p className="mb-2 text-[11px] text-slate-500">
-                                Pulsa un día con horario para ver sus horas arriba.
-                            </p>
-
-                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-                                {daily.map((day, idx) => {
-                                    const { icon: Icon, tone } = weatherIconMeta(day.weather_code);
-                                    const dayHours = hoursByDate.get(day.date) ?? [];
-                                    const hasHours = dayHours.length > 0;
-                                    const isSelected = selectedDate === day.date;
-                                    const baseClass =
-                                        "w-full rounded-xl border p-2 text-center transition";
-                                    const activeClass = isSelected
-                                        ? "border-amber-400/50 bg-amber-500/15 ring-1 ring-amber-400/40"
-                                        : hasHours
-                                          ? "border-amber-500/20 bg-amber-500/[0.06] hover:border-amber-400/40 hover:bg-amber-500/10"
-                                          : "cursor-not-allowed border-white/5 bg-white/[0.02] opacity-55";
-
-                                    const inner = (
-                                        <>
-                                            <p className="text-[11px] font-medium capitalize text-slate-300">
-                                                {formatWeekdayShort(day.date)}
-                                            </p>
-                                            <Icon
-                                                className={`mx-auto mt-1 h-5 w-5 ${tone}`}
-                                                strokeWidth={1.75}
-                                                aria-hidden
-                                            />
-                                            <p className="mt-1 text-xs tabular-nums text-white">
-                                                {Math.round(day.temp_max_c)}° /{" "}
-                                                {Math.round(day.temp_min_c)}°
-                                            </p>
-                                            <p className="inline-flex items-center justify-center gap-0.5 text-[10px] tabular-nums text-sky-300">
-                                                <CloudRain
-                                                    className="h-2.5 w-2.5 shrink-0 text-sky-400/90"
-                                                    aria-hidden
-                                                />
-                                                {Math.round(day.precip_probability_max_pct ?? 0)}%
-                                            </p>
-                                            <p className="mt-1 flex items-center justify-center gap-1 text-[10px] text-slate-500">
-                                                <Sunrise className="h-3 w-3" aria-hidden />
-                                                {formatClock(day.sunrise)}
-                                            </p>
-                                            <p className="flex items-center justify-center gap-1 text-[10px] text-slate-500">
-                                                <Sunset className="h-3 w-3" aria-hidden />
-                                                {formatClock(day.sunset)}
-                                            </p>
-                                            {hasHours ? (
-                                                <p className="mt-1.5 text-[10px] font-semibold text-amber-300/90">
-                                                    Ver por horas
-                                                </p>
-                                            ) : (
-                                                <p className="mt-1.5 text-[10px] text-slate-600">
-                                                    Sin horario
-                                                </p>
-                                            )}
-                                        </>
-                                    );
-
-                                    return hasHours ? (
-                                        <button
-                                            key={`${day.date}-${idx}`}
-                                            type="button"
-                                            onClick={() => selectDay(day.date)}
-                                            aria-pressed={isSelected}
-                                            className={`${baseClass} ${activeClass}`}
-                                        >
-                                            {inner}
-                                        </button>
-                                    ) : (
-                                        <div
-                                            key={`${day.date}-${idx}`}
-                                            className={`${baseClass} ${activeClass}`}
-                                            aria-disabled="true"
-                                        >
-                                            {inner}
-                                        </div>
-                                    );
-                                })}
-                            </div>
                         </section>
                     </div>
                 )}

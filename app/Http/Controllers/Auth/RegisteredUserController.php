@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
 use App\Models\Carrito;
+use App\Models\User;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Redirect; // Importación de Redirect
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-
 
 class RegisteredUserController extends Controller
 {
@@ -40,10 +39,9 @@ class RegisteredUserController extends Controller
             'telefono' => 'required|string|max:12',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
-      
 
         // Crear el usuario
-         $user = User::create([
+        $user = User::create([
             'role' => 'user', // El valor 'user' es el predeterminado
             'nombre' => $request->nombre,
             'apellido' => $request->apellido,
@@ -51,8 +49,7 @@ class RegisteredUserController extends Controller
             'telefono' => $request->telefono,
             'numeroTaquilla' => $request->numeroTaquilla ?? '0', // Si se proporciona
             'password' => Hash::make($request->password), // Encriptación de la contraseña
-    ]);
-
+        ]);
 
         // Disparar el evento de registro
         event(new Registered($user));
@@ -60,11 +57,7 @@ class RegisteredUserController extends Controller
         // Iniciar sesión automáticamente al crear el usuario
         Auth::login($user);
 
-       // Crear el carrito asociado al usuario
-       $carrito = Carrito::create([
-            'user_id' => $user->id, // Asociamos el carrito al usuario recién creado
-       ]);
-
+        $carrito = Carrito::forUser((int) $user->id);
 
         // Redirigir a una página usando Inertia
         return Redirect::route('Pag_principal')->with([

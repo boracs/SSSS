@@ -3,14 +3,14 @@
 declare(strict_types=1);
 
 use App\Events\Payments\PaymentConfirmed;
-use App\Models\Pedido;
 use App\Models\PaymentWebhookIdempotency;
+use App\Models\Pedido;
 use Illuminate\Support\Facades\Event;
 
 test('pago/exito reemite PaymentConfirmed con parámetros con nombre sin 500', function () {
     Event::fake([PaymentConfirmed::class]);
 
-    $pedido = Pedido::factory()->create(['pagado' => true, 'precio_total' => 60]);
+    $pedido = Pedido::factory()->create(['pagado' => true, 'precio_total_cents' => 6000]);
 
     PaymentWebhookIdempotency::query()->create([
         'transaction_id' => 'cs_test_success_named',

@@ -157,7 +157,7 @@ return [
         [
             'key' => 'taquillas',
             'title' => 'Planes y cuotas de taquillas',
-            'path' => '/taquillas/planes-y-cuotas',
+            'path' => '/servicios/taquillas',
             'summary' => 'Planes de taquilla del club: guarda tu material en Zurriola, servicios para socios (secadero, duchas, reparaciones, café…).',
             'keywords' => 'taquilla taquillas plan socio cuota mensual anual rack guardar tabla',
             'patterns' => [

@@ -17,16 +17,18 @@ import {
     ChevronUp,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import {
+    FLOATING_DOCK_BOTTOM,
+    FLOATING_DOCK_BOTTOM_SM,
+} from "../utils/floatingDockOffset";
 
 const LOCAL_CHAT_KEY = "s4_anon_chat_v1";
 const ANON_SESSION_TOKEN_KEY = "s4_anon_chat_token";
 
 const CHAT_Z = "z-[850]";
-/** Comparte offset con barra sticky PDP (`ProductStickyPurchaseBar`). */
-const STICKY_AWARE_BOTTOM =
-    "bottom-[calc(max(1.25rem,env(safe-area-inset-bottom,0px))+var(--s4-sticky-purchase-bar-h,0px))]";
-const STICKY_AWARE_BOTTOM_SM =
-    "sm:bottom-[calc(1.5rem+var(--s4-sticky-purchase-bar-h,0px))]";
+/** Comparte offset con barra sticky PDP (`ProductStickyPurchaseBar`) y footer. */
+const STICKY_AWARE_BOTTOM = FLOATING_DOCK_BOTTOM;
+const STICKY_AWARE_BOTTOM_SM = FLOATING_DOCK_BOTTOM_SM;
 /** Mostrar «subir» tras pasar ~un viewport corto (vuelta rápida al menú). */
 const SCROLL_TOP_AFTER_PX = 360;
 
@@ -393,13 +395,9 @@ const Chatbot = ({ showChatLauncher = true }) => {
         academyWhatsappUrl,
     } = useChatbot();
 
-    const [mounted, setMounted] = useState(false);
     const [showScrollTop, setShowScrollTop] = useState(false);
-    useEffect(() => setMounted(true), []);
 
     useEffect(() => {
-        if (!mounted) return undefined;
-
         const readScrollY = () =>
             window.scrollY ||
             document.documentElement.scrollTop ||
@@ -421,11 +419,13 @@ const Chatbot = ({ showChatLauncher = true }) => {
         sync();
         window.addEventListener("scroll", onScroll, { passive: true });
         document.addEventListener("scroll", onScroll, { passive: true, capture: true });
+        window.addEventListener("resize", sync, { passive: true });
         return () => {
             window.removeEventListener("scroll", onScroll);
             document.removeEventListener("scroll", onScroll, { capture: true });
+            window.removeEventListener("resize", sync);
         };
-    }, [mounted]);
+    }, []);
 
     const scrollToTop = () => {
         const reduceMotion =
@@ -471,7 +471,7 @@ const Chatbot = ({ showChatLauncher = true }) => {
         </div>
     );
 
-    if (!mounted) {
+    if (typeof document === "undefined") {
         return null;
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Seo;
 
 use App\DTOs\Seo\SitemapUrlDto;
+use App\Enums\SecondHandStatus;
 use App\Models\Article;
 use App\Models\Producto;
 use App\Models\SecondHandBoard;
@@ -14,11 +15,11 @@ use Illuminate\Support\Facades\Cache;
 
 /**
  * robots.txt + sitemap.xml de páginas públicas indexables.
- * Sin datos sensibles; catálogo solo entradas públicas (segunda mano available, productos no eliminados, alquiler activos).
+ * Sin datos sensibles; catálogo solo entradas públicas (segunda mano available+reserved, productos no eliminados, alquiler activos).
  */
 final class PublicSitemapService
 {
-    private const CACHE_KEY = 'seo.sitemap.xml.v1';
+    private const CACHE_KEY = 'seo.sitemap.xml.v2';
 
     private const CACHE_TTL_SECONDS = 3600;
 
@@ -40,6 +41,7 @@ final class PublicSitemapService
         ['/servicios/fotos', 'monthly', '0.6'],
         ['/servicios/videograbaciones', 'monthly', '0.6'],
         ['/servicios/webcams', 'daily', '0.9'],
+        ['/servicios/taquillas', 'weekly', '0.85'],
         ['/tienda', 'daily', '0.8'],
         ['/segunda-mano', 'daily', '0.8'],
         ['/taller', 'weekly', '0.7'],
@@ -77,7 +79,6 @@ final class PublicSitemapService
             'Disallow: /academia',
             'Disallow: /bonos',
             'Disallow: /taquilla',
-            'Disallow: /taquillas',
             'Disallow: /comparador-surf',
             'Disallow: /subastas',
             'Disallow: /webhooks',
@@ -182,7 +183,7 @@ final class PublicSitemapService
             });
 
         SecondHandBoard::query()
-            ->available()
+            ->whereIn('status', SecondHandStatus::publicListingValues())
             ->select(['id', 'updated_at'])
             ->orderByDesc('id')
             ->get()

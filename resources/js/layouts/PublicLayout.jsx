@@ -1,10 +1,10 @@
-import React, { Suspense, lazy } from "react";
+import React from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FlashErrorModal from "../components/FlashErrorModal";
 import PwaInstallBanner from "../components/PwaInstallBanner";
-
-const Chatbot = lazy(() => import("../components/Chatbot.jsx"));
+import FloatingDockOffsetSync from "../components/FloatingDockOffsetSync";
+import Chatbot from "../components/Chatbot.jsx";
 
 export default function PublicLayout({ children }) {
     return (
@@ -14,10 +14,8 @@ export default function PublicLayout({ children }) {
             <Footer />
             <FlashErrorModal />
             <PwaInstallBanner />
-            {/* FAB público: ↑ + chat Maider (también con sesión admin en páginas públicas). */}
-            <Suspense fallback={null}>
-                <Chatbot showChatLauncher />
-            </Suspense>
+            <FloatingDockOffsetSync />
+            <Chatbot showChatLauncher />
         </div>
     );
 }

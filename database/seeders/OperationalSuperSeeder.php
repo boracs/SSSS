@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\AttendanceNote;
-use App\Models\Booking;
 use App\Models\BonoConsumption;
+use App\Models\Booking;
 use App\Models\Carrito;
 use App\Models\CreditTransaction;
 use App\Models\Lesson;
@@ -201,10 +201,10 @@ class OperationalSuperSeeder extends Seeder
                 continue;
             }
 
-            $total = 0.0;
+            $total = 0;
             $pedido = Pedido::query()->create([
                 'user_id' => $student->id,
-                'precio_total' => 0,
+                'precio_total_cents' => 0,
                 'pagado' => $index % 2 === 0,
                 'entregado' => $index % 3 === 0,
             ]);
@@ -216,20 +216,20 @@ class OperationalSuperSeeder extends Seeder
                 }
                 $precioBase = (float) $prod->precio;
                 $descuento = (float) $prod->descuento;
-                $precioPagado = round($precioBase - ($precioBase * ($descuento / 100)), 2);
-                $subtotal = $precioPagado * $cantidad;
+                $precioPagadoCents = \App\Support\MoneyCents::eurosToCents($precioBase - ($precioBase * ($descuento / 100)));
+                $subtotal = $precioPagadoCents * $cantidad;
                 $total += $subtotal;
 
                 $pedido->productos()->attach($prod->id, [
                     'cantidad' => $cantidad,
                     'descuento_aplicado' => $descuento,
-                    'precio_pagado' => $precioPagado,
+                    'precio_pagado_cents' => $precioPagadoCents,
                 ]);
 
                 $prod->decrement('unidades', $cantidad);
             }
 
-            $pedido->update(['precio_total' => round($total, 2)]);
+            $pedido->update(['precio_total_cents' => $total]);
             $carrito->delete();
         }
     }

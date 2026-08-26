@@ -7,15 +7,19 @@ use App\Http\Requests\Admin\StoreSurfboardRequest;
 use App\Http\Requests\Admin\UpdateSurfboardRequest;
 use App\Models\PriceSchema;
 use App\Models\Surfboard;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class SurfboardController extends Controller
 {
+    public function __construct(
+        private readonly CatalogImageService $catalogImages,
+    ) {}
+
     public function index(Request $request): Response
     {
         $surfboards = Surfboard::query()
@@ -57,6 +61,7 @@ class SurfboardController extends Controller
                 'image_url' => $surfboard->image_url,
                 'image_alt' => $surfboard->image_alt,
                 'first_image_url' => $surfboard->first_image_url,
+                'first_thumb_url' => $surfboard->first_thumb_url,
             ],
             'priceSchemas' => PriceSchema::query()
                 ->orderBy('name')
@@ -78,8 +83,8 @@ class SurfboardController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('surfboards', 'public');
-            $data['image_url'] = json_encode([$path]);
+            $stored = $this->catalogImages->storeFromUpload($request->file('image'), 'surfboards');
+            $data['image_url'] = json_encode([$stored->masterPath]);
         }
 
         Surfboard::create($data);
@@ -91,22 +96,25 @@ class SurfboardController extends Controller
     {
         $data = $request->validated();
 
+        $oldPaths = null;
         if ($request->hasFile('image')) {
-            // borrar imágenes anteriores (paths locales) si existían
+            // Subir y persistir primero: si falla, la foto antigua sigue intacta.
             $old = $surfboard->image_url;
             $paths = is_string($old) ? json_decode($old, true) : $old;
-            if (! is_array($paths)) $paths = $old ? [$old] : [];
-            foreach ($paths as $p) {
-                if (is_string($p) && $p !== '' && ! str_starts_with($p, 'http')) {
-                    Storage::disk('public')->delete($p);
-                }
+            if (! is_array($paths)) {
+                $paths = $old ? [$old] : [];
             }
+            $oldPaths = array_filter($paths, 'is_string');
 
-            $path = $request->file('image')->store('surfboards', 'public');
-            $data['image_url'] = json_encode([$path]);
+            $stored = $this->catalogImages->storeFromUpload($request->file('image'), 'surfboards');
+            $data['image_url'] = json_encode([$stored->masterPath]);
         }
 
         $surfboard->update($data);
+
+        if ($oldPaths !== null) {
+            $this->catalogImages->deletePairs($oldPaths);
+        }
 
         return redirect()->route('admin.surfboards.index')->with('success', 'Tabla actualizada correctamente.');
     }

@@ -689,11 +689,11 @@ final class SandboxRandomDemoSeeder extends Seeder
                 $picked = [$products[0]];
             }
 
-            $total = 0.0;
+            $total = 0;
             // Pasarela: solo pedidos cobrados (estado operativo = entrega).
             $pedido = Pedido::query()->create([
                 'user_id' => $client->id,
-                'precio_total' => 0,
+                'precio_total_cents' => 0,
                 'pagado' => true,
                 'entregado' => $i % 3 === 0,
                 'payment_method' => 'card',
@@ -702,16 +702,16 @@ final class SandboxRandomDemoSeeder extends Seeder
 
             foreach ($picked as $prod) {
                 $descuento = (float) ($prod->descuento ?? 0);
-                $precioPagado = round((float) $prod->precio * (1 - $descuento / 100), 2);
-                $total += $precioPagado;
+                $precioPagadoCents = \App\Support\MoneyCents::eurosToCents((float) $prod->precio * (1 - $descuento / 100));
+                $total += $precioPagadoCents;
                 $pedido->productos()->attach($prod->id, [
                     'cantidad' => 1,
                     'descuento_aplicado' => $descuento,
-                    'precio_pagado' => $precioPagado,
+                    'precio_pagado_cents' => $precioPagadoCents,
                 ]);
             }
 
-            $pedido->update(['precio_total' => round($total, 2)]);
+            $pedido->update(['precio_total_cents' => $total]);
         }
     }
 

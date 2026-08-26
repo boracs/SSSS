@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Enums\SecondHandStatus;
 use App\Enums\SecondHandBoardType;
+use App\Enums\SecondHandStatus;
 use App\Models\SecondHandBoard;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -61,29 +61,29 @@ class SecondHandBoardFactory extends Factory
     public function definition(): array
     {
         $purchasePrice = $this->faker->numberBetween(15000, 30000);
-        $margin        = $this->faker->numberBetween(10000, 20000);
-        $hasDiscount   = $this->faker->boolean(30);
-        $images        = $this->randomImages();
+        $margin = $this->faker->numberBetween(10000, 20000);
+        $hasDiscount = $this->faker->boolean(30);
+        $images = $this->randomImages();
 
         return [
-            'name'           => $this->faker->randomElement(self::$boardPool),
-            'brand'          => $this->faker->randomElement(self::$brandPool),
-            'model'          => $this->faker->randomElement(['Ghost', 'Driver 2.0', 'Hypto Krypto', 'Seaside', 'Mid Twin']),
-            'board_type'     => $this->faker->randomElement(SecondHandBoardType::cases()),
-            'description'    => $this->faker->randomElement(self::$descriptions),
-            'height'         => round($this->faker->randomFloat(2, 5.4, 6.6), 2),
-            'width'          => round($this->faker->randomFloat(2, 18.25, 21.0), 2),
-            'thickness'      => round($this->faker->randomFloat(2, 2.2, 2.75), 2),
-            'volume'         => round($this->faker->randomFloat(1, 26.5, 42.0), 1),
+            'name' => $this->faker->randomElement(self::$boardPool),
+            'brand' => $this->faker->randomElement(self::$brandPool),
+            'model' => $this->faker->randomElement(['Ghost', 'Driver 2.0', 'Hypto Krypto', 'Seaside', 'Mid Twin']),
+            'board_type' => $this->faker->randomElement(SecondHandBoardType::cases()),
+            'description' => $this->faker->randomElement(self::$descriptions),
+            'height' => round($this->faker->randomFloat(2, 5.4, 6.6), 2),
+            'width' => round($this->faker->randomFloat(2, 18.25, 21.0), 2),
+            'thickness' => round($this->faker->randomFloat(2, 2.2, 2.75), 2),
+            'volume' => round($this->faker->randomFloat(1, 26.5, 42.0), 1),
             'purchase_price' => $purchasePrice,
-            'sale_price'     => $purchasePrice + $margin,
-            'discount_pct'   => $hasDiscount
+            'sale_price' => $purchasePrice + $margin,
+            'discount_pct' => $hasDiscount
                 ? $this->faker->randomElement([5, 10, 15, 20])
                 : 0,
-            'status'         => SecondHandStatus::AVAILABLE,
-            'images'         => $images !== [] ? $images : null,
-            'purchased_at'   => $this->faker->dateTimeBetween('-6 months', 'now'),
-            'sold_at'        => null,
+            'status' => SecondHandStatus::AVAILABLE,
+            'images' => $images !== [] ? $images : null,
+            'purchased_at' => $this->faker->dateTimeBetween('-6 months', 'now'),
+            'sold_at' => null,
         ];
     }
 
@@ -104,10 +104,18 @@ class SecondHandBoardFactory extends Factory
             );
 
             return [
-                'status'  => SecondHandStatus::SOLD,
+                'status' => SecondHandStatus::SOLD,
                 'sold_at' => $soldAt,
             ];
         });
+    }
+
+    public function reserved(): static
+    {
+        return $this->state(fn (): array => [
+            'status' => SecondHandStatus::RESERVED,
+            'sold_at' => null,
+        ]);
     }
 
     /**
@@ -119,8 +127,8 @@ class SecondHandBoardFactory extends Factory
 
         $surfboardDir = storage_path('app/public/surfboards');
         if (is_dir($surfboardDir)) {
-            foreach (glob($surfboardDir . '/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: [] as $file) {
-                $pool[] = 'surfboards/' . basename($file);
+            foreach (glob($surfboardDir.'/*.{jpg,jpeg,png,webp}', GLOB_BRACE) ?: [] as $file) {
+                $pool[] = 'surfboards/'.basename($file);
             }
         }
 

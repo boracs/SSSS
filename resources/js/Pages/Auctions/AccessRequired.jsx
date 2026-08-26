@@ -1,12 +1,13 @@
 import React from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
+import SeoHead from "@/components/seo/SeoHead";
 import { Gavel, Key, Star, ArrowRight } from "lucide-react";
 
-export default function AuctionsAccessRequired() {
+export default function AuctionsAccessRequired({ seo = null }) {
     return (
         <Layout1>
-            <Head title="Subastas — solo socios" />
+            <SeoHead seo={seo} />
             <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0f172a] to-slate-950 px-4 py-12 sm:px-6">
                 <div className="mx-auto max-w-2xl">
                     <div className="rounded-2xl border border-orange-400/25 bg-gradient-to-br from-orange-500/10 via-white/5 to-transparent p-8 sm:p-10">

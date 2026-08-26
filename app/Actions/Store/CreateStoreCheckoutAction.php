@@ -13,7 +13,6 @@ use App\Models\Producto;
 use App\Models\User;
 use App\Services\Store\StoreCartCheckoutValidator;
 use App\Services\Store\StoreOrderStockService;
-use App\Support\MoneyCents;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -50,7 +49,7 @@ final class CreateStoreCheckoutAction
             return new PaymentLineItemDto(
                 name: $prod->nombre,
                 description: 'Compra tienda S4',
-                unitAmountCents: MoneyCents::eurosToCents($prod->pivot->precio_pagado),
+                unitAmountCents: (int) $prod->pivot->precio_pagado_cents,
                 quantity: (int) $prod->pivot->cantidad,
             );
         })->values()->all();

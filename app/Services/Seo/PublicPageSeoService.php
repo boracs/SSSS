@@ -35,6 +35,7 @@ final class PublicPageSeoService
 
     public function __construct(
         private readonly ZurriolaGeoFactsService $zurriolaGeoFacts,
+        private readonly SurfClassesFaqService $surfClassesFaq,
     ) {}
 
     public function home(): SeoMetaDto
@@ -151,6 +152,7 @@ final class PublicPageSeoService
                     ['name' => 'Inicio', 'path' => '/'],
                     ['name' => 'Clases de surf', 'path' => $path],
                 ]),
+                ...$this->surfClassesFaq->faqJsonLdNodes($this->absoluteUrl($path)),
             ],
             ogImage: self::SURF_CLASSES_OG_IMAGE,
         );
@@ -253,6 +255,35 @@ final class PublicPageSeoService
         );
     }
 
+    public function serviciosTaquillas(): SeoMetaDto
+    {
+        $title = 'Taquillas surf en Zurriola | Planes y cuotas · San Sebastian Surf School';
+        $description = 'Taquillas privadas a pie de playa en Zurriola (Donostia): planes mensuales y anuales del club S4. Guarda tablas y neoprenos, duchas, descuentos en tienda y micro-servicios para socios.';
+        $path = '/servicios/taquillas';
+
+        return $this->make(
+            title: $title,
+            description: $description,
+            path: $path,
+            jsonLd: [
+                $this->organizationNode(),
+                $this->localBusinessNode(),
+                $this->webPageNode($title, $description, $path, 'WebPage', self::NOSOTROS_OG_IMAGE),
+                $this->serviceNode(
+                    'Taquillas y membresía club · San Sebastian Surf School',
+                    $description,
+                    $path,
+                ),
+                $this->breadcrumbListNode([
+                    ['name' => 'Inicio', 'path' => '/'],
+                    ['name' => 'Servicios', 'path' => '/servicios'],
+                    ['name' => 'Taquillas y planes', 'path' => $path],
+                ]),
+            ],
+            ogImage: self::NOSOTROS_OG_IMAGE,
+        );
+    }
+
     public function webcams(): SeoMetaDto
     {
         $title = 'Webcam Zurriola en directo y previsión surf | San Sebastian Surf School';
@@ -277,6 +308,66 @@ final class PublicPageSeoService
             ogType: 'website',
             jsonLd: $jsonLd,
             ogImage: self::WEBCAMS_OG_IMAGE,
+        );
+    }
+
+    /** Carrito autenticado: no indexable (robots.txt + meta noindex). */
+    public function carrito(): SeoMetaDto
+    {
+        $title = 'Carrito | San Sebastian Surf School';
+        $description = 'Tu carrito de compra en la tienda de San Sebastian Surf School (S4).';
+
+        return $this->make(
+            title: $title,
+            description: $description,
+            path: '/carrito',
+            robots: 'noindex, nofollow',
+            jsonLd: [],
+        );
+    }
+
+    /** Catálogo subastas socios: no indexable. */
+    public function subastasIndex(): SeoMetaDto
+    {
+        $title = 'Subastas | San Sebastian Surf School';
+        $description = 'Subastas de material S4 para socios con taquilla o VIP. Pujas en la web del club.';
+
+        return $this->make(
+            title: $title,
+            description: $description,
+            path: '/subastas',
+            robots: 'noindex, nofollow',
+            jsonLd: [],
+        );
+    }
+
+    public function subastaShow(string $auctionTitle, string $slug): SeoMetaDto
+    {
+        $trimmed = trim($auctionTitle);
+        $title = $trimmed !== ''
+            ? $trimmed.' | Subastas S4'
+            : 'Subasta | San Sebastian Surf School';
+        $description = $trimmed !== ''
+            ? 'Subasta '.$trimmed.' — San Sebastian Surf School (S4). Zona reservada a socios.'
+            : 'Detalle de subasta del club S4.';
+
+        return $this->make(
+            title: $title,
+            description: $description,
+            path: '/subastas/'.$slug,
+            robots: 'noindex, nofollow',
+            jsonLd: [],
+        );
+    }
+
+    public function subastasAccessRequired(): SeoMetaDto
+    {
+        return $this->make(
+            title: 'Subastas — acceso socios | San Sebastian Surf School',
+            description: 'Las subastas S4 están reservadas a socios con taquilla o VIP.',
+            path: '/subastas',
+            robots: 'noindex, nofollow',
+            jsonLd: [],
         );
     }
 
@@ -377,6 +468,7 @@ final class PublicPageSeoService
      *     board_type_label?: string|null,
      *     effective_price: int,
      *     first_image?: string|null,
+     *     first_image_master?: string|null,
      *     status?: string|null
      * }  $board
      */
@@ -390,7 +482,7 @@ final class PublicPageSeoService
         $typeLabel = trim((string) ($board['board_type_label'] ?? ''));
         $descBody = trim((string) ($board['description'] ?? ''));
         $priceCents = (int) ($board['effective_price'] ?? 0);
-        $imageUrl = (string) ($board['first_image'] ?? '');
+        $imageUrl = (string) ($board['first_image_master'] ?? $board['first_image'] ?? '');
         $inStock = ($board['status'] ?? 'available') === 'available';
 
         $title = $name.' | Segunda mano · San Sebastian Surf School';

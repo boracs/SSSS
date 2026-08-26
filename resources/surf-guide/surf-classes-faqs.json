@@ -1,0 +1,34 @@
+{
+  "faqs": [
+    {
+      "id": "location",
+      "question": "¿Dónde son las clases de surf de San Sebastian Surf School?",
+      "answer": "En la playa de la Zurriola (Donostia / San Sebastián), a pie de playa: la escuela S4 está a unos 20 metros de la arena. Las clases se imparten en el entorno del beach break de Zurriola con monitores locales."
+    },
+    {
+      "id": "beginners",
+      "question": "¿Puedo aprender surf en Donostia sin experiencia previa?",
+      "answer": "Sí. Las clases de iniciación están pensadas para quien nunca ha surfeado o lleva poco tiempo. El monitor adapta la sesión al nivel, la seguridad y las condiciones del día en Zurriola."
+    },
+    {
+      "id": "included",
+      "question": "¿Qué incluye una clase de surf en S4?",
+      "answer": "Neopreno y tabla para la sesión, entrega del material en la escuela y monitor en el agua. Trae toalla, chanclas y lo básico de ducha. Llega unos 15 minutos antes para estar listo a la hora."
+    },
+    {
+      "id": "pricing",
+      "question": "¿Cuánto cuestan las clases de surf en San Sebastián?",
+      "answer": ""
+    },
+    {
+      "id": "formats",
+      "question": "¿Hay clases particulares y clases en grupo en Zurriola?",
+      "answer": "Sí. Ofrecemos clases particulares (atención 100 % del monitor), bonos de 5 clases, bonos grupales de 10 clases de 1,5 h y bonos de 10 clases particulares. Puedes reservar desde la página de clases o contactar con la escuela."
+    },
+    {
+      "id": "levels",
+      "question": "¿Qué nivel de olas necesito para empezar en Zurriola?",
+      "answer": "En verano suele haber olas suaves, ideales para principiantes. En días de más energía el monitor elige la zona y el momento adecuados. Consulta la webcam, la previsión y el parte del día en la página de webcams de S4 antes de tu sesión."
+    }
+  ]
+}

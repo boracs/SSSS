@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\SecondHandStatus;
 use App\Enums\SecondHandBoardType;
+use App\Enums\SecondHandStatus;
+use App\Services\Media\CatalogImageService;
+use App\Support\SurfboardImperialHeight;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -36,18 +38,18 @@ class SecondHandBoard extends Model
     ];
 
     protected $casts = [
-        'status'         => SecondHandStatus::class,
-        'board_type'     => SecondHandBoardType::class,
-        'images'         => 'array',
-        'purchased_at'   => 'datetime',
-        'sold_at'        => 'datetime',
-        'height'         => 'float',
-        'width'          => 'float',
-        'thickness'      => 'float',
-        'volume'         => 'float',
+        'status' => SecondHandStatus::class,
+        'board_type' => SecondHandBoardType::class,
+        'images' => 'array',
+        'purchased_at' => 'datetime',
+        'sold_at' => 'datetime',
+        'height' => 'float',
+        'width' => 'float',
+        'thickness' => 'float',
+        'volume' => 'float',
         'purchase_price' => 'integer',
-        'sale_price'     => 'integer',
-        'discount_pct'   => 'integer',
+        'sale_price' => 'integer',
+        'discount_pct' => 'integer',
     ];
 
     // Scopes
@@ -70,10 +72,7 @@ class SecondHandBoard extends Model
     public function scopePublicCatalog(Builder $query): Builder
     {
         return $query
-            ->whereIn('status', [
-                SecondHandStatus::AVAILABLE->value,
-                SecondHandStatus::RESERVED->value,
-            ])
+            ->whereIn('status', SecondHandStatus::publicListingValues())
             ->orderByRaw("FIELD(status, 'available', 'reserved')")
             ->orderBy('id', 'desc');
     }
@@ -85,12 +84,12 @@ class SecondHandBoard extends Model
      */
     public function scopeAdminFilters(Builder $query, array $filters): Builder
     {
-        $search    = trim((string) ($filters['search'] ?? ''));
-        $status    = trim((string) ($filters['status'] ?? ''));
+        $search = trim((string) ($filters['search'] ?? ''));
+        $status = trim((string) ($filters['status'] ?? ''));
         $boardType = trim((string) ($filters['board_type'] ?? ''));
-        $dateType  = trim((string) ($filters['date_type'] ?? 'created'));
-        $dateFrom  = trim((string) ($filters['date_from'] ?? ''));
-        $dateTo    = trim((string) ($filters['date_to'] ?? ''));
+        $dateType = trim((string) ($filters['date_type'] ?? 'created'));
+        $dateFrom = trim((string) ($filters['date_from'] ?? ''));
+        $dateTo = trim((string) ($filters['date_to'] ?? ''));
 
         if (! in_array($dateType, ['created', 'sold'], true)) {
             $dateType = 'created';
@@ -98,7 +97,7 @@ class SecondHandBoard extends Model
 
         return $query
             ->when($search !== '', function (Builder $q) use ($search): void {
-                $term = '%' . $search . '%';
+                $term = '%'.$search.'%';
                 $q->where(function (Builder $sub) use ($term): void {
                     $sub->where('brand', 'like', $term)
                         ->orWhere('model', 'like', $term);
@@ -145,12 +144,14 @@ class SecondHandBoard extends Model
         if ($this->discount_pct <= 0) {
             return $this->sale_price;
         }
+
         return (int) round($this->sale_price * (1 - $this->discount_pct / 100));
     }
 
     public function firstImage(): ?string
     {
         $images = $this->images ?? [];
+
         return $images[0] ?? null;
     }
 
@@ -158,37 +159,56 @@ class SecondHandBoard extends Model
      * DTO sanitizado para el catalogo publico.
      * Excluye purchase_price y datos de auditoria financiera.
      *
+     * @param  bool  $includeGallery  false en el listado: solo first_image (menos payload).
      * @return array<string, mixed>
      */
-    public function toPublicArray(): array
+    public function toPublicArray(bool $includeGallery = true, ?CatalogImageService $images = null): array
     {
-        return [
-            'id'              => $this->id,
-            'name'            => $this->name,
-            'brand'           => $this->brand,
-            'model'           => $this->model,
-            'board_type'      => $this->board_type?->value,
-            'board_type_label'=> $this->board_type?->label(),
-            'description'     => $this->description,
-            'height'          => $this->height,
-            'width'           => $this->width,
-            'thickness'       => $this->thickness,
-            'volume'          => $this->volume,
-            'sale_price'      => $this->sale_price,
-            'discount_pct'    => $this->discount_pct,
+        $catalogImages = $images ?? app(CatalogImageService::class);
+        $imagePaths = $this->images ?? [];
+        $first = $this->firstImage();
+
+        $payload = [
+            'id' => $this->id,
+            'name' => $this->name,
+            'brand' => $this->brand,
+            'model' => $this->model,
+            'board_type' => $this->board_type?->value,
+            'board_type_label' => $this->board_type?->label(),
+            'board_type_short' => $this->board_type?->shortLabel(),
+            'height' => $this->height,
+            'height_label' => SurfboardImperialHeight::label($this->height !== null ? (float) $this->height : null),
+            'width' => $this->width,
+            'thickness' => $this->thickness,
+            'volume' => $this->volume,
+            'sale_price' => $this->sale_price,
+            'discount_pct' => $this->discount_pct,
             'effective_price' => $this->effectiveSalePrice(),
-            'status'          => $this->status->value,
-            'status_label'    => $this->trashed() ? 'Desactivada' : $this->status->label(),
-            'is_active'       => ! $this->trashed(),
-            'images'          => array_map(
-                fn (string $p) => self::publicImageUrl($p),
-                $this->images ?? []
-            ),
-            'first_image'     => $this->firstImage()
-                ? self::publicImageUrl($this->firstImage())
+            'status' => $this->status->value,
+            'status_label' => $this->trashed() ? 'Desactivada' : $this->status->label(),
+            'is_active' => ! $this->trashed(),
+            'first_image' => $first
+                ? $catalogImages->publicThumbUrl($first)
                 : null,
-            'sold_at'         => $this->sold_at?->toDateString(),
+            'first_image_master' => $first
+                ? self::publicImageUrl($first)
+                : null,
+            'sold_at' => $this->sold_at?->toDateString(),
         ];
+
+        if ($includeGallery) {
+            $payload['description'] = $this->description;
+            $payload['images'] = array_map(
+                fn (string $p) => self::publicImageUrl($p),
+                $imagePaths,
+            );
+            $payload['images_thumbs'] = array_map(
+                fn (string $p) => $catalogImages->publicThumbUrl($p) ?? self::publicImageUrl($p),
+                $imagePaths,
+            );
+        }
+
+        return $payload;
     }
 
     public static function publicImageUrl(string $path): string
@@ -199,6 +219,6 @@ class SecondHandBoard extends Model
             return asset($path);
         }
 
-        return asset('storage/' . $path);
+        return asset('storage/'.$path);
     }
 }

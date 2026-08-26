@@ -27,7 +27,7 @@ function fakePedidoPago(): array
     $user = User::factory()->create(['email' => 'cliente@example.com']);
     $pedido = Pedido::factory()->create([
         'user_id' => $user->id,
-        'precio_total' => 60.00,
+        'precio_total_cents' => 6000,
         'pagado' => true,
     ]);
 

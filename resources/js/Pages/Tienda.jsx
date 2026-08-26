@@ -18,16 +18,29 @@ const SORT_OPTIONS = [
 /** Lotes de 8 = 2 filas en xl (4 cols) / ~4 filas en móvil (2 cols). */
 const BATCH_SIZE = 8;
 
-const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo = null }) => {
+const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo = null, initialTag = null }) => {
     const { auth } = usePage().props;
     useInertiaFlashToast();
     const user = auth?.user || null;
     const puedeComprar = hasStoreAccess(user);
     const [contactOpen, setContactOpen] = useState(false);
 
+    const validInitialTag =
+        initialTag && productTagOptions.some((option) => option.value === initialTag)
+            ? initialTag
+            : "all";
+
     const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
-    const [tagActivo, setTagActivo] = useState("all");
+    const [tagActivo, setTagActivo] = useState(validInitialTag);
     const [orden, setOrden] = useState("nombre");
+
+    const setTagFilter = (tag) => {
+        setTagActivo(tag);
+        const base = route("tienda");
+        const nextUrl =
+            tag === "all" ? base : `${base}?tag=${encodeURIComponent(tag)}`;
+        window.history.replaceState({}, "", nextUrl);
+    };
 
     const productosFiltrados = useMemo(() => {
         const base = [...productos].filter((producto) => {
@@ -64,15 +77,15 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
             <SeoHead seo={seo} />
             <StorePromoBanner slides={storePromoSlides} variant="bleed" />
 
-            <div className="mx-auto w-full max-w-[96rem] px-2 pt-1 sm:px-4 sm:pt-2 lg:px-6 lg:pb-6">
-                <h1 className="mb-4 text-xl font-extrabold tracking-tight text-slate-100 sm:mb-5 sm:text-2xl lg:text-3xl">
+            <div className="s4-surface-light mx-auto w-full max-w-[96rem] bg-gradient-to-b from-slate-50 via-white to-slate-100 px-2 pt-1 sm:px-4 sm:pt-2 lg:px-6 lg:pb-6">
+                <h1 className="mb-4 text-xl font-extrabold tracking-tight text-slate-900 sm:mb-5 sm:text-2xl lg:text-3xl">
                     Tienda · San Sebastián Surf School
                 </h1>
                 <aside
                     className={`mb-5 rounded-2xl border px-4 py-3 sm:mb-6 sm:px-5 ${
                         puedeComprar
-                            ? "border-emerald-500/25 bg-emerald-500/10"
-                            : "border-cyan-500/25 bg-cyan-500/[0.08]"
+                            ? "border-emerald-200 bg-emerald-50/90"
+                            : "border-cyan-200 bg-cyan-50/80"
                     }`}
                     aria-label="Información de acceso a la tienda"
                 >
@@ -80,8 +93,8 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                         <span
                             className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                                 puedeComprar
-                                    ? "bg-emerald-500/20 text-emerald-300"
-                                    : "bg-cyan-500/20 text-cyan-300"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : "bg-cyan-100 text-cyan-700"
                             }`}
                         >
                             {puedeComprar ? (
@@ -91,25 +104,25 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                             )}
                         </span>
                         <div className="min-w-0">
-                            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-300/90">
+                            <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-s4">
                                 <Sparkles className="h-3 w-3" aria-hidden />
                                 Tienda exclusiva de socios
                             </p>
                             {puedeComprar ? (
-                                <p className="mt-1 text-sm leading-relaxed text-slate-200">
+                                <p className="mt-1 text-sm leading-relaxed text-slate-700">
                                     Precios de club activos con tu cuenta y taquilla.
                                 </p>
                             ) : (
-                                <p className="mt-1 text-sm leading-relaxed text-slate-300">
+                                <p className="mt-1 text-sm leading-relaxed text-slate-600">
                                     Compra online para socios con{" "}
-                                    <strong className="font-semibold text-white">
+                                    <strong className="font-semibold text-slate-900">
                                         cuenta y taquilla activa
                                     </strong>
                                     . Si eres cliente recurrente y conoces al personal,{" "}
                                     <button
                                         type="button"
                                         onClick={() => setContactOpen(true)}
-                                        className="font-semibold text-cyan-300 underline-offset-2 hover:underline"
+                                        className="font-semibold text-cyan-700 underline-offset-2 hover:underline"
                                     >
                                         contacta con nosotros
                                     </button>{" "}
@@ -123,28 +136,10 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                 <div className="mb-4 min-w-0 sm:mb-5">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex min-w-0 flex-wrap items-center gap-2">
-                            {productTagOptions.length > 0 ? (
-                                <label className="flex min-w-0 items-center sm:hidden">
-                                    <span className="sr-only">Filtrar por categoría</span>
-                                    <select
-                                        value={tagActivo}
-                                        onChange={(e) => setTagActivo(e.target.value)}
-                                        aria-label="Filtrar por categoría"
-                                        className="max-w-[10.5rem] rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40"
-                                    >
-                                        <option value="all">Todos</option>
-                                        {productTagOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                            ) : null}
-                            <label className="flex min-w-0 items-center gap-1.5 text-slate-400">
+                            <label className="flex min-w-0 items-center gap-1.5 text-slate-500">
                                 <span className="sr-only">Ordenar productos</span>
                                 {orden.startsWith("descuento") ? (
-                                    <ArrowDown className="h-3.5 w-3.5 shrink-0 text-cyan-400" aria-hidden />
+                                    <ArrowDown className="h-3.5 w-3.5 shrink-0 text-cyan-600" aria-hidden />
                                 ) : (
                                     <ArrowUpDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
                                 )}
@@ -152,7 +147,7 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                                     value={orden}
                                     onChange={(e) => setOrden(e.target.value)}
                                     aria-label="Ordenar productos"
-                                    className="max-w-[9.5rem] rounded-lg border border-white/10 bg-slate-800/80 px-2 py-1.5 text-[10px] font-semibold text-slate-200 outline-none transition focus:border-cyan-400/40 sm:max-w-none sm:text-xs"
+                                    className="max-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[10px] font-semibold text-slate-800 shadow-sm outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/15 sm:max-w-none sm:py-1.5 sm:text-xs"
                                 >
                                     {SORT_OPTIONS.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -162,25 +157,25 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                                 </select>
                             </label>
                         </div>
-                        <p className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-400 sm:text-xs">
+                        <p className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-slate-500 sm:text-xs">
                             {productosFiltrados.length} productos
                         </p>
                     </div>
 
                     {productTagOptions.length > 0 ? (
                         <div
-                            className="mt-3 hidden flex-wrap gap-1.5 sm:flex"
+                            className="-mx-2 mt-3 flex gap-2 overflow-x-auto px-2 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden"
                             role="group"
                             aria-label="Filtrar por categoría"
                         >
                             <button
                                 type="button"
-                                onClick={() => setTagActivo("all")}
+                                onClick={() => setTagFilter("all")}
                                 aria-pressed={tagActivo === "all"}
-                                className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                                className={`shrink-0 rounded-full border px-3 py-2.5 text-xs font-semibold transition min-h-11 sm:min-h-0 sm:px-2.5 sm:py-1 ${
                                     tagActivo === "all"
-                                        ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-                                        : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                                        ? "border-cyan-500/40 bg-cyan-50 text-cyan-800"
+                                        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                                 }`}
                             >
                                 Todos
@@ -189,12 +184,12 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                                 <button
                                     key={option.value}
                                     type="button"
-                                    onClick={() => setTagActivo(option.value)}
+                                    onClick={() => setTagFilter(option.value)}
                                     aria-pressed={tagActivo === option.value}
-                                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                                    className={`shrink-0 rounded-full border px-3 py-2.5 text-xs font-semibold transition min-h-11 sm:min-h-0 sm:px-2.5 sm:py-1 ${
                                         tagActivo === option.value
-                                            ? "border-cyan-400/50 bg-cyan-500/15 text-cyan-200"
-                                            : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20"
+                                            ? "border-cyan-500/40 bg-cyan-50 text-cyan-800"
+                                            : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                                     }`}
                                 >
                                     {option.label}
@@ -214,12 +209,13 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                             unidades={producto.unidades}
                             descuento={producto.descuento}
                             producto={producto}
+                            surface="dark"
                         />
                     ))}
                 </div>
 
                 {productosFiltrados.length === 0 ? (
-                    <p className="mt-8 text-center text-sm text-slate-400">
+                    <p className="mt-8 text-center text-sm text-slate-500">
                         No hay productos en esta categoría.
                     </p>
                 ) : null}
@@ -236,7 +232,7 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                                     ),
                                 )
                             }
-                            className="rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/40 hover:bg-cyan-500/10 hover:text-white"
+                            className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-cyan-400/50 hover:bg-cyan-50/50"
                         >
                             Ver más
                         </button>

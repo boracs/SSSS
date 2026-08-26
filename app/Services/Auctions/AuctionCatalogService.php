@@ -6,10 +6,15 @@ namespace App\Services\Auctions;
 
 use App\Enums\AuctionStatus;
 use App\Models\Auction;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Support\Collection;
 
 final class AuctionCatalogService
 {
+    public function __construct(
+        private readonly CatalogImageService $catalogImages,
+    ) {}
+
     /**
      * @return Collection<int, array<string, mixed>>
      */
@@ -18,7 +23,7 @@ final class AuctionCatalogService
         return Auction::query()
             ->publicCatalog()
             ->get()
-            ->map(fn (Auction $auction) => $auction->toPublicArray($viewerUserId));
+            ->map(fn (Auction $auction) => $auction->toPublicArray($viewerUserId, $this->catalogImages));
     }
 
     /**
@@ -35,7 +40,7 @@ final class AuctionCatalogService
         ]);
 
         return [
-            ...$auction->toPublicArray($viewerUserId),
+            ...$auction->toPublicArray($viewerUserId, $this->catalogImages),
             'bids' => $auction->bids
                 ->map(fn ($bid) => [
                     ...$bid->toPublicArray(),
@@ -59,7 +64,7 @@ final class AuctionCatalogService
             ->orderByDesc('id')
             ->get()
             ->map(fn (Auction $auction) => [
-                ...$auction->toPublicArray(),
+                ...$auction->toPublicArray(images: $this->catalogImages),
                 'winner_name' => $auction->winner
                     ? trim((string) $auction->winner->nombre.' '.(string) $auction->winner->apellido)
                     : null,

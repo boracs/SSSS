@@ -7,29 +7,40 @@ namespace App\Enums;
 enum SecondHandStatus: string
 {
     case AVAILABLE = 'available';
-    case RESERVED  = 'reserved';
-    case SOLD      = 'sold';
+    case RESERVED = 'reserved';
+    case SOLD = 'sold';
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::AVAILABLE => 'Disponible',
-            self::RESERVED  => 'Reservada',
-            self::SOLD      => 'Vendida',
+            self::RESERVED => 'Reservada',
+            self::SOLD => 'Vendida',
         };
     }
 
     public function badgeColor(): string
     {
-        return match($this) {
+        return match ($this) {
             self::AVAILABLE => 'emerald',
-            self::RESERVED  => 'amber',
-            self::SOLD      => 'slate',
+            self::RESERVED => 'amber',
+            self::SOLD => 'slate',
         };
     }
 
     public function isPubliclyListed(): bool
     {
-        return true;
+        return $this === self::AVAILABLE || $this === self::RESERVED;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function publicListingValues(): array
+    {
+        return [
+            self::AVAILABLE->value,
+            self::RESERVED->value,
+        ];
     }
 }

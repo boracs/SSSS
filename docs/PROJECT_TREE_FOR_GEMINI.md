@@ -108,6 +108,8 @@ maider_0/
 │   ├── Console/
 │   │   ├── AuditLessonCreditsCommand.php
 │   │   └── Commands/
+│   │       ├── BackfillCatalogImageThumbsCommand.php ──► `images:backfill-catalog-thumbs` (máster+thumb catálogo; idempotente)
+│   │       ├── BackfillCatalogImageThumbsCommand.php ──► `images:backfill-catalog-thumbs` (máster+thumb catálogo; idempotente)
 │   │       ├── CancelExpiredPhotoBookingsCommand.php ──► `photos:cancel-expired` (schedule everyFiveMinutes)
 │   │       ├── CleanupAutoCoachUploads.php      ──► Purga uploads AutoCoach expirados
 │   │       ├── CleanupExpiredReservations.php   ──► Invoca AutoReleaseService (cron)
@@ -128,7 +130,11 @@ maider_0/
 │   │   ├── Store/
 │   │   │   ├── StorePromoSlideDto.php          ──► Slide banner promo tienda (readonly)
 │   │   │   ├── StoreProductWriteDto.php        ──► Alta/edición catálogo (precio redondeado a céntimo)
-│   │   │   └── CreateStoreCheckoutDto.php      ──► Entrada Action checkout tienda (líneas + total cotizado)
+│   │   │   ├── CreateStoreCheckoutDto.php      ──► Entrada Action checkout tienda (líneas + total cotizado)
+│   │   │   ├── SecondHandCatalogFilters.php    ──► Query pública 2ª mano (q/altura/volumen/precio/tipo/orden)
+│   │   │   └── SecondHandCatalogPageDto.php    ──► Payload Inertia del listado (boards + filtros + meta)
+│   │   ├── Media/
+│   │   │   └── CatalogImageStoredDto.php       ──► Resultado store: masterPath + thumbPath + passthrough
 │   │   ├── Seo/
 │   │   │   ├── SeoMetaDto.php                  ──► title/description/canonical/OG/robots/jsonLd (readonly)
 │   │   │   └── SitemapUrlDto.php               ──► loc + lastmod/changefreq/priority (readonly)
@@ -260,12 +266,12 @@ maider_0/
 │   │   │       ├── TaquillaController.php         ──► lockForUpdate asignación
 │   │   │       ├── SitemapController.php          ──► robots.txt + sitemap.xml (PublicSitemapService)
 │   │   │       ├── ArticleController.php          ──► Taller de Surf; index/show + JSON related (load more)
-│   │   │       ├── SecondHandBoardController.php  ──► Catálogo público segunda mano; NO expone purchase_price
+│   │   │       ├── SecondHandBoardController.php  ──► Catálogo público; delega SecondHandPublicCatalogService; available+reserved
 │   │   │       ├── TiendaController.php
 │   │   │       └── UserTaquillaController.php
 │   │   │
 │   │   ├── Middleware/
-│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, academyWhatsappUrl (sin adminStats)
+│   │   │   ├── HandleInertiaRequests.php          ──► Shared props: auth, cart.count, academyWhatsappUrl (sin adminStats)
 │   │   │   ├── EnsureUserHasRole.php                ──► Gate por role (admin/user)
 │   │   │   ├── VerificarAdmin.php
 │   │   │   └── VerificarTaquilla.php
@@ -318,8 +324,8 @@ maider_0/
 │   │   ├── FiscalInvoiceStatus.php           ──► Pending | Processing | Registered | Failed; label() + isTerminal()
 │   │   ├── PaymentStatus.php                 ──► Pending | Confirmed | Rejected (pasarela + comprobantes)
 │   │   ├── ProductTag.php                    ──► Tags tienda (invierno, neopreno, material_surf, …)
-│   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() descriptivo
-│   │   ├── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; helpers label() y badgeColor()
+│   │   ├── SecondHandBoardType.php         ──► SOFTBOARD | HARDBOARD; label() + shortLabel()
+│   │   ├── SecondHandStatus.php            ──► AVAILABLE | RESERVED | SOLD; isPubliclyListed() = available+reserved
 │   │   └── Invoicing/
 │   │       └── FiscalInvoiceCategory.php   ──► Tienda|BonosClases|BonosTaquilla|Alquileres|Clases|Fotos|Subastas; isEnabled() lee config
 │   │
@@ -358,7 +364,7 @@ maider_0/
 │   │   ├── AutoCoachReferenceVideo.php     ──► Catálogo vídeos referencia comparador maniobras
 │   │   ├── BonoConsumption.php
 │   │   ├── Booking.php                       ──► Ventana alquiler (start/end, pickup_at, return_at, block_end, picked_up_at, no_show_at) con cast BusinessWallClockDatetime (hora de escuela)
-│   │   ├── Carrito.php
+│   │   ├── Carrito.php                       ──► 1 por user_id (UNIQUE); forUser() crea o reutiliza
 │   │   ├── ChatbotInteraction.php            ──► history JSON acotado (trimHistory); status enum; contact_phone; accessor case_reference (S4-000123)
 │   │   ├── CreditTransaction.php
 │   │   ├── EmergencyKeyRequest.php         ──► Histórico solicitudes llave; toAdminArray()
@@ -376,7 +382,7 @@ maider_0/
 │   │   ├── PlanTaquilla.php
 │   │   ├── PriceSchema.php                   ──► Packs alquiler: minutos (60/90/120/180/240/360) + días (1d…5d, week); NAME_BY_CATEGORY; alias legacy price_1h…price_72h (deprecados)
 │   │   ├── Producto.php
-│   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; campos model/board_type; scope adminFilters; scopes publicCatalog (excluye sold); toPublicArray() sin datos financieros internos
+│   │   ├── SecondHandBoard.php             ──► Modelo segunda mano; publicCatalog available+reserved; toPublicArray() compacto sin description/galería; height_label
 │   │   ├── StaffAssignment.php
 │   │   ├── Surfboard.php                     ──► CATEGORIES: soft | hard_basic | hard_pro; categoryLabel()
 │   │   ├── User.php                          ──► is_vip; taquilla_baja_solicitada_at (aviso baja taquilla)
@@ -421,6 +427,8 @@ maider_0/
 │   │   │   └── MostradorTicketService.php ──► closeCashTicket / assignTpvTicket: N líneas atómicas; perfiles guest/VIP/taquilla
 │   │   ├── [DOMINIO: FOTOS] Services/Photos/
 │   │   │   └── PhotoBookingService.php           ──► packs fotos (base+plus×personas), createBooking, confirm/reject, payloads
+│   │   ├── Media/
+│   │   │   └── CatalogImageService.php           ──► Máster WebP 1600 + thumb -thumb.webp 640; borra RAW; GD nativo
 │   │   ├── Invoicing/
 │   │   │   ├── FiscalInvoiceBuilderService.php   ──► payable (+ PhotoSessionBooking, Auction) → FiscalInvoiceDraftDto
 │   │   │   ├── FiscalInvoiceAccessService.php    ──► Vista cliente: ownership + DTO público (TBAI id, QR, PDF URL)
@@ -442,7 +450,8 @@ maider_0/
 │   │   │   ├── StoreProductCatalogService.php  ──► Alta/edición/ocultar/imagen principal (admin); listado sin Eloquent crudo
 │   │   │   ├── StorePromoBannerService.php     ──► 3 slides promo tienda/ficha
 │   │   │   ├── StoreCartCheckoutValidator.php  ──► Checkout: líneas POST = carrito persistido
-│   │   │   └── StoreOrderStockService.php      ──► Reserva stock lockForUpdate; libera pedidos Stripe no pagados; total en céntimos
+│   │   │   ├── StoreOrderStockService.php      ──► Reserva stock lockForUpdate; libera pedidos Stripe no pagados; total en céntimos
+│   │   │   └── SecondHandPublicCatalogService.php ──► Listado público 2ª mano: filtros URL, available+reserved, vecinos de ficha
 │   │   ├── Taller/
 │   │   │   └── TallerArticleService.php        ──► Listado + related paginado (load more JSON) + productos tip tienda
 │   │   ├── Chatbot/
@@ -464,6 +473,11 @@ maider_0/
 │   │
 │   └── Support/
 │       ├── AcademyContact.php                ──► WhatsApp escuela: dígitos, wa.me base/url, urlForPhone()
+│       ├── AcademyLocation.php               ──► NAP Zurriola + URLs Google Maps (contacto/footer)
+│       ├── PartnerGoogleReviews.php          ──► Badge CRO reseñas Google partner (The Bunker)
+│       ├── SurfboardImperialHeight.php       ──► Pies decimales → etiqueta 5'10"
+│   ├── partner/
+│   │   └── bunker-google-reviews.json        ──► Fragmentos curados opiniones Google (The Bunker)
 │       ├── ChatbotDisplayName.php            ──► Nombre de pila para el chatbot (ficha User.nombre)
 │       ├── AutoCoach/
 │       │   └── VideoDurationProbe.php        ──► Duración MP4/MOV (mvhd) / ffprobe opcional
@@ -495,6 +509,7 @@ maider_0/
 │       └── Concerns/       (2) — SeedsBonoConsumptions, SeedsVipAcademyEnrollments
 │
 ├── docs/
+│   ├── EN-EL-MOMENTO-DE-DESPLEGAR.md            ← Checklist VPS (php-gd/WebP, backfill thumbs, queue+cron)
 │   ├── aprendizaje/                         ← Libro de Aprendizaje (cuaderno compartido Cursor+DeepSeek): INDICE.md + temas 01-07; skill Reasonix `/profesor-aprendizaje`
 │   ├── ia/
 │   │   ├── 01-cto-protocol.md
@@ -525,7 +540,9 @@ maider_0/
 │   │   ├── PROMPT-UX-BANNER-SUBASTAS-TIENDA.md ← brief UX banner/slider subastas en Tienda (→ Reasonix; luego Cursor)
 │   │   ├── PROMPT-UX-BANNER-PROMO-TIENDA.md  ← rediseño banner 3 fotos (bono/subasta/producto) → Reasonix UX
 │   │   ├── PROMPT-UX-BANNER-PROMO-SELECTOR.md ← marketing+UX selector dots/flechas vs CTA → Reasonix; luego Cursor
-│   │   └── PROMPT-UX-BANNER-PROMO-PLACEMENT.md ← CRO full-bleed bajo menú vs Volver/crumbs → Reasonix; luego Cursor
+│   │   ├── PROMPT-UX-BANNER-PROMO-PLACEMENT.md ← CRO full-bleed bajo menú vs Volver/crumbs → Reasonix; luego Cursor
+│   │   ├── PROMPT-UX-WEBCAM-BARRA-DIRECTO.md ← marketing+UX: barra seek Diputación vs percepción live → Reasonix
+│   │   └── PROMPT-UPGRADE-LARAVEL-12.md    ← prompt maestro Cursor: Laravel 11→12 local (backlog dueño)
 │   ├── TAREAS-PENDIENTES.md                    ← backlog personal del dueño (añadir / listar / quitar con la IA)
 │   ├── RESUMEN-PARA-GEMINI.md                  ← resumen compacto del proyecto (pegar en Gemini; el árbol no, 83 KB)
 │   ├── PROJECT_TREE.md
@@ -616,7 +633,9 @@ maider_0/
 | `StorePromoBannerService` (`Services/Store/`) | Sync | 3 slides promo tienda/ficha: bono recomendado 10×1,5h/250€, mejor subasta, producto más ofertado. DTO `StorePromoSlideDto`. |
 | `StoreOrderStockService` (`Services/Store/`) | Sync + lock | Reserva stock de carrito con `lockForUpdate` (ids ordenados); `releaseUnpaid` / `releaseExpiredUnpaid` (cron `store:release-unpaid`: `payment_method=card`, no entregado, margen `config/store.php`). Totales vía `StoreProductPricing` + `MoneyCents`; el `total` del carrito debe coincidir. |
 | `StoreProductPricing` (`Services/Store/`) | Sync | Precio unitario/línea en céntimos (descuento sobre catálogo). Usado por carrito, checkout, ficha, banner y datáfono tienda. |
+| `CatalogImageService` (`Services/Media/`) | Sync, GD | Máster WebP 1600 + thumb `-thumb.webp` 640 al subir; borra RAW. Listados → thumb. No es `Photos/` (eso es reservas). |
 | `StoreProductCatalogService` (`Services/Store/`) | Sync + lock | CRUD admin de producto + imágenes; DTO `StoreProductWriteDto`. `ProductoController` delgado. |
+| `SecondHandPublicCatalogService` (`Services/Store/`) | Sync | Catálogo público 2ª mano: filtros query, available+reserved, payload compacto, vecinos de ficha. |
 | `PublicSitemapService` (`Services/Seo/`) | Sync + Cache 1h | `robots.txt` (Allow/Disallow + Sitemap) y `sitemap.xml` (landings + taller + productos + 2ª mano available + alquiler activos). Rutas `seo.robots` / `seo.sitemap`. |
 | `ZurriolaGeoFactsService` (`Services/SurfConditions/`) | Sync, JSON local | Hechos GEO públicos (`zurriola-geo-facts.json`): lugar, 20 m escuela↔playa, temporada, kJ, material, FAQs. DTO `ZurriolaGeoFactsDto`; UI `ZurriolaGeoGuide.jsx` en webcams; FAQPage en SEO. Cancelación = null hasta redactar. |
 | `SurfDailyBriefService` (`Services/SurfConditions/`) | Cron cada 6 h + Gemini | "Parte S4 de Zurriola": Open-Meteo (ola/viento) + mareas/texto Euskalmet vía tabla → energía/nivel → Gemini. `afterResponse` si falta parte. Ver `docs/surf-conditions/README.md`. |
@@ -691,7 +710,8 @@ resources/
     │   ├── rentalPricing.js     ──► Espejo JS de BookingService::priceForMinutes (packs 60→360 min + 1d…5d/week, paso 30 min) + PACK_LABELS/packLabel (etiquetas de duración únicas en la UI). Paridad con PHP: tests/Unit/Rentals/RentalPricingJsParityTest + tests/Fixtures/rental-pricing-cases.json
     │   ├── surfboardCategories.js ──► BOARD_CATEGORIES + boardCategoryLabel (espejo de Surfboard::CATEGORIES)
     │   ├── surfboardPublicDisplay.js ──► Helpers ficha pública alquiler (galería demo, specs, tarifas 60m/240m/1d/week)
-    │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla…)
+    │   ├── whatsapp.js         ──► wa.me helpers + plantillas por dominio (academia, alquiler, taquilla, 2ª mano)
+    │   ├── secondHandCatalog.js ──► Query string catálogo 2ª mano + sessionStorage al volver de ficha
     │   ├── chatbotApi.js       ──► POST message + GET history + POST contact-phone (FAQ + derivación WhatsApp)
     │   ├── inertiaErrors.js    ──► inertiaErrorMessages + showInertiaErrors (toasts desde errors Laravel)
     │   ├── tallerTitle.js      ──► formatTallerDisplayTitle / sentence case ES + subtítulo entre ( )
@@ -740,7 +760,7 @@ resources/
     │   ├── store/
     │   │   └── StorePromoBanner.jsx    ──► Banner publicidad tienda/ficha: imagen a fondo + 3 slides (bono / subasta / producto)
     │   ├── webcam/
-    │   │   ├── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa); fallback `/img/webcam/zurriola-offline.webp` si cae el stream
+    │   │   ├── ZurriolaWebcamPlayer.jsx ──► Reproductor HLS webcam Zurriola (Gipuzkoa); barra DVR + «Volver al directo»; fallback `/img/webcam/zurriola-offline.webp` si cae el stream
     │   │   ├── ZurriolaGeoGuide.jsx ──► Bloque GEO citables (props `zurriolaGeo`; sin lógica)
     │   │   ├── SurfBriefCard.jsx ──► Controles admin del parte (override + regenerar) en `/servicios/webcams`
     │   │   ├── surfBriefOverride.js ──► Labels/tonos override: good | espigon | caution | closed
@@ -832,8 +852,8 @@ resources/
         │   ├── PedidoConfirmacion.jsx
         │   ├── GestorPedidos.jsx
         │   └── SecondHand/
-        │       ├── Index.jsx   ──► Catálogo público; filtros status + búsqueda
-        │       └── Show.jsx    ──► Detalle tabla; galería + CTA WhatsApp
+        │       ├── Index.jsx   ──► Catálogo público; filtros en URL (tipo/altura/volumen/precio); reservadas con badge
+        │       └── Show.jsx    ──► Ficha; galería real o placeholder; CTA WhatsApp; un H1
         │
         ├── [DOMINIO: SUBASTAS]
         │   ├── Auctions/

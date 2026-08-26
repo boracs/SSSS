@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Head, Link, router, useForm, usePage } from "@inertiajs/react";
+import { Link, router, useForm, usePage } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
+import SeoHead from "@/components/seo/SeoHead";
 import {
     ArrowLeft,
     ArrowUpRight,
@@ -148,8 +149,9 @@ function MetaRow({ icon: Icon, label, value }) {
     );
 }
 
-function ImageGallery({ images, title }) {
+function ImageGallery({ images, thumbs, title }) {
     const list = images?.length ? images : [];
+    const thumbList = thumbs?.length ? thumbs : list;
     const [active, setActive] = useState(0);
     const current = list[active] ?? null;
 
@@ -184,7 +186,7 @@ function ImageGallery({ images, title }) {
                                     : "border-white/10 opacity-70 hover:opacity-100"
                             }`}
                         >
-                            <img src={src} alt="" className="h-full w-full object-cover" />
+                            <img src={thumbList[index] || src} alt="" className="h-full w-full object-cover" />
                         </button>
                     ))}
                 </div>
@@ -334,7 +336,7 @@ function RelatedAuctionCard({ auction }) {
     );
 }
 
-export default function AuctionsShow({ auction, relatedAuctions = [] }) {
+export default function AuctionsShow({ auction, relatedAuctions = [], seo = null }) {
     const { flash } = usePage().props;
     const { data, setData, post, processing, errors, clearErrors } = useForm({
         amount: minBidEuros(auction.minimum_next_bid_cents),
@@ -406,7 +408,18 @@ export default function AuctionsShow({ auction, relatedAuctions = [] }) {
     };
 
     const bids = useMemo(() => auction.bids || [], [auction.bids]);
-    const images = auction.images?.length ? auction.images : auction.first_image ? [auction.first_image] : [];
+    const images = auction.images?.length
+        ? auction.images
+        : auction.first_image_master
+          ? [auction.first_image_master]
+          : auction.first_image
+            ? [auction.first_image]
+            : [];
+    const imageThumbs = auction.images_thumbs?.length
+        ? auction.images_thumbs
+        : auction.first_image
+          ? [auction.first_image]
+          : images;
 
     const specItems = [
         { label: "Categoría", value: auction.category_label },
@@ -419,7 +432,7 @@ export default function AuctionsShow({ auction, relatedAuctions = [] }) {
 
     return (
         <Layout1>
-            <Head title={auction.title} />
+            <SeoHead seo={seo} />
             <div className="relative overflow-hidden bg-[#070b14] pb-16">
                 <div
                     aria-hidden
@@ -439,7 +452,7 @@ export default function AuctionsShow({ auction, relatedAuctions = [] }) {
                         {/* Columna izquierda */}
                         <div className="space-y-6">
                             <div className="overflow-hidden rounded-3xl border border-white/[0.08] bg-slate-900/50 shadow-2xl shadow-black/40 ring-1 ring-white/5">
-                                <ImageGallery images={images} title={auction.title} />
+                                <ImageGallery images={images} thumbs={imageThumbs} title={auction.title} />
                             </div>
 
                             <article className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-6 backdrop-blur-sm sm:p-8">

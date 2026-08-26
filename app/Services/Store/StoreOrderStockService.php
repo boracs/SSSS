@@ -37,7 +37,7 @@ final class StoreOrderStockService
 
             $pedido = Pedido::query()->create([
                 'user_id' => $user->id,
-                'precio_total' => 0,
+                'precio_total_cents' => 0,
                 'pagado' => false,
                 'entregado' => false,
                 'fecha_entrega' => $fechaEntrega,
@@ -65,7 +65,7 @@ final class StoreOrderStockService
                 $pedido->productos()->attach($prod->id, [
                     'cantidad' => $cantidad,
                     'descuento_aplicado' => $descuentoPct,
-                    'precio_pagado' => MoneyCents::centsToEuros($unitCents),
+                    'precio_pagado_cents' => $unitCents,
                 ]);
 
                 $prod->decrement('unidades', $cantidad);
@@ -77,7 +77,7 @@ final class StoreOrderStockService
                 );
             }
 
-            $pedido->update(['precio_total' => MoneyCents::centsToEuros($totalCents)]);
+            $pedido->update(['precio_total_cents' => $totalCents]);
 
             return $pedido->fresh(['productos']) ?? $pedido;
         });

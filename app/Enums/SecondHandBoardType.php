@@ -16,4 +16,12 @@ enum SecondHandBoardType: string
             self::HARDBOARD => 'Hardboard (Fibra / Epoxy / Dura)',
         };
     }
+
+    public function shortLabel(): string
+    {
+        return match ($this) {
+            self::SOFTBOARD => 'Soft',
+            self::HARDBOARD => 'Hard',
+        };
+    }
 }

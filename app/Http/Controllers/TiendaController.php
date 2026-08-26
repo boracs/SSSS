@@ -30,9 +30,13 @@ class TiendaController extends Controller
             ->values()
             ->all();
 
+        $tagQuery = $request->string('tag')->toString();
+        $initialTag = in_array($tagQuery, ProductTag::values(), true) ? $tagQuery : null;
+
         return Inertia::render('Tienda', [
             'productos' => $productos,
             'productTagOptions' => ProductTag::optionsForFrontend(),
+            'initialTag' => $initialTag,
             'storePromoSlides' => $promoBanner->slidesForInertia(
                 excludeProductId: null,
                 viewerUserId: $request->user()?->id,

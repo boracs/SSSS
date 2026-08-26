@@ -10,6 +10,7 @@ use App\Http\Requests\Auctions\PlaceBidRequest;
 use App\Models\Auction;
 use App\Services\Auctions\AuctionCatalogService;
 use App\Services\Auctions\AuctionSettlementService;
+use App\Services\Seo\PublicPageSeoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -24,16 +25,17 @@ class AuctionController extends Controller
         private readonly AuctionSettlementService $settlement,
     ) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request, PublicPageSeoService $pageSeo): Response
     {
         $this->catalog->autoCloseExpiredLiveAuctions();
 
         return Inertia::render('Auctions/Index', [
             'auctions' => $this->catalog->publicCatalog($request->user()?->id)->values()->all(),
+            'seo' => $pageSeo->subastasIndex()->toArray(),
         ]);
     }
 
-    public function show(Request $request, Auction $auction): Response|RedirectResponse
+    public function show(Request $request, Auction $auction, PublicPageSeoService $pageSeo): Response|RedirectResponse
     {
         $this->catalog->autoCloseExpiredLiveAuctions();
 
@@ -51,8 +53,12 @@ class AuctionController extends Controller
             ->all();
 
         return Inertia::render('Auctions/Show', [
-            'auction'          => $payload,
-            'relatedAuctions'  => $related,
+            'auction' => $payload,
+            'relatedAuctions' => $related,
+            'seo' => $pageSeo->subastaShow(
+                (string) ($payload['title'] ?? $auction->title ?? ''),
+                (string) $auction->slug,
+            )->toArray(),
         ]);
     }
 

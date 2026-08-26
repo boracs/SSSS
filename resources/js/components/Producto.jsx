@@ -10,6 +10,7 @@ import StoreAddToCartButton, {
     storeAddToCartClassName,
 } from "./StoreAddToCartButton";
 import StoreCartQtyPrompt from "./StoreCartQtyPrompt";
+import ProductTagPills from "./ProductTagPills";
 
 const REPEAT_ADD_WINDOW_MS = 5000;
 
@@ -194,6 +195,15 @@ const Producto = ({
                     >
                         {nombre}
                     </h3>
+
+                    <ProductTagPills
+                        values={producto?.tags}
+                        labels={producto?.tag_labels}
+                        linkable
+                        surface={isLight ? "light" : "dark"}
+                        max={isCompact ? 1 : 2}
+                        className={isCompact ? "-mt-0.5" : "mt-0.5"}
+                    />
 
                     {!isCompact ? (
                         <div className={`text-xs ${isLight ? "text-slate-500" : "text-slate-400"}`}>

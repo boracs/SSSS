@@ -12,6 +12,7 @@ export const WHATSAPP_TOPICS = {
     locker: "Hola, me interesa información sobre las taquillas del club.",
     bono: "Hola, me gustaría información sobre bonos y membresía VIP.",
     store: "Hola, soy cliente recurrente y me gustaría consultar con el equipo sobre la tienda / acceso de socios.",
+    secondHand: "Hola, me interesa una tabla de segunda mano del catálogo.",
     video: "Hola, me interesa el servicio de videograbación / videocorrección de la escuela.",
 };
 
@@ -47,6 +48,9 @@ export function resolveAcademyWhatsappUrl(pageBaseUrl, message, globalBaseUrl) {
 
 export function detectWhatsappTopicFromPath(pathname = "") {
     const path = String(pathname).toLowerCase();
+    if (path.includes("/segunda-mano")) {
+        return "secondHand";
+    }
     if (path.includes("/academia") || path.includes("/clases") || path.includes("/mis-reservas")) {
         return "academy";
     }

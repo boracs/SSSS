@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import Layout1 from "../layouts/Layout1";
 import "../../css/pagina_principal.css";
 import Contenedor_productos from "../layouts/Contenedor_productos";
@@ -10,30 +10,11 @@ import SurfBriefMini from "../components/webcam/SurfBriefMini";
 import HomeServiciosDestacados from "../components/HomeServiciosDestacados";
 import HomeExploraDirectorio from "../components/HomeExploraDirectorio";
 import OpcionesIntro from "../components/OpcionesIntro";
-import { Waves, Quote, Star } from "lucide-react";
-
-const testimonios = [
-    {
-        quote: "Sentí que conocían cada ola de Zurriola. Fui con respeto al mar y salí con confianza y muchas ganas de volver.",
-        author: "Ane",
-        role: "Nivel iniciación",
-        rating: 5,
-    },
-    {
-        quote: "La combinación de seguridad, técnica y material hizo que mis hijos disfrutaran sin riesgos. Se nota que son escuela oficial.",
-        author: "Jon",
-        role: "Padre de dos alumnos",
-        rating: 5,
-    },
-    {
-        quote: "Venía con experiencia en otras playas y me sorprendió el conocimiento local del Cantábrico. Clases muy personalizadas.",
-        author: "Laura",
-        role: "Intermedio",
-        rating: 5,
-    },
-];
+import GoogleReviewsBadge from "../components/GoogleReviewsBadge";
+import { Waves } from "lucide-react";
 
 const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
+    const { partnerGoogleReviews } = usePage().props;
     return (
         <Layout1 className="bg-transparent">
             <SeoHead seo={seo} />
@@ -152,64 +133,56 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
                     <HomeExploraDirectorio />
                 </div>
 
-                {/* Testimonios + galería */}
+                {/* Opiniones Google + galería */}
                 <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-12 lg:px-8">
                     <section aria-labelledby="testimonios-heading">
-                        <div className="mb-8 text-center">
+                        <div className="mb-8 text-center sm:mb-10">
                             <p className="text-xs font-bold uppercase tracking-[0.18em] text-s4">
-                                Comunidad
+                                Prueba social
                             </p>
                             <h2
                                 id="testimonios-heading"
                                 className="mt-2 font-heading text-2xl font-extrabold text-slate-900 sm:text-3xl"
                             >
-                                Lo que dicen nuestros surfistas
+                                Lo que dicen nuestros alumnos
                             </h2>
-                            <p className="mx-auto mt-3 max-w-lg text-sm text-slate-600">
-                                Más de{" "}
+                            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-600">
+                                Clases organizadas con{" "}
                                 <span className="font-semibold text-slate-800">
-                                    5.000 alumnos
-                                </span>{" "}
-                                han confiado en San Sebastián Surf School para dar su primer take-off en el
-                                Cantábrico.
+                                    The Bunker Surf Shop
+                                </span>
+                                {partnerGoogleReviews?.reviewCount ? (
+                                    <>
+                                        {" "}
+                                        ·{" "}
+                                        <span className="font-semibold text-slate-800">
+                                            {new Intl.NumberFormat("es-ES").format(
+                                                partnerGoogleReviews.reviewCount,
+                                            )}
+                                        </span>{" "}
+                                        reseñas verificadas en Google
+                                    </>
+                                ) : (
+                                    " · reseñas verificadas en Google"
+                                )}
                             </p>
                         </div>
 
-                        <div className="grid gap-5 md:grid-cols-3">
-                            {testimonios.map((t) => (
-                                <article
-                                    key={t.author}
-                                    className="relative rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                                >
-                                    <Quote
-                                        className="h-8 w-8 text-cyan-200"
-                                        aria-hidden
-                                    />
-                                    <div className="mb-3 flex gap-0.5">
-                                        {Array.from({ length: t.rating }).map((_, i) => (
-                                            <Star
-                                                key={i}
-                                                className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-                                                aria-hidden
-                                            />
-                                        ))}
-                                    </div>
-                                    <p className="text-sm leading-relaxed text-slate-700">
-                                        &ldquo;{t.quote}&rdquo;
-                                    </p>
-                                    <div className="mt-4 flex items-center gap-3 border-t border-slate-100 pt-4">
-                                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-s4 text-xs font-bold text-white">
-                                            {t.author[0]}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900">
-                                                {t.author}
-                                            </p>
-                                            <p className="text-xs text-slate-500">{t.role}</p>
-                                        </div>
-                                    </div>
-                                </article>
-                            ))}
+                        <GoogleReviewsBadge
+                            reviews={partnerGoogleReviews}
+                            variant="card"
+                            showPartnerNote={false}
+                        />
+
+                        <div className="mt-10 flex flex-col items-center text-center">
+                            <S4Button
+                                href={route("academy.lessons.index")}
+                                variant="primary"
+                                size="lg"
+                            >
+                                <Waves className="h-4 w-4" aria-hidden />
+                                Reserva tu clase de surf
+                            </S4Button>
                         </div>
                     </section>
 

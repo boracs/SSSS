@@ -57,6 +57,8 @@
 
 | Fecha | Tema | Entrada |
 |---|---|---|
+| 2026-08-25 | 02+06 | **2.11** no borrar original a cambio del thumb; glosario máster web (Cursor) |
+| 2026-08-25 | 02+06 | **2.10** miniaturas se guardan una vez (no GD por visita); glosario GD + thumbnail (Cursor) |
 | 2026-08-21 | 03+06 | **3.8** canónico = molde oficial; **3.9** trigger frontend ≠ BD; glosario (Cursor) |
 | 2026-08-19 | 02+06 | 2.4–2.5–2.9: evento **escribe** `jobs`; cron = reloj + `console.php` (Cursor) |
 | 2026-08-19 | 02 | 2.9 ampliada: cron mira el reloj, worker mira `jobs` (Cursor) |

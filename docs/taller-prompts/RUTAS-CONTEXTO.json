@@ -1,6 +1,6 @@
 {
     "version": 1,
-    "updated": "2026-08-11",
+    "updated": "2026-08-25",
     "note": "Fuente única del router de contexto. Vista humana: docs/taller-prompts/CONTRATO-IA.md §3 y MASTER-PROMPT-DEEPSEEK.md §3. Consumido por scripts/deepseek-ask.mjs (--topic). Regla: cargar solo la fila del tema, nunca todo.",
     "router": {
         "estado": ["docs/taller-prompts/COORDINACION.md", "docs/taller-prompts/HANDOFF.md", "docs/taller-prompts/REGISTRO.md"],
@@ -13,6 +13,11 @@
         "taller": ["docs/taller-prompts/PROTOCOLO.md", "docs/taller-prompts/PLANTILLA-UX-MODAL.md"],
         "modal": ["docs/taller-prompts/PLANTILLA-UX-MODAL.md"],
         "pagos": ["docs/payments/", "docs/invoicing/B2BROUTER-TICKETBAI.md"],
+        "ops": ["docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md", "docs/EN-EL-MOMENTO-DE-DESPLEGAR.md", ".cursor/rules/tunnel-share-modes.mdc"],
+        "operaciones": ["docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md", "docs/EN-EL-MOMENTO-DE-DESPLEGAR.md", ".cursor/rules/tunnel-share-modes.mdc"],
+        "despliegue": ["docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md", "docs/EN-EL-MOMENTO-DE-DESPLEGAR.md", ".cursor/rules/tunnel-share-modes.mdc"],
+        "deploy": ["docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md", "docs/EN-EL-MOMENTO-DE-DESPLEGAR.md", ".cursor/rules/tunnel-share-modes.mdc"],
+        "tunel": ["docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md", ".cursor/rules/tunnel-share-modes.mdc"],
         "surf": ["docs/surf-conditions/"],
         "chatbot": ["docs/chatbot/"],
         "seo": ["docs/taller-seo/", "docs/COMPETENCIA_SEO_DONOSTIA.md"],

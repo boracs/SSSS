@@ -14,8 +14,9 @@ use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Models\PagoCuota;
 use App\Models\PlanTaquilla;
 use App\Models\User;
-use App\Support\AcademyContact;
+use App\Services\Seo\PublicPageSeoService;
 use App\Services\Taquilla\TaquillaMembershipService;
+use App\Support\AcademyContact;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -199,10 +200,11 @@ class PlanesTaquillasController extends Controller
         return response()->json($this->taquillaService->userContact($usuario));
     }
 
-    public function publicPlans(): Response
+    public function publicPlans(PublicPageSeoService $pageSeo): Response
     {
         return Inertia::render('PlanesTaquillasPublic', [
             'planes' => $this->taquillaService->buildPublicPlans(),
+            'seo' => $pageSeo->serviciosTaquillas()->toArray(),
         ]);
     }
 
@@ -272,7 +274,7 @@ class PlanesTaquillasController extends Controller
         } catch (Throwable $e) {
             Log::error('PlanesTaquillasController::registrarPago Stripe error', [
                 'user_id' => $user?->id,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return redirect()->back()->with(
@@ -316,7 +318,7 @@ class PlanesTaquillasController extends Controller
             Log::error('PlanesTaquillasController::payPendingPago Stripe error', [
                 'pago_id' => $pago->id,
                 'user_id' => $user->id,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return back()->with('error', 'No se pudo abrir la pasarela de pago.');
@@ -332,20 +334,20 @@ class PlanesTaquillasController extends Controller
         $reference = trim((string) ($pago->referencia_pago_externa ?? ''));
 
         return new InitiatePaymentDto(
-            payableType:   PagoCuota::class,
-            payableId:     (int) $pago->id,
-            lineItems:     [
+            payableType: PagoCuota::class,
+            payableId: (int) $pago->id,
+            lineItems: [
                 new PaymentLineItemDto(
-                    name:            $planName,
-                    description:     $reference !== '' ? $reference : 'Renovación cuota taquilla',
+                    name: $planName,
+                    description: $reference !== '' ? $reference : 'Renovación cuota taquilla',
                     unitAmountCents: $amountCents,
-                    quantity:        1,
+                    quantity: 1,
                 ),
             ],
-            successPath:   '/pago/exito',
-            cancelPath:    '/taquilla/planes',
+            successPath: '/pago/exito',
+            cancelPath: '/taquilla/planes',
             customerEmail: $user->email,
-            metadata:      ['pago_cuota_id' => (string) $pago->id],
+            metadata: ['pago_cuota_id' => (string) $pago->id],
         );
     }
 

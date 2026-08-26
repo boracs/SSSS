@@ -1,29 +1,27 @@
 <?php
 
-use App\Support\AcademyContact;
-use App\Support\MoneyCents;
-use App\Http\Controllers\ArticleController;
-use App\Http\Controllers\AuctionController;
 use App\Http\Controllers\Admin\AuctionController as AdminAuctionController;
-use App\Http\Controllers\AutoCoachController;
-use App\Http\Controllers\Payments\DatafonoIngestWebhookController;
-use App\Http\Controllers\Payments\PaymentWebhookController;
-use App\Http\Controllers\Payments\PaymentSuccessController;
 use App\Http\Controllers\Admin\BonoController as AdminBonoController;
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
+use App\Http\Controllers\Admin\CatalogHubController;
+use App\Http\Controllers\Admin\ClassManagerController;
 use App\Http\Controllers\Admin\EmergencyKeyController as AdminEmergencyKeyController;
 use App\Http\Controllers\Admin\SecondHandBoardController as AdminSecondHandBoardController;
 use App\Http\Controllers\Admin\SurfboardController as AdminSurfboardController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\CatalogHubController;
-use App\Http\Controllers\Admin\ClassManagerController;
 use App\Http\Controllers\Admin\VipClassManagerController;
 use App\Http\Controllers\Admin\VipController;
+use App\Http\Controllers\ArticleController;
+use App\Http\Controllers\AuctionController;
+use App\Http\Controllers\AutoCoachController;
 use App\Http\Controllers\CarritoController;
 use App\Http\Controllers\Client\BonoController as ClientBonoController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\EmergencyKeyController;
 use App\Http\Controllers\Pag_principalController;
+use App\Http\Controllers\Payments\DatafonoIngestWebhookController;
+use App\Http\Controllers\Payments\PaymentSuccessController;
+use App\Http\Controllers\Payments\PaymentWebhookController;
 use App\Http\Controllers\PedidoController;
 use App\Http\Controllers\PlanesTaquillasController;
 use App\Http\Controllers\ProductoController;
@@ -38,6 +36,8 @@ use App\Http\Controllers\User\MyProfileController;
 use App\Http\Controllers\User\MyReservationsController;
 use App\Http\Middleware\VerificarTaquilla;
 use App\Services\Seo\PublicPageSeoService;
+use App\Support\AcademyContact;
+use App\Support\MoneyCents;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -82,7 +82,6 @@ Route::get('/taller/{article:slug}/related', [ArticleController::class, 'related
     ->middleware('throttle:30,1')
     ->name('taller.related');
 Route::get('/taller/{article:slug}', [ArticleController::class, 'show'])->name('taller.show');
-
 
 // CONTACTO
 Route::get('/contacto', function (PublicPageSeoService $pageSeo) {
@@ -197,12 +196,18 @@ Route::get('/servicios/reparacion-neoprenos', function (PublicPageSeoService $pa
 Route::get('/servicios/surf', function (PublicPageSeoService $pageSeo) {
     $bono10Cents = max(0, (int) config('store.promo_bono.price_cents', 25000));
     $perClassCents = (int) round($bono10Cents / 10);
+    $bono5Cents = max(0, (int) config('store.bonos_public.bono5_cents', 15000));
+    $bono5PerClassCents = (int) round($bono5Cents / 5);
+    $bono10ParticularesCents = max(0, (int) config('store.bonos_public.bono10_particulares_cents', 60000));
 
     return Inertia::render('Servicios_ClasesDeSurf', [
         'seo' => $pageSeo->serviciosSurf()->toArray(),
         'pricingLabels' => [
             'bono10' => MoneyCents::formatEurosLabel($bono10Cents),
             'bono10PerClass' => MoneyCents::formatEurosLabel($perClassCents),
+            'bono5' => MoneyCents::formatEurosLabel($bono5Cents),
+            'bono5PerClass' => MoneyCents::formatEurosLabel($bono5PerClassCents),
+            'bono10Particulares' => MoneyCents::formatEurosLabel($bono10ParticularesCents),
         ],
     ]);
 })->name('servicios.surf');
@@ -258,7 +263,8 @@ Route::redirect('/clases-de-surf', '/servicios/surf');
 Route::redirect('/surftrips', '/servicios/surf-trips');
 Route::redirect('/surfskate', '/servicios/surf-skate');
 Route::redirect('/surfskate/guia', '/servicios/surf-skate/guia-equipamiento');
-Route::redirect('/taquillas', '/taquillas/planes-y-cuotas');
+Route::redirect('/taquillas/planes-y-cuotas', '/servicios/taquillas', 301);
+Route::redirect('/taquillas', '/servicios/taquillas', 301);
 
 // AutoCoach — comparador de maniobras (público)
 Route::prefix('comparador-surf')->name('autocoach.')->group(function () {
@@ -288,8 +294,8 @@ Route::prefix('comparador-surf')->name('autocoach.')->group(function () {
         ->name('uploads.show');
 });
 
-// Taquillas — catálogo público de planes y tarifas (sin login)
-Route::get('/taquillas/planes-y-cuotas', [PlanesTaquillasController::class, 'publicPlans'])
+// Taquillas — catálogo público de planes y tarifas (indexable SEO)
+Route::get('/servicios/taquillas', [PlanesTaquillasController::class, 'publicPlans'])
     ->name('taquillas.planes');
 
 // ==========================

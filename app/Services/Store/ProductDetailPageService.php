@@ -6,6 +6,7 @@ namespace App\Services\Store;
 
 use App\Enums\ProductTag;
 use App\Models\Producto;
+use App\Services\Media\CatalogImageService;
 use App\Services\Seo\PublicPageSeoService;
 use App\Support\MoneyCents;
 
@@ -17,6 +18,7 @@ final class ProductDetailPageService
 {
     public function __construct(
         private readonly PublicPageSeoService $seo,
+        private readonly CatalogImageService $catalogImages,
     ) {}
 
     /**
@@ -54,15 +56,17 @@ final class ProductDetailPageService
     private function detailPayload(Producto $producto): array
     {
         $imagenes = $producto->imagenes
-            ->map(static fn ($img): array => [
+            ->map(fn ($img): array => [
                 'id' => $img->id,
                 'ruta' => Producto::publicImageUrl($img->ruta) ?? asset('img/placeholder.svg'),
+                'thumb' => $this->catalogImages->publicThumbUrl($img->ruta) ?? asset('img/placeholder.svg'),
                 'es_principal' => (bool) $img->es_principal,
             ])
             ->sortByDesc('es_principal')
             ->values();
 
         $gallery = $imagenes->pluck('ruta')->filter()->values()->all();
+        $galleryThumbs = $imagenes->pluck('thumb')->filter()->values()->all();
         $principal = $gallery[0] ?? asset('img/placeholder.svg');
 
         $precio = StoreProductPricing::catalogEuros($producto->precio);
@@ -100,6 +104,7 @@ final class ProductDetailPageService
             'tag_labels' => $tagLabels,
             'imagenes' => $imagenes->all(),
             'gallery' => $gallery !== [] ? $gallery : [$principal],
+            'gallery_thumbs' => $galleryThumbs !== [] ? $galleryThumbs : [$principal],
             'imagen_principal' => $principal,
         ];
     }
@@ -150,7 +155,7 @@ final class ProductDetailPageService
                 $ruta = $p->imagenPrincipal?->ruta ?? $p->imagenPrincipal?->nombre;
                 $imagen = null;
                 if ($ruta !== null && $ruta !== '') {
-                    $imagen = Producto::publicImageUrl((string) $ruta);
+                    $imagen = Producto::publicListingUrl((string) $ruta, $this->catalogImages);
                 }
 
                 $precio = round((float) $p->precio, 2);

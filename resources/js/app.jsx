@@ -43,6 +43,9 @@ createInertiaApp({
             const lightModePages = [
                 "Pag_principal",
                 "Nosotros",
+                "Contacto",
+                "Tienda",
+                "Carrito",
                 "Taller/Index",
                 "Taller/Show",
                 "Productos",

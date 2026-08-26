@@ -330,9 +330,9 @@ function SlotCells({ days, render, cellClass }) {
 }
 
 /**
- * Slider horizontal: drag-to-scroll, flechas y difuminado en bordes.
- * Sin escala/fisheye — cards uniformes. Reutilizado por la tabla 9 días
- * y por {@see ./SurfDetailedForecastSlider}.
+ * Slider horizontal: una fila, arrastre, flechas y difuminado en bordes.
+ * `overflow-x-auto` (hace falta para deslizar); la barra nativa se oculta.
+ * Reutilizado por la tabla 9 días y por {@see ./SurfDetailedForecastSlider}.
  *
  * @param {((el: HTMLElement | null) => void) | { current: HTMLElement | null }} [scrollerRef]
  * @param {(event: Event) => void} [onScroll]
@@ -461,7 +461,7 @@ export function ForecastSlider({ children, scrollerRef: scrollerRefProp = null, 
     };
 
     return (
-        <div className="relative">
+        <div className="relative min-w-0">
             <div
                 className={`pointer-events-none absolute inset-y-0 left-0 z-30 w-10 rounded-l-2xl bg-gradient-to-r from-slate-950/90 to-transparent transition-opacity ${
                     canLeft ? "opacity-100" : "opacity-0"
@@ -494,7 +494,7 @@ export function ForecastSlider({ children, scrollerRef: scrollerRefProp = null, 
 
             <div
                 ref={assignScrollerRef}
-                className={`forecast-slider-scroll overflow-x-auto rounded-2xl border border-white/10 select-none ${
+                className={`forecast-slider-scroll overflow-x-auto overflow-y-hidden rounded-2xl border border-white/10 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0 [&::-webkit-scrollbar]:bg-transparent ${
                     dragging ? "cursor-grabbing" : "cursor-grab"
                 }`}
                 style={{
@@ -512,6 +512,9 @@ export function ForecastSlider({ children, scrollerRef: scrollerRefProp = null, 
                 }
                 .forecast-slider-scroll::-webkit-scrollbar {
                     display: none;
+                    width: 0;
+                    height: 0;
+                    background: transparent;
                 }
             `}</style>
         </div>

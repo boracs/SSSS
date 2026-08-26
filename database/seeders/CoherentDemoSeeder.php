@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Enums\PaymentStatus;
-use App\Models\AutoCoachReferenceVideo;
 use App\Models\Booking;
 use App\Models\Carrito;
 use App\Models\CreditTransaction;
@@ -399,10 +398,10 @@ final class CoherentDemoSeeder extends Seeder
     {
         if ($paidOrder) {
             $picked = array_slice($products, 0, 3);
-            $total = 0.0;
+            $total = 0;
             $pedido = Pedido::query()->create([
                 'user_id' => $user->id,
-                'precio_total' => 0,
+                'precio_total_cents' => 0,
                 'pagado' => true,
                 'entregado' => false,
                 'payment_proof_path' => 'payment-proofs/pedidos/demo-user.jpg',
@@ -411,16 +410,16 @@ final class CoherentDemoSeeder extends Seeder
             foreach ($picked as $prod) {
                 $cantidad = 1;
                 $descuento = (float) $prod->descuento;
-                $precioPagado = round((float) $prod->precio * (1 - $descuento / 100), 2);
-                $total += $precioPagado * $cantidad;
+                $precioPagadoCents = \App\Support\MoneyCents::eurosToCents((float) $prod->precio * (1 - $descuento / 100));
+                $total += $precioPagadoCents * $cantidad;
                 $pedido->productos()->attach($prod->id, [
                     'cantidad' => $cantidad,
                     'descuento_aplicado' => $descuento,
-                    'precio_pagado' => $precioPagado,
+                    'precio_pagado_cents' => $precioPagadoCents,
                 ]);
                 $prod->decrement('unidades', $cantidad);
             }
-            $pedido->update(['precio_total' => round($total, 2)]);
+            $pedido->update(['precio_total_cents' => $total]);
         }
     }
 

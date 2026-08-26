@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\AuctionCategory;
 use App\Enums\AuctionStatus;
 use App\Enums\PaymentStatus;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -174,8 +175,10 @@ class Auction extends Model
     /**
      * @return array<string, mixed>
      */
-    public function toPublicArray(?int $viewerUserId = null): array
+    public function toPublicArray(?int $viewerUserId = null, ?CatalogImageService $images = null): array
     {
+        $images ??= app(CatalogImageService::class);
+
         $winningBid = $this->relationLoaded('bids')
             ? $this->bids->firstWhere('status', \App\Enums\AuctionBidStatus::Winning->value)
             : null;
@@ -212,7 +215,14 @@ class Auction extends Model
                 fn (string $p) => self::publicImageUrl($p),
                 $this->images ?? [],
             ),
+            'images_thumbs'         => array_map(
+                fn (string $p) => $images->publicThumbUrl($p) ?? self::publicImageUrl($p),
+                $this->images ?? [],
+            ),
             'first_image'           => $this->firstImage()
+                ? $images->publicThumbUrl($this->firstImage())
+                : null,
+            'first_image_master'    => $this->firstImage()
                 ? self::publicImageUrl($this->firstImage())
                 : null,
             'leading_bid_cents'     => $winningBid?->amount_cents,

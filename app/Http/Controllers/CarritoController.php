@@ -4,22 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\ProductTag;
 use App\Models\Carrito;
+use App\Models\Producto;
+use App\Services\Seo\PublicPageSeoService;
 use App\Services\Store\StoreProductPricing;
 use App\Support\AcademyContact;
 use App\Support\MoneyCents;
-use Inertia\Inertia;
-use Inertia\Response as InertiaResponse;
-use App\Models\Producto;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redirect;
+use Inertia\Inertia;
+use Inertia\Response as InertiaResponse;
 
 class CarritoController extends Controller
 {
     /** Muestra el carrito del usuario. Cálculos en tipos numéricos; formateo en vista. */
-    public function index(): InertiaResponse
+    public function index(PublicPageSeoService $pageSeo): InertiaResponse
     {
         $user = auth()->user();
 
@@ -31,6 +33,7 @@ class CarritoController extends Controller
                     'productos.precio',
                     'productos.descuento',
                     'productos.unidades',
+                    'productos.tags',
                 )
                     ->with('imagenPrincipal')
                     ->withPivot('cantidad');
@@ -39,6 +42,7 @@ class CarritoController extends Controller
 
         $paymentProps = [
             'whatsappHelpUrl' => AcademyContact::whatsappBaseUrl(),
+            'seo' => $pageSeo->carrito()->toArray(),
         ];
 
         if ($carrito->isEmpty()) {
@@ -68,6 +72,8 @@ class CarritoController extends Controller
                     'subtotal' => MoneyCents::centsToEuros($lineCents),
                     'descuento' => $descuento,
                     'stock' => (int) $producto->unidades,
+                    'tags' => $producto->normalizedTags(),
+                    'tag_labels' => ProductTag::labelsFor($producto->normalizedTags()),
                     // Ruta relativa de la imagen principal (o null); el front resuelve /storage/…
                     'imagen' => $producto->imagenPrincipal?->ruta,
                 ];
@@ -109,14 +115,7 @@ class CarritoController extends Controller
 
                 $cantidadAAgregar = min($cantidadAAgregar, $stock);
 
-                $carrito = Carrito::query()
-                    ->where('user_id', $user->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $carrito) {
-                    $carrito = Carrito::create(['user_id' => $user->id]);
-                }
+                $carrito = Carrito::forUser((int) $user->id, lock: true);
 
                 $productoEnCarrito = $carrito->productos()->where('producto_id', $productoId)->first();
 

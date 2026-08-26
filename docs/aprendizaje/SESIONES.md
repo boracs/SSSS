@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-08-25 · ¿Borrar el original y dejar solo el thumb?
+
+- **Tema:** ahorro de disco sí, pero no a costa de la ficha/lightbox. Sustituir el RAW del móvil por un máster web (~1600 px); thumb aparte para cards.
+- **Entradas guardadas:** 02 **§2.11**; glosario máster web (Cursor).
+
+---
+
+## 2026-08-25 · Miniaturas: ¿se guardan o se recalculan?
+
+- **Tema:** en catálogo de 2ª mano, las thumbs no se crean al abrir la página: se generan al subir (o un comando para las ya existentes) y se quedan en disco. El CSS que encoge no aligera el archivo.
+- **Entradas guardadas:** 02 **§2.10**; glosario GD + miniatura/thumbnail (Cursor).
+- **Notas:** el dueño descartó “ocultar capturas de pantalla” como portada; solo le importa el almacenamiento de thumbs.
+
+---
+
 ## 2026-08-21 · Canónico + disparador frontend vs BD
 
 - **Tema:** unificar acordeones en un molde oficial (`AccordionTrigger`); *canónico* = la versión de referencia (detalles de color/texto en cada pantalla); *trigger* en frontend = clic/gatillo, no trigger de MySQL ni Event de Laravel.

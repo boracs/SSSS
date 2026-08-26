@@ -1,12 +1,9 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { Check, LogIn, ShoppingCart } from "lucide-react";
 import BrandLogo from "../BrandLogo";
 import S4Button from "../S4Button";
 import SafeImage from "../SafeImage";
-
-/** Altura reservada para que el dock del chat suba y no tape el CTA (ver Chatbot.jsx). */
-const STICKY_BAR_CSS_VAR = "--s4-sticky-purchase-bar-h";
-const STICKY_BAR_OFFSET = "5rem";
+import { useStickyPurchaseBarHeight } from "@/hooks/useStickyPurchaseBarHeight";
 
 /**
  * Barra fija móvil: miniatura + precio + CTA cuando el bloque principal sale del viewport.
@@ -29,19 +26,13 @@ export default function ProductStickyPurchaseBar({
     onAddToCart,
 }) {
     const showInCartPill = canBuy && inCartQty > 0;
-
-    useEffect(() => {
-        document.documentElement.style.setProperty(
-            STICKY_BAR_CSS_VAR,
-            visible ? STICKY_BAR_OFFSET : "0px",
-        );
-        return () => document.documentElement.style.setProperty(STICKY_BAR_CSS_VAR, "0px");
-    }, [visible]);
+    const barRef = useStickyPurchaseBarHeight(visible);
 
     if (!visible) return null;
 
     return (
         <div
+            ref={barRef}
             className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-s4 bg-white/95 px-4 py-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] shadow-[0_-12px_40px_-16px_rgba(15,23,42,0.25)] backdrop-blur-md lg:hidden"
             role="region"
             aria-label={productName ? `Comprar ${productName}` : "Comprar producto"}

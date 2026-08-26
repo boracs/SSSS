@@ -9,6 +9,8 @@ use App\DTOs\Store\CreateStoreCheckoutDto;
 use App\Models\Pedido;
 use App\Models\Producto;
 use App\Services\Invoicing\FiscalInvoiceAccessService;
+use App\Services\Media\CatalogImageService;
+use App\Support\MoneyCents;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,6 +24,7 @@ class PedidoController extends Controller
     public function __construct(
         private readonly CreateStoreCheckoutAction $createStoreCheckout,
         private readonly FiscalInvoiceAccessService $fiscalInvoices,
+        private readonly CatalogImageService $catalogImages,
     ) {}
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -32,8 +35,8 @@ class PedidoController extends Controller
     {
         $request->validate([
             'productos_json' => ['required', 'json'],
-            'total'          => ['required', 'numeric', 'min:0'],
-            'fecha_entrega'  => ['nullable', 'date_format:d/m/Y'],
+            'total' => ['required', 'numeric', 'min:0'],
+            'fecha_entrega' => ['nullable', 'date_format:d/m/Y'],
         ]);
 
         /** @var array<int, array{id:int, cantidad:int}>|null */
@@ -85,7 +88,7 @@ class PedidoController extends Controller
 
         return Inertia::render('Pedido', [
             'isAdminView' => Auth::user()->role === 'admin',
-            'pedido'      => $this->mapPedido($pedido),
+            'pedido' => $this->mapPedido($pedido),
         ]);
     }
 
@@ -143,7 +146,7 @@ class PedidoController extends Controller
                 'productos' => fn ($q) => $q
                     ->select('productos.id', 'nombre', 'precio')
                     ->with('imagenes:id,producto_id,ruta,es_principal')
-                    ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado'),
+                    ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado_cents'),
             ])
             ->latest('id');
 
@@ -156,18 +159,18 @@ class PedidoController extends Controller
         $paginator = $query->paginate(20)->withQueryString();
 
         return Inertia::render('GestorPedidos', [
-            'pedidos'      => collect($paginator->items())
+            'pedidos' => collect($paginator->items())
                 ->map(fn (Pedido $p) => $this->mapPedidoForGestor($p))
                 ->values()
                 ->all(),
             'totalPedidos' => $paginator->total(),
-            'currentPage'  => $paginator->currentPage(),
-            'lastPage'     => max(1, $paginator->lastPage()),
-            'filters'      => ['entregado' => $entregado],
-            'stats'        => [
-                'total'              => Pedido::query()->where('pagado', true)->count(),
+            'currentPage' => $paginator->currentPage(),
+            'lastPage' => max(1, $paginator->lastPage()),
+            'filters' => ['entregado' => $entregado],
+            'stats' => [
+                'total' => Pedido::query()->where('pagado', true)->count(),
                 'pendientes_entrega' => Pedido::query()->where('pagado', true)->where('entregado', false)->count(),
-                'entregados'         => Pedido::query()->where('pagado', true)->where('entregado', true)->count(),
+                'entregados' => Pedido::query()->where('pagado', true)->where('entregado', true)->count(),
             ],
         ]);
     }
@@ -177,26 +180,26 @@ class PedidoController extends Controller
         $resolveImagen = $this->makeImageResolver();
 
         $items = $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
-            $cantidad     = (int) $producto->pivot->cantidad;
-            $precioPagado = (float) $producto->pivot->precio_pagado;
-            $descuento    = (float) $producto->pivot->descuento_aplicado;
+            $cantidad = (int) $producto->pivot->cantidad;
+            $precioPagado = MoneyCents::centsToEuros((int) $producto->pivot->precio_pagado_cents);
+            $descuento = (float) $producto->pivot->descuento_aplicado;
 
             return [
-                'id'                 => $producto->id,
-                'nombre'             => $producto->nombre,
-                'imagen'             => $resolveImagen($producto),
-                'cantidad'           => $cantidad,
-                'precio_pagado'      => $precioPagado,
+                'id' => $producto->id,
+                'nombre' => $producto->nombre,
+                'imagen' => $resolveImagen($producto),
+                'cantidad' => $cantidad,
+                'precio_pagado' => $precioPagado,
                 'descuento_aplicado' => $descuento,
-                'subtotal'           => round($precioPagado * $cantidad, 2),
+                'subtotal' => round($precioPagado * $cantidad, 2),
             ];
         })->values();
 
         $subtotalSinDescuento = $pedido->productos->reduce(function (float $carry, Producto $producto) {
-            $cantidad    = (int) $producto->pivot->cantidad;
-            $descuento   = (float) $producto->pivot->descuento_aplicado;
-            $precioPagado = (float) $producto->pivot->precio_pagado;
-            $precioBase  = $descuento > 0 ? $precioPagado / (1 - ($descuento / 100)) : $precioPagado;
+            $cantidad = (int) $producto->pivot->cantidad;
+            $descuento = (float) $producto->pivot->descuento_aplicado;
+            $precioPagado = MoneyCents::centsToEuros((int) $producto->pivot->precio_pagado_cents);
+            $precioBase = $descuento > 0 ? $precioPagado / (1 - ($descuento / 100)) : $precioPagado;
 
             return $carry + ($precioBase * $cantidad);
         }, 0.0);
@@ -205,20 +208,20 @@ class PedidoController extends Controller
         $fiscal = $this->fiscalInvoices->forPayable(Pedido::class, (int) $pedido->id);
 
         return [
-            'id'                => $pedido->id,
-            'precio_total'      => (float) $pedido->precio_total,
-            'subtotal'          => round($subtotalSinDescuento, 2),
-            'descuentos'        => $totalDescuentos > 0 ? $totalDescuentos : 0.0,
-            'entregado'         => (bool) $pedido->entregado,
-            'payment_method'    => $pedido->payment_method,
-            'created_at'        => optional($pedido->created_at)->toIso8601String(),
+            'id' => $pedido->id,
+            'precio_total' => (float) $pedido->precio_total,
+            'subtotal' => round($subtotalSinDescuento, 2),
+            'descuentos' => $totalDescuentos > 0 ? $totalDescuentos : 0.0,
+            'entregado' => (bool) $pedido->entregado,
+            'payment_method' => $pedido->payment_method,
+            'created_at' => optional($pedido->created_at)->toIso8601String(),
             'proof_uploaded_at' => optional($pedido->proof_uploaded_at)->toIso8601String(),
             'fiscal_invoice_url' => $fiscal?->detailUrl,
             'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
             'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
-            'cliente'           => [
-                'nombre'   => trim(($pedido->usuario->nombre ?? '').' '.($pedido->usuario->apellido ?? '')),
-                'email'    => $pedido->usuario->email ?? null,
+            'cliente' => [
+                'nombre' => trim(($pedido->usuario->nombre ?? '').' '.($pedido->usuario->apellido ?? '')),
+                'email' => $pedido->usuario->email ?? null,
                 'telefono' => $pedido->usuario->telefono ?? null,
             ],
             'productos' => $items,
@@ -232,23 +235,23 @@ class PedidoController extends Controller
         $fiscal = $fiscalMap[$this->fiscalInvoices->cacheKey(Pedido::class, (int) $pedido->id)] ?? null;
 
         return [
-            'id'              => $pedido->id,
-            'precio_total'    => (float) $pedido->precio_total,
-            'entregado'       => (bool) $pedido->entregado,
-            'payment_method'  => $pedido->payment_method,
-            'created_at'      => optional($pedido->created_at)->toIso8601String(),
+            'id' => $pedido->id,
+            'precio_total' => (float) $pedido->precio_total,
+            'entregado' => (bool) $pedido->entregado,
+            'payment_method' => $pedido->payment_method,
+            'created_at' => optional($pedido->created_at)->toIso8601String(),
             'total_articulos' => (int) $pedido->productos->sum(fn ($p) => (int) $p->pivot->cantidad),
             'fiscal_invoice_url' => $fiscal?->detailUrl,
             'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
             'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
-            'productos'       => $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
+            'productos' => $pedido->productos->map(function (Producto $producto) use ($resolveImagen) {
                 return [
-                    'id'                 => $producto->id,
-                    'nombre'             => $producto->nombre,
-                    'imagen'             => $resolveImagen($producto),
-                    'cantidad'           => (int) $producto->pivot->cantidad,
+                    'id' => $producto->id,
+                    'nombre' => $producto->nombre,
+                    'imagen' => $resolveImagen($producto),
+                    'cantidad' => (int) $producto->pivot->cantidad,
                     'descuento_aplicado' => (float) $producto->pivot->descuento_aplicado,
-                    'precio_pagado'      => (float) $producto->pivot->precio_pagado,
+                    'precio_pagado' => MoneyCents::centsToEuros((int) $producto->pivot->precio_pagado_cents),
                 ];
             })->values(),
         ];
@@ -258,42 +261,42 @@ class PedidoController extends Controller
     private function mapPedidoForGestor(Pedido $pedido): array
     {
         $resolveImagen = $this->makeImageResolver();
-        $productos     = $pedido->productos;
+        $productos = $pedido->productos;
 
         $items = $productos->map(function (Producto $producto) use ($resolveImagen) {
-            $cantidad     = (int) $producto->pivot->cantidad;
-            $precioPagado = (float) $producto->pivot->precio_pagado;
+            $cantidad = (int) $producto->pivot->cantidad;
+            $precioPagado = MoneyCents::centsToEuros((int) $producto->pivot->precio_pagado_cents);
 
             return [
-                'id'                 => $producto->id,
-                'nombre'             => $producto->nombre,
-                'imagen'             => $resolveImagen($producto),
-                'cantidad'           => $cantidad,
-                'precio_pagado'      => $precioPagado,
+                'id' => $producto->id,
+                'nombre' => $producto->nombre,
+                'imagen' => $resolveImagen($producto),
+                'cantidad' => $cantidad,
+                'precio_pagado' => $precioPagado,
                 'descuento_aplicado' => (float) $producto->pivot->descuento_aplicado,
-                'subtotal'           => round($precioPagado * $cantidad, 2),
+                'subtotal' => round($precioPagado * $cantidad, 2),
             ];
         })->values()->all();
 
         return [
-            'id'                 => $pedido->id,
-            'precio_total'       => (float) $pedido->precio_total,
-            'entregado'          => (bool) $pedido->entregado,
-            'payment_method'     => $pedido->payment_method,
-            'created_at'         => $pedido->created_at?->toIso8601String(),
-            'productos'          => $items,
-            'usuario'            => [
-                'nombre'   => $pedido->usuario?->nombre,
+            'id' => $pedido->id,
+            'precio_total' => (float) $pedido->precio_total,
+            'entregado' => (bool) $pedido->entregado,
+            'payment_method' => $pedido->payment_method,
+            'created_at' => $pedido->created_at?->toIso8601String(),
+            'productos' => $items,
+            'usuario' => [
+                'nombre' => $pedido->usuario?->nombre,
                 'apellido' => $pedido->usuario?->apellido,
                 'telefono' => $pedido->usuario?->telefono,
-                'email'    => $pedido->usuario?->email,
+                'email' => $pedido->usuario?->email,
             ],
         ];
     }
 
     private function makeImageResolver(): \Closure
     {
-        return static function (Producto $producto): ?string {
+        return function (Producto $producto): ?string {
             $imagen = $producto->imagenes->firstWhere('es_principal', true)
                 ?? $producto->imagenes->first();
 
@@ -301,13 +304,7 @@ class PedidoController extends Controller
                 return null;
             }
 
-            $ruta = $imagen->ruta;
-
-            if (str_starts_with($ruta, 'http') || str_starts_with($ruta, '/')) {
-                return $ruta;
-            }
-
-            return '/storage/'.ltrim($ruta, '/');
+            return Producto::publicListingUrl((string) $imagen->ruta, $this->catalogImages);
         };
     }
 }

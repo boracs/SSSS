@@ -20,6 +20,7 @@ const btnSecondary =
     "inline-flex items-center justify-center rounded-xl border border-white/10 bg-slate-900/60 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800";
 
 function imageUrlFor(surfboard) {
+    if (surfboard.first_thumb_url) return surfboard.first_thumb_url;
     if (surfboard.first_image_url) return surfboard.first_image_url;
     if (!surfboard.image_url) return null;
     try {

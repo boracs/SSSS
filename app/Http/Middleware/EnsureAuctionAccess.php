@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Services\Seo\PublicPageSeoService;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -23,7 +24,9 @@ class EnsureAuctionAccess
             return $next($request);
         }
 
-        return Inertia::render('Auctions/AccessRequired')
+        return Inertia::render('Auctions/AccessRequired', [
+            'seo' => app(PublicPageSeoService::class)->subastasAccessRequired()->toArray(),
+        ])
             ->toResponse($request)
             ->setStatusCode(403);
     }

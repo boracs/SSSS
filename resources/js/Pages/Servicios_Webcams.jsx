@@ -148,7 +148,7 @@ export default function ServiciosWebcams({
             </section>
 
             {/* 1) Webcam primero */}
-            <section id="webcam-directo" className="mx-auto max-w-6xl scroll-mt-24 px-4 pt-6 sm:px-6 sm:pt-8">
+            <section id="webcam-directo" className="mx-auto min-w-0 max-w-6xl scroll-mt-24 px-4 pt-6 sm:px-6 sm:pt-8">
                 <div className="mb-2 flex flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                     <div className="min-w-0">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -159,7 +159,7 @@ export default function ServiciosWebcams({
                                 ·
                             </span>
                             <p className="text-xs text-slate-400 sm:text-sm">
-                                Usa el zoom para acercarte a la rompiente.
+                                Señal en directo · puedes ir unos segundos atrás. Zoom para la rompiente.
                             </p>
                         </div>
                     </div>

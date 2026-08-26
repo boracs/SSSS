@@ -69,6 +69,38 @@ Añadir/actualizar una fila en **Estado actual**:
 
 | Fecha      | Tarea                                                                                                                                                                                                                                                                                                                                          | Quién    | Estado                 | Archivos afectados                                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-25 | Pipeline imágenes catálogo: máster 1600 + thumb 640 WebP, borrar RAW | Cursor | HECHO | `CatalogImageService`, writers admin, payloads listado, `images:backfill-catalog-thumbs`, `docs/EN-EL-MOMENTO-DE-DESPLEGAR.md` |
+| 2026-08-25 | Pipeline imágenes ronda 2: orden seguro subir→borrar, thumbs en galería pública subasta/2ª mano, sin Service Locator en modelos, mimes surfboard | Cursor | HECHO | `SecondHandBoardController.php` (admin+público), `AuctionController.php`, `SurfboardController.php`, `StoreProductCatalogService.php`, `Auction.php`, `SecondHandBoard.php`, `Producto.php`, `AuctionCatalogService.php`, `SecondHandPublicCatalogService.php`, `ProductDetailPageService.php`, `PedidoController.php`, `Auctions/Show.jsx`, `SecondHand/Show.jsx`, `StoreSurfboardRequest.php`, `UpdateSurfboardRequest.php` |
+| 2026-08-25 | Segunda mano público: filtros URL, reservadas, ficha (formato/H1/WhatsApp/placeholder) | Cursor | HECHO | `SecondHandPublicCatalogService`, `SecondHandCatalogFilters`, `SecondHand/{Index,Show}.jsx` |
+| 2026-08-25 | Prompt pipeline imágenes catálogo v3 (tras crítica Reasonix) | Cursor | HECHO | `docs/taller-prompts/PROMPT-CATALOG-IMAGE-PIPELINE.md` |
+| 2026-08-24 | Webcam DVR: acortar barra a ventana jugable (sin tramo izquierdo muerto) | Cursor | HECHO | `ZurriolaWebcamPlayer.jsx` |
+| 2026-08-24 | Webcam DVR: thumb al vivo (final de barra) hasta que el usuario rebobine | Cursor | HECHO | `ZurriolaWebcamPlayer.jsx` |
+| 2026-08-24 | Segunda mano catálogo: lazy-load fotos (SafeImage) | Cursor | HECHO | `SecondHand/Index.jsx`, `SecondHandBoard.php`, `SecondHandBoardController.php` |
+| 2026-08-24 | Webcam: DVR freeze al recargar + barra seek | Cursor | HECHO | `ZurriolaWebcamPlayer.jsx` |
+| 2026-08-24 | Horario: recuperar slider (ocultar solo la barra, no el deslizamiento) | Cursor | HECHO | `WeatherDetailPanel.jsx`, `SurfForecastTable.jsx` |
+| 2026-08-24 | ForecastSlider: sin barra nativa (`overflow-x-hidden`; arrastre + flechas) | Cursor | HECHO | `SurfForecastTable.jsx`, `WeatherDetailPanel.jsx` |
+| 2026-08-24 | Tiempo detallado: quitar scroll lateral también del horario | Cursor | HECHO | `WeatherDetailPanel.jsx`, `Servicios_Webcams.jsx` |
+| 2026-08-24 | Tiempo detallado: días arriba + horas abajo (master→detalle) | Cursor | HECHO | `WeatherDetailPanel.jsx` |
+| 2026-08-24 | Webcam: barra DVR no se veía (seekable HLS vacío) | Cursor | HECHO | `ZurriolaWebcamPlayer.jsx` |
+| 2026-08-24 | Webcam: barra DVR + «Volver al directo» (P2) | Cursor | HECHO | `ZurriolaWebcamPlayer.jsx`, `Servicios_Webcams.jsx` |
+| 2026-08-24 | Webcam: barra seek vs percepción «en directo» (S1+S6 → S3+S10) | Reasonix | HECHO (P2 dueño+Cursor) | `PROMPT-UX-WEBCAM-BARRA-DIRECTO.md` |
+| 2026-08-24 | Auditoría marketing web completa (10 hallazgos A1–A10 + por página) — documento maestro + prompt ejecución ítem a ítem | Cursor | HECHO | `docs/taller-prompts/AUDITORIA-MARKETING-WEB-2026-08-24.md`, `PROMPT-EJECUCION-AUDITORIA-MARKETING.md` |
+| 2026-08-24 | A3 SEO carrito noindex (`SeoHead` + `PublicPageSeoService::carrito()`) | Cursor | HECHO | `PublicPageSeoService.php`, `CarritoController.php`, `Carrito.jsx` |
+| 2026-08-24 | A5 tienda — pills tags móvil scroll + targets 44px | Cursor | HECHO | `Tienda.jsx` |
+| 2026-08-24 | A8 tags clicables → filtro tienda (`?tag=`) | Cursor | HECHO | `ProductTagPills.jsx`, `Tienda.jsx`, `TiendaController.php`, `Producto.jsx`, `ProductoVer.jsx` |
+| 2026-08-24 | A4 FAQPage JSON-LD clases surf (`surf-classes-faqs.json`) | Cursor | HECHO | `SurfClassesFaqService.php`, `FaqPageJsonLdService.php`, `PublicPageSeoService.php` |
+| 2026-08-24 | A6 mapa/NAP contacto + footer (`AcademyLocationPanel`) | Cursor | HECHO | `AcademyLocation.php`, `AcademyLocationPanel.jsx`, `Contacto.jsx`, `Footer.jsx`, `HandleInertiaRequests.php` |
+| 2026-08-24 | A10 chatbot FAB — offset sticky real + footer | Cursor | HECHO | `Chatbot.jsx`, `ProductStickyPurchaseBar.jsx`, `useStickyPurchaseBarHeight.js`, `floatingDockOffset.js` |
+| 2026-08-24 | A7 testimonios + A9 subastas noindex | Cursor | HECHO | `Pag_principal.jsx`, `PublicPageSeoService.php`, `Auctions/*`, `AuctionController.php` |
+| 2026-08-25 | FAB chat/subir: offset footer + sync global en PublicLayout | Cursor | HECHO | `floatingDockOffset.js`, `FloatingDockOffsetSync.jsx`, `PublicLayout.jsx`, `Chatbot.jsx` |
+| 2026-08-25 | Rediseño bloque Google Reviews (auditoría marketing S1 → frontend) | Cursor | HECHO | `GoogleReviewsBadge.jsx`, `Pag_principal.jsx`, `AcademyLocationPanel.jsx` |
+| 2026-08-25 | A2 + A11 — funnel claro + lang es | Cursor | HECHO | `app.jsx`, `Tienda.jsx`, `app.blade.php` |
+| 2026-08-24 | Ejecución backlog auditoría marketing — **11/11 HECHO** | Dueño + Cursor | HECHO | Ver `AUDITORIA-MARKETING-WEB-2026-08-24.md` |
+| 2026-08-24 | A1 SEO taquillas: `/servicios/taquillas` indexable + redirects + SeoHead | Cursor | HECHO | `PublicPageSeoService.php`, `PlanesTaquillasController.php`, `PlanesTaquillasPublic.jsx`, `PublicSitemapService.php`, `routes/web.php`, `chatbot_pages.php` |
+| 2026-08-24 | Tags producto: píldoras en cards tienda + carrito (`ProductTagPills`) | Cursor | HECHO | `ProductTagPills.jsx`, `Producto.jsx`, `Carrito.jsx`, `CarritoController.php` |
+| 2026-08-24 | Agente `/despliegue-ops` (persona + skill + router + enlaces) | Reasonix | HECHO | `AGENTE-DESPLIEGUE-OPS.md`, `.reasonix/skills/despliegue-ops/SKILL.md`, `RUTAS-CONTEXTO.json`, `CONTRATO-IA.md`, `MASTER-PROMPT-DEEPSEEK.md`, `AGENTS.md` |
+| 2026-08-23 | Header: share Inertia `cart.count` para badge del carrito | Cursor | HECHO | `HandleInertiaRequests.php` |
+| 2026-08-23 | H6: limpiar estado muerto «No hay unidades disponibles» en `canBuy` (inalcanzable) | Reasonix | HECHO | `ProductPurchaseCta.jsx` |
 | 2026-08-22 | PDP sticky: filete marca s4 + miniatura izq. + logo solo `sm+` | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
 | 2026-08-22 | PDP sticky: pill inline + miniatura 48/56px (marketing + UX) | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
 | 2026-08-22 | PDP sticky: «En tu carrito» sin recortar (miniatura a la dcha.) | Cursor | HECHO | `store/ProductStickyPurchaseBar.jsx` |
@@ -83,6 +115,7 @@ Añadir/actualizar una fila en **Estado actual**:
 | 2026-08-22 | Footer marca: Instagram + YouTube + Facebook + TikTok (config .env) | Cursor | HECHO | `FooterSocialLinks.jsx`, `AcademySocialLinks.php`, `Footer.jsx`, `config/services.php` |
 | 2026-08-20 | GlobalNav móvil: aria-expanded en secciones con submenú | Cursor | HECHO | `GlobalNav.jsx` |
 | 2026-08-21 | Banner promo: sin pastilla de precio (solo CTA) | Cursor | HECHO | `StorePromoBanner.jsx` |
+| 2026-08-21 | PDP sticky: feedback carrito «En carrito · N» (estado local addedQty, UI-only) | Cursor (prompt Reasonix) | HECHO | `ProductoVer.jsx`, `ProductStickyPurchaseBar.jsx` |
 | 2026-08-21 | PDP ficha: «Precio socio» persistente + ancla precio tachado en sticky bar + hint cantidad sin duplicar stock | Reasonix | HECHO | `ProductoVer.jsx`, `ProductStickyPurchaseBar.jsx` |
 | 2026-08-21 | Scroll lateral PDP: guard `overflow-x: clip` global + blindaje breadcrumbs/título | Reasonix | HECHO | `app.css`, `Breadcrumbs.jsx`, `ProductoVer.jsx` |
 | 2026-08-20 | Planes socio: quitar copy redundante bajo «Qué incluye» | Cursor | HECHO | `PlanesTaquillasClient.jsx` |
@@ -215,6 +248,51 @@ Añadir/actualizar una fila en **Estado actual**:
 | 2026-08-10 | Libro de Aprendizaje del dueño: carpeta `docs/aprendizaje/` (rol profesor; INDICE + 6 temas) integrando los `.txt` sueltos de `Conceptos y flujos de trabajo/`                                                                                                                                                                                 | Reasonix | HECHO                  | `docs/aprendizaje/*`                                                                                                   |
 
 ## Última actividad
+
+- **2026-08-25** — Cursor: pipeline catálogo — `CatalogImageService` (máster 1600 + thumb 640 WebP, borra RAW) en producto/2ª mano/subasta/alquiler admin. Listados → thumb; ficha/lightbox → máster. Backfill local 16 paths. Checklist VPS `docs/EN-EL-MOMENTO-DE-DESPLEGAR.md`. Alquiler público sigue demo. HECHO.
+- **2026-08-25** — Cursor: pipeline catálogo ronda 2 (auditoría propia post-implementación) — (1) orden seguro subir→persistir→borrar en reemplazo de fotos (2ª mano/subasta/alquiler/producto: antes se borraba el par viejo antes de subir el nuevo, riesgo de perder fotos si fallaba a mitad de lote); (2) `images_thumbs` en `Auction`/`SecondHandBoard::toPublicArray()` + consumido en galería de ficha pública (`Auctions/Show.jsx`, `SecondHand/Show.jsx`: antes servían el máster 1600px también en miniaturas/grid); (3) quitado `app(CatalogImageService::class)` (Service Locator) de los puntos calientes con inyección disponible (`Auction`/`SecondHandBoard::toPublicArray` aceptan el servicio inyectado; `AuctionCatalogService`, `SecondHandPublicCatalogService`, `PedidoController`, `ProductDetailPageService` lo pasan) — quedan como excepción aceptada los accessors/eventos de Eloquent sin punto de inyección (`Surfboard::getFirstThumbUrlAttribute`, `deleteImagesFromDisk`); (4) mimes explícitos en `StoreSurfboardRequest`/`UpdateSurfboardRequest` (paridad con 2ª mano/subasta). Suite completa: 276/277 OK (1 fallo preexistente y ajeno en `PasswordUpdateTest`, no tocado). Pendiente de decisión del dueño: conectar Alquiler público a fotos reales. HECHO.
+
+- **2026-08-25** — Cursor: catálogo 2ª mano público — filtros en URL (`q/tipo/altura/volumen/precio/orden`) en servicio+DTO; reservadas visibles (vendidas 404); listado sin `description`/galería; ficha con `height_label`, un H1, placeholder real (sin DEMO), Volver=`Link`, icono WhatsApp. Tests Feature+Unit OK. HECHO.
+
+- **2026-08-25** — Cursor: ronda 2 prompt-forge — Reasonix GO-CON-CAMBIOS verificado. v3 en `PROMPT-CATALOG-IMAGE-PIPELINE.md`. Alquiler público = demo hasta decisión; VPS no cambia números. HECHO.
+
+- **2026-08-25** — Cursor: prompt-forge v1 — pipeline catálogo (máster ~1600 WebP + thumb ~640, borrar RAW, un servicio, 4 altas). Destino Reasonix análisis, no código. Archivo `PROMPT-CATALOG-IMAGE-PIPELINE.md`. HECHO.
+
+- **2026-08-24** — Cursor: webcam DVR — la barra era más larga que lo jugable (union 30 s + fragmento viejo caído). Ahora ~18 s reales, thumb al 100 %, seek al inicio sigue reproduciendo. HECHO.
+
+- **2026-08-24** — Cursor: webcam DVR — al cargar el thumb queda al final (Al vivo); rebobinar muestra «Volver al directo»; el botón devuelve el thumb al final y sigue el directo. Test Chrome: value 30/30 → seek 2.5 + botón → 30/30. HECHO.
+
+- **2026-08-24** — Cursor: webcam DVR — el freeze al recargar era un auto-seek al live cada 400 ms. Quitado; arranque con `play()`; stall salta hueco de buffer. Test Chrome: avanza, seek atrás muestra «Volver al directo», volver al vivo sigue reproduciendo. HECHO.
+
+- **2026-08-24** — Cursor: catálogo 2ª mano — `SafeImage` + `loading=lazy` (primeras 4 eager; LCP `fetchPriority=high`). Listado ya no manda la galería completa, solo `first_image`. La ficha Show ya tenía lazy en thumbs. HECHO.
+
+- **2026-08-24** — Cursor: barra DVR de la webcam no se veía porque `video.seekable` en HLS en directo sale vacío y se ocultaba. Ahora usa playlist/buffer + fallback ~30 s, `lowLatencyMode: false`, y la franja bajo el vídeo se pinta en cuanto hay live. HECHO.
+
+- **2026-08-24** — Cursor: horario otra vez en `ForecastSlider` (una fila, arrastre + flechas). Solo se oculta la barra nativa (`scrollbar-width: none` + webkit height 0); se revierte la rejilla 4/6/8. HECHO.
+
+- **2026-08-24** — Cursor: tiempo detallado — horario sin slider; días y horas en grid (`overflow-x-hidden`). El scroll lateral que seguía viendo el dueño era el strip de horas. HECHO.
+
+- **2026-08-24** — Cursor: `ForecastSlider` ya no usa `overflow-x-auto` (barra nativa de Windows). Clip `overflow-x-hidden`; mover con arrastre o flechas. Panel tiempo: `overflow-x-hidden` para que el `overflow-y-auto` no pinte barra horizontal. HECHO.
+
+- **2026-08-24** — Cursor: tiempo detallado — los 7 días vuelven a grid fijo (`grid-cols-4` / `sm:grid-cols-7`), sin strip `overflow-x`. El slider (arrastre + flechas) queda solo en el horario. HECHO.
+
+- **2026-08-24** — Cursor: tiempo detallado (`WeatherDetailPanel.jsx`) — 7 días arriba (strip compacto) + horario debajo; sin hint ni «Ver por horas»; amanecer/atardecer solo del día elegido; `overflow-y-auto` para no recortar. UI-only. HECHO.
+
+- **2026-08-24** — Cursor: P2 webcam — barra DVR custom (sin `controls` nativos) + «Volver al directo» si vas atrás; hint «puedes ir unos minutos atrás». `ZurriolaWebcamPlayer.jsx` + `Servicios_Webcams.jsx`. Si el HLS no da ventana ≥8 s, la barra no se pinta. HECHO.
+
+- **2026-08-24** — Cursor: brief `PROMPT-UX-WEBCAM-BARRA-DIRECTO.md` — marketing (live vs VOD) → UX (barra sí/no + copy). Veredicto P2. HECHO.
+
+- **2026-08-24** — Cursor: **A1 auditoría marketing** — taquillas indexables `/servicios/taquillas` (SeoHead, JSON-LD, sitemap, 301 legacy, CTA «Reservar taquilla»). Build OK. HECHO.
+
+- **2026-08-24** — Cursor: auditoría marketing web completa guardada en `docs/taller-prompts/AUDITORIA-MARKETING-WEB-2026-08-24.md` (10 hallazgos A1–A10, notas por página, design system, SEO/GEO, anti-alucinación). Prompt ítem a ítem en `PROMPT-EJECUCION-AUDITORIA-MARKETING.md`. Backlog en `TAREAS-PENDIENTES.md`. HECHO.
+
+- **2026-08-23** — Reasonix: deuda técnica P3 — dinero tienda a céntimos: migración `2026_08_23_110000_convert_pedidos_money_to_cents` (`pedidos.precio_total` + `pedido_producto.precio_pagado` → `_cents`, backfill + drop viejas; `descuento_aplicado` sigue porcentaje). Código: StoreOrderStockService, CreateStoreCheckoutAction, Datafono createPaidPedido/fiscalTargets, PedidoController mappers, ClientPaymentHistoryService, modelos Pedido/PedidoProducto/Producto/User (accessor `Pedido::precio_total` en euros → API/front sin cambios), factory + 4 seeders. Precios bonos 150/600 € → `config/store.php bonos_public` (env). Tests 267 ✓ (1 fallo preexistente ajeno: PasswordUpdateTest); build OK; migración aplicada a BD dev. HECHO.
+
+- **2026-08-23** — Cursor: P2 carritos — `UNIQUE(user_id)` + `user_id` NOT NULL; fusión de duplicados si los hubiera; `Carrito::forUser()`. Tests 7/7. HECHO.
+
+- **2026-08-23** — Cursor: badge carrito del header — `HandleInertiaRequests::share()` envía `cart.count` (suma de `carrito_producto.cantidad` del usuario; invitado/error → 0). `GlobalNav` ya lo leía; sticky H5 intacta. Build OK. HECHO.
+- **2026-08-23** — Reasonix (implementación autorizada): H6 — eliminado estado muerto «No hay unidades disponibles en este momento» del branch `canBuy` de `ProductPurchaseCta.jsx` (inalcanzable: canBuy ⇒ stock≥1 ⇒ qtySelect presente). Build OK (1m34s). HECHO.
+- **2026-08-24** — Reasonix: creado agente `/despliegue-ops` (persona `AGENTE-DESPLIEGUE-OPS.md` §1–§8 + S1–S12, skill Reasonix, router con 5 aliases `ops/operaciones/despliegue/deploy/tunel`, filas §3 en CONTRATO y MASTER, enlace en AGENTS.md). Zona Cursor (.cursorrules + skill) queda como diff para que la aplique Cursor/el dueño. JSON validado. HECHO.
 
 - **2026-08-22** — Cursor: sticky PDP — identidad de marca sin gastar ancho: filete superior 3px `border-s4`, miniatura al extremo izquierdo, `BrandLogo navyNav h-7` solo `sm+`. Descartado (marketing): logo en móvil (56px de coste sobre 19px de holgura a 360px) y centrar la fila (rompe patrón precio-izq./CTA-dcha. + Fitts). Extra: ancla tachada oculta bajo 380px (no truncar cifras) y `min-w-[96px]` en CTA Agotado/Entrar/Taquilla. HECHO.
 
@@ -402,6 +480,7 @@ Añadir/actualizar una fila en **Estado actual**:
 - **2026-08-21** — Reasonix (implementación autorizada por el dueño): PDP ficha — etiqueta «Precio socio» siempre visible en bloque de precio, precio normal tachado como ancla en sticky bar (guests ven el ahorro), hint de cantidad solo con info nueva (máx. por pedido). Build OK (40s). HECHO.
 - **2026-08-21** — Reasonix: scroll lateral PDP — guard `overflow-x: clip` en html/body (app.css; no rompe sticky), `min-w-0`+`break-words` en Breadcrumbs y H1 de ficha. Build OK (30s). HECHO.
 - **2026-08-21** — Reasonix: H4 cerrado sin cambios (verdict S6: split «Añadir»/«Añadir al carrito» es el patrón correcto). H5: prompt feedback carrito en sticky bar entregado en chat (estado local, UI-only). Hallazgo: badge carrito header lee `props.cart.count` que nadie comparte → nunca se actualiza (pendiente decidir fix).
+- **2026-08-21** — Reasonix: H5 VERIFICADO — implementado vía prompt (addedQty + pill «En carrito · N» + aria-live). Build OK (53s) por Reasonix. Nota copy: pill visible usa «En carrito · N» (prompt decía «En tu carrito: N»); aria-live usa «En tu carrito: N». No crítico. HECHO.
 
 - **2026-08-21** — Reasonix: cierre de sesión — 4 tareas del S4 acordeones cerradas y verificadas (GlobalNav a11y, Clients/Vigencia a11y, ContactBlock, refactor AccordionTrigger/ExpandableText ×11 archivos) + build OK. `HANDOFF.md` actualizado. Siguiente pendiente: #9 mejoras 08-11 y SEO Donostia.
 - **2026-08-21** — Reasonix: verificación #9 mejoras 08-11 — ya implementada por Cursor 2026-08-12 (`EnsureAdminVerified` + `ADMIN_REQUIRE_EMAIL_VERIFIED` + allowlist `ADMIN_EMERGENCY_EMAILS`, config/auth.php documentado, tests 4/4). Lista 08-11 completa; solo falta confirmación del dueño para #7 GlobalNav. Sin cambios de código.

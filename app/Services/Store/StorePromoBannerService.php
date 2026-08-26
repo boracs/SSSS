@@ -7,6 +7,7 @@ namespace App\Services\Store;
 use App\DTOs\Store\StorePromoSlideDto;
 use App\Models\Producto;
 use App\Services\Auctions\AuctionCatalogService;
+use App\Services\Media\CatalogImageService;
 use App\Support\MoneyCents;
 
 final class StorePromoBannerService
@@ -14,6 +15,7 @@ final class StorePromoBannerService
 
     public function __construct(
         private readonly AuctionCatalogService $auctionCatalog,
+        private readonly CatalogImageService $catalogImages,
     ) {}
 
     /**
@@ -145,6 +147,7 @@ final class StorePromoBannerService
         $finalCents = StoreProductPricing::unitPriceCents($producto->precio, $producto->descuento ?? 0);
         $priceLabel = $this->formatCentsLabel($finalCents);
         $productImageUrl = $this->resolveProductImageUrl($producto);
+        $productThumbUrl = $this->resolveProductThumbUrl($producto);
         $imageUrl = $productImageUrl ?? $image;
 
         return new StorePromoSlideDto(
@@ -156,7 +159,7 @@ final class StorePromoBannerService
             href: route('producto.ver', $producto->id),
             imageUrl: $imageUrl,
             priceLabel: $descuentoPct > 0 ? '-'.$descuentoPct.'% · '.MoneyCents::formatEurosLabel($finalCents) : MoneyCents::formatEurosLabel($finalCents),
-            thumbUrl: $productImageUrl,
+            thumbUrl: $productThumbUrl ?? $productImageUrl,
         );
     }
 
@@ -167,6 +170,15 @@ final class StorePromoBannerService
         $ruta = $img?->ruta ?? $img?->nombre;
 
         return Producto::publicImageUrl(is_string($ruta) ? $ruta : null);
+    }
+
+    private function resolveProductThumbUrl(Producto $producto): ?string
+    {
+        $producto->loadMissing('imagenes');
+        $img = $producto->imagenes->firstWhere('es_principal', true) ?? $producto->imagenes->first();
+        $ruta = $img?->ruta ?? $img?->nombre;
+
+        return is_string($ruta) ? $this->catalogImages->publicThumbUrl($ruta) : null;
     }
 
     private function productPromoSubtitle(Producto $producto, int $descuentoPct, int $finalCents): string

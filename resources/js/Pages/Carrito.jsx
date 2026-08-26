@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Head, Link, usePage, router } from "@inertiajs/react";
+import { Link, usePage, router } from "@inertiajs/react";
 import { toast } from "react-toastify";
+import SeoHead from "@/components/seo/SeoHead";
 import {
     ArrowLeft,
     Minus,
@@ -11,7 +12,7 @@ import {
     Trash2,
     X,
 } from "lucide-react";
-import ImageLightbox from "../components/ImageLightbox";
+import ProductTagPills from "../components/ProductTagPills";
 import SafeImage from "../components/SafeImage";
 import Layout1 from "../layouts/Layout1";
 import { resolveCatalogImage } from "../utils/demoCatalogImages";
@@ -94,6 +95,7 @@ const Carrito = () => {
         total = 0,
         canCheckout = false,
         whatsappHelpUrl = null,
+        seo = null,
     } = props;
 
     // Estado para los modales
@@ -196,7 +198,7 @@ const Carrito = () => {
 
     return (
         <Layout1>
-            <Head title="Carrito" />
+            <SeoHead seo={seo} />
 
             {productos.length === 0 ? (
                 <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
@@ -287,6 +289,12 @@ const Carrito = () => {
                                             <p className="line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-base">
                                                 {producto.nombre}
                                             </p>
+                                            <ProductTagPills
+                                                labels={producto.tag_labels}
+                                                surface="light"
+                                                max={1}
+                                                className="mt-1"
+                                            />
                                             <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-3">
                                                 <p className="text-xs text-slate-500 sm:text-sm">
                                                     Cantidad:{" "}

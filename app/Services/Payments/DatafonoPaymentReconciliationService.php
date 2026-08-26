@@ -1707,7 +1707,7 @@ final class DatafonoPaymentReconciliationService
             ]);
         }
 
-        /** @var list<array{producto: Producto, cantidad: int, descuento: float, precio_pagado: float, unit_cents: int}> $lines */
+        /** @var list<array{producto: Producto, cantidad: int, descuento: float, precio_pagado_cents: int, unit_cents: int}> $lines */
         $lines = [];
         $catalogTotalCents = 0;
 
@@ -1733,7 +1733,7 @@ final class DatafonoPaymentReconciliationService
                 'producto' => $prod,
                 'cantidad' => $cantidad,
                 'descuento' => $descuento,
-                'precio_pagado' => MoneyCents::centsToEuros($unitCents),
+                'precio_pagado_cents' => $unitCents,
                 'unit_cents' => $unitCents,
             ];
         }
@@ -1750,13 +1750,11 @@ final class DatafonoPaymentReconciliationService
             ]);
         }
 
-        $precioTotal = MoneyCents::centsToEuros($catalogTotalCents);
-
         $pedido = Pedido::query()->create([
             'user_id' => $user?->id,
             'guest_name' => $user === null ? $guestName : null,
             'guest_email' => $user === null ? (trim($guestEmail) ?: null) : null,
-            'precio_total' => $precioTotal,
+            'precio_total_cents' => $catalogTotalCents,
             'pagado' => true,
             'entregado' => false,
             'payment_method' => 'datafono',
@@ -1768,7 +1766,7 @@ final class DatafonoPaymentReconciliationService
             $pedido->productos()->attach($prod->id, [
                 'cantidad' => $line['cantidad'],
                 'descuento_aplicado' => $line['descuento'],
-                'precio_pagado' => $line['precio_pagado'],
+                'precio_pagado_cents' => $line['precio_pagado_cents'],
             ]);
             $prod->decrement('unidades', $line['cantidad']);
         }
@@ -2108,7 +2106,7 @@ final class DatafonoPaymentReconciliationService
                 ? $payable->remainingBalanceCents()
                 : MoneyCents::eurosToCents((float) ($payable->lesson?->price ?? 20)),
             $payable instanceof PhotoSessionBooking => (int) ($payable->precio_pagado_cents ?? 0),
-            $payable instanceof Pedido => MoneyCents::eurosToCents((float) ($payable->precio_total ?? 0)),
+            $payable instanceof Pedido => (int) ($payable->precio_total_cents ?? 0),
             default => 0,
         };
     }

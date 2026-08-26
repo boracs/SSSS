@@ -8,13 +8,17 @@ use App\DTOs\Store\StoreProductWriteDto;
 use App\Enums\ProductTag;
 use App\Models\Imagen;
 use App\Models\Producto;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 
 final class StoreProductCatalogService
 {
+    public function __construct(
+        private readonly CatalogImageService $catalogImages,
+    ) {}
+
     /**
      * @return list<array<string, mixed>>
      */
@@ -38,7 +42,7 @@ final class StoreProductCatalogService
                     'eliminado' => (bool) $producto->eliminado,
                     'tags' => $producto->normalizedTags(),
                     'tag_labels' => ProductTag::labelsFor($producto->normalizedTags()),
-                    'imagen_principal' => Producto::publicImageUrl($principal?->ruta),
+                    'imagen_principal' => $this->catalogImages->publicThumbUrl($principal?->ruta),
                 ];
             })
             ->values()
@@ -106,16 +110,17 @@ final class StoreProductCatalogService
     }
 
     /**
-     * @return list<array{id: int, url: string, es_principal: bool}>
+     * @return list<array{id: int, url: string, thumb_url: string, es_principal: bool}>
      */
     public function imagesForJson(Producto $producto): array
     {
         return $producto->imagenes
             ->sortByDesc('es_principal')
             ->values()
-            ->map(static fn (Imagen $img): array => [
+            ->map(fn (Imagen $img): array => [
                 'id' => (int) $img->id,
                 'url' => Producto::publicImageUrl($img->ruta) ?? '',
+                'thumb_url' => $this->catalogImages->publicThumbUrl($img->ruta) ?? '',
                 'es_principal' => (bool) $img->es_principal,
             ])
             ->all();
@@ -147,21 +152,28 @@ final class StoreProductCatalogService
             return;
         }
 
+        // Subir primero: si una imagen falla a mitad de lote, las fotos
+        // antiguas siguen intactas en disco y en BD (nada que borrar aún).
+        $newImages = array_map(
+            fn (UploadedFile $image): array => [
+                'nombre' => $image->getClientOriginalName(),
+                'stored' => $this->catalogImages->storeFromUpload($image, 'productos'),
+            ],
+            $files,
+        );
+
         if ($replaceExisting) {
             $producto->loadMissing('imagenes');
             foreach ($producto->imagenes as $imagen) {
-                if (Storage::disk('public')->exists($imagen->ruta)) {
-                    Storage::disk('public')->delete($imagen->ruta);
-                }
+                $this->catalogImages->deletePair($imagen->ruta);
                 $imagen->delete();
             }
         }
 
-        foreach ($files as $index => $image) {
-            $imagePath = $image->store('productos', 'public');
+        foreach ($newImages as $index => $item) {
             $producto->imagenes()->create([
-                'nombre' => $image->getClientOriginalName(),
-                'ruta' => $imagePath,
+                'nombre' => $item['nombre'],
+                'ruta' => $item['stored']->masterPath,
                 'es_principal' => $index === 0,
             ]);
         }

@@ -2,31 +2,31 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Notifications\VerifyEmail as VerifyEmailNotification;
+use App\Support\VipVirtualLocker;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
-use App\Support\VipVirtualLocker;
-use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
-use Illuminate\Auth\MustVerifyEmail;
-use App\Notifications\VerifyEmail as VerifyEmailNotification;
 
 class User extends Authenticatable implements MustVerifyEmailContract
 {
-    use HasFactory, Notifiable, MustVerifyEmail;
+    use HasFactory, MustVerifyEmail, Notifiable;
 
     /**
      * Envía la notificación de verificación de email encolada.
      */
     public function sendEmailVerificationNotification(): void
     {
-        $this->notify(new VerifyEmailNotification());
+        $this->notify(new VerifyEmailNotification);
     }
 
     /**
@@ -87,7 +87,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function productos()
     {
         return $this->belongsToMany(Producto::class)
-                    ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado');
+            ->withPivot('cantidad', 'descuento_aplicado', 'precio_pagado_cents');
     }
 
     // ===================================
@@ -192,7 +192,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function scopeVigentes(Builder $query): void
     {
         $query->whereNotNull('numeroTaquilla')
-              ->whereDate('fecha_vencimiento_cuota', '>=', Carbon::today());
+            ->whereDate('fecha_vencimiento_cuota', '>=', Carbon::today());
     }
 
     /**
@@ -201,7 +201,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     public function scopeEnMora(Builder $query): void
     {
         $query->whereNotNull('numeroTaquilla')
-              ->whereDate('fecha_vencimiento_cuota', '<', Carbon::today());
+            ->whereDate('fecha_vencimiento_cuota', '<', Carbon::today());
     }
 
     /**

@@ -18,8 +18,13 @@ class PedidoProducto extends Model
         'id_pedido',
         'id_producto',
         'cantidad',
-        'descuento_aplicado', 
-        'precio_pagado',       
+        'descuento_aplicado',
+        'precio_pagado_cents',
+    ];
+
+    protected $casts = [
+        'cantidad' => 'integer',
+        'precio_pagado_cents' => 'integer',
     ];
 
     /**

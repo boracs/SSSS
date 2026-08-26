@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ProductTag;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -91,6 +92,15 @@ class Producto extends Model
         return asset('storage/'.ltrim($ruta, '/'));
     }
 
+    public static function publicListingUrl(?string $ruta, ?CatalogImageService $images = null): ?string
+    {
+        if ($ruta === null || trim($ruta) === '') {
+            return null;
+        }
+
+        return ($images ?? app(CatalogImageService::class))->publicThumbUrl($ruta);
+    }
+
     /**
      * Payload mínimo para listados de tienda / home.
      *
@@ -98,7 +108,7 @@ class Producto extends Model
      */
     public function toStorePayload(?string $imagenRuta = null): array
     {
-        $imagenUrl = self::publicImageUrl($imagenRuta);
+        $imagenUrl = self::publicListingUrl($imagenRuta);
 
         return [
             'id' => $this->id,
@@ -128,8 +138,8 @@ class Producto extends Model
     public function carritos()
     {
         return $this->belongsToMany(Carrito::class, 'carrito_producto', 'producto_id', 'carrito_id')
-                    ->withPivot('cantidad')
-                    ->withTimestamps();
+            ->withPivot('cantidad')
+            ->withTimestamps();
     }
 
     /**
@@ -138,8 +148,8 @@ class Producto extends Model
     public function pedidos()
     {
         return $this->belongsToMany(Pedido::class, 'pedido_producto', 'id_producto', 'id_pedido')
-                    ->withPivot('cantidad', 'precio_pagado', 'descuento_aplicado')
-                    ->withTimestamps();
+            ->withPivot('cantidad', 'precio_pagado_cents', 'descuento_aplicado')
+            ->withTimestamps();
     }
 
     /**
@@ -149,7 +159,6 @@ class Producto extends Model
     {
         return $this->hasMany(Imagen::class, 'producto_id');
     }
-    
 
     // Para obtener directamente la principal
     public function imagenPrincipal()

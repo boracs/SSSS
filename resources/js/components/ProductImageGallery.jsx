@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
  */
 const ProductImageGallery = ({
     images = [],
+    thumbs = [],
     productName = "Producto",
     compact = true,
     tone = "dark",
@@ -229,7 +230,7 @@ const ProductImageGallery = ({
                                         }`}
                                     >
                                         <img
-                                            src={src}
+                                            src={thumbs[index] || src}
                                             alt=""
                                             aria-hidden
                                             loading="lazy"

@@ -12,10 +12,10 @@ use App\Http\Requests\Admin\UpdateAuctionRequest;
 use App\Models\Auction;
 use App\Services\Auctions\AuctionCatalogService;
 use App\Services\Auctions\AuctionSettlementService;
+use App\Services\Media\CatalogImageService;
 use App\Support\MoneyCents;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use RuntimeException;
@@ -25,6 +25,7 @@ class AuctionController extends Controller
     public function __construct(
         private readonly AuctionCatalogService $catalog,
         private readonly AuctionSettlementService $settlement,
+        private readonly CatalogImageService $catalogImages,
     ) {}
 
     public function index(Request $request): Response
@@ -72,11 +73,7 @@ class AuctionController extends Controller
         $data['current_price_cents'] = $data['starting_price_cents'];
 
         if ($request->hasFile('images')) {
-            $paths = [];
-            foreach ($request->file('images') as $file) {
-                $paths[] = $file->store('subastas', 'public');
-            }
-            $data['images'] = $paths;
+            $data['images'] = $this->catalogImages->storeMany($request->file('images') ?? [], 'subastas');
         }
 
         Auction::query()->create($data);
@@ -89,7 +86,7 @@ class AuctionController extends Controller
     {
         return Inertia::render('Admin/Auctions/Edit', [
             'auction' => [
-                ...$auction->toPublicArray(),
+                ...$auction->toPublicArray(images: $this->catalogImages),
                 'starting_price_eur'  => MoneyCents::centsToEuros($auction->starting_price_cents),
                 'min_increment_eur'   => MoneyCents::centsToEuros($auction->min_increment_cents),
                 'reserve_price_eur'   => $auction->reserve_price_cents !== null
@@ -113,18 +110,19 @@ class AuctionController extends Controller
     {
         $data = $this->mapAuctionPayload($request->safe()->except('images', 'starting_price', 'min_increment', 'reserve_price'));
 
+        $oldImages = null;
         if ($request->hasFile('images')) {
-            foreach ($auction->images ?? [] as $oldPath) {
-                Storage::disk('public')->delete($oldPath);
-            }
-            $paths = [];
-            foreach ($request->file('images') as $file) {
-                $paths[] = $file->store('subastas', 'public');
-            }
-            $data['images'] = $paths;
+            // Subir y persistir primero: si falla a mitad de lote, las fotos
+            // antiguas siguen intactas en disco y en BD (nada que borrar aún).
+            $oldImages = $auction->images;
+            $data['images'] = $this->catalogImages->storeMany($request->file('images') ?? [], 'subastas');
         }
 
         $auction->update($data);
+
+        if ($oldImages !== null) {
+            $this->catalogImages->deletePairs($oldImages);
+        }
 
         return redirect()->route('admin.auctions.index')
             ->with('success', 'Subasta actualizada.');
@@ -132,9 +130,7 @@ class AuctionController extends Controller
 
     public function destroy(Auction $auction): RedirectResponse
     {
-        foreach ($auction->images ?? [] as $path) {
-            Storage::disk('public')->delete($path);
-        }
+        $this->catalogImages->deletePairs($auction->images);
 
         $auction->delete();
 

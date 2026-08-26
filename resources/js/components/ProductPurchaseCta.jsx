@@ -21,11 +21,7 @@ export default function ProductPurchaseCta({
     if (canBuy) {
         return (
             <>
-                {qtySelect ?? (
-                    <p className="text-sm text-rose-600">
-                        No hay unidades disponibles en este momento.
-                    </p>
-                )}
+                {qtySelect}
                 <S4Button
                     type="button"
                     variant="primary"

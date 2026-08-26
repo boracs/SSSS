@@ -21,6 +21,23 @@ Por cada prompt completado, añade una entrada con este esquema:
 
 ## Iteraciones
 
+### 2026-08-25 — Prompt pipeline imágenes catálogo (máster + thumb, borrar RAW) → Reasonix análisis
+
+- **Herramienta destino:** Reasonix (análisis) → Cursor (prompt v3 de implementación; código solo si el dueño pide adelantar)
+- **Iteraciones:** v1 (Cursor prompt-forge) → crítica Reasonix → v3 consolidada
+- **Qué aportó Reasonix:** GO-CON-CAMBIOS; 1600/640 WebP q80; convención A; hallazgo alquiler público = demo (`surfboardPublicDisplay.js`); validación surfboard sin mimes; reutilizar `StorePromoSlideDto.thumbUrl`; SVG/GIF política
+- **Qué aportó Cursor (ronda 2):** verificó el demo de alquiler (comentario «temporales» en `imageUrlFor`); matizó la galería: tras el pipeline `images[]` ya es máster, no RAW — tabs=thumb es optimización; panel+lightbox deben quedarse en máster (`max-h-[32rem]` / 85vh)
+- **Decisión final:** acepto readers alquiler, mimes, SVG/GIF, promo DTO, convención A, números. Adapto fila galería (no solo lightbox). Alquiler público = `solo_admin` hasta el dueño.
+- **Lección aprendida:** un accessor (`first_image_url`) en el payload no prueba que el listado lo pinte; hay que seguir el JS (`imageUrlFor`).
+
+### 2026-08-24 — Prompt webcam: barra seek vs percepción live → Reasonix marketing+UX
+
+- **Herramienta destino:** Reasonix `/marketing-diseno` (S1+S6+S7 → S3+S5+S10; luego Cursor)
+- **Iteraciones:** v1 (Cursor prompt-forge)
+- **Qué aportó Cursor/taller:** player real (`controls={false}`, pill En directo, HLS Gipuzkoa); 4 patrones cerrados; archivo `PROMPT-UX-WEBCAM-BARRA-DIRECTO.md`
+- **Decisión final:** no implementar barra hasta veredicto; DVR minutos vs archivo = DESCONOCIDO
+- **Lección aprendida:** seek en live ≠ VOD; la barra sin «Volver al directo» + badge live se lee como YouTube
+
 ### 2026-08-21 — S4 acordeones: refactor a AccordionTrigger/ExpandableText (a11y + consistencia) → Cursor
 
 - **Herramienta destino:** Cursor (implementación) + Reasonix (auditoría S4, prompts, verificación S11)

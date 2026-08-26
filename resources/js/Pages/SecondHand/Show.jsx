@@ -1,13 +1,18 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { router, usePage, Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
 import SeoHead from "../../components/seo/SeoHead";
+import SafeImage from "../../components/SafeImage";
+import WhatsAppIcon from "../../components/icons/WhatsAppIcon";
+import Breadcrumbs from "../../components/Breadcrumbs";
+import { formatEurFromCents } from "../../utils/money";
+import { rememberedCatalogHref } from "../../lib/secondHandCatalog";
+import { resolveAcademyWhatsappUrl } from "../../lib/whatsapp";
 import {
     Ruler,
     Droplets,
     ArrowLeft,
-    Phone,
     CheckCircle2,
     Clock,
     Archive,
@@ -18,41 +23,19 @@ import {
     ImageOff,
 } from "lucide-react";
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 2 });
-function formatEur(cents) { return EUR.format(cents / 100); }
-
-/**
- * Normaliza board.images que puede llegar de Laravel como:
- *   - Array<string>  (Inertia ya parsea el JSON, caso normal)
- *   - null / undefined  (sin imágenes)
- *   - string JSON  (fallback si no se casteó en el modelo)
- */
 function normalizeImages(raw) {
     if (!raw) return [];
     if (Array.isArray(raw)) return raw.filter(Boolean);
     if (typeof raw === "string") {
-        try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed.filter(Boolean) : []; }
-        catch { return []; }
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch {
+            return [];
+        }
     }
     return [];
 }
-
-// ── Demo hardcodeado (se usa cuando board.images está vacío) ───────────────────
-
-const DEMO_IMAGES = [
-    "/images/image_4636c0.png",
-    "/images/image_4636a1.png",
-    "/images/image_46367c.png",
-    "/images/image_4636c0.png",
-    "/images/image_4636a1.png",
-    "/images/image_46367c.png",
-    "/images/image_4636c0.png",
-    "/images/image_4636a1.png",
-];
-
-// ── Constantes de layout ───────────────────────────────────────────────────────
 
 function GalleryPlaceholder() {
     return (
@@ -63,49 +46,53 @@ function GalleryPlaceholder() {
     );
 }
 
-// ── Lightbox (createPortal + cleanup atómico) ──────────────────────────────────
-
-function Lightbox({ images, index, open, onClose }) {
+function Lightbox({ images, thumbs, index, open, onClose }) {
+    const thumbList = thumbs?.length ? thumbs : images;
     const [current, setCurrent] = useState(index);
-    // Ref para la imagen activa — permite resetear focus sin parpadeo
     const imgRef = useRef(null);
 
-    // Sync índice cuando se abre
-    useEffect(() => { if (open) setCurrent(index); }, [open, index]);
+    useEffect(() => {
+        if (open) setCurrent(index);
+    }, [open, index]);
 
-    // ── Body scroll lock con cleanup garantizado ──
     useEffect(() => {
         if (!open) return;
         const saved = document.body.style.overflow;
         document.body.style.overflow = "hidden";
-        // Cleanup: se ejecuta cuando open cambia a false O cuando se desmonta
         return () => {
             document.body.style.overflow = saved || "";
         };
     }, [open]);
 
-    // ── Navegación teclado con cleanup ──
     const prev = useCallback(
         () => setCurrent((i) => (i - 1 + images.length) % images.length),
-        [images.length]
+        [images.length],
     );
     const next = useCallback(
         () => setCurrent((i) => (i + 1) % images.length),
-        [images.length]
+        [images.length],
     );
 
     useEffect(() => {
         if (!open) return;
         const handler = (e) => {
-            if (e.key === "Escape")     { e.preventDefault(); onClose(); }
-            if (e.key === "ArrowLeft")  { e.preventDefault(); prev(); }
-            if (e.key === "ArrowRight") { e.preventDefault(); next(); }
+            if (e.key === "Escape") {
+                e.preventDefault();
+                onClose();
+            }
+            if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                prev();
+            }
+            if (e.key === "ArrowRight") {
+                e.preventDefault();
+                next();
+            }
         };
         window.addEventListener("keydown", handler);
         return () => window.removeEventListener("keydown", handler);
     }, [open, prev, next, onClose]);
 
-    // No renderiza nada si está cerrado — limpia el DOM atómicamente
     if (!open) return null;
 
     return createPortal(
@@ -116,7 +103,6 @@ function Lightbox({ images, index, open, onClose }) {
             className="fixed inset-0 z-[950] flex items-center justify-center bg-black/95 backdrop-blur-sm"
             onClick={onClose}
         >
-            {/* Imagen activa — stopPropagation evita cierre al hacer clic en ella */}
             <img
                 ref={imgRef}
                 key={current}
@@ -129,12 +115,10 @@ function Lightbox({ images, index, open, onClose }) {
                 draggable={false}
             />
 
-            {/* Contador */}
             <div className="pointer-events-none absolute bottom-[4.5rem] left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-black/60 px-4 py-1.5 text-xs font-semibold text-white/60 backdrop-blur-sm">
                 {current + 1} / {images.length}
             </div>
 
-            {/* Tira de miniaturas */}
             {images.length > 1 && (
                 <div
                     className="absolute bottom-4 left-1/2 flex max-w-[90vw] -translate-x-1/2 gap-1.5 overflow-x-auto px-2 pb-1"
@@ -154,7 +138,7 @@ function Lightbox({ images, index, open, onClose }) {
                             }`}
                         >
                             <img
-                                src={src}
+                                src={thumbList[i] || src}
                                 alt=""
                                 aria-hidden="true"
                                 className="h-full w-full object-cover"
@@ -166,11 +150,13 @@ function Lightbox({ images, index, open, onClose }) {
                 </div>
             )}
 
-            {/* Flecha anterior */}
             {images.length > 1 && (
                 <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); prev(); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        prev();
+                    }}
                     className="absolute left-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/15 bg-black/50 p-3 text-white transition hover:bg-black/75"
                     aria-label="Imagen anterior"
                 >
@@ -178,11 +164,13 @@ function Lightbox({ images, index, open, onClose }) {
                 </button>
             )}
 
-            {/* Flecha siguiente */}
             {images.length > 1 && (
                 <button
                     type="button"
-                    onClick={(e) => { e.stopPropagation(); next(); }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        next();
+                    }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 rounded-xl border border-white/15 bg-black/50 p-3 text-white transition hover:bg-black/75"
                     aria-label="Imagen siguiente"
                 >
@@ -190,25 +178,26 @@ function Lightbox({ images, index, open, onClose }) {
                 </button>
             )}
 
-            {/* Cerrar */}
             <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onClose(); }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                }}
                 className="absolute right-3 top-3 rounded-xl border border-white/15 bg-black/50 p-2 text-white transition hover:bg-black/75"
                 aria-label="Cerrar visor"
             >
                 <X className="h-5 w-5" />
             </button>
         </div>,
-        document.body
+        document.body,
     );
 }
 
-// ── Galería uniforme (mismo tamaño por imagen) ────────────────────────────────
-
-function UniformGallery({ images: rawImages, name }) {
-    const realImages = normalizeImages(rawImages);
-    const images = realImages.length > 0 ? realImages : DEMO_IMAGES;
+function UniformGallery({ images: rawImages, thumbs: rawThumbs, name }) {
+    const images = normalizeImages(rawImages);
+    const normalizedThumbs = normalizeImages(rawThumbs);
+    const thumbs = normalizedThumbs.length === images.length ? normalizedThumbs : images;
 
     const [lbOpen, setLbOpen] = useState(false);
     const [lbIndex, setLbIndex] = useState(0);
@@ -243,13 +232,14 @@ function UniformGallery({ images: rawImages, name }) {
                         onClick={() => openAt(idx)}
                         aria-label={`Ampliar imagen ${idx + 1} de ${name}`}
                     >
-                        <img
-                            src={src}
+                        <SafeImage
+                            src={thumbs[idx] || src}
                             alt={`${name} — vista ${idx + 1}`}
                             decoding="async"
                             loading={idx === 0 ? "eager" : "lazy"}
-                            fetchpriority={idx === 0 ? "high" : "auto"}
+                            fetchPriority={idx === 0 ? "high" : "auto"}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                            placeholderClassName="h-full w-full"
                         />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition-all duration-200 group-hover:bg-black/20 group-hover:opacity-100">
                             <div className="rounded-full bg-black/45 p-2 backdrop-blur-sm">
@@ -260,18 +250,16 @@ function UniformGallery({ images: rawImages, name }) {
                 ))}
             </div>
 
-            <Lightbox images={images} index={lbIndex} open={lbOpen} onClose={closeLb} />
+            <Lightbox images={images} thumbs={thumbs} index={lbIndex} open={lbOpen} onClose={closeLb} />
         </>
     );
 }
 
-// ── StatusBadge ────────────────────────────────────────────────────────────────
-
 function StatusBadge({ status, label }) {
     const cfg = {
         available: { Icon: CheckCircle2, cls: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300" },
-        reserved:  { Icon: Clock,        cls: "border-amber-500/30 bg-amber-500/15 text-amber-300"   },
-        sold:      { Icon: Archive,      cls: "border-slate-500/30 bg-slate-500/15 text-slate-400"   },
+        reserved: { Icon: Clock, cls: "border-amber-500/30 bg-amber-500/15 text-amber-300" },
+        sold: { Icon: Archive, cls: "border-slate-500/30 bg-slate-500/15 text-slate-400" },
     };
     const { Icon, cls } = cfg[status] ?? cfg.available;
     return (
@@ -281,8 +269,6 @@ function StatusBadge({ status, label }) {
         </span>
     );
 }
-
-// ── SpecRow ────────────────────────────────────────────────────────────────────
 
 function SpecCell({ icon: Icon, label, value, unit }) {
     return (
@@ -299,7 +285,9 @@ function SpecCell({ icon: Icon, label, value, unit }) {
     );
 }
 
-function BoardSummaryHeader({ board, status, statusLabel, compact = false }) {
+function BoardSummaryHeader({ board, status, statusLabel, compact = false, titleAs = "p" }) {
+    const TitleTag = titleAs;
+
     return (
         <div className={compact ? "mb-3 lg:hidden" : "mb-3 hidden lg:block"}>
             {board.brand && (
@@ -307,11 +295,14 @@ function BoardSummaryHeader({ board, status, statusLabel, compact = false }) {
                     {board.brand}
                 </p>
             )}
-            <h1 className={`font-extrabold leading-tight tracking-tight text-white ${compact ? "text-xl" : "text-2xl sm:text-3xl"}`}>
+            <TitleTag className={`font-extrabold leading-tight tracking-tight text-white ${compact ? "text-xl" : "text-2xl sm:text-3xl"}`}>
                 {board.name}
-            </h1>
+            </TitleTag>
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <p className="text-[11px] text-slate-500">Ref. #SH-{board.id}</p>
+                {board.board_type_short ? (
+                    <p className="text-[11px] text-slate-400">{board.board_type_short}</p>
+                ) : null}
                 <StatusBadge status={status} label={statusLabel} />
             </div>
         </div>
@@ -340,11 +331,11 @@ function PriceBlock({ board, hasDiscount, isSold }) {
                                 -{board.discount_pct}%
                             </span>
                             <span className="text-xs text-slate-400 line-through sm:text-sm">
-                                {formatEur(board.sale_price)}
+                                {formatEurFromCents(board.sale_price)}
                             </span>
                         </div>
                         <p className="text-2xl font-extrabold text-orange-400 sm:text-3xl">
-                            {formatEur(board.effective_price)}
+                            {formatEurFromCents(board.effective_price)}
                         </p>
                     </div>
                     <p className="text-[11px] text-slate-500">IVA incluido</p>
@@ -352,7 +343,7 @@ function PriceBlock({ board, hasDiscount, isSold }) {
             ) : (
                 <div className="flex flex-wrap items-end justify-between gap-2">
                     <p className="text-2xl font-extrabold text-cyan-300 sm:text-3xl">
-                        {formatEur(board.sale_price)}
+                        {formatEurFromCents(board.sale_price)}
                     </p>
                     <p className="text-[11px] text-slate-500">IVA incluido</p>
                 </div>
@@ -360,8 +351,6 @@ function PriceBlock({ board, hasDiscount, isSold }) {
         </div>
     );
 }
-
-// ── Navegación entre tablas (inline, bajo descripción) ───────────────────────────
 
 function BoardInlineNavigation({ previousBoard, nextBoard }) {
     if (!previousBoard && !nextBoard) {
@@ -420,62 +409,91 @@ function BoardInlineNavigation({ previousBoard, nextBoard }) {
     );
 }
 
-// ── Página ─────────────────────────────────────────────────────────────────────
+function WhatsAppCta({ href, label }) {
+    const className =
+        "flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-teal-600 sm:py-3";
+
+    if (href) {
+        return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+                <WhatsAppIcon className="h-4 w-4" />
+                {label}
+            </a>
+        );
+    }
+
+    return (
+        <Link href={route("contacto")} className={className}>
+            {label}
+        </Link>
+    );
+}
 
 export default function SecondHandShow(props) {
     const { board, navigation = {}, seo = null } = props;
     const { props: pageProps } = usePage();
-    const academyWhatsapp = pageProps?.academyWhatsappDisplay ?? "";
+    const [catalogHref, setCatalogHref] = useState(() => route("second-hand.index"));
+
+    useEffect(() => {
+        setCatalogHref(rememberedCatalogHref());
+    }, []);
 
     const previousBoard = navigation?.previous ?? null;
     const nextBoard = navigation?.next ?? null;
 
     const hasDiscount = board.discount_pct > 0;
-    const isSold      = board.status === "sold";
+    const isSold = board.status === "sold";
     const isAvailable = board.status === "available";
+    const isReserved = board.status === "reserved";
+    const heightLabel = board.height_label ?? "";
 
-    const whatsappMsg  = encodeURIComponent(
-        `Hola! Estoy interesado en la tabla de segunda mano: ${board.name} (ID #${board.id}). ¿Está disponible?`
+    const whatsappMsg = isReserved
+        ? `Hola! Me interesa la tabla de segunda mano ${board.name} (ID #${board.id}), ahora aparece reservada. ¿Me avisáis si se libera?`
+        : `Hola! Estoy interesado en la tabla de segunda mano: ${board.name} (ID #${board.id}). ¿Está disponible?`;
+
+    const whatsappHref = resolveAcademyWhatsappUrl(
+        null,
+        whatsappMsg,
+        pageProps?.academyWhatsappUrl,
     );
-    const whatsappHref = academyWhatsapp
-        ? `https://wa.me/${academyWhatsapp.replace(/\D/g, "")}?text=${whatsappMsg}`
-        : "#";
 
     return (
         <Layout1>
             <SeoHead seo={seo} />
             <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-
-                {/* Breadcrumb */}
+                <h1 className="sr-only">{board.name}</h1>
                 <div className="mb-5">
-                    <button
-                        type="button"
-                        onClick={() => router.get(route("second-hand.index"))}
+                    <Link
+                        href={catalogHref}
                         className="mb-3 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-white/20 hover:bg-white/10"
                     >
                         <ArrowLeft className="h-4 w-4" />
                         Volver al catálogo
-                    </button>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                        Tienda · Tablas segunda mano
-                    </p>
+                    </Link>
+                    <Breadcrumbs
+                        variant="dark"
+                        className="mt-1"
+                        items={[
+                            { label: "Inicio", href: route("Pag_principal") },
+                            { label: "Segunda mano", href: catalogHref },
+                            { label: board.name },
+                        ]}
+                    />
                 </div>
 
-                {/* Card principal */}
                 <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-slate-800/60 to-slate-900/80 p-3 shadow-2xl backdrop-blur-sm sm:p-5 lg:p-6">
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-6">
-
-                        {/* Galería + descripción + navegación */}
                         <section className="lg:col-span-7">
                             <BoardSummaryHeader
                                 board={board}
                                 status={board.status}
                                 statusLabel={board.status_label}
                                 compact
+                                titleAs="p"
                             />
 
                             <div className="mb-3 grid grid-cols-2 gap-2 lg:hidden">
-                                <SpecCell icon={Ruler} label="Longitud" value={`${board.height}'`} />
+                                <SpecCell icon={Ruler} label="Longitud" value={heightLabel} />
                                 <SpecCell icon={Ruler} label="Anchura" value={`${board.width}"`} />
                                 <SpecCell icon={Ruler} label="Grosor" value={`${board.thickness}"`} />
                                 <SpecCell icon={Droplets} label="Volumen" value={board.volume} unit=" L" />
@@ -485,7 +503,7 @@ export default function SecondHandShow(props) {
                                 <PriceBlock board={board} hasDiscount={hasDiscount} isSold={isSold} />
                             </div>
 
-                            <UniformGallery images={board.images} name={board.name} />
+                            <UniformGallery images={board.images} thumbs={board.images_thumbs} name={board.name} />
 
                             {board.description && (
                                 <div className="mt-4 rounded-xl border border-white/5 bg-slate-900/40 p-3 sm:p-4">
@@ -502,13 +520,13 @@ export default function SecondHandShow(props) {
                             />
                         </section>
 
-                        {/* Ficha técnica — desktop + CTA en móvil */}
                         <section className="lg:col-span-5">
                             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3 sm:p-4 lg:sticky lg:top-6">
                                 <BoardSummaryHeader
                                     board={board}
                                     status={board.status}
                                     statusLabel={board.status_label}
+                                    titleAs="p"
                                 />
 
                                 <div className="hidden lg:block">
@@ -516,7 +534,7 @@ export default function SecondHandShow(props) {
                                         Especificaciones
                                     </p>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <SpecCell icon={Ruler} label="Longitud" value={`${board.height}'`} />
+                                        <SpecCell icon={Ruler} label="Longitud" value={heightLabel} />
                                         <SpecCell icon={Ruler} label="Anchura" value={`${board.width}"`} />
                                         <SpecCell icon={Ruler} label="Grosor" value={`${board.thickness}"`} />
                                         <SpecCell icon={Droplets} label="Volumen" value={board.volume} unit=" L" />
@@ -529,21 +547,19 @@ export default function SecondHandShow(props) {
 
                                 <div className="mt-3 lg:mt-4">
                                     {isAvailable && (
-                                        <a
-                                            href={whatsappHref}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-teal-600 sm:py-3"
-                                        >
-                                            <Phone className="h-4 w-4" />
-                                            Consultar por WhatsApp
-                                        </a>
+                                        <WhatsAppCta href={whatsappHref} label="Consultar por WhatsApp" />
                                     )}
-                                    {board.status === "reserved" && (
-                                        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center text-xs font-medium text-amber-300">
-                                            Esta tabla está actualmente reservada. Si estás interesado contacta con nosotros.
+                                    {isReserved && (
+                                        <div className="space-y-3">
+                                            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center text-xs font-medium text-amber-300">
+                                                Esta tabla está reservada. Si te interesa, escríbenos y te avisamos si se libera.
+                                            </div>
+                                            <WhatsAppCta href={whatsappHref} label="Avisadme si se libera" />
                                         </div>
                                     )}
+                                    <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-500">
+                                        Puedes verla en el club (Zurriola). Recogida en tienda, sin envío.
+                                    </p>
                                 </div>
                             </div>
                         </section>

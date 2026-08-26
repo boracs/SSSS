@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
+import GoogleReviewsBadge from "../components/GoogleReviewsBadge";
 import {
     Waves,
     CheckCircle2,
@@ -29,6 +30,9 @@ import { privateLessonPriceRows } from "../lib/privateLessonPricing";
 const buildBonos = (pricingLabels = {}) => {
     const bono10 = pricingLabels.bono10 ?? "250 €";
     const bono10PerClass = pricingLabels.bono10PerClass ?? "25 €";
+    const bono5 = pricingLabels.bono5 ?? "150 €";
+    const bono5PerClass = pricingLabels.bono5PerClass ?? "30 €";
+    const bono10Particulares = pricingLabels.bono10Particulares ?? "600 €";
 
     return [
     {
@@ -38,9 +42,9 @@ const buildBonos = (pricingLabels = {}) => {
         detalles: [
             "5 clases de 1,5 h",
             "Tabla y neopreno incluidos",
-            "Equivale a 30 €/clase",
+            `Equivale a ${bono5PerClass}/clase`,
         ],
-        precio: "150 €",
+        precio: bono5,
         nota: "5 clases",
         icon: Ticket,
     },
@@ -67,7 +71,7 @@ const buildBonos = (pricingLabels = {}) => {
             "Tabla y neopreno incluidos",
             "Atención individual",
         ],
-        precio: "600 €",
+        precio: bono10Particulares,
         nota: "10 clases particulares",
         icon: UserCheck,
     },
@@ -544,7 +548,8 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
     const bono10Price = pricingLabels?.bono10 ?? "250 €";
     const bono10PerClass = pricingLabels?.bono10PerClass ?? "25 €";
 
-    const privateLessonPricing = usePage().props.academyPrivateLesson ?? null;
+    const { academyPrivateLesson: privateLessonPricing = null, partnerGoogleReviews = null } =
+        usePage().props;
     const PARTICULARES = useMemo(
         () => privateLessonPriceRows(privateLessonPricing),
         [privateLessonPricing],
@@ -675,6 +680,64 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                     </div>
                 </div>
             </section>
+
+            {/* Prueba social Google — antes de tarifas */}
+            {partnerGoogleReviews ? (
+                <section
+                    aria-labelledby="surf-google-reviews-heading"
+                    className="border-b border-white/10 bg-[#0a2a33]/40 py-12 sm:py-14"
+                >
+                    <div className="mx-auto max-w-6xl px-4 sm:px-6">
+                        <div className="mb-6 text-center">
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-300/80">
+                                Prueba social
+                            </p>
+                            <h2
+                                id="surf-google-reviews-heading"
+                                className="mt-2 text-2xl font-extrabold text-white sm:text-3xl"
+                            >
+                                Opiniones verificadas en Google
+                            </h2>
+                            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-400">
+                                Clases en Zurriola con{" "}
+                                <span className="font-semibold text-slate-200">
+                                    The Bunker Surf Shop
+                                </span>
+                                {partnerGoogleReviews.reviewCount ? (
+                                    <>
+                                        {" "}
+                                        ·{" "}
+                                        <span className="font-semibold text-slate-200">
+                                            {new Intl.NumberFormat("es-ES").format(
+                                                partnerGoogleReviews.reviewCount,
+                                            )}
+                                        </span>{" "}
+                                        reseñas a{" "}
+                                        {String(partnerGoogleReviews.rating).replace(".", ",")} estrellas
+                                    </>
+                                ) : null}
+                            </p>
+                        </div>
+
+                        <GoogleReviewsBadge
+                            reviews={partnerGoogleReviews}
+                            variant="inline"
+                            surface="dark"
+                            showPartnerNote={false}
+                        />
+
+                        <div className="mt-8 text-center">
+                            <Link
+                                href={route("academy.lessons.index")}
+                                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                            >
+                                <Waves className="h-4 w-4" aria-hidden />
+                                Reservar tu clase
+                            </Link>
+                        </div>
+                    </div>
+                </section>
+            ) : null}
 
             {/* ── SECCIÓN 01: Clases particulares ── */}
             <section

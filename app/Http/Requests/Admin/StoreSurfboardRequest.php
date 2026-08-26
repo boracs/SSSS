@@ -28,7 +28,7 @@ class StoreSurfboardRequest extends FormRequest
             'volumen' => ['nullable', 'numeric', 'min:0'],
             'image_url' => ['nullable', 'string'], // JSON o path (fallback)
             'image_alt' => ['nullable', 'string', 'max:255'],
-            'image' => ['nullable', 'file', 'image', 'max:5120'], // 5MB
+            'image' => ['nullable', 'file', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'], // 5MB
         ];
     }
 }

@@ -2,11 +2,15 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Carrito;
 use App\Services\Academy\PrivateLessonPricingService;
 use App\Support\AcademyContact;
+use App\Support\AcademyLocation;
 use App\Support\AcademySocialLinks;
+use App\Support\PartnerGoogleReviews;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use Throwable;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -90,6 +94,15 @@ class HandleInertiaRequests extends Middleware
             /** Redes públicas (footer): solo entradas con URL configurada. */
             'socialLinks' => AcademySocialLinks::publicLinks(),
 
+            /** NAP + Google Maps (contacto, footer, GEO local). */
+            'academyLocation' => AcademyLocation::forFrontend(),
+
+            /** Reseñas Google del partner operativo (The Bunker) — home/contacto. */
+            'partnerGoogleReviews' => PartnerGoogleReviews::forFrontend(),
+
+            // Badge del header: unidades del pivot (invitado / error → 0). Closure perezosa.
+            'cart' => fn () => $this->sharedCartCount($request),
+
             // 🔥 Flash messages (nunca enviar pegados de código / cadenas enormes al cliente)
             'flash' => [
                 'success' => self::sanitizeFlashValue($request->session()->get('success')),
@@ -99,6 +112,30 @@ class HandleInertiaRequests extends Middleware
                 'payment_lesson_id' => $request->session()->get('payment_lesson_id'),
             ],
         ];
+    }
+
+    /**
+     * Unidades totales del carrito autenticado (suma de pivot `cantidad`).
+     *
+     * @return array{count: int}
+     */
+    private function sharedCartCount(Request $request): array
+    {
+        try {
+            $user = $request->user();
+            if (! $user) {
+                return ['count' => 0];
+            }
+
+            $carrito = Carrito::query()->where('user_id', $user->id)->first();
+            $count = $carrito
+                ? (int) $carrito->productos()->sum('carrito_producto.cantidad')
+                : 0;
+
+            return ['count' => max(0, $count)];
+        } catch (Throwable) {
+            return ['count' => 0];
+        }
     }
 
     /**

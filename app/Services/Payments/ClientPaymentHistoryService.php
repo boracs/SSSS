@@ -125,7 +125,7 @@ final class ClientPaymentHistoryService
             entity: 'tienda',
             entityLabel: 'Tienda',
             description: "Pedido #{$pedido->id}",
-            amountCents: MoneyCents::eurosToCents((float) $pedido->precio_total),
+            amountCents: (int) ($pedido->precio_total_cents ?? 0),
             status: $pedido->pagado ? 'confirmed' : 'pending',
             createdAt: $pedido->created_at,
             payableType: Pedido::class,

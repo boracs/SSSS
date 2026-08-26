@@ -121,6 +121,11 @@ return [
         // Hechos GEO públicos (ubicación, temporada, material, FAQs citables). Editable sin deploy de lógica.
         'geo_facts_json_path' => env('ZURRIOLA_GEO_FACTS_PATH', resource_path('surf-guide/zurriola-geo-facts.json')),
 
+        'surf_classes_faqs_json_path' => env(
+            'SURF_CLASSES_FAQS_PATH',
+            resource_path('surf-guide/surf-classes-faqs.json'),
+        ),
+
         // Panel "Tiempo detallado" (horario+7 días, Open-Meteo forecast) bajo demanda en webcams.
         // false → ZurriolaWeatherForecastService devuelve ok:false sin tocar Open-Meteo.
         'weather_detail_enabled' => env('ZURRIOLA_WEATHER_DETAIL_ENABLED', true),
@@ -244,17 +249,17 @@ return [
 
     // ── Stripe (pasarela de pagos) ──────────────────────────────────────────
     'stripe' => [
-        'key'             => env('STRIPE_KEY'),
-        'secret'          => env('STRIPE_SECRET'),
-        'webhook_secret'  => env('STRIPE_WEBHOOK_SECRET'),
-        'currency'        => env('STRIPE_CURRENCY', 'eur'),
+        'key' => env('STRIPE_KEY'),
+        'secret' => env('STRIPE_SECRET'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'currency' => env('STRIPE_CURRENCY', 'eur'),
     ],
 
     // ── Datáfono (ingesta TPV firmada HMAC → ledger datafono_payments) ──────
     'datafono' => [
-        'ingest_secret'            => env('DATAFONO_INGEST_SECRET'),
+        'ingest_secret' => env('DATAFONO_INGEST_SECRET'),
         'default_terminal_codigo' => env('DATAFONO_DEFAULT_TERMINAL_CODIGO', 'datafono1'),
-        'ingest_enabled'          => env('DATAFONO_INGEST_ENABLED', true),
+        'ingest_enabled' => env('DATAFONO_INGEST_ENABLED', true),
     ],
 
     'sponsors' => [
@@ -282,5 +287,33 @@ return [
             'tagline' => 'Datos de oleaje y viento',
             'active' => env('SPONSOR_OPEN_METEO_ACTIVE', true),
         ],
+    ],
+
+    /**
+     * Badge CRO: reseñas Google del partner operativo (clases en Zurriola vía The Bunker).
+     * Actualizar rating/review_count manualmente; URL = ficha Google del negocio.
+     */
+    'partner_google_reviews' => [
+        'active' => env('PARTNER_GOOGLE_REVIEWS_ACTIVE', true),
+        'business_name' => env('PARTNER_GOOGLE_REVIEWS_BUSINESS', 'The Bunker Surf Shop'),
+        'legal_name' => env('PARTNER_GOOGLE_REVIEWS_LEGAL', 'El Bunker Surf Shop SL'),
+        'rating' => (float) env('PARTNER_GOOGLE_REVIEWS_RATING', 5),
+        'review_count' => (int) env('PARTNER_GOOGLE_REVIEWS_COUNT', 399),
+        'reviews_url' => env(
+            'PARTNER_GOOGLE_REVIEWS_URL',
+            'https://www.google.com/maps/search/?api=1&query=El+Bunker+Surf+Shop+SL+Donostia'
+        ),
+        'partner_note' => env(
+            'PARTNER_GOOGLE_REVIEWS_NOTE',
+            'Las clases de San Sebastián Surf School se imparten en colaboración con The Bunker Surf Shop, en Zurriola.'
+        ),
+        'snippets_disclaimer' => env(
+            'PARTNER_GOOGLE_REVIEWS_SNIPPETS_DISCLAIMER',
+            'Fragmentos de opiniones publicadas en Google por clientes de The Bunker Surf Shop.'
+        ),
+        'snippets_json_path' => env(
+            'PARTNER_GOOGLE_REVIEWS_JSON',
+            resource_path('partner/bunker-google-reviews.json')
+        ),
     ],
 ];

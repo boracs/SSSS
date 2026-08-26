@@ -67,7 +67,7 @@ test('reconcile producto descuenta una unidad de stock y usa precio de catalogo'
         ->and((bool) $pedido->pagado)->toBeTrue();
 
     $line = $pedido->productos()->first();
-    expect((float) $line->pivot->precio_pagado)->toBe(10.0);
+    expect((int) $line->pivot->precio_pagado_cents)->toBe(1000);
 });
 
 test('stock insuficiente lanza ValidationException y no asigna el cobro', function () {

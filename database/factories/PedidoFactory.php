@@ -14,7 +14,7 @@ class PedidoFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'precio_total' => $this->faker->randomFloat(2, 10, 100),
+            'precio_total_cents' => $this->faker->numberBetween(1000, 10000),
             // Cobro por pasarela: un pedido visible/operativo nace pagado.
             'pagado' => true,
             'entregado' => false,

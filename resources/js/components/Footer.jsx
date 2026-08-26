@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import BrandLogo from "./BrandLogo";
 import SponsorsStrip from "./SponsorsStrip";
 import FooterSocialLinks from "./FooterSocialLinks";
@@ -44,10 +44,22 @@ function FooterLinks({ items, onOpenContact }) {
     );
 }
 
-function ContactBlock({ onOpenContact, className = "" }) {
+function ContactBlock({ onOpenContact, className = "", mapsUrl = null }) {
     return (
         <ul className={`space-y-2.5 text-sm leading-snug text-slate-300 ${className}`}>
-            <li>San Sebastián · Donostia</li>
+            <li>Playa de Zurriola · Donostia</li>
+            {mapsUrl ? (
+                <li>
+                    <a
+                        href={mapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={footerLinkClass}
+                    >
+                        Cómo llegar (Google Maps)
+                    </a>
+                </li>
+            ) : null}
             <li>
                 <button type="button" onClick={onOpenContact} className={footerButtonClass}>
                     Escríbenos
@@ -64,6 +76,8 @@ function ContactBlock({ onOpenContact, className = "" }) {
 
 export default function Footer() {
     const [contactOpen, setContactOpen] = useState(false);
+    const { academyLocation } = usePage().props;
+    const mapsUrl = academyLocation?.googleMapsUrl ?? null;
     const openContact = () => setContactOpen(true);
 
     const explorarLinks = [
@@ -71,7 +85,7 @@ export default function Footer() {
         { href: route("servicios.surf"), label: "Clases de surf" },
         { href: route("rentals.surfboards.index"), label: "Tablas de alquiler" },
         { href: route("taller.index"), label: "Taller · Blog" },
-        { label: "Contacto", openContact: true },
+        { href: route("contacto"), label: "Contacto" },
     ];
 
     const serviciosLinks = [
@@ -98,8 +112,18 @@ export default function Footer() {
                     {/* Móvil: banda de contacto ancho completo (CTA claro, sin columna huérfana) */}
                     <div className="col-span-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 sm:hidden">
                         <p className="text-center text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
-                            San Sebastián · Donostia
+                            Playa de Zurriola · Donostia
                         </p>
+                        {mapsUrl ? (
+                            <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-2 block text-center text-xs font-medium text-cyan-300/90 transition hover:text-cyan-200"
+                            >
+                                Cómo llegar (Maps)
+                            </a>
+                        ) : null}
                         <button
                             type="button"
                             onClick={openContact}
@@ -126,7 +150,7 @@ export default function Footer() {
                         </FooterSection>
 
                         <FooterSection title="Contacto" className="hidden sm:block">
-                            <ContactBlock onOpenContact={openContact} />
+                            <ContactBlock onOpenContact={openContact} mapsUrl={mapsUrl} />
                         </FooterSection>
                     </div>
                 </div>

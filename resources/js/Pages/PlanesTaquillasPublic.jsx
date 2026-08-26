@@ -1,4 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
+import SeoHead from "@/components/seo/SeoHead";
 import { formatEur } from "@/utils/money";
 import {
     Bath,
@@ -103,13 +104,14 @@ function showMonthlyEquivalent(plan) {
     return Number(plan.duracion_dias || 0) > 30;
 }
 
-export default function PlanesTaquillasPublic({ planes = [] }) {
+export default function PlanesTaquillasPublic({ planes = [], seo }) {
     const { auth } = usePage().props;
     const user = auth?.user;
     const hasLocker = Boolean(user?.hasActiveLocker || user?.numeroTaquilla);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950 text-white">
+            <SeoHead seo={seo} />
             <div className="mx-auto max-w-6xl space-y-14 px-4 py-10 sm:px-6 sm:py-14">
                 {/* HERO */}
                 <section
@@ -277,16 +279,16 @@ export default function PlanesTaquillasPublic({ planes = [] }) {
 
                 {/* CTA */}
                 <section className="rounded-3xl border border-cyan-900/40 bg-gradient-to-r from-[#0b1d33] to-[#0a2233] p-8 text-center">
-                    <h2 className="text-xl font-extrabold sm:text-2xl">Listo para unirte?</h2>
+                    <h2 className="text-xl font-extrabold sm:text-2xl">¿Listo para reservar tu taquilla?</h2>
                     <p className="mx-auto mt-2 max-w-xl text-sm text-slate-300">
-                        Escribenos o registrate. Te ayudamos a elegir el plan ideal y a activar tu taquilla.
+                        Escríbenos o regístrate. Te ayudamos a elegir el plan ideal y a activar tu taquilla en Zurriola.
                     </p>
                     <div className="mt-5 flex flex-wrap justify-center gap-3">
                         <Link
                             href={route("contacto")}
                             className="rounded-full bg-gradient-to-r from-pink-500 to-amber-400 px-6 py-2.5 text-sm font-bold text-slate-900 shadow-md transition hover:brightness-110"
                         >
-                            Contactar
+                            Reservar taquilla
                         </Link>
                         {!user ? (
                             <Link

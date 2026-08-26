@@ -28,4 +28,13 @@ return [
         'auction' => '/img/store/promo-subasta.webp',
         'product' => '/img/store/promo-producto.webp',
     ],
+
+    /*
+    | Precios públicos de bonos de la página de servicios de surf
+    | (antes hardcodeados en Servicios_ClasesDeSurf.jsx). Editables sin tocar código.
+    */
+    'bonos_public' => [
+        'bono5_cents' => (int) env('STORE_BONO5_CENTS', 15000),
+        'bono10_particulares_cents' => (int) env('STORE_BONO10_PARTICULARES_CENTS', 60000),
+    ],
 ];

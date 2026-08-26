@@ -1,0 +1,36 @@
+{
+    "source": "google",
+    "business": "El Bunker Surf Shop SL",
+    "updated": "2026-08-25",
+    "note": "Fragmentos literales de opiniones públicas en Google. Editar aquí al añadir o rotar reseñas.",
+    "snippets": [
+        {
+            "id": "class-kids-zurriola",
+            "quote": "Primera clase de surf para cuatro niños entre 9 y 12 años que, además de disfrutar muchísimo, consiguieron subirse a la tabla y mantenerse con mucha seguridad gracias a las indicaciones de Willy.",
+            "author": "Familia · Google",
+            "rating": 5,
+            "context": "Clase grupal kids · Zurriola"
+        },
+        {
+            "id": "beginners-willy",
+            "quote": "We had the best day in San Sebastián thanks to Willy! An incredibly kind, patient and encouraging instructor. As beginner surfers we managed to catch some waves. 100% would recommend!",
+            "author": "Cliente · Google",
+            "rating": 5,
+            "context": "Clase iniciación · inglés"
+        },
+        {
+            "id": "personalized-lessons",
+            "quote": "El trato es 100% personalizado: elección de tablas, spot, horario y marea más adecuado para tu nivel. Se nota el placer de compartir y de enseñar. Willy es buena gente de verdad.",
+            "author": "Agustín M.",
+            "rating": 5,
+            "context": "Clases intermedias · Donostia"
+        },
+        {
+            "id": "shop-trust",
+            "quote": "Willy es muy buen tío y siempre está dispuesto a ayudar. Te aconseja muy bien y da gusto tratar con él. Para tablas nuevas, de segunda mano o cualquier tema de surf, 100% recomendado.",
+            "author": "Cliente · Google",
+            "rating": 5,
+            "context": "Tienda y asesoramiento · Gros"
+        }
+    ]
+}

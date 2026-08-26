@@ -36,3 +36,4 @@ Solo continuar tras un **sí explícito**. Detalle en `CONTRATO-IA.md` §5.1.
 - Gemini (sin repo) → `docs/RESUMEN-PARA-GEMINI.md` (resumen compacto; árbol completo en `docs/PROJECT_TREE_FOR_GEMINI.md`)
 - API local DeepSeek → `node scripts/deepseek-ask.mjs` (`DEEPSEEK_API_KEY` en `.env`; `--topic aprendizaje`)
 - Pagos → `docs/payments/`, `docs/invoicing/` · Surf → `docs/surf-conditions/` · Chatbot → `docs/chatbot/` · SEO → `docs/taller-seo/`
+- Despliegue / runtime / túnel / cola / cron → `/despliegue-ops` → `docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md` + `docs/EN-EL-MOMENTO-DE-DESPLEGAR.md` + `.cursor/rules/tunnel-share-modes.mdc`

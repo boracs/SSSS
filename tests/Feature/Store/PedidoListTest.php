@@ -14,13 +14,13 @@ test('mis pedidos lista un pedido pagado con productos sin TypeError', function 
     $pedido = Pedido::factory()->create([
         'user_id' => $user->id,
         'pagado' => true,
-        'precio_total' => 10,
+        'precio_total_cents' => 1000,
         'payment_method' => 'card',
     ]);
     $pedido->productos()->attach($producto->id, [
         'cantidad' => 1,
         'descuento_aplicado' => 0,
-        'precio_pagado' => 10,
+        'precio_pagado_cents' => 1000,
     ]);
 
     $this->actingAs($user)
@@ -38,7 +38,7 @@ test('mis pedidos enlaza la factura aunque esté en trámite', function () {
     $pedido = Pedido::factory()->create([
         'user_id' => $user->id,
         'pagado' => true,
-        'precio_total' => 32.61,
+        'precio_total_cents' => 3261,
         'payment_method' => 'card',
     ]);
     $invoice = FiscalInvoice::query()->create([
@@ -73,24 +73,24 @@ test('mis pedidos no lista pedidos no pagados (checkout Stripe abandonado)', fun
     Pedido::factory()->create([
         'user_id' => $user->id,
         'pagado' => false,
-        'precio_total' => 10,
+        'precio_total_cents' => 1000,
         'payment_method' => 'card',
     ])->productos()->attach($producto->id, [
         'cantidad' => 1,
         'descuento_aplicado' => 0,
-        'precio_pagado' => 10,
+        'precio_pagado_cents' => 1000,
     ]);
 
     $pagado = Pedido::factory()->create([
         'user_id' => $user->id,
         'pagado' => true,
-        'precio_total' => 20,
+        'precio_total_cents' => 2000,
         'payment_method' => 'card',
     ]);
     $pagado->productos()->attach($producto->id, [
         'cantidad' => 1,
         'descuento_aplicado' => 0,
-        'precio_pagado' => 20,
+        'precio_pagado_cents' => 2000,
     ]);
 
     $this->actingAs($user)

@@ -22,6 +22,9 @@
 | **Job / Queue** | Tarea en segundo plano; el worker **lee** `jobs` | [02 §2.5](02-laravel-php.md) |
 | **queue:work** | Obrero que **saca** filas de `jobs` | [02 §2.5](02-laravel-php.md) |
 | **schedule:work** | Despertador: reloj + `routes/console.php` (código, no tabla). No vacía `jobs` | [02 §2.9](02-laravel-php.md) |
+| **GD** | Extensión de PHP para recortar/comprimir imágenes. En XAMPP hay que activarla en `php.ini` | [02 §2.10](02-laravel-php.md) |
+| **Miniatura / thumbnail** | Copia pequeña **guardada en disco**. Se crea al subir (o 1 vez para las ya existentes), no al abrir la página | [02 §2.10](02-laravel-php.md) |
+| **Máster web** | Foto “buena” para ficha/lightbox (~1600 px WebP). Sustituye al RAW del móvil; no es el thumb de la card | [02 §2.11](02-laravel-php.md) |
 | **Vite / npm run dev** | Taller del frontend (puerto 5173): compila React y recarga al guardar (HMR) | [03 §3.7](03-react-js.md) |
 | **HMR** | Hot Module Replacement: el navegador actualiza JS/CSS sin recargar toda la página | [03 §3.7](03-react-js.md) |
 | **public/hot** | Archivo que dice a Laravel “carga assets desde Vite”. Si existe y Vite está parado → pantalla blanca | [03 §3.7](03-react-js.md) |

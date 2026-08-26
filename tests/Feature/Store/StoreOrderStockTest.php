@@ -88,7 +88,7 @@ test('el total del pedido se guarda desde céntimos y rechaza un total cotizado 
     );
 
     expect((float) $pedido->precio_total)->toBe(35.98)
-        ->and((float) $pedido->productos->first()->pivot->precio_pagado)->toBe(17.99);
+        ->and((int) $pedido->productos->first()->pivot->precio_pagado_cents)->toBe(1799);
 
     $stock->reserveFromCartLines(
         $user,

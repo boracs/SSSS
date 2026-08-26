@@ -5,7 +5,7 @@ import Contenedor_productos from "../layouts/Contenedor_productos";
 import StorePromoBanner from "../components/store/StorePromoBanner";
 import ProductImageGallery from "../components/ProductImageGallery";
 import ProductPurchaseCta from "../components/ProductPurchaseCta";
-import ProductStickyPurchaseBar from "../components/store/ProductStickyPurchaseBar";
+import ProductTagPills from "../components/ProductTagPills";
 import useInertiaFlashToast from "@/hooks/useInertiaFlashToast";
 import SeoHead from "../components/seo/SeoHead";
 import Breadcrumbs from "../components/Breadcrumbs";
@@ -120,6 +120,10 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
                       : fallbackImg,
               ];
 
+    const galleryThumbs = Array.isArray(producto.gallery_thumbs)
+        ? producto.gallery_thumbs
+        : [];
+
     const summary =
         typeof producto.summary === "string" && producto.summary.trim() !== ""
             ? producto.summary.trim()
@@ -221,6 +225,7 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
                             >
                                 <ProductImageGallery
                                     images={gallery}
+                                    thumbs={galleryThumbs}
                                     productName={producto.nombre}
                                     compact={false}
                                     tone="light"
@@ -243,19 +248,14 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
                                 ) : null}
 
                                 {(producto.tag_labels || []).length > 0 ? (
-                                    <ul
-                                        className="mt-4 flex flex-wrap gap-1.5"
-                                        aria-label="Categorías del producto"
-                                    >
-                                        {producto.tag_labels.map((label) => (
-                                            <li
-                                                key={label}
-                                                className="rounded-full border border-cyan-500/25 bg-cyan-500/10 px-2.5 py-1 text-xs font-semibold text-s4"
-                                            >
-                                                {label}
-                                            </li>
-                                        ))}
-                                    </ul>
+                                    <ProductTagPills
+                                        values={producto.tags}
+                                        labels={producto.tag_labels}
+                                        linkable
+                                        surface="light"
+                                        max={6}
+                                        className="mt-4"
+                                    />
                                 ) : null}
 
                                 <div className="mt-6 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-4 sm:px-5">

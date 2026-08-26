@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import Layout1 from "../../layouts/Layout1";
+import SeoHead from "@/components/seo/SeoHead";
 import {
     Gavel,
     Search,
@@ -159,7 +160,7 @@ function StatChip({ icon: Icon, label, value, accent }) {
     );
 }
 
-export default function AuctionsIndex({ auctions = [] }) {
+export default function AuctionsIndex({ auctions = [], seo = null }) {
     const [query, setQuery] = useState("");
     const [status, setStatus] = useState("all");
 
@@ -187,7 +188,7 @@ export default function AuctionsIndex({ auctions = [] }) {
 
     return (
         <Layout1>
-            <Head title="Subastas S4" />
+            <SeoHead seo={seo} />
             <div className="relative min-h-screen overflow-hidden bg-[#070b14]">
                 <div
                     aria-hidden

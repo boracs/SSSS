@@ -10,9 +10,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSecondHandBoardRequest;
 use App\Http\Requests\UpdateSecondHandBoardRequest;
 use App\Models\SecondHandBoard;
+use App\Services\Media\CatalogImageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,6 +23,10 @@ use Inertia\Response;
  */
 class SecondHandBoardController extends Controller
 {
+    public function __construct(
+        private readonly CatalogImageService $catalogImages,
+    ) {}
+
     public function index(Request $request): Response
     {
         $dateType = trim((string) $request->query('date_type', 'created'));
@@ -45,7 +49,7 @@ class SecondHandBoardController extends Controller
             ->orderBy('id', 'desc')
             ->get()
             ->map(fn (SecondHandBoard $b) => [
-                ...$b->toPublicArray(),
+                ...$b->toPublicArray(images: $this->catalogImages),
                 'purchase_price' => $b->purchase_price,
                 'purchased_at'   => $b->purchased_at?->toDateString()
                     ?? $b->created_at?->toDateString(),
@@ -86,9 +90,7 @@ class SecondHandBoardController extends Controller
 
         $imagePaths = [];
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $file) {
-                $imagePaths[] = $file->store('segunda-mano', 'public');
-            }
+            $imagePaths = $this->catalogImages->storeMany($request->file('images') ?? [], 'segunda-mano');
         }
 
         SecondHandBoard::create([...$data, 'images' => $imagePaths ?: null]);
@@ -101,7 +103,7 @@ class SecondHandBoardController extends Controller
     {
         return Inertia::render('Admin/SecondHand/Edit', [
             'board'    => [
-                ...$secondHandBoard->toPublicArray(),
+                ...$secondHandBoard->toPublicArray(images: $this->catalogImages),
                 'purchase_price' => $secondHandBoard->purchase_price,
             ],
             'statuses' => collect(SecondHandStatus::cases())->map(fn ($s) => [
@@ -119,19 +121,19 @@ class SecondHandBoardController extends Controller
     {
         $data = $request->safe()->except('images');
 
+        $oldImages = null;
         if ($request->hasFile('images')) {
-            // Borrar imágenes anteriores del disco
-            foreach ($secondHandBoard->images ?? [] as $oldPath) {
-                Storage::disk('public')->delete($oldPath);
-            }
-            $newPaths = [];
-            foreach ($request->file('images') as $file) {
-                $newPaths[] = $file->store('segunda-mano', 'public');
-            }
-            $data['images'] = $newPaths;
+            // Subir y persistir primero: si falla a mitad de lote, las fotos
+            // antiguas siguen intactas en disco y en BD (nada que borrar aún).
+            $oldImages = $secondHandBoard->images;
+            $data['images'] = $this->catalogImages->storeMany($request->file('images') ?? [], 'segunda-mano');
         }
 
         $secondHandBoard->update($data);
+
+        if ($oldImages !== null) {
+            $this->catalogImages->deletePairs($oldImages);
+        }
 
         return redirect()->route('admin.second-hand.index')
             ->with('success', 'Tabla actualizada correctamente.');
