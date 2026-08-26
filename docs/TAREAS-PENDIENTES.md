@@ -25,14 +25,14 @@
 
 | Fecha | Tarea | Notas / archivos |
 |-------|-------|------------------|
-| 2026-08-25 | Upgrade Laravel 11 → 12 (local, sin features) | Cuando el Git esté limpio y no haya otras tareas a medias. Chat **nuevo** Cursor. Prompt maestro: `docs/taller-prompts/PROMPT-UPGRADE-LARAVEL-12.md`. No Forge, no PHP 8.4 VPS, no Laravel 13. Quitar de aquí al cerrar HECHO en COORDINACION. |
 | 2026-08-24 | Backlog auditoría marketing web (A1–A10) — ejecutar uno a uno | Maestro: `docs/taller-prompts/AUDITORIA-MARKETING-WEB-2026-08-24.md` · Prompt: `PROMPT-EJECUCION-AUDITORIA-MARKETING.md` · Orden sugerido: A3 → A5 → A8 → A1 (decisión) → A4 → A2 → … |
-| 2026-08-24 | Handshake marketing ↔ SEO/GEO (NO fusionar agentes): aplicar tabla M1–M10 (ACEPTO×5, ADAPTO×3, 0 rechazos) | Reasonix aplica: `AGENTE-MARKETING-DISENO.md` (S8→contenido, disparo técnico→deriva, S10, §7 rutas, changelog) + `SKILL.md` description/paso 5 + `RUTAS-CONTEXTO.json` clave `seo` + `MASTER-PROMPT-DEEPSEEK.md` §3. Cursor aplica: diff `seo-geo-public.mdc` (quitar "Taquillas," de noindex). Pendiente OK del dueño para ejecutar |
+| 2026-08-24 | Handshake marketing ↔ SEO/GEO (M1–M10): **parte Reasonix HECHA** (MD, SKILL.md, router, MASTER §3) · pendiente **Cursor**: diff `seo-geo-public.mdc` (quitar "Taquillas," de noindex) | Siguiente paso del dueño: revisar **home/surf/contacto con la rúbrica de conversión §5.1** y pedir el diff a Cursor |
 
 ## Hechas (opcional, últimas)
 
 | Fecha cerrado | Tarea |
 |---------------|-------|
+| 2026-08-26 | Upgrade Laravel 11 → 12: `laravel/framework` v11.46.1 → v12.68.0, PHP sigue 8.2, tests 277/277 ✓, `composer audit` limpio (5 CVEs cerrados). Pendiente aparte: PHP 8.4 en el VPS y Laravel 13 |
 | 2026-08-23 | P3 dinero tienda a céntimos: `pedidos.precio_total` + `pedido_producto.precio_pagado` → `_cents` (migración `2026_08_23_110000`, backfill + drop; API en euros vía accessor; tests 267 ✓) |
 | 2026-08-23 | P3 precios bonos 150 €/600 € a config: `config/store.php` `bonos_public` (env `STORE_BONO5_CENTS`/`STORE_BONO10_PARTICULARES_CENTS`); `Servicios_ClasesDeSurf.jsx` sin hardcodes |
 | 2026-08-23 | P2 unique(`user_id`) en carritos |

@@ -19,7 +19,7 @@ Implementa UN SOLO ítem de la auditoría marketing S4.
 4. Archivos listados en la columna "Archivos clave" del ID
 
 ## Reglas de implementación
-- Rol: lógica/implementación Laravel 11 + React 19 + Inertia
+- Rol: lógica/implementación Laravel 12 + React 19 + Inertia
 - Money en céntimos (int); SEO vía DTO readonly + PublicPageSeoService (nunca arrays crudos ni lógica SEO en JSX)
 - Cambio mínimo: solo lo necesario para cerrar ESTE ID
 - Si el ID requiere **decisión de negocio** (ej. A1 taquillas indexable vs noindex), **para y pregunta** con 2 opciones claras antes de codificar

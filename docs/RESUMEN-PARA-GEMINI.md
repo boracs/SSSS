@@ -10,7 +10,7 @@ segunda mano, subastas, taquillas, bonos/VIP, pagos automatizados, chatbot con I
 blog SEO y webcams. Sistema propio, superior a toda la competencia local.
 
 ## Stack
-- **Backend:** PHP 8.2+, Laravel 11 (tests: PHPUnit/Pest)
+- **Backend:** PHP 8.2+, Laravel 12 (tests: PHPUnit/Pest)
 - **Frontend:** React 19 + Inertia.js 2 + Vite 6 + TailwindCSS 3
 - **UI:** Radix UI / shadcn (~55 primitivos en `components/ui/`), lucide-react, framer-motion, recharts, react-hook-form, zod, sonner
 - **Auth:** Laravel Breeze (sesión) + Sanctum · **Rutas JS:** Ziggy

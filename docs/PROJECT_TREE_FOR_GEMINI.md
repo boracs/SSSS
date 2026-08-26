@@ -9,7 +9,7 @@
 
 | Capa                  | Tecnología                                                   |
 | --------------------- | ------------------------------------------------------------ |
-| Backend               | PHP 8.2+, Laravel 11                                         |
+| Backend               | PHP 8.2+, Laravel 12                                         |
 | Frontend              | React 19, Inertia.js 2 (`@inertiajs/react` ^2.1), Vite 6     |
 | UI                    | Tailwind CSS 3, Radix/shadcn (`resources/js/components/ui/`) |
 | Auth                  | Laravel Breeze (session) + Sanctum (API tokens)              |
@@ -542,7 +542,7 @@ maider_0/
 │   │   ├── PROMPT-UX-BANNER-PROMO-SELECTOR.md ← marketing+UX selector dots/flechas vs CTA → Reasonix; luego Cursor
 │   │   ├── PROMPT-UX-BANNER-PROMO-PLACEMENT.md ← CRO full-bleed bajo menú vs Volver/crumbs → Reasonix; luego Cursor
 │   │   ├── PROMPT-UX-WEBCAM-BARRA-DIRECTO.md ← marketing+UX: barra seek Diputación vs percepción live → Reasonix
-│   │   └── PROMPT-UPGRADE-LARAVEL-12.md    ← prompt maestro Cursor: Laravel 11→12 local (backlog dueño)
+│   │   └── PROMPT-UPGRADE-LARAVEL-12.md    ← EJECUTADO 2026-08-26 (v12.68.0); se guarda como plantilla del próximo salto
 │   ├── TAREAS-PENDIENTES.md                    ← backlog personal del dueño (añadir / listar / quitar con la IA)
 │   ├── RESUMEN-PARA-GEMINI.md                  ← resumen compacto del proyecto (pegar en Gemini; el árbol no, 83 KB)
 │   ├── PROJECT_TREE.md
@@ -756,7 +756,7 @@ resources/
     │   ├── Footer.jsx
     │   ├── Chatbot.jsx                 ──► FAB chat; captura móvil al derivar a humano; POST contact-phone + wa.me escuela
     │   ├── PwaInstallBanner.jsx        ──► CTA «Instalar app» solo si no standalone + beforeinstallprompt
-    │   ├── SharePageButton.jsx         ──► Compartir página (Web Share / copiar URL); usado en webcams + parte S4
+    │   ├── SharePageButton.jsx         ──► Compartir página (Web Share / copiar URL); webcams, parte S4, ficha 2ª mano y PDP tienda
     │   ├── store/
     │   │   └── StorePromoBanner.jsx    ──► Banner publicidad tienda/ficha: imagen a fondo + 3 slides (bono / subasta / producto)
     │   ├── webcam/
@@ -793,7 +793,7 @@ resources/
     │   │   └── SurfboardPublicDetail.jsx ──► Ficha compartida Index/Show (galería, specs, tarifas, booking embedded)
     │   ├── PaymentModal.jsx
     │   ├── Taquilla.jsx
-    │   ├── Producto.jsx ──► Card tienda navy (density full|compact); ProductoOferta.jsx alias compact
+    │   ├── Producto.jsx ──► Card tienda (density full|compact; surface light|dark); ProductoOferta.jsx alias compact
     │   ├── ProductoGestor.jsx, ProductImageGallery.jsx, ProductTagSelector.jsx, ProductoEditorPanel.jsx, ProductoEditModal.jsx, ProductoCreateModal.jsx, PedidoDetailModal.jsx
     │   ├── FormularioContacto.jsx
     │   ├── ContactChannelsModal.jsx ──► Modal canales: WhatsApp / Instagram / email / formulario
@@ -841,7 +841,7 @@ resources/
         │   ├── Tienda.jsx
         │   ├── Productos.jsx
         │   ├── ProductPurchaseCta.jsx  ──► CTAs ficha producto (guest / sin taquilla / carrito)
-        │   ├── ProductoVer.jsx         ──► Ficha PDP light: nav compacta móvil, scroll top, `ProductPurchaseCta`
+        │   ├── ProductoVer.jsx         ──► Ficha PDP light: nav compacta móvil, scroll top, `ProductPurchaseCta` + compartir
         │   ├── CrearProducto.jsx
         │   ├── Edit.jsx
         │   ├── ProductoCreado.jsx
@@ -853,7 +853,7 @@ resources/
         │   ├── GestorPedidos.jsx
         │   └── SecondHand/
         │       ├── Index.jsx   ──► Catálogo público; filtros en URL (tipo/altura/volumen/precio); reservadas con badge
-        │       └── Show.jsx    ──► Ficha; galería real o placeholder; CTA WhatsApp; un H1
+        │       └── Show.jsx    ──► Ficha; galería real o placeholder; CTA WhatsApp + compartir; un H1
         │
         ├── [DOMINIO: SUBASTAS]
         │   ├── Auctions/

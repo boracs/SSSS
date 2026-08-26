@@ -5,7 +5,7 @@
 
 **Proyecto:** San Sebastián Surf School (S4)
 **Dominio de negocio:** escuela/club de surf — tienda, academia de clases, alquiler de tablas, taquillas/lockers, programa VIP con bonos, tablas de segunda mano y pagos manuales con validación administrativa.
-**Tipo de aplicación:** monolito modular (arquitectura por dominios) Laravel 11 + SPA React 19 vía Inertia.js 2.
+**Tipo de aplicación:** monolito modular (arquitectura por dominios) Laravel 12 + SPA React 19 vía Inertia.js 2.
 
 > Documento de referencia estructural y funcional, verificado contra el código real. Pensado para dar contexto completo a un modelo de IA (Gemini) sobre la arquitectura, los dominios y el inventario del proyecto.
 
@@ -16,7 +16,7 @@
 | Capa | Tecnología |
 | --- | --- |
 | Lenguaje backend | PHP 8.2+ |
-| Framework backend | Laravel 11 |
+| Framework backend | Laravel 12 |
 | Frontend | React 19 + Inertia.js 2 (`@inertiajs/react`), Vite 6 |
 | UI | TailwindCSS 3 + Radix UI / shadcn (~55 primitivos en `components/ui/`) |
 | Animación / UX | Framer Motion, Embla, Swiper, Sonner, React Toastify |

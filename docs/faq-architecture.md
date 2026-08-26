@@ -1,6 +1,6 @@
 # FAQ de arquitectura — maider_0 (V3-ULTRA)
 
-Documento técnico para desarrollo: **Laravel 11.46**, **PHP 8.3+**, **React 19**, **Inertia 2**.  
+Documento técnico para desarrollo: **Laravel 12.68**, **PHP 8.2+**, **React 19**, **Inertia 2**.  
 Las respuestas están orientadas a quien implementa o mantiene el código, no al cliente final.
 
 ---

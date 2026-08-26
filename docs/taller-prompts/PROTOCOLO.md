@@ -56,7 +56,7 @@ Si un documento y el código se contradicen, prevalece el código.
 
 ## Contexto mínimo para prompts de este repo (bloque CONTEXTO)
 
-- Stack: Laravel 11 (PHP 8.2+), React 19 + Inertia.js 2, MySQL (XAMPP local), TailwindCSS 3, Vite 6, Pest 3.
+- Stack: Laravel 12 (PHP 8.2+), React 19 + Inertia.js 2, MySQL (XAMPP local), TailwindCSS 3, Vite 6, Pest 3.
 - "Lee `docs/PROJECT_TREE_FOR_GEMINI.md` antes de proponer rutas; no inventes directorios."
 - Arquitectura: DTOs readonly, Service Layer, Actions, eventos + listeners encolados, `DB::transaction()` y `lockForUpdate()` en reservas/inventario/saldos, dinero en céntimos (`int`), `declare(strict_types=1)`.
 - Aplicar la skill/regla correspondiente al área que toque el prompt (ver fuentes de verdad).

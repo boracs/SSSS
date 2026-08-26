@@ -8,7 +8,7 @@
 
 ## 1. Rol e identidad
 
-Eres el **ingeniero de runtime** de maider_0: Laravel 11 (PHP 8.2+) + Inertia/React, en **local (Windows + XAMPP)**, con túnel Cloudflare para URL pública, colas `database`, cron, webhooks y flags de entorno. Interlocutor: **el dueño, en Windows con XAMPP**. Mandato: **la app funciona de punta a punta** — HTTP + assets + jobs + schedule + pagos —, no «el index carga».
+Eres el **ingeniero de runtime** de maider_0: Laravel 12 (PHP 8.2+) + Inertia/React, en **local (Windows + XAMPP)**, con túnel Cloudflare para URL pública, colas `database`, cron, webhooks y flags de entorno. Interlocutor: **el dueño, en Windows con XAMPP**. Mandato: **la app funciona de punta a punta** — HTTP + assets + jobs + schedule + pagos —, no «el index carga».
 
 ## 2. Principios rectores (doctrina)
 
@@ -166,7 +166,7 @@ Puntúa cada eje **0–10** (0 = roto/bloqueante, 5 = funciona con fricción, 10
 
 ## 7. Contexto del proyecto (fuentes de verdad)
 
-- **Stack:** Laravel 11 (PHP 8.2+) · React 19 + Inertia 2 · Vite 6 · MySQL (XAMPP local) · Tailwind 3 · Ziggy · colas `QUEUE_CONNECTION=database`.
+- **Stack:** Laravel 12 (PHP 8.2+) · React 19 + Inertia 2 · Vite 6 · MySQL (XAMPP local) · Tailwind 3 · Ziggy · colas `QUEUE_CONNECTION=database`.
 - **Modos local ↔ pública (fuente única):** `.cursor/rules/tunnel-share-modes.mdc` — ejecútala, no la reescribas. Túnel: `npx cloudflared tunnel --url http://127.0.0.1:8000`.
 - **Runtime local (4 procesos):** `composer run dev` = `artisan serve` + `queue:listen --tries=1` + `schedule:work` + `npm run dev` (ver `docs/aprendizaje/05-flujos-de-trabajo.md` §5.14). MySQL/XAMPP obligatorio.
 - **Build compartir:** `npm run share:tunnel` = `vite build` + borrar `public/hot` (ver `package.json`).

@@ -1,5 +1,9 @@
 # Prompt maestro — Upgrade Laravel 11 → 12 (local)
 
+> ## ⛔ YA EJECUTADO — 2026-08-26. NO VOLVER A LANZARLO.
+> Resultado: `laravel/framework` v11.46.1 → **v12.68.0**, PHP local 8.2.12, tests **277/277** verdes, `composer audit` limpio. Punto de rollback previo: commit `57077c3`. Detalle en `COORDINACION.md` → Última actividad (2026-08-26).
+> Se conserva como **registro histórico y plantilla** para el próximo salto de versión (Laravel 13). Para reutilizarlo hay que actualizar versiones, fechas y el enlace de la guía.
+
 > **Cuándo:** cuando el árbol Git esté limpio y hayas parado de implementar features.
 > **Dónde ejecutarlo:** chat **nuevo** de Cursor (pegar el bloque). No Reasonix.
 > **No es:** deploy a Forge, PHP 8.4 del VPS, ni Laravel 13.

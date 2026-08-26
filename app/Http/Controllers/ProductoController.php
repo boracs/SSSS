@@ -116,10 +116,10 @@ class ProductoController extends Controller
         $imageRules = $requireImagesArray
             ? [
                 'imagenes' => 'nullable|array',
-                'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ]
             : [
-                'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048',
+                'imagenes.*' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             ];
 
         return $request->validate(array_merge([

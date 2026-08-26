@@ -16,7 +16,7 @@ Si te piden implementar código, lógica, tests o builds: **parar** y preguntar:
 
 ## 2) Contexto mínimo (siempre válido)
 
-- **Stack:** Laravel 11 (PHP 8.2+) · React 19 + Inertia.js 2 · MySQL · TailwindCSS 3 · Vite 6 · Stripe + webhooks · datáfono/TPV · TicketBAI (B2BRouter).
+- **Stack:** Laravel 12 (PHP 8.2+) · React 19 + Inertia.js 2 · MySQL · TailwindCSS 3 · Vite 6 · Stripe + webhooks · datáfono/TPV · TicketBAI (B2BRouter).
 - **Dominios:** Academia, Rentals, Taquillas, Bonos/VIP, Tienda/Pedidos, Segunda mano + Subastas, Chatbot (Gemini), AutoCoach, Fotos, SEO/GEO.
 - **Reglas no negociables:** sin lógica de negocio en controllers/JSX · DTOs readonly · `DB::transaction()` multi-escritura · `lockForUpdate()` reservas/inventario/saldos · **dinero en céntimos (`int`)** · APIs externas fuera del ciclo HTTP (cola).
 - **Frontend admin:** slate/cyan, `AdminCard` / `AdminButton` / `AdminFormField`.
@@ -37,7 +37,7 @@ Si el tema lo requiere y **no** tienes el archivo, di: *"Pega `docs/...`"* antes
 | 4 | Pagos / Stripe / datáfono / fiscal | `docs/payments/**` + `docs/invoicing/B2BROUTER-TICKETBAI.md` |
 | 5 | Surf / previsiones | `docs/surf-conditions/**` |
 | 6 | Chatbot | `docs/chatbot/**` |
-| 7 | SEO / competencia | `docs/COMPETENCIA_SEO_DONOSTIA.md` + `docs/taller-seo/**` |
+| 7 | SEO / competencia | `docs/COMPETENCIA_SEO_DONOSTIA.md` + `docs/taller-seo/**` + `.cursor/rules/seo-geo-public.mdc` |
 | 8 | Rutas / dominios | extracto de `docs/PROJECT_TREE_FOR_GEMINI.md` (sección afectada) |
 | 9 | Ticket mostrador (datáfono) | `node scripts/deepseek-ask.mjs --topic ticket` (adjunta modal + backend datáfono) |
 | 10 | Teoría / profesor / cuaderno | `docs/aprendizaje/` (`INDICE.md` + temas). También Cursor puede guardar aquí. |
