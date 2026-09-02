@@ -151,6 +151,9 @@ class BookingController extends Controller
      */
     public function checkAvailability(Request $request): JsonResponse
     {
+        // El payload lleva id y estado crudo de cada reserva: solo mostrador.
+        $this->authorize('viewAny', Booking::class);
+
         $request->validate([
             'surfboard_id' => ['required', 'integer', 'exists:surfboards,id'],
             'from' => ['required', 'date'],

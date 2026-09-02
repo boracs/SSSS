@@ -14,16 +14,17 @@ import {
 } from "lucide-react";
 import ProductTagPills from "../components/ProductTagPills";
 import SafeImage from "../components/SafeImage";
-import Layout1 from "../layouts/Layout1";
+import ImageLightbox from "@/components/ImageLightbox";
+import PageShell from "@/layouts/PageShell";
 import { resolveCatalogImage } from "../utils/demoCatalogImages";
 import useInertiaFlashToast from "@/hooks/useInertiaFlashToast";
+import S4Button from "@/components/S4Button";
+import { formatEur } from "@/utils/money";
 
-function formatCartEur(value) {
+/** Backend envía euros como float; parsea coma decimal por si acaso. */
+function formatLineEur(value) {
     const n = parseFloat(String(value ?? 0).replace(",", "."));
-    return new Intl.NumberFormat("es-ES", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(Number.isFinite(n) ? n : 0);
+    return formatEur(Number.isFinite(n) ? n : 0);
 }
 
 function EmptyCartView() {
@@ -197,14 +198,14 @@ const Carrito = () => {
     };
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <SeoHead seo={seo} />
 
             {productos.length === 0 ? (
-                <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+                <div className="px-4 py-10 sm:px-6">
                     <div className="mx-auto w-full max-w-3xl">
                         <div className="mb-6">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                            <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                                 Tu carrito
                             </h1>
                             <p className="mt-1 text-sm text-slate-500">
@@ -216,10 +217,10 @@ const Carrito = () => {
                     </div>
                 </div>
             ) : (
-                <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+                <div className="px-4 py-10 sm:px-6">
                     <div className="mx-auto w-full max-w-3xl">
                         <div className="mb-6">
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                            <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                                 Tu carrito
                             </h1>
                             <p className="mt-1 text-sm text-slate-500">
@@ -359,23 +360,14 @@ const Carrito = () => {
                                                     producto.precio_original,
                                                 ) > Number(producto.precio) ? (
                                                     <p className="text-[10px] tabular-nums text-slate-400 line-through sm:text-xs">
-                                                        {formatCartEur(
-                                                            producto.precio_original,
-                                                        )}{" "}
-                                                        €
+                                                        {formatLineEur(producto.precio_original)}
                                                     </p>
                                                 ) : null}
                                                 <p className="text-xs tabular-nums text-slate-500 sm:text-sm">
-                                                    {formatCartEur(
-                                                        producto.precio,
-                                                    )}{" "}
-                                                    € / ud
+                                                    {formatLineEur(producto.precio)} / ud
                                                 </p>
                                                 <p className="text-sm font-semibold tabular-nums text-slate-900 sm:text-base">
-                                                    {formatCartEur(
-                                                        producto.subtotal,
-                                                    )}{" "}
-                                                    €
+                                                    {formatLineEur(producto.subtotal)}
                                                 </p>
                                             </div>
                                             <button
@@ -403,19 +395,16 @@ const Carrito = () => {
                                     Total
                                 </p>
                                 <p className="text-xl font-bold tabular-nums text-slate-900">
-                                    {formatCartEur(total)} €
+                                    {formatLineEur(total)}
                                 </p>
                             </div>
 
-                            <button
-                                type="button"
+                            <S4Button
+                                variant="primary"
+                                size="lg"
+                                className="mt-5 w-full"
                                 onClick={iniciarPagoStripe}
                                 disabled={!canCheckout || procesandoPago}
-                                className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold shadow-sm transition ${
-                                    canCheckout && !procesandoPago
-                                        ? "bg-cyan-600 text-white hover:bg-cyan-500"
-                                        : "cursor-not-allowed bg-slate-200 text-slate-500"
-                                }`}
                             >
                                 {procesandoPago ? (
                                     <>
@@ -467,7 +456,7 @@ const Carrito = () => {
                                         Pagar con tarjeta
                                     </>
                                 )}
-                            </button>
+                            </S4Button>
 
                             {!canCheckout ? (
                                 <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -579,7 +568,7 @@ const Carrito = () => {
                 alt={lightbox?.alt || "Imagen del producto"}
                 onClose={() => setLightbox(null)}
             />
-        </Layout1>
+        </PageShell>
     );
 };
 

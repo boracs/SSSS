@@ -211,3 +211,73 @@ test('línea taquilla sin locker falla', function () {
         ],
     ))->toThrow(ValidationException::class);
 });
+
+test('cash guest sin email se cierra si la facturación está apagada', function () {
+    config(['invoicing.enabled' => false]);
+
+    $producto = Producto::factory()->create([
+        'precio' => 12,
+        'descuento' => 0,
+        'unidades' => 3,
+        'eliminado' => false,
+    ]);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    $payment = $this->tickets->closeCashTicket(
+        null,
+        'Ana García',
+        null,
+        [
+            MostradorTicketLineDto::fromArray([
+                'category' => 'producto',
+                'amount_cents' => MoneyCents::eurosToCents(12.0),
+                'product_ids' => [$producto->id],
+            ]),
+        ],
+        [
+            'payment_terminal_id' => $this->terminal->id,
+            'paid_at' => now()->toIso8601String(),
+            'created_by' => $admin->id,
+            'reviewed_by' => $admin->id,
+        ],
+    );
+
+    expect($payment->status)->toBe(DatafonoPayment::STATUS_ASSIGNED);
+    $pedido = Pedido::query()->findOrFail($payment->payable_id);
+    expect($pedido->guest_name)->toBe('Ana García')
+        ->and($pedido->guest_email)->toBeNull();
+});
+
+test('cash guest sin email no se cierra si TicketBAI está activo', function () {
+    config(['invoicing.enabled' => true]);
+
+    $producto = Producto::factory()->create([
+        'precio' => 12,
+        'descuento' => 0,
+        'unidades' => 3,
+        'eliminado' => false,
+    ]);
+    $admin = User::factory()->create(['role' => 'admin']);
+
+    expect(fn () => $this->tickets->closeCashTicket(
+        null,
+        'Ana García',
+        null,
+        [
+            MostradorTicketLineDto::fromArray([
+                'category' => 'producto',
+                'amount_cents' => MoneyCents::eurosToCents(12.0),
+                'product_ids' => [$producto->id],
+            ]),
+        ],
+        [
+            'payment_terminal_id' => $this->terminal->id,
+            'paid_at' => now()->toIso8601String(),
+            'created_by' => $admin->id,
+            'reviewed_by' => $admin->id,
+        ],
+    ))->toThrow(ValidationException::class);
+
+    expect(Pedido::query()->count())->toBe(0)
+        ->and($producto->fresh()->unidades)->toBe(3);
+});

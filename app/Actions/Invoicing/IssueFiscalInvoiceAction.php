@@ -7,6 +7,7 @@ namespace App\Actions\Invoicing;
 use App\Contracts\Invoicing\FiscalInvoiceIssuerInterface;
 use App\DTOs\Invoicing\FiscalInvoiceResultDto;
 use App\Enums\FiscalInvoiceStatus;
+use App\Exceptions\Invoicing\B2BRouterApiException;
 use App\Exceptions\Invoicing\MissingFiscalDataException;
 use App\Exceptions\Invoicing\UnsupportedFiscalPayableException;
 use App\Models\FiscalInvoice;
@@ -22,6 +23,11 @@ use Throwable;
  * Una vez que b2b_invoice_id queda persistido, NUNCA se vuelve a llamar a
  * createIssuedInvoice() para esa fila — el resto del ciclo de vida (registered/
  * failed) lo resuelve SyncFiscalTaxReportAction sobre el tax_report ya creado.
+ *
+ * Fallo transitorio (timeout/5xx): la fila se deja pending y se relanza la
+ * excepción para el backoff del Job; el POST de alta lleva Idempotency-Key
+ * estable por cobro para no duplicar TicketBAI si la 1ª respuesta se perdió.
+ * Fallo permanente (datos fiscales, 4xx): markFailed() sin throw.
  *
  * Las llamadas HTTP ocurren siempre fuera de cualquier lockForUpdate/transacción.
  */
@@ -55,17 +61,34 @@ final class IssueFiscalInvoiceAction
 
         try {
             $result = $this->issuer->createIssuedInvoice($draft);
-        } catch (Throwable $e) {
+        } catch (B2BRouterApiException $e) {
             Log::error('IssueFiscalInvoiceAction: fallo al emitir factura en B2BRouter', [
+                'fiscal_invoice_id' => $invoice->id,
+                'payable_type'      => $payableType,
+                'payable_id'        => $payableId,
+                'retryable'         => $e->isRetryable(),
+                'http_status'       => $e->httpStatus,
+                'error'             => $e->getMessage(),
+            ]);
+
+            if (! $e->isRetryable()) {
+                return $this->markFailed($invoice, 'Error permanente al comunicar con B2BRouter: '.$e->getMessage());
+            }
+
+            $this->recordTransientFailure($invoice, 'Error transitorio al comunicar con B2BRouter: '.$e->getMessage());
+
+            throw $e;
+        } catch (Throwable $e) {
+            Log::error('IssueFiscalInvoiceAction: fallo inesperado al emitir factura en B2BRouter', [
                 'fiscal_invoice_id' => $invoice->id,
                 'payable_type'      => $payableType,
                 'payable_id'        => $payableId,
                 'error'             => $e->getMessage(),
             ]);
 
-            $this->markFailed($invoice, 'Error al comunicar con B2BRouter: '.$e->getMessage());
+            $this->recordTransientFailure($invoice, 'Error transitorio al comunicar con B2BRouter: '.$e->getMessage());
 
-            throw $e; // deja que el Job reintente según su política de backoff
+            throw $e;
         }
 
         return $this->markProcessing($invoice, $result);
@@ -105,6 +128,22 @@ final class IssueFiscalInvoiceAction
             ]);
 
             return $fresh;
+        });
+    }
+
+    /**
+     * Deja la fila pending para que el Job reintente el POST con la misma
+     * Idempotency-Key. No toca status: failed queda reservado a lo permanente.
+     */
+    private function recordTransientFailure(FiscalInvoice $invoice, string $reason): void
+    {
+        DB::transaction(function () use ($invoice, $reason): void {
+            $fresh = FiscalInvoice::query()->whereKey($invoice->id)->lockForUpdate()->first();
+            if ($fresh === null || $fresh->b2b_invoice_id !== null) {
+                return;
+            }
+
+            $fresh->update(['last_error' => $reason]);
         });
     }
 

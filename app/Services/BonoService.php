@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\TransactionRequiredException;
 use App\Models\PackBono;
 use App\Models\User;
 use App\Models\UserBono;
@@ -84,6 +85,34 @@ class BonoService
         }
 
         return $states;
+    }
+
+    /**
+     * Bono CONFIRMED a cargar ahora (FIFO = misma regla que la wallet).
+     * Debe llamarse dentro de DB::transaction(); lockForUpdate() de las filas con saldo.
+     */
+    public function lockFifoBono(int $userId): ?UserBono
+    {
+        if (DB::transactionLevel() < 1) {
+            throw TransactionRequiredException::forMethod(self::class, __FUNCTION__);
+        }
+
+        $locked = UserBono::query()
+            ->with('pack:id,num_clases')
+            ->where('user_id', $userId)
+            ->where('status', UserBono::STATUS_CONFIRMED)
+            ->where('clases_restantes', '>', 0)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $activeId = $this->resolveActiveBonoId($locked);
+        if ($activeId === null) {
+            return null;
+        }
+
+        return $locked->first(fn (UserBono $b) => (int) $b->id === $activeId);
     }
 
     /**

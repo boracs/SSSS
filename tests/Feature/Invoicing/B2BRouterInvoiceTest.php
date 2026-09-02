@@ -3,10 +3,12 @@
 use App\Actions\Invoicing\IssueFiscalInvoiceAction;
 use App\Enums\FiscalInvoiceStatus;
 use App\Events\Payments\PaymentConfirmed;
+use App\Exceptions\Invoicing\B2BRouterApiException;
 use App\Jobs\Invoicing\CreateB2BRouterInvoiceJob;
 use App\Models\FiscalInvoice;
 use App\Models\Pedido;
 use App\Models\User;
+use App\Services\Invoicing\B2BRouterClient;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -98,6 +100,9 @@ test('flag ON: flujo completo create+poll deja la factura registered con identif
     expect($create)->not->toBeNull();
     $price = data_get($create[0]->data(), 'invoice.invoice_lines_attributes.0.price');
     expect($price)->toBe(49.59); // 60,00 € IVA incl. → neto 49,59 €
+    expect(recordedIdempotencyKey($create[0]))->toBe(
+        B2BRouterClient::idempotencyKeyForSession('cs_test_happy_path')
+    );
 });
 
 test('reintento del Job de creación no duplica factura ni repite la llamada de alta', function () {
@@ -134,6 +139,93 @@ test('reintento del Job de creación no duplica factura ni repite la llamada de 
 
     expect($createCalls)->toBe(1);
 });
+
+test('5xx tras llegar a Hacienda + reintento: pending (no failed) y misma Idempotency-Key', function () {
+    [, $pedido] = fakePedidoPago();
+    $sessionId = 'cs_test_lost_response';
+
+    Http::fake([
+        'https://api-staging.b2brouter.net/accounts/999/invoices' => Http::sequence()
+            ->push(['error' => 'upstream timeout after hacienda'], 503)
+            ->push([
+                'invoice' => ['id' => 'inv_once', 'state' => 'issued', 'tax_report_ids' => ['tr_once']],
+            ], 201),
+        'https://api-staging.b2brouter.net/tax_reports/tr_once' => Http::response([
+            'tax_report' => ['id' => 'tr_once', 'state' => 'processing'],
+        ], 200),
+    ]);
+
+    $job = new CreateB2BRouterInvoiceJob(
+        payableType: Pedido::class,
+        payableId: $pedido->id,
+        amountCents: 6000,
+        stripeSessionId: $sessionId,
+    );
+    $action = app(IssueFiscalInvoiceAction::class);
+
+    expect(fn () => $job->handle($action))->toThrow(B2BRouterApiException::class);
+
+    $invoice = FiscalInvoice::query()->where('stripe_checkout_session_id', $sessionId)->first();
+    expect($invoice)->not->toBeNull()
+        ->and($invoice->status)->toBe(FiscalInvoiceStatus::Pending)
+        ->and($invoice->b2b_invoice_id)->toBeNull()
+        ->and($invoice->last_error)->not->toBeNull();
+
+    $job->handle($action);
+
+    $invoice->refresh();
+    expect($invoice->status)->toBe(FiscalInvoiceStatus::Processing)
+        ->and($invoice->b2b_invoice_id)->toBe('inv_once');
+
+    $posts = collect(Http::recorded())
+        ->filter(fn (array $pair) => str_contains($pair[0]->url(), '/invoices') && $pair[0]->method() === 'POST');
+
+    expect($posts)->toHaveCount(2);
+
+    $keys = $posts->map(fn (array $pair) => recordedIdempotencyKey($pair[0]))->unique()->values();
+    expect($keys)->toHaveCount(1)
+        ->and($keys->first())->toBe(B2BRouterClient::idempotencyKeyForSession($sessionId));
+});
+
+test('error permanente 422 marca failed y el job no relanza ni re-POST', function () {
+    [, $pedido] = fakePedidoPago();
+
+    Http::fake([
+        'https://api-staging.b2brouter.net/accounts/999/invoices' => Http::response([
+            'errors' => ['contact' => 'invalid'],
+        ], 422),
+    ]);
+
+    $job = new CreateB2BRouterInvoiceJob(
+        payableType: Pedido::class,
+        payableId: $pedido->id,
+        amountCents: 6000,
+        stripeSessionId: 'cs_test_permanent_422',
+    );
+
+    $job->handle(app(IssueFiscalInvoiceAction::class));
+
+    $invoice = FiscalInvoice::query()->where('stripe_checkout_session_id', 'cs_test_permanent_422')->first();
+    expect($invoice)->not->toBeNull()
+        ->and($invoice->status)->toBe(FiscalInvoiceStatus::Failed)
+        ->and($invoice->b2b_invoice_id)->toBeNull()
+        ->and($invoice->last_error)->toContain('permanente');
+
+    $createCalls = collect(Http::recorded())
+        ->filter(fn (array $pair) => str_contains($pair[0]->url(), '/invoices') && $pair[0]->method() === 'POST')
+        ->count();
+    expect($createCalls)->toBe(1);
+});
+
+function recordedIdempotencyKey(object $request): string
+{
+    $header = $request->header(B2BRouterClient::IDEMPOTENCY_KEY_HEADER);
+    if (is_array($header)) {
+        return (string) ($header[0] ?? '');
+    }
+
+    return (string) $header;
+}
 
 test('payable sin datos fiscales suficientes marca la factura como failed sin llamar a B2BRouter', function () {
     Http::fake();

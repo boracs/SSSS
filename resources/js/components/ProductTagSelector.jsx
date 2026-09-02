@@ -57,7 +57,7 @@ const ProductTagSelector = ({
                                 type="checkbox"
                                 checked={checked}
                                 onChange={() => toggle(option.value)}
-                                className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                                className="h-3.5 w-3.5 shrink-0 rounded border-slate-300 text-cyan-600 focus:ring-s4-cyan"
                             />
                             <span
                                 className={`leading-tight font-medium text-slate-800 ${

@@ -13,6 +13,7 @@ use App\Models\ChatbotInteraction;
 use App\Models\User;
 use App\Support\ChatbotDisplayName;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -32,10 +33,10 @@ use Illuminate\Support\Facades\Log;
  * "preferir reutilización sobre creación".
  *
  * Escalación a WhatsApp (requires_human) cuando:
- *   - 2 fallos de certeza consecutivos (FAQ fallback / Gemini [TRIGGER_FALLBACK])
+ *   - 2 fallos de certeza consecutivos (contador en Cache por userId/sessionToken)
  *   - La respuesta que íbamos a dar es sustancialmente la misma que el turno anterior
- *     (bucle inútil: el usuario insiste y el bot no aporta nada nuevo)
- *   - El prompt guard detecta abuso / inyección
+ *     (también desde Cache; el history del cliente no decide)
+ *   - El prompt guard detecta abuso / inyección en el message actual
  */
 final class ChatbotAgentService
 {
@@ -133,9 +134,10 @@ final class ChatbotAgentService
 
         $resolved = $this->resolveReply($query);
 
-        if ($resolved['uncertain'] && $this->isConsecutiveFallback($query->history)) {
+        if ($resolved['uncertain'] && $this->isConsecutiveFallbackFromServer($query)) {
             $articleRescue = $this->tryArticleRescueReply($query);
             if ($articleRescue !== null) {
+                $this->rememberSuccessfulReply($query, $articleRescue['text'], $articleRescue['context']);
                 $this->persistSuccessfulTurn($query, $articleRescue['text']);
 
                 return new ChatbotAgentReplyDto(
@@ -151,10 +153,11 @@ final class ChatbotAgentService
         }
 
         // Misma respuesta otra vez (p. ej. ficha de páginas genérica) → derivar.
-        if ($this->isRepeatedAnswer($query->history, $resolved['text'], $resolved['context'])) {
+        if ($this->isRepeatedAnswerFromServer($query, $resolved['text'], $resolved['context'])) {
             $articleRescue = $this->tryArticleRescueReply($query);
             if ($articleRescue !== null
                 && ! $this->repliesAreEquivalent($articleRescue['text'], $resolved['text'])) {
+                $this->rememberSuccessfulReply($query, $articleRescue['text'], $articleRescue['context']);
                 $this->persistSuccessfulTurn($query, $articleRescue['text']);
 
                 return new ChatbotAgentReplyDto(
@@ -167,6 +170,7 @@ final class ChatbotAgentService
             return $this->handoffToHuman($query, 'repeated_answer');
         }
 
+        $this->rememberResolvedTurn($query, $resolved);
         $this->persistSuccessfulTurn($query, $resolved['text']);
 
         return new ChatbotAgentReplyDto($resolved['text'], $resolved['context'], requiresHuman: false);
@@ -174,6 +178,7 @@ final class ChatbotAgentService
 
     private function handoffToHuman(ChatbotInteractionQueryDto $query, string $reason): ChatbotAgentReplyDto
     {
+        $this->forgetSessionMemory($query);
         $interaction = $this->escalate($query, $reason);
 
         return new ChatbotAgentReplyDto(
@@ -246,6 +251,15 @@ final class ChatbotAgentService
      */
     private function invokeGeminiForQuery(ChatbotInteractionQueryDto $query): array
     {
+        $window = array_slice($query->history, -self::GEMINI_HISTORY_WINDOW);
+        if ($this->historyContainsHostileTurn($window)) {
+            return ['reply' => null, 'unavailable' => false];
+        }
+
+        if ($this->chatbotGeminiDailyLimitReached()) {
+            return ['reply' => null, 'unavailable' => true];
+        }
+
         try {
             $displayName = $this->resolveAuthenticatedDisplayName();
             $systemPrompt = $this->businessContext->buildSystemPrompt($displayName);
@@ -260,8 +274,8 @@ final class ChatbotAgentService
                 $systemPrompt .= "\n\nARTÍCULOS RELEVANTES PARA ESTA PREGUNTA (priorizar si encajan):\n".$articleFocus;
             }
 
-            $geminiHistory = array_slice($query->history, -self::GEMINI_HISTORY_WINDOW);
-            $geminiText = $this->googleAIService->generateReply($systemPrompt, $geminiHistory, $query->message);
+            $this->consumeChatbotGeminiDailySlot();
+            $geminiText = $this->googleAIService->generateReply($systemPrompt, $window, $query->message);
 
             if (str_contains($geminiText, self::GEMINI_FALLBACK_TOKEN)) {
                 return ['reply' => null, 'unavailable' => false];
@@ -317,52 +331,155 @@ final class ChatbotAgentService
     }
 
     /**
-     * ¿El turno de bot inmediatamente anterior fue también un fallo?
-     * Comparación O(1) por texto exacto — sin reproducir el historial ni
-     * repetir llamadas a Gemini (esas sí tienen coste real).
-     *
      * @param  list<array{role: string, text: string}>  $history
      */
-    private function isConsecutiveFallback(array $history): bool
+    private function historyContainsHostileTurn(array $history): bool
     {
-        $lastModel = $this->lastModelText($history);
+        foreach ($history as $turn) {
+            $text = trim((string) ($turn['text'] ?? ''));
+            if ($text !== '' && $this->promptGuard->detect($text) !== null) {
+                return true;
+            }
+        }
 
-        return $lastModel !== null && $lastModel === self::SOFT_UNCERTAIN_MESSAGE;
+        return false;
+    }
+
+    private function chatbotGeminiDailyCacheKey(): string
+    {
+        return 'chatbot:gemini-daily:'.now()->toDateString();
+    }
+
+    private function chatbotGeminiDailyLimitReached(): bool
+    {
+        $limit = max(0, (int) config('services.chatbot.gemini_daily_limit', 200));
+        $used = (int) Cache::get($this->chatbotGeminiDailyCacheKey(), 0);
+
+        if ($used < $limit) {
+            return false;
+        }
+
+        Log::warning('chatbot.gemini_daily_limit_reached', [
+            'used' => $used,
+            'limit' => $limit,
+        ]);
+
+        return true;
+    }
+
+    private function consumeChatbotGeminiDailySlot(): void
+    {
+        $key = $this->chatbotGeminiDailyCacheKey();
+        $used = (int) Cache::get($key, 0);
+        Cache::put($key, $used + 1, now()->endOfDay());
     }
 
     /**
-     * El usuario insiste y el bot volvería a decir lo mismo → no aporta valor.
-     *
-     * @param  list<array{role: string, text: string}>  $history
+     * @return array{fallback_streak: int, last_reply: ?string, last_context: ?string}
      */
-    private function isRepeatedAnswer(array $history, string $newText, string $newContext): bool
+    private function readSessionMemory(ChatbotInteractionQueryDto $query): array
     {
+        $empty = ['fallback_streak' => 0, 'last_reply' => null, 'last_context' => null];
+        $key = $this->sessionMemoryKey($query);
+        if ($key === null) {
+            return $empty;
+        }
+
+        $stored = Cache::get($key);
+        if (! is_array($stored)) {
+            return $empty;
+        }
+
+        return [
+            'fallback_streak' => (int) ($stored['fallback_streak'] ?? 0),
+            'last_reply' => isset($stored['last_reply']) ? (string) $stored['last_reply'] : null,
+            'last_context' => isset($stored['last_context']) ? (string) $stored['last_context'] : null,
+        ];
+    }
+
+    /**
+     * @param  array{fallback_streak: int, last_reply: ?string, last_context: ?string}  $memory
+     */
+    private function writeSessionMemory(ChatbotInteractionQueryDto $query, array $memory): void
+    {
+        $key = $this->sessionMemoryKey($query);
+        if ($key === null) {
+            return;
+        }
+
+        Cache::put($key, $memory, now()->addDay());
+    }
+
+    private function sessionMemoryKey(ChatbotInteractionQueryDto $query): ?string
+    {
+        if ($query->userId !== null) {
+            return 'chatbot:session-memory:user:'.$query->userId;
+        }
+
+        $token = trim((string) ($query->sessionToken ?? ''));
+
+        return $token !== '' ? 'chatbot:session-memory:session:'.$token : null;
+    }
+
+    private function forgetSessionMemory(ChatbotInteractionQueryDto $query): void
+    {
+        $key = $this->sessionMemoryKey($query);
+        if ($key !== null) {
+            Cache::forget($key);
+        }
+    }
+
+    /** ¿El servidor ya entregó un fallo blando en esta sesión? No lee el payload. */
+    private function isConsecutiveFallbackFromServer(ChatbotInteractionQueryDto $query): bool
+    {
+        $memory = $this->readSessionMemory($query);
+
+        return $memory['fallback_streak'] >= (self::FALLBACK_STREAK_THRESHOLD - 1);
+    }
+
+    private function isRepeatedAnswerFromServer(
+        ChatbotInteractionQueryDto $query,
+        string $newText,
+        string $newContext,
+    ): bool {
         if (in_array($newContext, self::REPEAT_ESCALATION_SKIP_CONTEXTS, true)) {
             return false;
         }
 
-        $lastModel = $this->lastModelText($history);
-        if ($lastModel === null || $lastModel === '') {
+        $last = $this->readSessionMemory($query)['last_reply'];
+        if ($last === null || $last === '') {
             return false;
         }
 
-        return $this->repliesAreEquivalent($lastModel, $newText);
+        return $this->repliesAreEquivalent($last, $newText);
     }
 
     /**
-     * @param  list<array{role: string, text: string}>  $history
+     * @param  array{text: string, context: string, uncertain: bool, geminiUnavailable?: bool}  $resolved
      */
-    private function lastModelText(array $history): ?string
+    private function rememberResolvedTurn(ChatbotInteractionQueryDto $query, array $resolved): void
     {
-        for ($i = count($history) - 1; $i >= 0; $i--) {
-            if (($history[$i]['role'] ?? null) === 'model') {
-                $text = trim((string) ($history[$i]['text'] ?? ''));
+        if ($resolved['uncertain']) {
+            $memory = $this->readSessionMemory($query);
+            $this->writeSessionMemory($query, [
+                'fallback_streak' => $memory['fallback_streak'] + 1,
+                'last_reply' => $resolved['text'],
+                'last_context' => $resolved['context'],
+            ]);
 
-                return $text !== '' ? $text : null;
-            }
+            return;
         }
 
-        return null;
+        $this->rememberSuccessfulReply($query, $resolved['text'], $resolved['context']);
+    }
+
+    private function rememberSuccessfulReply(ChatbotInteractionQueryDto $query, string $text, string $context): void
+    {
+        $this->writeSessionMemory($query, [
+            'fallback_streak' => 0,
+            'last_reply' => $text,
+            'last_context' => $context,
+        ]);
     }
 
     private function repliesAreEquivalent(string $a, string $b): bool

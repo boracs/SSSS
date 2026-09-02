@@ -42,6 +42,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'telefono',
         'numeroTaquilla',
         'taquilla_baja_solicitada_at',
+        'taquilla_baja_efectiva_at',
+        'taquilla_alta_at',
+        'taquilla_alta_programada_at',
         'password',
         'fecha_vencimiento_cuota',
         'id_plan_vigente',
@@ -68,6 +71,9 @@ class User extends Authenticatable implements MustVerifyEmailContract
         'is_vip' => 'boolean',
         'fecha_vencimiento_cuota' => 'datetime',
         'taquilla_baja_solicitada_at' => 'datetime',
+        'taquilla_baja_efectiva_at' => 'datetime',
+        'taquilla_alta_at' => 'datetime',
+        'taquilla_alta_programada_at' => 'date',
     ];
 
     // ===================================
@@ -269,10 +275,36 @@ class User extends Authenticatable implements MustVerifyEmailContract
      * Verificación estricta para semáforos visuales (no bloqueante).
      * true => tiene pago confirmado y fecha vigente.
      */
+    /**
+     * La plaza ya está reservada (`numeroTaquilla`) y el día de entrada ha llegado.
+     * Un alta programada futura no cuenta como socio activo (llave, descuento, vigencia).
+     */
+    public function isLockerAltaEffective(): bool
+    {
+        if (! $this->hasPhysicalLocker()) {
+            return false;
+        }
+
+        $programada = $this->taquilla_alta_programada_at;
+        if ($programada === null) {
+            return true;
+        }
+
+        $dia = $programada instanceof Carbon
+            ? $programada->copy()->startOfDay()
+            : Carbon::parse((string) $programada)->startOfDay();
+
+        return $dia->lte(Carbon::today());
+    }
+
     public function isLockerPaymentUpToDate(): bool
     {
         if ($this->hasSharedLocker()) {
             return true;
+        }
+
+        if (! $this->isLockerAltaEffective()) {
+            return false;
         }
 
         if (empty($this->numeroTaquilla) || empty($this->fecha_vencimiento_cuota)) {

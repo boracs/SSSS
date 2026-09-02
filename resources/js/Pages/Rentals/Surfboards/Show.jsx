@@ -38,19 +38,16 @@ export default function Show({
     return (
         <>
             <SeoHead seo={seo} />
-            <div className="min-h-[70vh] bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+            <div className="s4-surface-light min-h-[70vh]">
                 <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <BackButton
-                            href={route("rentals.surfboards.index")}
-                            className="!text-slate-200 hover:!bg-slate-800 hover:!text-cyan-300"
-                        >
+                        <BackButton href={route("rentals.surfboards.index")}>
                             Volver a tablas
                         </BackButton>
-                        <Breadcrumbs items={breadcrumbs} variant="dark" />
+                        <Breadcrumbs items={breadcrumbs} />
                     </div>
 
-                    <article className="mt-6 rounded-3xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm backdrop-blur sm:mt-8 sm:p-6 lg:p-7">
+                    <article className="mt-6 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:mt-8 sm:p-6 lg:p-7">
                         <SurfboardPublicDetail
                             board={surfboard}
                             onImageClick={setLightbox}

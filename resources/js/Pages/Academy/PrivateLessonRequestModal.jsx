@@ -8,7 +8,7 @@ import {
 import { ymd, startOfMonth, addMonths } from "./StudentCalendar";
 
 const fieldClass =
-    "mt-1 w-full rounded-xl border border-gray-600 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/40";
+    "mt-1 w-full rounded-xl border border-gray-600 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:border-s4-cyan/50 focus:outline-none focus:ring-1 focus:ring-s4-cyan/40";
 
 function emptyParticipant() {
     return { first_name: "", last_name: "", age: "" };

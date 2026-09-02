@@ -25,7 +25,7 @@ function enrollmentContact(enrollment) {
         phone,
         whatsappHref: whatsappUrlFromPhone(
             phone,
-            `Hola ${name.split(" ")[0] || ""}, te escribo de San Sebastian Surf School.`,
+            `Hola ${name.split(" ")[0] || ""}, te escribo de San Sebastián Surf School.`,
         ),
     };
 }
@@ -584,7 +584,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                     <button
                         type="button"
                         onClick={() => setShowNewLesson(!showNewLesson)}
-                        className="btn-primary"
+                        className="s4-btn s4-btn-primary s4-btn--md"
                     >
                         {showNewLesson ? "Ocultar formulario" : "+ Nueva clase"}
                     </button>
@@ -678,7 +678,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                 </select>
                                 {newLesson.modality === "semanal" && (
                                     <p className="mt-2 text-xs font-medium text-sky-600">
-                                        Se autogenerarán sesiones de Lunes a Viernes (Pack Semanal).
+                                        Se autogenerarán sesiones de lunes a viernes (Pack Semanal).
                                     </p>
                                 )}
                             </div>
@@ -755,14 +755,14 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                     const duration = Number(newLesson.duration_minutes || 90);
                                     return duration < 60 || Number(availability?.max_capacity ?? 12) === 0;
                                 })()}
-                                className="btn-primary disabled:opacity-60"
+                                className="s4-btn s4-btn-primary s4-btn--md disabled:opacity-60"
                             >
                                 Crear clase
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setShowNewLesson(false)}
-                                className="btn-secondary"
+                                className="s4-btn s4-btn-secondary s4-btn--md"
                             >
                                 Cancelar
                             </button>
@@ -893,7 +893,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                             <button
                                                 type="button"
                                                 onClick={() => triggerSurfTrip(lesson)}
-                                                className="rounded-xl bg-brand-accent px-3 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-brand-accent/90"
+                                                className="rounded-xl bg-s4-cyan px-3 py-2 text-sm font-medium text-white transition-all duration-300 hover:bg-s4-cyan/90"
                                             >
                                                 Surf-Trip
                                             </button>
@@ -1168,7 +1168,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                             </div>
                         ) : null}
                         <div className="mt-4 flex justify-end">
-                            <button type="button" onClick={() => setLessonDetailsOpen(false)} className="btn-secondary">
+                            <button type="button" onClick={() => setLessonDetailsOpen(false)} className="s4-btn s4-btn-secondary s4-btn--md">
                                 Cerrar
                             </button>
                         </div>
@@ -1192,7 +1192,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                             placeholder="Ej: El importe cobrado no coincide / Comprobante ilegible…"
                         />
                         <div className="mt-4 flex flex-wrap justify-end gap-2">
-                            <button type="button" onClick={() => setRejecting(null)} className="btn-secondary">
+                            <button type="button" onClick={() => setRejecting(null)} className="s4-btn s4-btn-secondary s4-btn--md">
                                 Cancelar
                             </button>
                             <button
@@ -1220,7 +1220,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                             Se eliminará de la lista de pendientes.
                         </p>
                         <div className="mt-4 flex flex-wrap justify-end gap-2">
-                            <button type="button" onClick={() => setQuotaDenying(null)} className="btn-secondary">
+                            <button type="button" onClick={() => setQuotaDenying(null)} className="s4-btn s4-btn-secondary s4-btn--md">
                                 Cancelar
                             </button>
                             <button
@@ -1281,7 +1281,7 @@ export default function Commander({ lessons = [], selectedDate, staff = [], sele
                                     cancelSingleSession(cancelChoice.lessonId);
                                     setCancelChoice(null);
                                 }}
-                                className="btn-secondary"
+                                className="s4-btn s4-btn-secondary s4-btn--md"
                             >
                                 Solo esta sesión
                             </button>

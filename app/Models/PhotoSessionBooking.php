@@ -56,9 +56,9 @@ class PhotoSessionBooking extends Model
         'party_size' => 'integer',
         'precio_pagado_cents' => 'integer',
         'is_admin_guest' => 'boolean',
-        'proof_uploaded_at' => 'datetime',
-        'reviewed_at' => 'datetime',
-        'expires_at' => 'datetime',
+        'proof_uploaded_at' => BusinessWallClockDatetime::class,
+        'reviewed_at' => BusinessWallClockDatetime::class,
+        'expires_at' => BusinessWallClockDatetime::class,
     ];
 
     public function isCheckoutExpired(): bool

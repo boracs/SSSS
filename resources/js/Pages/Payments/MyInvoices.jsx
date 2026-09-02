@@ -83,7 +83,7 @@ export default function MyInvoices({
     return (
         <>
             <Head title="Mis facturas" />
-            <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+            <div className="s4-surface-light min-h-screen px-4 py-10 sm:px-6">
                 <div className="mx-auto w-full max-w-4xl">
                     <div className="mb-6">
                         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">

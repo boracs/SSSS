@@ -46,9 +46,11 @@ export default function SurfboardBookingSection({
     initialEnd = null,
     showSchemaBadge = false, // reserved; never shown on public UI
     embedded = false,
+    surfaceTone = "light",
 }) {
     const user = usePage().props.auth?.user || null;
-    const tone = embedded ? "dark" : "light";
+    const isDark = surfaceTone === "dark";
+    const tone = isDark ? "dark" : "light";
     const policy = useMemo(() => resolveRentalPolicy(rentalPolicy), [rentalPolicy]);
 
     const packs = useMemo(
@@ -209,11 +211,13 @@ export default function SurfboardBookingSection({
         });
     };
 
-    const fieldClass = embedded
-        ? "mt-1 w-full rounded-xl border border-white/15 bg-slate-950/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 shadow-sm transition hover:border-white/25 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-        : "input-focus-ring mt-1 w-full px-4 py-2.5 text-sm placeholder:text-gray-500";
+    const fieldClass = isDark
+        ? "mt-1 w-full rounded-xl border border-white/15 bg-slate-950/80 px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 shadow-sm transition hover:border-white/25 focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20"
+        : "mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20";
 
-    const labelText = embedded ? "text-sm font-semibold text-slate-300" : "text-sm font-semibold text-slate-700";
+    const labelText = isDark
+        ? "text-sm font-semibold text-slate-300"
+        : "text-sm font-semibold text-slate-700";
 
     const primaryBtn =
         "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-cyan-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50";
@@ -222,16 +226,16 @@ export default function SurfboardBookingSection({
         "inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-60";
 
     const wrapperClass = embedded
-        ? "mt-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-xl shadow-black/20 sm:p-5"
+        ? isDark
+            ? "mt-4 rounded-2xl border border-white/10 bg-slate-900/80 p-4 shadow-xl shadow-black/20 sm:p-5"
+            : "mt-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200 sm:p-5"
         : "rounded-3xl border border-slate-200 bg-white p-6 shadow-sm";
 
-    const tabActiveClass = embedded
-        ? "bg-cyan-600 text-white ring-cyan-500 shadow-md shadow-cyan-950/40"
-        : "bg-cyan-600 text-white ring-cyan-500 shadow-md";
+    const tabActiveClass = "bg-cyan-600 text-white ring-cyan-500 shadow-md";
 
-    const tabClass = embedded
+    const tabClass = isDark
         ? "bg-slate-950/60 text-slate-200 ring-white/10 hover:bg-slate-800 hover:text-slate-100 hover:ring-cyan-500/40"
-        : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50";
+        : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50 hover:ring-cyan-500/30";
 
     const showMobileSticky = embedded && (hasValidSelection || formOpen);
     const stickyTotal = formatRentalEur(activeWindow?.totalPrice);
@@ -247,7 +251,9 @@ export default function SurfboardBookingSection({
                 <p
                     className={
                         embedded
-                            ? "font-heading text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-400"
+                            ? isDark
+                                ? "font-heading text-[11px] font-bold uppercase tracking-[0.14em] text-cyan-400"
+                                : "font-heading text-[11px] font-bold uppercase tracking-[0.14em] text-s4"
                             : "font-heading text-lg font-bold text-slate-900"
                     }
                 >
@@ -304,6 +310,7 @@ export default function SurfboardBookingSection({
                                 blockedRanges={blockedRanges}
                                 isChecking={isChecking}
                                 onChange={handleHourChange}
+                                tone={tone}
                             />
                         ) : mode === MODE_DAY ? (
                             <div className="board-availability-calendar">
@@ -329,9 +336,15 @@ export default function SurfboardBookingSection({
             ) : null}
 
             {mode === MODE_DAY && dayWindow ? (
-                <p className="mt-3 text-sm text-slate-300">
-                    Recogida <span className="font-semibold text-slate-100">{pickupLabel}</span> · Devolución{" "}
-                    <span className="font-semibold text-slate-100">{returnLabel}</span>
+                <p className={`mt-3 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                    Recogida{" "}
+                    <span className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>
+                        {pickupLabel}
+                    </span>{" "}
+                    · Devolución{" "}
+                    <span className={`font-semibold ${isDark ? "text-slate-100" : "text-slate-900"}`}>
+                        {returnLabel}
+                    </span>
                     {dayWindow.days ? (
                         <span className="text-slate-500"> · {dayWindow.days} día(s)</span>
                     ) : null}
@@ -400,7 +413,7 @@ export default function SurfboardBookingSection({
                     <div className="min-h-0 overflow-hidden">
                         <div
                             className={`mt-5 space-y-4 border-t pb-1 pt-5 ${
-                                embedded ? "border-white/10" : "border-slate-200"
+                                isDark ? "border-white/10" : "border-slate-200"
                             }`}
                         >
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -452,7 +465,7 @@ export default function SurfboardBookingSection({
                             {pickupLabel ? (
                                 <div
                                     className={`rounded-xl px-4 py-3 text-sm ${
-                                        embedded
+                                        isDark
                                             ? "border border-white/10 bg-slate-950/60 text-slate-300"
                                             : "border border-slate-200 bg-slate-50 text-slate-700"
                                     }`}
@@ -467,7 +480,7 @@ export default function SurfboardBookingSection({
                             {(errors.start_date || errors.pickup_at) && (
                                 <div
                                     className={`rounded-xl px-4 py-3 text-sm ${
-                                        embedded
+                                        isDark
                                             ? "border border-rose-500/30 bg-rose-500/10 text-rose-200"
                                             : "border border-rose-200 bg-rose-50 text-rose-800"
                                     }`}
@@ -504,18 +517,30 @@ export default function SurfboardBookingSection({
 
             {showMobileSticky ? (
                 <div
-                    className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-700/80 bg-slate-950/95 px-3 py-3 backdrop-blur-md lg:hidden"
+                    className={`fixed inset-x-0 bottom-0 z-40 border-t px-3 py-3 backdrop-blur-md lg:hidden ${
+                        isDark
+                            ? "border-slate-700/80 bg-slate-950/95"
+                            : "border-slate-200 bg-white/95 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]"
+                    }`}
                     style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
                 >
                     <div className="mx-auto flex max-w-lg items-center gap-3">
                         <div className="min-w-0 flex-1">
                             {pickupLabel ? (
-                                <p className="truncate text-xs font-medium text-slate-300">
+                                <p
+                                    className={`truncate text-xs font-medium ${
+                                        isDark ? "text-slate-300" : "text-slate-600"
+                                    }`}
+                                >
                                     {pickupLabel} → {returnLabel}
                                 </p>
                             ) : null}
                             {stickyTotal ? (
-                                <p className="font-heading text-base font-extrabold tabular-nums text-cyan-300">
+                                <p
+                                    className={`font-heading text-base font-extrabold tabular-nums ${
+                                        isDark ? "text-cyan-300" : "text-s4"
+                                    }`}
+                                >
                                     {stickyTotal}
                                 </p>
                             ) : (

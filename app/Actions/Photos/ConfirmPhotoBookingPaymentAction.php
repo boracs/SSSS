@@ -28,33 +28,26 @@ final class ConfirmPhotoBookingPaymentAction
                 ];
             }
 
-            if (in_array($locked->status, [
-                PhotoSessionBooking::STATUS_CANCELLED,
-                PhotoSessionBooking::STATUS_REJECTED,
-            ], true)) {
+            if ($locked->status === PhotoSessionBooking::STATUS_REJECTED
+                || $locked->payment_status === PhotoSessionBooking::PAYMENT_REJECTED) {
                 throw ValidationException::withMessages([
-                    'booking' => ['No se puede confirmar una reserva cancelada o rechazada.'],
+                    'booking' => ['No se puede confirmar una reserva rechazada.'],
                 ]);
             }
 
-            if ($locked->payment_status === PhotoSessionBooking::PAYMENT_REJECTED) {
-                throw ValidationException::withMessages([
-                    'booking' => ['No se puede confirmar un pago rechazado.'],
-                ]);
-            }
-
-            if ($locked->expires_at !== null
-                && $locked->expires_at->isPast()
+            $resurrected = $locked->status === PhotoSessionBooking::STATUS_CANCELLED;
+            $expiredWhilePending = $locked->status === PhotoSessionBooking::STATUS_PENDING
                 && $locked->payment_status === PhotoSessionBooking::PAYMENT_PENDING
-                && $locked->status === PhotoSessionBooking::STATUS_PENDING) {
-                $locked->update([
-                    'status' => PhotoSessionBooking::STATUS_CANCELLED,
-                    'admin_notes' => trim((string) (($locked->admin_notes ?? '')."\nCaducada: pago no completado")),
-                ]);
+                && $locked->expires_at !== null
+                && $locked->expires_at->isPast();
 
-                throw ValidationException::withMessages([
-                    'booking' => ['La reserva ha caducado (pago no completado a tiempo).'],
-                ]);
+            $notes = (string) ($locked->admin_notes ?? '');
+            if ($resurrected) {
+                $stamp = BusinessDateTime::now()->toDateTimeString();
+                $notes = trim($notes."\nResucitada {$stamp}: webhook con pago confirmado tras caducidad.");
+            } elseif ($expiredWhilePending) {
+                $stamp = BusinessDateTime::now()->toDateTimeString();
+                $notes = trim($notes."\nConfirmada {$stamp}: pago llegó con reserva ya caducada.");
             }
 
             $locked->update([
@@ -64,6 +57,7 @@ final class ConfirmPhotoBookingPaymentAction
                 'fecha_pago' => $locked->fecha_pago ?? BusinessDateTime::now(),
                 'reviewed_at' => BusinessDateTime::now(),
                 'expires_at' => null,
+                'admin_notes' => $notes !== '' ? $notes : $locked->admin_notes,
             ]);
 
             return [

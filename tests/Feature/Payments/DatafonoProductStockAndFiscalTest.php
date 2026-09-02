@@ -70,6 +70,51 @@ test('reconcile producto descuenta una unidad de stock y usa precio de catalogo'
     expect((int) $line->pivot->precio_pagado_cents)->toBe(1000);
 });
 
+test('un producto rebajado se cobra al precio con descuento sin 422', function () {
+    $user = User::factory()->create(['role' => 'user']);
+    $producto = Producto::factory()->create([
+        'nombre' => 'Neopreno rebajado',
+        'precio' => 100.00,
+        'descuento' => 10,
+        'unidades' => 3,
+        'eliminado' => false,
+    ]);
+    $terminal = datafonoTerminal(true);
+    // Importe que manda el mostrador con el catálogo ya corregido: 90 €, no 100.
+    $payment = pendingCobro($terminal, 9000);
+
+    $result = $this->service->reconcile($payment, $user, [
+        'category' => 'producto',
+        'product_ids' => [$producto->id],
+    ]);
+
+    expect($result->status)->toBe(DatafonoPayment::STATUS_ASSIGNED);
+
+    $pedido = \App\Models\Pedido::query()->findOrFail($result->payable_id);
+    expect((int) $pedido->precio_total_cents)->toBe(9000)
+        ->and((int) $pedido->productos()->first()->pivot->precio_pagado_cents)->toBe(9000)
+        ->and((int) $producto->fresh()->unidades)->toBe(2);
+});
+
+test('cobrar un producto rebajado al PVP base sigue dando 422', function () {
+    $user = User::factory()->create(['role' => 'user']);
+    $producto = Producto::factory()->create([
+        'precio' => 100.00,
+        'descuento' => 10,
+        'unidades' => 3,
+        'eliminado' => false,
+    ]);
+    $terminal = datafonoTerminal(true);
+    $payment = pendingCobro($terminal, 10000);
+
+    expect(fn () => $this->service->reconcile($payment, $user, [
+        'category' => 'producto',
+        'product_ids' => [$producto->id],
+    ]))->toThrow(ValidationException::class);
+
+    expect($producto->fresh()->unidades)->toBe(3);
+});
+
 test('stock insuficiente lanza ValidationException y no asigna el cobro', function () {
     $user = User::factory()->create(['role' => 'user']);
     $producto = Producto::factory()->create([

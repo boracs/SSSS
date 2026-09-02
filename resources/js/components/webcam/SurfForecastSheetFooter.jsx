@@ -1,46 +1,19 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import { BookOpenText, Camera, CircleHelp, Sparkles, X } from "lucide-react";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
-import { SURF_LEVELS } from "./surfLevels";
 import {
     FORECAST_GUIDE_ARTICLE_SLUG,
     SURF_METRIC_HELP_ITEMS,
     splitHelpParagraphs,
 } from "./surfMetricHelp";
+import { useGrowSheetForNested } from "./ForecastSheetFrame";
+import SurfBriefLevelBlocks from "./SurfBriefLevelBlocks";
 
-function firstLevelWithText(sections) {
-    const found = SURF_LEVELS.find((lvl) => Boolean(sections?.[lvl.level]));
-    return found?.level ?? null;
-}
-
-/** Quita emoji decorativo al inicio del general (solo presentación del modal). */
 function stripLeadingEmoji(text) {
     if (!text || typeof text !== "string") return text;
     return text.replace(/^[\p{Extended_Pictographic}\uFE0F\u200D\s]+/u, "").trimStart();
 }
-
-/**
- * Estilos de tab solo para ParteHoyModal (más contraste activo / idle suave).
- * No muta SURF_LEVELS → no afecta SurfLevelAccordion.
- */
-const MODAL_TAB_STYLES = {
-    iniciacion: {
-        idle: "border border-emerald-100 bg-emerald-50/40 text-emerald-800/80 hover:bg-emerald-50/70",
-        active:
-            "border-2 border-emerald-500 bg-emerald-100 text-emerald-950 shadow-sm ring-2 ring-emerald-300/60",
-    },
-    intermedio: {
-        idle: "border border-sky-100 bg-sky-50/40 text-sky-800/80 hover:bg-sky-50/70",
-        active:
-            "border-2 border-sky-500 bg-sky-100 text-sky-950 shadow-sm ring-2 ring-sky-300/60",
-    },
-    avanzado: {
-        idle: "border border-rose-100 bg-rose-50/40 text-rose-800/80 hover:bg-rose-50/70",
-        active:
-            "border-2 border-rose-500 bg-rose-100 text-rose-950 shadow-sm ring-2 ring-rose-300/60",
-    },
-};
 
 const WEBCAMS_PATH = "/servicios/webcams";
 
@@ -73,47 +46,43 @@ function WebcamFooterButton({ webcamAnchorId }) {
 }
 
 /**
- * Modal ligero encima del sheet (no segundo bottom-sheet).
- * Desktop: más ancho para reducir scroll. Niveles: 3 botones en fila;
- * solo se muestra el texto del nivel activo (menos scroll en móvil).
+ * Modal ligero encima del sheet. Mismos bloques de nivel que el parte público.
  */
 function ParteHoyModal({ open, onClose, brief }) {
-    const sections = brief?.summary_sections || null;
-    const levelsWithText = SURF_LEVELS.filter((lvl) => Boolean(sections?.[lvl.level]));
-    const [activeLevel, setActiveLevel] = useState(null);
-
-    useEffect(() => {
-        if (!open) return;
-        setActiveLevel(firstLevelWithText(brief?.summary_sections) ?? null);
-    }, [open, brief]);
+    const overlayRef = useRef(null);
+    const bodyRef = useRef(null);
+    useGrowSheetForNested(open, overlayRef, bodyRef);
 
     if (!open) return null;
 
+    const sections = brief?.summary_sections || null;
     const signalMeta = brief?.signal?.status
         ? surfBriefOverrideMeta(brief.signal.status)
         : null;
     const generalRaw = sections?.general || brief?.summary || "";
     const general = stripLeadingEmoji(generalRaw);
     const updated = brief?.generated_at_human || null;
-    const hasLevels = levelsWithText.length > 0;
-    const hasContent = Boolean(general || hasLevels);
-    const activeText = activeLevel ? sections?.[activeLevel] : null;
-    const activeMeta = SURF_LEVELS.find((lvl) => lvl.level === activeLevel) || null;
+    const hasContent = Boolean(general || sections?.iniciacion || sections?.intermedio || sections?.avanzado);
 
     return (
         <div
-            className="absolute inset-0 z-[40] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-[2px] sm:items-center sm:p-5 md:p-8"
+            ref={overlayRef}
+            className="absolute inset-0 z-[40] flex min-h-0 items-end justify-center overflow-hidden bg-slate-950/70 p-3 backdrop-blur-[2px] sm:p-5 md:p-8"
             role="presentation"
-            onClick={onClose}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
         >
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-label="Parte S4 de hoy"
-                className="flex max-h-[min(85dvh,42rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/40 bg-white shadow-2xl sm:max-h-[min(82vh,40rem)] sm:max-w-2xl md:max-w-3xl"
+                className="flex min-h-0 max-h-full w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/40 bg-white shadow-2xl sm:max-w-2xl md:max-w-3xl"
                 onClick={(event) => event.stopPropagation()}
             >
-                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6">
+                <div
+                    data-nested-header
+                    className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6"
+                >
                     <div className="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
                         <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[#0f5f74]">
                             <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -135,15 +104,21 @@ function ParteHoyModal({ open, onClose, brief }) {
                     </button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-5">
-                    {signalMeta ? (
+                <div className="min-h-0 overflow-y-auto">
+                    <div ref={bodyRef} className="px-4 py-3 sm:px-6 sm:py-5">
+                    {signalMeta || sections?.aviso ? (
                         <span
-                            className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${signalMeta.tableBadge}`}
+                            className={`mb-3 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold leading-none ${
+                                signalMeta?.tableBadge || "bg-slate-100 text-slate-800"
+                            }`}
                         >
-                            {signalMeta.badge}
-                            {brief?.signal?.is_manual ? (
-                                <span className="ml-1.5 opacity-80">· S4</span>
-                            ) : null}
+                            {[
+                                signalMeta?.badge,
+                                brief?.signal?.is_manual ? "S4" : null,
+                                sections?.aviso,
+                            ]
+                                .filter(Boolean)
+                                .join(" · ")}
                         </span>
                     ) : null}
 
@@ -165,76 +140,19 @@ function ParteHoyModal({ open, onClose, brief }) {
                                 </p>
                             ) : null}
 
-                            {hasLevels ? (
-                                <div>
-                                    <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                        Tu nivel
-                                    </p>
-                                    <div
-                                        className="grid grid-cols-3 gap-1.5 sm:gap-2"
-                                        role="tablist"
-                                        aria-label="Nivel del parte"
-                                    >
-                                        {levelsWithText.map((lvl) => {
-                                            const isActive = activeLevel === lvl.level;
-                                            const tabStyle = MODAL_TAB_STYLES[lvl.level] ?? {
-                                                idle: lvl.idleClass,
-                                                active: lvl.activeClass,
-                                            };
-                                            return (
-                                                <button
-                                                    key={lvl.level}
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={isActive}
-                                                    aria-controls="parte-nivel-panel"
-                                                    id={`parte-tab-${lvl.level}`}
-                                                    onClick={() => setActiveLevel(lvl.level)}
-                                                    className={`rounded-xl px-2 py-2.5 text-center transition sm:px-3 sm:py-3 ${
-                                                        isActive ? tabStyle.active : tabStyle.idle
-                                                    }`}
-                                                >
-                                                    <span className="block text-[11px] font-bold uppercase tracking-wide sm:text-xs">
-                                                        {lvl.label}
-                                                    </span>
-                                                    <span className="mt-0.5 hidden text-[10px] font-medium leading-snug opacity-80 sm:block">
-                                                        {lvl.title}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {activeText && activeMeta ? (
-                                        <div
-                                            id="parte-nivel-panel"
-                                            role="tabpanel"
-                                            aria-labelledby={`parte-tab-${activeMeta.level}`}
-                                            className="mt-3 rounded-xl bg-slate-50/80 px-3 py-3 ring-1 ring-slate-200/80 sm:px-4 sm:py-3.5"
-                                        >
-                                            <span
-                                                className={`mb-2 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ring-1 ${activeMeta.labelClass}`}
-                                            >
-                                                {activeMeta.label}
-                                            </span>
-                                            <p className="text-sm leading-7 text-slate-800 sm:text-[15px] sm:leading-7">
-                                                {activeText}
-                                            </p>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            ) : null}
-
-                            {sections?.aviso ? (
-                                <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200">
-                                    {sections.aviso}
-                                </p>
-                            ) : null}
+                            <SurfBriefLevelBlocks
+                                summarySections={sections}
+                                showGuideLink={false}
+                            />
                         </div>
                     )}
+                    </div>
                 </div>
 
-                <div className="shrink-0 border-t border-slate-100 px-4 py-2.5 sm:px-6">
+                <div
+                    data-nested-footer
+                    className="shrink-0 border-t border-slate-100 px-4 py-2.5 sm:px-6"
+                >
                     <button
                         type="button"
                         onClick={onClose}
@@ -253,24 +171,33 @@ function ParteHoyModal({ open, onClose, brief }) {
  * CTA al artículo del Taller en lenguaje sencillo.
  */
 function InterpretarParteModal({ open, onClose }) {
+    const overlayRef = useRef(null);
+    const bodyRef = useRef(null);
+    useGrowSheetForNested(open, overlayRef, bodyRef);
+
     if (!open) return null;
 
     const articleHref = route("taller.show", FORECAST_GUIDE_ARTICLE_SLUG);
 
     return (
         <div
-            className="absolute inset-0 z-[40] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-[2px] sm:items-center sm:p-5 md:p-8"
+            ref={overlayRef}
+            className="absolute inset-0 z-[40] flex items-end justify-center bg-slate-950/70 p-3 backdrop-blur-[2px] sm:p-5 md:p-8"
             role="presentation"
-            onClick={onClose}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={(event) => event.stopPropagation()}
         >
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="interpretar-parte-title"
-                className="flex max-h-[min(85dvh,42rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/40 bg-white shadow-2xl sm:max-h-[min(82vh,40rem)] sm:max-w-2xl"
+                className="flex min-h-0 max-h-full w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-cyan-200/40 bg-white shadow-2xl sm:max-w-2xl"
                 onClick={(event) => event.stopPropagation()}
             >
-                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6">
+                <div
+                    data-nested-header
+                    className="flex shrink-0 items-start justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6"
+                >
                     <div>
                         <h2
                             id="interpretar-parte-title"
@@ -293,7 +220,8 @@ function InterpretarParteModal({ open, onClose }) {
                     </button>
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4">
+                <div className="min-h-0 overflow-y-auto">
+                    <div ref={bodyRef} className="px-4 py-3 sm:px-6 sm:py-4">
                     <div className="space-y-3">
                         {SURF_METRIC_HELP_ITEMS.map((item) => (
                             <article
@@ -326,9 +254,13 @@ function InterpretarParteModal({ open, onClose }) {
                             Leer la guía del Taller
                         </Link>
                     </div>
+                    </div>
                 </div>
 
-                <div className="shrink-0 border-t border-slate-100 px-4 py-2.5 sm:px-6">
+                <div
+                    data-nested-footer
+                    className="shrink-0 border-t border-slate-100 px-4 py-2.5 sm:px-6"
+                >
                     <button
                         type="button"
                         onClick={onClose}

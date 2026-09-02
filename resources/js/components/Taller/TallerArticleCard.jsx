@@ -35,7 +35,7 @@ function CoverThumb({ src, alt, className = "" }) {
 }
 
 const MAGAZINE_CARD_CLASS =
-    "group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_12px_32px_-12px_rgba(15,45,55,0.38)] transition-[box-shadow,border-color] duration-150 ease-out hover:border-cyan-300/50 hover:shadow-[0_18px_44px_-10px_rgba(15,45,55,0.52)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 focus-visible:ring-offset-2";
+    "group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-slate-200/70 bg-white shadow-[0_12px_32px_-12px_rgba(15,45,55,0.38)] transition-[box-shadow,border-color] duration-150 ease-out hover:border-cyan-300/50 hover:shadow-[0_18px_44px_-10px_rgba(15,45,55,0.52)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-s4-cyan/40 focus-visible:ring-offset-2";
 
 /**
  * Tarjeta revista unificada: imagen hero + cuerpo con gradiente (índice y relacionados).
@@ -100,6 +100,54 @@ export function TallerArticleCardMagazine({ article, index = 0, className = "" }
                         className="h-4 w-4 transition-transform duration-150 ease-out group-hover:translate-x-0.5"
                         aria-hidden
                     />
+                </span>
+            </div>
+        </Link>
+    );
+}
+
+/**
+ * Card compacta para raíl (webcam): foto + chip + título. Sin excerpt ni «Guía 01».
+ */
+export function TallerArticleCardRail({ article }) {
+    const cover = article?.cover_image || null;
+    const { main: titleMain } = formatTallerDisplayTitle(article?.title);
+    const chip = typeof article?.chip === "string" && article.chip !== "" ? article.chip : "Guía";
+
+    return (
+        <Link
+            href={route("taller.show", article.slug)}
+            className={`${MAGAZINE_CARD_CLASS} min-h-0`}
+        >
+            <div className="relative isolate aspect-[16/10] w-full shrink-0 overflow-hidden rounded-t-2xl bg-gradient-to-br from-slate-100 via-cyan-50/80 to-slate-200/60">
+                {cover ? (
+                    <CoverThumb
+                        src={cover}
+                        alt=""
+                        className="absolute inset-0 h-full w-full scale-100 transition-transform duration-500 ease-out will-change-transform group-hover:scale-[1.02]"
+                    />
+                ) : (
+                    <div
+                        className="absolute inset-0 bg-gradient-to-br from-[#0f5f74] to-cyan-600 opacity-25"
+                        aria-hidden
+                    />
+                )}
+                <div
+                    className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/10 to-transparent"
+                    aria-hidden
+                />
+                <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-full border border-white/30 bg-white/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#0f5f74] shadow-sm backdrop-blur-sm">
+                    {chip}
+                </span>
+            </div>
+
+            <div className="relative flex flex-1 flex-col bg-gradient-to-b from-white via-white to-slate-50/95 p-3 sm:p-3.5">
+                <h3 className="line-clamp-2 font-heading text-sm font-bold leading-snug text-slate-900 transition-colors duration-150 group-hover:text-[#0f5f74] sm:text-[15px]">
+                    {titleMain}
+                </h3>
+                <span className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-700 transition-[color,gap] duration-150 group-hover:gap-2 group-hover:text-[#0f5f74]">
+                    Leer
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                 </span>
             </div>
         </Link>

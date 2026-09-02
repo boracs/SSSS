@@ -3,10 +3,10 @@ import { ImagePlus, Star } from "lucide-react";
 import ProductTagSelector from "./ProductTagSelector";
 
 const inputClass =
-    "mt-0.5 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20";
+    "mt-0.5 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 shadow-sm outline-none transition focus:border-s4-cyan focus:ring-2 focus:ring-s4-cyan/20";
 
 const inputClassDense =
-    "mt-0.5 block w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30";
+    "mt-0.5 block w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-s4-cyan focus:ring-1 focus:ring-s4-cyan/30";
 
 const ProductoEditorPanel = ({
     producto,

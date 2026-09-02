@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import BrandLogo from "@/components/BrandLogo";
 
 export const authInputClass =
-    "mt-1.5 block w-full rounded-xl border border-white/15 bg-slate-900/70 px-3.5 py-2.5 text-sm text-white shadow-sm placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/25";
+    "mt-1.5 block w-full rounded-xl border border-white/15 bg-slate-900/70 px-3.5 py-2.5 text-sm text-white shadow-sm placeholder:text-slate-500 transition focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/25";
 
 export const authLabelClass = "block text-xs font-semibold uppercase tracking-wide text-slate-300";
 
@@ -49,6 +49,7 @@ export default function AuthShell({
     title,
     subtitle,
     headTitle,
+    noIndex = true,
     maxWidth = "max-w-md",
     children,
     footer,
@@ -56,7 +57,9 @@ export default function AuthShell({
     return (
         <div className="relative min-h-screen overflow-hidden bg-gradient-to-b from-slate-950 via-[#0a2230] to-slate-950 px-4 py-10 text-white sm:py-14">
             <Head title={headTitle ?? title}>
-                <meta head-key="robots" name="robots" content="noindex, nofollow" />
+                {noIndex ? (
+                    <meta head-key="robots" name="robots" content="noindex, nofollow" />
+                ) : null}
             </Head>
 
             <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />

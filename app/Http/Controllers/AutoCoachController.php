@@ -8,6 +8,7 @@ use App\Support\IniSize;
 use App\Services\AutoCoach\AutoCoachCatalogService;
 use App\Services\AutoCoach\AutoCoachSessionService;
 use App\Services\AutoCoach\AutoCoachUploadService;
+use App\Services\Seo\PublicPageSeoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -21,6 +22,7 @@ class AutoCoachController extends Controller
         private readonly AutoCoachCatalogService $catalog,
         private readonly AutoCoachUploadService $uploads,
         private readonly AutoCoachSessionService $sessions,
+        private readonly PublicPageSeoService $pageSeo,
     ) {}
 
     public function index(Request $request): Response
@@ -39,6 +41,7 @@ class AutoCoachController extends Controller
         $serverPostLimitMb = (int) floor(IniSize::toBytes((string) ini_get('post_max_size')) / 1024 / 1024);
 
         return Inertia::render('AutoCoach/Index', [
+            'seo' => $this->pageSeo->comparadorSurf()->toArray(),
             'limits' => [
                 'maxBatch' => $maxBatch,
                 'maxFileMb' => (int) ($maxFileBytes / 1024 / 1024),

@@ -23,10 +23,10 @@ class EmergencyKeyController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->numeroTaquilla === null) {
+        if ($user->numeroTaquilla === null || ! $user->hasPhysicalLocker()) {
             return redirect()
                 ->route('taquillas.index.client')
-                ->with('error', 'Necesitas una taquilla asignada para acceder a la llave de emergencia.');
+                ->with('error', EmergencyKeyNotEligibleException::notPhysicalLocker()->getMessage());
         }
 
         $status = $this->emergencyKeyService->statusFor($user);

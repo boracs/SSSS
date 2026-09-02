@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import React from "react";
+import { ChevronRight, Sparkles } from "lucide-react";
 import { Link } from "@inertiajs/react";
 import Producto from "../components/Producto";
+import SnapRail from "../components/ui/SnapRail";
 
 /**
  * Carrusel de ofertas tienda socios.
@@ -16,36 +17,6 @@ const Contenedor_productos = ({
     compact = false,
     tone = "light",
 }) => {
-    const scrollRef = useRef(null);
-    const [canScrollLeft, setCanScrollLeft] = useState(false);
-    const [canScrollRight, setCanScrollRight] = useState(false);
-
-    const updateScrollState = useCallback(() => {
-        const el = scrollRef.current;
-        if (!el) return;
-        const { scrollLeft, scrollWidth, clientWidth } = el;
-        setCanScrollLeft(scrollLeft > 8);
-        setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 8);
-    }, []);
-
-    useEffect(() => {
-        updateScrollState();
-        const el = scrollRef.current;
-        if (!el) return;
-        el.addEventListener("scroll", updateScrollState, { passive: true });
-        window.addEventListener("resize", updateScrollState);
-        return () => {
-            el.removeEventListener("scroll", updateScrollState);
-            window.removeEventListener("resize", updateScrollState);
-        };
-    }, [productos.length, updateScrollState]);
-
-    const scrollStep = compact ? 200 : 300;
-
-    const scroll = (dir) => {
-        scrollRef.current?.scrollBy({ left: dir * scrollStep, behavior: "smooth" });
-    };
-
     if (!productos.length) return null;
 
     const isLight = tone === "light";
@@ -118,66 +89,37 @@ const Contenedor_productos = ({
                     ) : null}
                 </div>
 
-                <div className="relative min-w-0 overflow-hidden">
-                    <div
-                        className={`pointer-events-none absolute inset-y-0 left-0 z-10 w-10 transition-opacity duration-300 sm:w-14 ${isLight ? "bg-gradient-to-r from-white to-transparent" : "bg-gradient-to-r from-slate-950/95 to-transparent"} ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
-                        aria-hidden
-                    />
-                    <div
-                        className={`pointer-events-none absolute inset-y-0 right-0 z-10 w-10 transition-opacity duration-300 sm:w-14 ${isLight ? "bg-gradient-to-l from-white to-transparent" : "bg-gradient-to-l from-slate-950/95 to-transparent"} ${canScrollRight ? "opacity-100" : "opacity-0"}`}
-                        aria-hidden
-                    />
-
-                    <button
-                        type="button"
-                        onClick={() => scroll(-1)}
-                        aria-label="Productos anteriores"
-                        disabled={!canScrollLeft}
-                        className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 ${isLight ? "border-slate-200 bg-white text-slate-700 hover:border-s4/30 hover:text-s4" : "border-white/20 bg-slate-800/95 text-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] hover:border-cyan-400/40 hover:text-cyan-200"} ${compact ? "left-0 h-8 w-8" : "left-0 hidden h-11 w-11 sm:flex"} ${canScrollLeft ? "opacity-100" : "pointer-events-none opacity-0"}`}
-                    >
-                        <ChevronLeft className={compact ? "h-4 w-4" : "h-5 w-5"} />
-                    </button>
-
-                    <div
-                        ref={scrollRef}
-                        className={`flex max-w-full items-stretch snap-x snap-mandatory overflow-x-auto overscroll-x-contain pb-1 pt-1 [-ms-overflow-style:none] [scrollbar-width:none] [touch-action:pan-x] [&::-webkit-scrollbar]:hidden ${compact ? "gap-2.5 sm:gap-3" : "gap-4 sm:gap-5"}`}
-                    >
-                        {productos.map((producto, index) => (
-                            <div
-                                key={producto.id}
-                                className={
-                                    compact
-                                        ? "flex w-[min(58vw,168px)] shrink-0 snap-start sm:w-[168px]"
-                                        : "flex w-[min(88vw,280px)] shrink-0 snap-start sm:w-[272px]"
-                                }
-                                style={{ animationDelay: `${index * 60}ms` }}
-                            >
-                                <div className="flex w-full flex-col">
-                                    <Producto
-                                        nombre={producto.nombre}
-                                        precio={producto.precio}
-                                        imagen={producto.imagen}
-                                        unidades={producto.unidades}
-                                        descuento={producto.descuento}
-                                        producto={producto}
-                                        density="compact"
-                                        surface={isLight ? "light" : "dark"}
-                                    />
-                                </div>
+                <SnapRail
+                    compact={compact}
+                    tone={isLight ? "light" : "dark"}
+                    prevLabel="Productos anteriores"
+                    nextLabel="Más productos"
+                >
+                    {productos.map((producto, index) => (
+                        <div
+                            key={producto.id}
+                            className={
+                                compact
+                                    ? "flex w-[min(58vw,168px)] shrink-0 snap-start sm:w-[168px]"
+                                    : "flex w-[min(88vw,280px)] shrink-0 snap-start sm:w-[272px]"
+                            }
+                            style={{ animationDelay: `${index * 60}ms` }}
+                        >
+                            <div className="flex w-full flex-col">
+                                <Producto
+                                    nombre={producto.nombre}
+                                    precio={producto.precio}
+                                    imagen={producto.imagen}
+                                    unidades={producto.unidades}
+                                    descuento={producto.descuento}
+                                    producto={producto}
+                                    density="compact"
+                                    surface={isLight ? "light" : "dark"}
+                                />
                             </div>
-                        ))}
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => scroll(1)}
-                        aria-label="Más productos"
-                        disabled={!canScrollRight}
-                        className={`absolute top-1/2 z-20 flex -translate-y-1/2 items-center justify-center rounded-full border shadow-md backdrop-blur-md transition-all duration-300 hover:scale-105 ${isLight ? "border-slate-200 bg-white text-slate-700 hover:border-s4/30 hover:text-s4" : "border-white/20 bg-slate-800/95 text-slate-100 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] hover:border-cyan-400/40 hover:text-cyan-200"} ${compact ? "right-0 h-8 w-8" : "right-0 hidden h-11 w-11 sm:flex"} ${canScrollRight ? "opacity-100" : "pointer-events-none opacity-0"}`}
-                    >
-                        <ChevronRight className={compact ? "h-4 w-4" : "h-5 w-5"} />
-                    </button>
-                </div>
+                        </div>
+                    ))}
+                </SnapRail>
             </div>
         </section>
     );

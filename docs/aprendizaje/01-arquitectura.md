@@ -80,4 +80,13 @@
 
 ---
 
-> **Por ampliar:** cuando surjan dudas nuevas de arquitectura (event sourcing, CQRS, hexagonal…), añadir entradas 1.8, 1.9… aquí con la misma estructura.
+## 1.8 Funciones y triggers de MySQL no aceleran el catálogo
+
+- **Qué es:** un **índice** es un índice de libro (MySQL encuentra filas sin leer toda la tabla). Una **función/procedimiento** es código SQL reutilizable. Un **TRIGGER** de MySQL se dispara solo en `INSERT`/`UPDATE`/`DELETE` (no es el botón `AccordionTrigger` de React: ver [03 §3.9](03-react-js.md)).
+- **Por qué importa:** tener tablas y filas no pide triggers. Lo lento suele ser **consultas mal hechas** (N+1, `WHERE` sin índice), no la falta de SQL automático. Un trigger **esconde reglas** fuera de Laravel: no las ves en el Service, los tests PHP no las cubren, y un `seed`/`update` masivo puede dispararlas mil veces. En este proyecto el “cuando pasa X, haz Y” ya es **Event + Job** ([02 §2.4](02-laravel-php.md)).
+- **En tu proyecto:** la lógica vive en `app/Services/` y `app/Actions/`; el dinero y las plazas van con transacción + `lockForUpdate` ([01 §1.1–1.3](01-arquitectura.md)). Hay índices de rendimiento en `database/migrations/2026_08_11_083720_add_performance_indexes.php` (p. ej. `bookings.status`, `expires_at`). No hay triggers de negocio.
+- **Para recordar:** *rápido = índices + `with()` + transacciones cortas. Triggers de MySQL no son el atajo; duplicarían lo que ya hacen Events/Jobs.*
+
+---
+
+> **Por ampliar:** cuando surjan dudas nuevas de arquitectura (event sourcing, CQRS, hexagonal…), añadir entradas 1.9… aquí con la misma estructura.

@@ -21,6 +21,14 @@ Por cada prompt completado, añade una entrada con este esquema:
 
 ## Iteraciones
 
+### 2026-08-30 — Prompt UX/CRO+a11y landings reparación (Edy/Willy) → Cursor
+
+- **Herramienta destino:** Cursor (implementación)
+- **Iteraciones:** v1 (prompt-forge; plantilla UX + auditoría 2026-08-30)
+- **Qué aportó Cursor/taller:** locators por bloque; copy y CTAs fijos; keys payload; fuera de alcance URL/fotos/FAQ/L1; ContactBlock ≠ homónimo del Footer
+- **Decisión final:** un lote (quick wins + extraer StepCard + title Zurriola). Sin fotos ni HowTo hasta que el dueño las pida.
+- **Lección aprendida:** en landings gemelas, el Footer local `ContactBlock` y el compartido no se pueden citar por nombre solo: hay que anclar el path.
+
 ### 2026-08-25 — Prompt pipeline imágenes catálogo (máster + thumb, borrar RAW) → Reasonix análisis
 
 - **Herramienta destino:** Reasonix (análisis) → Cursor (prompt v3 de implementación; código solo si el dueño pide adelantar)

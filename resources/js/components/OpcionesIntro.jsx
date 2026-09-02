@@ -1,144 +1,81 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import { CalendarRange } from "lucide-react";
-import DetailedForecastEntry from "./webcam/DetailedForecastEntry";
 
-/** Fila 1 — oferta principal / día a día */
+/** Fila única — experiencias del club (8 tiles; cola técnica vive en el directorio). */
 const OPCIONES_PRINCIPALES = [
     {
         texto: "Clases de Surf",
-        imagen: "/img/sunset_surf.webp",
+        imagen: "/img/home-tiles/sunset_surf-800.webp",
         href: () => route("servicios.surf"),
+        width: 800,
+        height: 533,
     },
     {
         texto: "Surftrips",
-        imagen: "/img/trip.jpg",
+        imagen: "/img/home-tiles/trip-800.webp",
         href: () => route("servicios.surfTrips"),
+        width: 700,
+        height: 860,
     },
     {
         texto: "Surfskate",
-        imagen: "/img/surf_skate.webp",
+        imagen: "/img/home-tiles/surf_skate-800.webp",
         href: () => route("servicios.surfSkate"),
+        width: 800,
+        height: 535,
     },
     {
         texto: "Alquiler tablas",
-        imagen: "/img/tabla-demo.png",
+        imagen: "/img/home-tiles/tabla-demo-800.webp",
         href: () => route("rentals.surfboards.index"),
+        width: 800,
+        height: 800,
     },
     {
         texto: "Tienda",
-        imagen: "/img/tienda_1.webp",
+        imagen: "/img/home-tiles/tienda_1-800.webp",
         href: () => route("tienda"),
+        width: 800,
+        height: 533,
     },
     {
         texto: "Taquillas",
-        imagen: "/img/instalaciones.jpg",
+        imagen: "/img/home-tiles/instalaciones-800.webp",
         href: () => route("taquillas.planes"),
+        width: 800,
+        height: 600,
     },
     {
         texto: "Webcam",
-        imagen: "/img/zurriola_webcam.webp",
+        imagen: "/img/home-tiles/zurriola_webcam-800.webp",
         href: () => route("servicios.webcams"),
+        width: 800,
+        height: 533,
     },
     {
         texto: "Tablas segunda mano",
-        imagen: "/img/ofertas.webp",
+        imagen: "/img/home-tiles/ofertas-800.webp",
         href: () => route("second-hand.index"),
+        width: 800,
+        height: 521,
     },
 ];
-
-/** Fila 2 — servicios técnicos y extras (assets IA en /img/opciones) */
-const OPCIONES_MAS = [
-    {
-        texto: "Reparación tablas",
-        imagen: "/img/opciones/opcion-reparacion-tablas.webp",
-        href: () => route("servicios"),
-    },
-    {
-        texto: "Reparación neoprenos",
-        imagen: "/img/opciones/opcion-reparacion-neoprenos.webp",
-        href: () => route("servicios.reparacionNeoprenos"),
-    },
-    {
-        texto: "Subastas",
-        imagen: "/img/opciones/opcion-subastas.webp",
-        href: () => route("auctions.index"),
-    },
-    {
-        texto: "Blog educativo",
-        imagen: "/img/opciones/opcion-taller-surf.webp",
-        href: () => route("taller.index"),
-    },
-    {
-        texto: "Comparador",
-        imagen: "/img/opciones/opcion-comparador.webp",
-        href: () => route("autocoach.index"),
-    },
-    {
-        texto: "Videocorrecciones",
-        imagen: "/img/opciones/opcion-videocorrecciones.webp",
-        href: () => route("servicios.videograbaciones"),
-    },
-    {
-        texto: "Fotografía",
-        imagen: "/img/opciones/opcion-fotografia.webp",
-        href: () => route("servicios.fotografia"),
-    },
-    {
-        texto: "Guía surfskate",
-        imagen: "/img/opciones/opcion-guia-surfskate.webp",
-        href: () => route("servicios.surfSkate.guia"),
-    },
-    {
-        texto: "Forecast al detalle",
-        imagen: "/img/zurriola_webcam.webp",
-        action: "detailed-forecast",
-    },
-];
-
-function TileShell({ imagen, texto, children }) {
-    return (
-        <div className="group relative min-h-[4.75rem] overflow-hidden bg-gray-900 sm:min-h-[5.5rem] md:h-full md:min-h-0 md:flex-1">
-            <div
-                className="absolute inset-0 scale-100 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                style={{ backgroundImage: `url(${imagen})` }}
-                aria-hidden
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/35 to-black/15 transition-opacity duration-300 group-hover:from-black/50 group-hover:via-black/25" />
-            {children}
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center p-2 text-center md:p-2.5">
-                <span className="text-[9px] font-bold leading-tight tracking-wide text-white drop-shadow-sm sm:text-[10px] md:text-sm lg:text-base">
-                    {texto}
-                </span>
-            </span>
-        </div>
-    );
-}
 
 function OpcionTile({ opcion }) {
-    if (opcion.action === "detailed-forecast") {
-        return (
-            <TileShell imagen={opcion.imagen} texto={opcion.texto}>
-                <DetailedForecastEntry
-                    variant="tile"
-                    className="absolute inset-0 z-10 h-full w-full cursor-pointer border-0 bg-transparent p-0 text-transparent"
-                    label={opcion.texto}
-                >
-                    <span className="sr-only">{opcion.texto}</span>
-                    <CalendarRange className="sr-only" aria-hidden />
-                </DetailedForecastEntry>
-            </TileShell>
-        );
-    }
-
     return (
         <Link
             href={opcion.href()}
             className="group relative min-h-[4.75rem] overflow-hidden bg-gray-900 sm:min-h-[5.5rem] md:h-full md:min-h-0 md:flex-1"
         >
-            <div
-                className="absolute inset-0 scale-100 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-                style={{ backgroundImage: `url(${opcion.imagen})` }}
+            <img
+                src={opcion.imagen}
+                alt=""
+                width={opcion.width}
+                height={opcion.height}
+                sizes="(min-width: 768px) 25vw, 50vw"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+                decoding="async"
                 aria-hidden
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/35 to-black/15 transition-opacity duration-300 group-hover:from-black/50 group-hover:via-black/25" />
@@ -186,13 +123,14 @@ function OpcionesRow({ opciones, ariaLabel }) {
 }
 
 /**
- * Mosaico visual de accesos S4 (home / hubs).
- * No va en la cabecera: se usa como bloque de exploración en página.
+ * Galería visual de experiencias S4 (cierre de la home).
+ * Cola técnica (reparaciones, subastas, taller, comparador…) vive en HomeExploraDirectorio.
  */
 export default function OpcionesIntro({
     className = "",
-    eyebrow = "Explora S4",
-    title = "Todo lo que puedes hacer con nosotros",
+    eyebrow = "El club en imágenes",
+    title = "Experiencias del club",
+    lead = "Ocho puertas visuales a lo que más se vive en Zurriola.",
     showHeading = true,
 }) {
     return (
@@ -213,15 +151,14 @@ export default function OpcionesIntro({
                             {title}
                         </h2>
                         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-                            Clases, material, club y herramientas para progresar — todo en un mismo sitio.
+                            {lead}
                         </p>
                     </div>
                 </div>
             ) : null}
 
-            <nav className="relative z-[2] flex flex-col gap-px bg-gray-950" aria-label="Accesos rápidos S4">
-                <OpcionesRow opciones={OPCIONES_PRINCIPALES} ariaLabel="Servicios principales" />
-                <OpcionesRow opciones={OPCIONES_MAS} ariaLabel="Más servicios S4" />
+            <nav className="relative z-[2] flex flex-col gap-px bg-gray-950" aria-label="Experiencias del club">
+                <OpcionesRow opciones={OPCIONES_PRINCIPALES} ariaLabel="Experiencias principales" />
             </nav>
         </section>
     );

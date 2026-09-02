@@ -1,4 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "@/components/seo/SeoHead";
 import { formatEur } from "@/utils/money";
 import {
@@ -35,26 +36,26 @@ const MICRO_SERVICIOS_URL = "/nosotros#micro-servicios-club";
 // la duracion y el precio). Se muestran una sola vez para no saturar la pagina.
 const MEMBERSHIP_BENEFITS = [
     { icon: Lock, text: "1 taquilla privada a pie de playa con seguridad." },
-    { icon: Shirt, text: "Espacio para 2 tablas en rack y 2 trajes en el secadero rapido." },
-    { icon: Bath, text: "Banos, duchas y zona de calentamiento a tu disposicion." },
+    { icon: Shirt, text: "Espacio para 2 tablas en rack y 2 trajes en el secadero rápido." },
+    { icon: Bath, text: "Baños, duchas y zona de calentamiento a tu disposición." },
     { icon: Percent, text: "Hasta 45% de descuento en tienda (50% con plan VIP anual)." },
-    { icon: Wrench, text: "Reparacion de tablas y acceso a micro-servicios del club." },
+    { icon: Wrench, text: "Reparación de tablas y acceso a micro-servicios del club." },
 ];
 
 // Lista completa de micro-servicios, identica a la presentacion de /nosotros.
 const MICRO_SERVICES = [
-    { icon: Coffee, label: "Maquina de cafe", sub: "Trae tus capsulas" },
-    { icon: Refrigerator, label: "Frigorifico comunitario", sub: "Guarda tus tapers, bebidas..." },
-    { icon: Zap, label: "Vending tecnico", sub: "Parafina, Solarez, quillas" },
-    { icon: Droplets, label: "Ducha de agua caliente", sub: "Aclarado post-sesion" },
-    { icon: Scissors, label: "Secador de pelo", sub: "Profesional de uso comun" },
+    { icon: Coffee, label: "Máquina de café", sub: "Trae tus cápsulas" },
+    { icon: Refrigerator, label: "Frigorífico comunitario", sub: "Guarda tus tápers, bebidas..." },
+    { icon: Zap, label: "Vending técnico", sub: "Parafina, Solarez, quillas" },
+    { icon: Droplets, label: "Ducha de agua caliente", sub: "Aclarado post-sesión" },
+    { icon: Scissors, label: "Secador de pelo", sub: "Profesional de uso común" },
     { icon: Plug, label: "Enchufes y carga USB", sub: "En cada taquilla" },
-    { icon: Wifi, label: "WiFi alta velocidad", sub: "En toda la instalacion" },
-    { icon: Music, label: "Alexa smart speaker", sub: "Musica y domotica" },
-    { icon: Heart, label: "Botiquin primeros auxilios", sub: "Siempre disponible" },
-    { icon: Ruler, label: "Zona de encerado y reparaciones pequenas", sub: "Material comun: Solarez, lijas, luz UV..." },
-    { icon: Wind, label: "Zona de secado rapido para neoprenos", sub: "Baja humedad relativa" },
-    { icon: Bath, label: "Banos", sub: "A disposicion de socios" },
+    { icon: Wifi, label: "Wifi de alta velocidad", sub: "En toda la instalación" },
+    { icon: Music, label: "Alexa smart speaker", sub: "Música y domótica" },
+    { icon: Heart, label: "Botiquín primeros auxilios", sub: "Siempre disponible" },
+    { icon: Ruler, label: "Zona de encerado y reparaciones pequeñas", sub: "Material común: Solarez, lijas, luz UV..." },
+    { icon: Wind, label: "Zona de secado rápido para neoprenos", sub: "Baja humedad relativa" },
+    { icon: Bath, label: "Baños", sub: "A disposición de socios" },
     {
         icon: Package,
         label: "Taquillas",
@@ -63,11 +64,11 @@ const MICRO_SERVICES = [
     },
     {
         icon: Wrench,
-        label: "Servicio de reparacion automatizado",
-        sub: "Pizarra fisica + seguimiento semanal",
+        label: "Servicio de reparación automatizado",
+        sub: "Pizarra física + seguimiento semanal",
         href: "/nosotros#taller-edy-mulder",
     },
-    { icon: Dumbbell, label: "Zona de calentamiento", sub: "TRX y multi ejercicios" },
+    { icon: Dumbbell, label: "Zona de calentamiento", sub: "TRX y multiejercicios" },
     {
         icon: Video,
         label: "Webcam Zurriola",
@@ -76,14 +77,14 @@ const MICRO_SERVICES = [
     },
     {
         icon: CalendarDays,
-        label: "Surf forecast 16 dias",
-        sub: "Prevision marina Zurriola",
+        label: "Surf forecast 16 días",
+        sub: "Previsión marina Zurriola",
         href: `${route("servicios.webcams")}#prevision-forecast`,
     },
     {
         icon: Star,
-        label: "Recomendacion por nivel",
-        sub: "Ini / Int / Ava segun el parte",
+        label: "Recomendación por nivel",
+        sub: "Ini / Int / Ava según el parte",
         href: `${route("servicios.webcams")}#parte-s4-hoy`,
     },
     {
@@ -110,7 +111,7 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
     const hasLocker = Boolean(user?.hasActiveLocker || user?.numeroTaquilla);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950 text-white">
+        <PageShell variant="dark" withGradient>
             <SeoHead seo={seo} />
             <div className="mx-auto max-w-6xl space-y-14 px-4 py-10 sm:px-6 sm:py-14">
                 {/* HERO */}
@@ -118,12 +119,12 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                     aria-labelledby="planes-hero-heading"
                     className="rounded-3xl border border-cyan-900/40 bg-[#0b1d33]/70 p-6 shadow-xl sm:p-10"
                 >
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/80">San Sebastian Surf School</p>
-                    <h1 id="planes-hero-heading" className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-cyan-200/80">San Sebastián Surf School</p>
+                    <h1 id="planes-hero-heading" className="mt-2 font-heading text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
                         Planes y cuotas del club
                     </h1>
                     <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-300">
-                        Consulta nuestras tarifas y descubre que incluye ser socio con taquilla en Zurriola. Elige el periodo
+                        Consulta nuestras tarifas y descubre qué incluye ser socio con taquilla en Zurriola. Elige el periodo
                         que mejor encaje contigo y accede a instalaciones premium, descuentos y micro-servicios exclusivos.
                     </p>
                     <div className="mt-6 flex flex-wrap gap-3">
@@ -131,7 +132,7 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                             href={MICRO_SERVICIOS_URL}
                             className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/15"
                         >
-                            Ver mas micro-servicios del club <ExternalLink className="h-4 w-4" />
+                            Ver más micro-servicios del club <ExternalLink className="h-4 w-4" />
                         </Link>
                         {user && hasLocker ? (
                             <Link
@@ -161,7 +162,7 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
 
                     {planes.length === 0 ? (
                         <p className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-slate-400">
-                            No hay planes publicados en este momento. Contacta con la escuela para mas informacion.
+                            No hay planes publicados en este momento. Contacta con la escuela para más información.
                         </p>
                     ) : (
                         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -200,10 +201,10 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
 
                 {/* QUE INCLUYE (seccion unica, sin duplicar) */}
                 <section className="rounded-3xl border border-white/10 bg-white/5 p-6 sm:p-8">
-                    <h2 className="text-xl font-extrabold sm:text-2xl">Que incluye tu membresia</h2>
+                    <h2 className="text-xl font-extrabold sm:text-2xl">Qué incluye tu membresía</h2>
                     <p className="mt-2 max-w-3xl text-sm text-slate-400">
                         No es solo un casillero: es tu base de operaciones en la playa. Llegas, te cambias, guardas tu
-                        material, calientas, surfeas y vuelves sin friccion.
+                        material, calientas, surfeas y vuelves sin fricción.
                     </p>
                     <ul className="mt-6 grid gap-4 sm:grid-cols-2">
                         {MEMBERSHIP_BENEFITS.map(({ icon: Icon, text }) => (
@@ -214,8 +215,8 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                         ))}
                     </ul>
                     <p className="mt-4 text-xs text-slate-500">
-                        * Para contratar o renovar un plan, inicia sesion o contacta con nosotros. Los precios pueden
-                        actualizarse segun disponibilidad.
+                        * Para contratar o renovar un plan, inicia sesión o contacta con nosotros. Los precios pueden
+                        actualizarse según disponibilidad.
                     </p>
                 </section>
 
@@ -225,7 +226,7 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                         <div>
                             <h2 className="text-xl font-extrabold sm:text-2xl">Micro-servicios del club</h2>
                             <p className="mt-2 text-sm text-slate-400">
-                                +{MICRO_SERVICES.length} servicios incluidos para socios: del cafe al forecast y las
+                                +{MICRO_SERVICES.length} servicios incluidos para socios: del café al forecast y las
                                 subastas.
                             </p>
                         </div>
@@ -233,7 +234,7 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                             href={MICRO_SERVICIOS_URL}
                             className="inline-flex items-center gap-2 self-start rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 sm:self-auto"
                         >
-                            Ver dinamica completa <ExternalLink className="h-3.5 w-3.5" />
+                            Ver dinámica completa <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                     </div>
                     <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -301,6 +302,6 @@ export default function PlanesTaquillasPublic({ planes = [], seo }) {
                     </div>
                 </section>
             </div>
-        </div>
+        </PageShell>
     );
 }

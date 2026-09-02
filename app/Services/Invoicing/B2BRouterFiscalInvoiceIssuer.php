@@ -42,7 +42,10 @@ final class B2BRouterFiscalInvoiceIssuer implements FiscalInvoiceIssuerInterface
             ],
         ];
 
-        $response = $this->client->createInvoice($payload);
+        $response = $this->client->createInvoice(
+            $payload,
+            B2BRouterClient::idempotencyKeyForSession($draft->stripeSessionId),
+        );
         $invoice  = (array) ($response['invoice'] ?? $response);
 
         $invoiceId = (string) ($invoice['id'] ?? '');

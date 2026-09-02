@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, MessageCircle, Phone, ShieldAlert } from "lucide-react";
 
 const STATUS_BADGE = {
@@ -117,7 +117,7 @@ export default function Index({ interactions, status, statusOptions }) {
     const { flash } = usePage().props;
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Admin · Casos del Chatbot" />
 
             <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
@@ -168,6 +168,6 @@ export default function Index({ interactions, status, statusOptions }) {
                     )}
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

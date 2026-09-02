@@ -9,7 +9,7 @@ import {
     CheckCircle2,
     AlertTriangle,
 } from "lucide-react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import PedidoDetailModal from "../components/PedidoDetailModal";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import { whatsappUrlFromPhone } from "@/lib/whatsapp";
@@ -312,7 +312,7 @@ export default function GestorPedidos({
     };
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <Head title="Gestor de pedidos" />
 
             <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#071326] to-slate-950 px-2 py-4 sm:px-6 sm:py-6">
@@ -447,6 +447,6 @@ export default function GestorPedidos({
                 }}
                 onConfirm={confirmToggleEntregado}
             />
-        </Layout1>
+        </PageShell>
     );
 }

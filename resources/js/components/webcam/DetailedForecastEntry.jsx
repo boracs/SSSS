@@ -7,7 +7,7 @@ let entrySeq = 0;
 
 /**
  * Botón + panel "Ver forecast al detalle" reutilizable (home,
- * taller, mosaico OpcionesIntro, etc.). Fetch solo al primer clic.
+ * taller, SurfBriefMini, Subastas, etc.). Fetch solo al primer clic.
  *
  * @param {"button"|"linkish"|"tile"} [variant]
  * @param {string} [webcamAnchorId] ancla de la webcam en /servicios/webcams

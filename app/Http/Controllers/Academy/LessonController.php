@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\Academy;
 
+use App\Actions\Academy\CancelEnrollmentAction;
+use App\Actions\Academy\ConfirmSurfTripAction;
 use App\Actions\Academy\EnrollStudentAction;
 use App\Actions\Academy\RequestLessonAction;
 use App\Actions\Academy\RequestPrivateLessonAction;
-use App\Actions\Academy\CancelEnrollmentAction;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\DTOs\Payments\PaymentLineItemDto;
@@ -18,14 +19,12 @@ use App\Mail\ReservationConfirmedMail;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\UserBono;
-use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
-use App\Services\CreditEngineService;
 use App\Support\AcademyContact;
 use App\Support\AcademyEnrollmentPolicy;
+use App\Support\AcademyLocation;
 use App\Support\BusinessDateTime;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
@@ -33,18 +32,16 @@ use Inertia\Inertia;
 class LessonController extends Controller
 {
     public function __construct(
-        protected CreditEngineService $creditEngine,
-        protected AutoReleaseService $autoReleaseService,
         protected AvailabilityService $availabilityService,
         protected EnrollStudentAction $enrollStudentAction,
         protected RequestLessonAction $requestLessonAction,
         protected RequestPrivateLessonAction $requestPrivateLessonAction,
         protected CancelEnrollmentAction $cancelEnrollmentAction,
+        protected ConfirmSurfTripAction $confirmSurfTripAction,
         protected InitiatePaymentAction $initiatePaymentAction,
     ) {
-        Cache::remember('auto_cleanup_check', 900, function () {
-            return $this->autoReleaseService->cleanupExpiredReservations();
-        });
+        // El barrido de reservas caducadas vive en `academy:cleanup` (routes/console.php).
+        // Colgarlo del constructor lo ataba al tráfico: sin visitas, las plazas no se liberaban.
     }
 
     /**
@@ -333,8 +330,7 @@ class LessonController extends Controller
             ], 422);
         }
 
-        // Generar slots (inicio cada 15 min) de 08:00 hasta que la sesión termine como máximo a las 22:00.
-        $slots = [];
+        $windows = [];
         $cursor = $day->copy()->setTime(8, 0);
         $dayEnd = $day->copy()->setTime(22, 0);
         $lastStart = $dayEnd->copy()->subMinutes($durationMinutes);
@@ -350,22 +346,31 @@ class LessonController extends Controller
             $slotStart = $cursor->copy();
             $slotEnd = $cursor->copy()->addMinutes($durationMinutes);
 
-            // Solo futuro (hoy: no permitir horarios pasados)
             if ($slotEnd->lessThanOrEqualTo(BusinessDateTime::now())) {
                 $cursor->addMinutes(15);
 
                 continue;
             }
 
-            $availability = $this->availabilityService->preview($slotStart, $slotEnd, 1);
-            if ($availability['allowed']) {
-                $slots[] = [
-                    'start' => $slotStart->format('H:i'),
-                    'end' => $slotEnd->format('H:i'),
-                ];
-            }
+            $windows[] = [
+                'start' => $slotStart,
+                'end' => $slotEnd,
+            ];
 
             $cursor->addMinutes(15);
+        }
+
+        $evaluations = $this->availabilityService->previewManyWindows($windows, 1);
+        $slots = [];
+        foreach ($windows as $index => $window) {
+            if (! ($evaluations[$index]['allowed'] ?? false)) {
+                continue;
+            }
+
+            $slots[] = [
+                'start' => $window['start']->format('H:i'),
+                'end' => $window['end']->format('H:i'),
+            ];
         }
 
         return response()->json([
@@ -473,6 +478,11 @@ class LessonController extends Controller
         /** @var \App\Models\LessonUser $enrollment */
         $enrollment = $result['enrollment'];
 
+        if (! empty($result['pending_admin'])
+            || $enrollment->status === LessonUser::STATUS_PENDING_EXTRA_MONITOR) {
+            return back()->with('success', $result['message']);
+        }
+
         // Calcular importe: precio de la clase o señal de reserva por defecto
         $priceEur     = $lesson->price !== null
             ? (float) $lesson->price
@@ -534,15 +544,25 @@ class LessonController extends Controller
         $enrollment = LessonUser::query()
             ->where('lesson_id', $lesson->id)
             ->where('user_id', $user->id)
-            ->whereIn('status', [
-                LessonUser::STATUS_PENDING,
-                LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-            ])
+            ->where('status', LessonUser::STATUS_PENDING)
             ->where('payment_status', PaymentStatus::Pending->value)
             ->first();
 
         if (! $enrollment) {
+            $extra = LessonUser::query()
+                ->where('lesson_id', $lesson->id)
+                ->where('user_id', $user->id)
+                ->where('status', LessonUser::STATUS_PENDING_EXTRA_MONITOR)
+                ->first();
+            if ($extra !== null) {
+                return back()->with('error', 'Esta plaza espera la aprobación del club. El pago se abre cuando te confirmen el cupo extra.');
+            }
+
             return back()->with('error', 'No hay una inscripción pendiente de pago para esta clase.');
+        }
+
+        if ($this->cardPayBlockedByVipBono($enrollment, $user)) {
+            return back()->with('error', 'Esta plaza la cubre tu bono VIP. No hace falta pagar con tarjeta.');
         }
 
         $partySize  = max(1, (int) ($enrollment->party_size ?? $enrollment->quantity ?? 1));
@@ -631,7 +651,7 @@ class LessonController extends Controller
         ]);
 
         $enrollment->load('user', 'lesson');
-        $googleMapsUrl = config('services.academy.maps_url');
+        $googleMapsUrl = AcademyLocation::mapsUrl();
         if ($enrollment->user && $enrollment->user->email) {
             try {
                 Mail::to($enrollment->user->email)->queue(new ReservationConfirmedMail($enrollment->user, $enrollment->lesson, $googleMapsUrl));
@@ -695,20 +715,33 @@ class LessonController extends Controller
 
     /**
      * Confirmar asistencia a nueva ubicación (Surf-Trip) o solicitar reembolso.
+     *
+     * El cambio de sede lo decide el club, así que rechazarlo devuelve el crédito
+     * sin aplicar el corte de cancelación de 4 h. Lo que sí se exige: que la clase
+     * sea realmente un surf-trip, que no haya empezado, que la plaza siga activa y
+     * que el alumno no haya respondido ya.
      */
     public function confirmSurfTrip(Request $request, Lesson $lesson)
     {
-        $confirmed = (bool) $request->input('confirm');
-        $enrollment = $lesson->enrollments()->where('user_id', auth()->id())->first();
-        if (! $enrollment) {
-            return back()->with('error', 'No estás inscrito.');
+        $result = $this->confirmSurfTripAction->execute(
+            $request->user(),
+            $lesson,
+            (bool) $request->input('confirm'),
+        );
+
+        return back()->with($result['ok'] ? 'success' : 'error', $result['message']);
+    }
+
+    private function cardPayBlockedByVipBono(LessonUser $enrollment, \App\Models\User $user): bool
+    {
+        if (($enrollment->payment_method ?? '') !== 'bono_vip') {
+            return false;
         }
 
-        $enrollment->update(['surf_trip_confirmed' => $confirmed]);
-        if (! $confirmed) {
-            $this->creditEngine->refundCredits($enrollment, 'Reembolso: no asistencia a playa secundaria');
-        }
-
-        return back()->with('success', $confirmed ? 'Asistencia confirmada.' : 'Reembolso solicitado.');
+        return UserBono::query()
+            ->where('user_id', $user->id)
+            ->where('status', UserBono::STATUS_CONFIRMED)
+            ->where('clases_restantes', '>', 0)
+            ->exists();
     }
 }

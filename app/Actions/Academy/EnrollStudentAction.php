@@ -9,8 +9,8 @@ use App\Models\BonoConsumption;
 use App\Models\Lesson;
 use App\Models\LessonUser;
 use App\Models\User;
-use App\Models\UserBono;
 use App\Services\AvailabilityService;
+use App\Services\BonoService;
 use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use App\Support\LessonBonoCreditUnits;
@@ -20,6 +20,7 @@ final class EnrollStudentAction
 {
     public function __construct(
         private readonly AvailabilityService $availabilityService,
+        private readonly BonoService $bonoService,
     ) {}
 
     /**
@@ -40,21 +41,6 @@ final class EnrollStudentAction
         }
 
         return DB::transaction(function () use ($user, $lesson) {
-            if (LessonUser::query()
-                ->where('lesson_id', $lesson->id)
-                ->where('user_id', $user->id)
-                ->whereIn('status', [
-                    LessonUser::STATUS_PENDING,
-                    LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                    LessonUser::STATUS_CONFIRMED,
-                    LessonUser::STATUS_ENROLLED,
-                    LessonUser::STATUS_ATTENDED,
-                ])
-                ->lockForUpdate()
-                ->exists()) {
-                return ['ok' => false, 'message' => 'Ya estás inscrito o tienes una solicitud activa en esta clase.'];
-            }
-
             return $this->availabilityService->withLockedLesson((int) $lesson->id, function (Lesson $locked) use ($user) {
                 if (! $locked->starts_at || ! $locked->ends_at) {
                     return ['ok' => false, 'message' => 'La clase no tiene horario válido.'];
@@ -64,13 +50,17 @@ final class EnrollStudentAction
                     return ['ok' => false, 'message' => 'Esta clase no admite inscripciones.'];
                 }
 
-                $seatStatuses = [
-                    LessonUser::STATUS_PENDING,
-                    LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                    LessonUser::STATUS_CONFIRMED,
-                    LessonUser::STATUS_ENROLLED,
-                    LessonUser::STATUS_ATTENDED,
-                ];
+                $seatStatuses = LessonUser::activeSeatStatuses();
+
+                // Con la lección ya bloqueada: comprobación e INSERT comparten
+                // la sección serializada, así el doble clic no duplica la fila.
+                if (LessonUser::query()
+                    ->where('lesson_id', $locked->id)
+                    ->where('user_id', $user->id)
+                    ->whereIn('status', $seatStatuses)
+                    ->exists()) {
+                    return ['ok' => false, 'message' => 'Ya estás inscrito o tienes una solicitud activa en esta clase.'];
+                }
 
                 $seatsTaken = (int) LessonUser::query()
                     ->where('lesson_id', $locked->id)
@@ -125,13 +115,7 @@ final class EnrollStudentAction
                     ];
                 }
 
-                $bonoLocked = UserBono::query()
-                    ->where('user_id', $user->id)
-                    ->where('status', UserBono::STATUS_CONFIRMED)
-                    ->where('clases_restantes', '>', 0)
-                    ->orderByDesc('id')
-                    ->lockForUpdate()
-                    ->first();
+                $bonoLocked = $this->bonoService->lockFifoBono((int) $user->id);
 
                 if ($bonoLocked === null) {
                     return ['ok' => false, 'message' => 'No tienes saldo de bono VIP disponible.'];
@@ -161,6 +145,7 @@ final class EnrollStudentAction
                     'user_id' => $user->id,
                     'lesson_id' => $locked->id,
                     'remaining_after' => (int) $bonoLocked->fresh()->clases_restantes,
+                    'units_consumed' => $uc,
                     'consumed_at' => BusinessDateTime::now(),
                 ]);
 

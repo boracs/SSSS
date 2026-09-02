@@ -1,4 +1,4 @@
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { router } from "@inertiajs/react";
 import React, { useRef, useState, useMemo, useCallback, useEffect } from "react";
 import { ArrowDown, ArrowUpDown } from "lucide-react";
@@ -363,7 +363,7 @@ export default function Productos({
         : null;
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <div className="bg-[#111826] p-2 sm:p-4">
                 <div className="mb-2 flex flex-wrap items-end justify-between gap-2 lg:mb-3">
                     <div>
@@ -473,6 +473,6 @@ export default function Productos({
                 onCloseWithoutSave={handleRequestClose}
                 onSaveAndClose={handleSaveAndClose}
             />
-        </Layout1>
+        </PageShell>
     );
 }

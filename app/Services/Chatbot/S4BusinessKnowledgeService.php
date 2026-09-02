@@ -154,14 +154,8 @@ final class S4BusinessKnowledgeService
             '**① Clases particulares** (1,5 h, tabla y neopreno incluidos; atención personalizada):',
         ];
 
-        foreach ($this->privateLessonRows() as $row) {
-            $lines[] = sprintf(
-                '- **%d persona%s** → **%s€** en total%s',
-                $row['people'],
-                $row['people'] === 1 ? '' : 's',
-                $this->formatEuros($row['total_eur']),
-                $row['people'] === 1 ? '' : ' ('.$this->formatEuros($row['per_person_eur']).'€ por persona)',
-            );
+        foreach ($this->privateLessonPriceLines() as $line) {
+            $lines[] = $line;
         }
 
         $lines[] = '';
@@ -183,6 +177,41 @@ final class S4BusinessKnowledgeService
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * Precios de particulares desde la tarifa viva (mismo origen que «precio» y «clase particular»).
+     */
+    public function privateLessonPricesFaqText(): string
+    {
+        $lines = [
+            '**Precio según personas** (1,5 h, tabla y neopreno incluidos):',
+        ];
+
+        foreach ($this->privateLessonPriceLines() as $line) {
+            $lines[] = $line;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function privateLessonPriceLines(): array
+    {
+        $lines = [];
+        foreach ($this->privateLessonRows() as $row) {
+            $lines[] = sprintf(
+                '- **%d persona%s** → **%s€** en total%s',
+                $row['people'],
+                $row['people'] === 1 ? '' : 's',
+                $this->formatEuros($row['total_eur']),
+                $row['people'] === 1 ? '' : ' ('.$this->formatEuros($row['per_person_eur']).'€ por persona)',
+            );
+        }
+
+        return $lines;
     }
 
     /** FAQ reparación de tablas desde JSON + contacto config. */

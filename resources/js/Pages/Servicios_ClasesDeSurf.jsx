@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link, usePage } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
@@ -25,7 +26,29 @@ import {
     Flame,
 } from "lucide-react";
 
+import S4Button from "@/components/S4Button";
 import { privateLessonPriceRows } from "../lib/privateLessonPricing";
+
+const ACCENT_CYAN_LG =
+    "bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const ACCENT_AMBER_LG =
+    "bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const ACCENT_EMERALD_LG =
+    "bg-gradient-to-r from-emerald-500 to-cyan-400 px-6 py-3 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const ACCENT_CYAN_LG_MIN =
+    "min-h-11 bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const ACCENT_AMBER_LG_MT =
+    "mt-8 bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const ACCENT_EMERALD_MD =
+    "min-h-11 bg-gradient-to-r from-emerald-500 to-cyan-400 px-5 py-2.5 font-bold text-slate-950 shadow-lg hover:brightness-110";
+const OUTLINE_GLASS_BLUR_LG =
+    "border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur-sm hover:bg-white/10";
+const OUTLINE_EMERALD_MD =
+    "min-h-11 border border-emerald-400/40 bg-emerald-500/10 px-5 py-2.5 font-semibold text-emerald-100 hover:bg-emerald-500/20";
+const ACCENT_AMBER_SOLID =
+    "mt-5 bg-amber-400 font-bold text-slate-900 hover:bg-amber-300 hover:brightness-100";
+const RESERVE_CYAN_PILL =
+    "rounded-full bg-cyan-500/15 font-semibold text-cyan-200 ring-1 ring-cyan-400/30 hover:bg-cyan-500/25";
 
 const buildBonos = (pricingLabels = {}) => {
     const bono10 = pricingLabels.bono10 ?? "250 €";
@@ -458,16 +481,16 @@ const BonoCard = ({ bono, onContact }) => {
                     </p>
                     <p className="text-xs text-slate-500">{bono.nota}</p>
                 </div>
-                <button
+                <S4Button
                     type="button"
-                    onClick={() =>
-                        onContact?.(isParticularPack ? "academy" : "bono")
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-full bg-cyan-500/15 px-4 py-2 text-sm font-semibold text-cyan-200 ring-1 ring-cyan-400/30 transition hover:bg-cyan-500/25"
+                    variant="secondary"
+                    size="sm"
+                    className={RESERVE_CYAN_PILL}
+                    onClick={() => onContact?.(isParticularPack ? "academy" : "bono")}
                 >
                     Reservar
                     <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                </S4Button>
             </div>
         </div>
     );
@@ -561,7 +584,7 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
+        <PageShell variant="teal" withGradient>
             <SeoHead seo={seo} />
             {contactOpen ? (
                 <ContactChannelsModal
@@ -580,7 +603,7 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                         <Waves className="h-3.5 w-3.5" />
                         Academia · San Sebastián Surf School
                     </div>
-                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Clases de surf en la{" "}
                         <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
                             Zurriola
@@ -592,35 +615,33 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                         incluido, cuando mejor estén las condiciones.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Link
+                        <S4Button
                             href={route("academy.lessons.index")}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                            variant="accent"
+                            size="lg"
+                            className={ACCENT_CYAN_LG}
                         >
                             <Waves className="h-4 w-4" />
                             Reservar clase
-                        </Link>
-                        <a
-                            href="#particulares"
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
-                        >
+                        </S4Button>
+                        <S4Button href="#particulares" variant="accent" size="lg" className={ACCENT_AMBER_LG}>
                             <UserCheck className="h-4 w-4" />
                             Ver particulares
-                        </a>
-                        <a
-                            href="#bonos"
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
-                        >
+                        </S4Button>
+                        <S4Button href="#bonos" variant="accent" size="lg" className={ACCENT_EMERALD_LG}>
                             <Ticket className="h-4 w-4" />
                             Ver bonos
-                        </a>
-                        <button
+                        </S4Button>
+                        <S4Button
                             type="button"
+                            variant="secondary"
+                            size="lg"
+                            className={OUTLINE_GLASS_BLUR_LG}
                             onClick={() => openContact("academy")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
                         >
                             <MessageCircle className="h-4 w-4" />
                             Contactar
-                        </button>
+                        </S4Button>
                     </div>
                 </div>
             </section>
@@ -727,13 +748,15 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                         />
 
                         <div className="mt-8 text-center">
-                            <Link
+                            <S4Button
                                 href={route("academy.lessons.index")}
-                                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-cyan-400 to-emerald-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                                variant="accent"
+                                size="lg"
+                                className={ACCENT_CYAN_LG_MIN}
                             >
                                 <Waves className="h-4 w-4" aria-hidden />
                                 Reservar tu clase
-                            </Link>
+                            </S4Button>
                         </div>
                     </div>
                 </section>
@@ -780,13 +803,15 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                                     Horario y enfoque adaptados a tu nivel
                                 </li>
                             </ul>
-                            <Link
+                            <S4Button
                                 href={`${route("academy.lessons.index")}?particular=1`}
-                                className="mt-8 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                                variant="accent"
+                                size="lg"
+                                className={ACCENT_AMBER_LG_MT}
                             >
                                 Reservar particular
                                 <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            </S4Button>
                         </div>
                         <div className="rounded-2xl border border-amber-400/25 bg-slate-950/60 p-6 shadow-xl shadow-amber-950/20 backdrop-blur-md">
                             <p className="mb-4 text-center text-xs font-bold uppercase tracking-widest text-amber-300/80">
@@ -1178,13 +1203,14 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                                     </li>
                                 ))}
                             </ul>
-                            <Link
+                            <S4Button
                                 href={route("academy.lessons.index")}
-                                className="mt-5 inline-flex items-center gap-2 rounded-full bg-amber-400 px-5 py-2.5 text-sm font-bold text-slate-900 transition hover:bg-amber-300"
+                                variant="accent"
+                                className={ACCENT_AMBER_SOLID}
                             >
                                 Reservar clase de primer día
                                 <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            </S4Button>
                         </div>
                     </div>
                 </div>
@@ -1395,23 +1421,25 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                                 </p>
 
                                 <div className="mt-5 flex flex-wrap items-center gap-3">
-                                    <Link
+                                    <S4Button
                                         href={route(
                                             "taller.show",
                                             "que-aprendere-en-mi-primera-clase-de-surf-y-guia-de-preguntas-frecuentes",
                                         )}
-                                        className="inline-flex min-h-11 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-400 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-lg transition hover:brightness-110"
+                                        variant="accent"
+                                        className={ACCENT_EMERALD_MD}
                                     >
                                         <BookOpen className="h-4 w-4" />
                                         Qué se hace el primer día
-                                    </Link>
-                                    <Link
+                                    </S4Button>
+                                    <S4Button
                                         href={route("academy.lessons.index")}
-                                        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20"
+                                        variant="secondary"
+                                        className={OUTLINE_EMERALD_MD}
                                     >
                                         Reservar primera clase o tutorial
                                         <ArrowRight className="h-3.5 w-3.5" />
-                                    </Link>
+                                    </S4Button>
                                 </div>
                             </div>
                         </div>
@@ -1448,6 +1476,6 @@ export default function ServiciosClasesDeSurf({ seo = null, pricingLabels = null
                     </div>
                 </div>
             </section>
-        </div>
+        </PageShell>
     );
 }

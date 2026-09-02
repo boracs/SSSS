@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Invoicing;
 
 use App\Exceptions\Invoicing\B2BRouterApiException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -18,18 +19,48 @@ use Illuminate\Support\Facades\Log;
  * en cola, nunca dentro del ciclo de vida de una petición HTTP entrante.
  *
  * Docs: https://developer.b2brouter.net/docs/submit_ticketbai
+ * create-invoice OpenAPI no documenta Idempotency-Key; el mismo nombre de
+ * cabecera sí está documentado en POST /ledgers/import. La mandamos en el alta
+ * para que un reintento con respuesta perdida no duplique TicketBAI.
  */
 final class B2BRouterClient
 {
+    public const IDEMPOTENCY_KEY_HEADER = 'Idempotency-Key';
+
+    /**
+     * Clave estable por cobro (stripe session o equivalente datafono-*).
+     * SHA-256 hex (64 chars) — B2BRouter trunca/hashea claves >64 en ledgers.
+     */
+    public static function idempotencyKeyForSession(string $stripeSessionId): string
+    {
+        $sessionId = trim($stripeSessionId);
+        if ($sessionId === '') {
+            throw new B2BRouterApiException(
+                'No se puede emitir factura sin identificador de cobro.',
+                retryable: false,
+            );
+        }
+
+        return hash('sha256', 's4-tbai:'.$sessionId);
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function createInvoice(array $payload): array
+    public function createInvoice(array $payload, string $idempotencyKey): array
     {
         $accountId = $this->accountId();
 
-        $response = $this->request()->post("/accounts/{$accountId}/invoices", $payload);
+        try {
+            $response = $this->request($idempotencyKey)->post("/accounts/{$accountId}/invoices", $payload);
+        } catch (ConnectionException $e) {
+            throw new B2BRouterApiException(
+                message: 'B2BRouter no respondió al crear la factura (timeout o red).',
+                previous: $e,
+                retryable: true,
+            );
+        }
 
         return $this->decode($response, 'crear la factura');
     }
@@ -61,7 +92,9 @@ final class B2BRouterClient
             ]);
 
             throw new B2BRouterApiException(
-                "B2BRouter no pudo entregar el PDF de la factura (HTTP {$response->status()})."
+                message: "B2BRouter no pudo entregar el PDF de la factura (HTTP {$response->status()}).",
+                retryable: B2BRouterApiException::statusIsRetryable($response->status()),
+                httpStatus: $response->status(),
             );
         }
 
@@ -73,14 +106,20 @@ final class B2BRouterClient
         return $body;
     }
 
-    private function request(): PendingRequest
+    private function request(?string $idempotencyKey = null): PendingRequest
     {
+        $headers = [
+            'X-B2B-API-Key'     => (string) config('invoicing.b2brouter.api_key'),
+            'X-B2B-API-Version' => (string) config('invoicing.b2brouter.api_version'),
+            'Accept'            => 'application/json',
+        ];
+
+        if ($idempotencyKey !== null && $idempotencyKey !== '') {
+            $headers[self::IDEMPOTENCY_KEY_HEADER] = $idempotencyKey;
+        }
+
         return Http::baseUrl((string) config('invoicing.b2brouter.base_url'))
-            ->withHeaders([
-                'X-B2B-API-Key'     => (string) config('invoicing.b2brouter.api_key'),
-                'X-B2B-API-Version' => (string) config('invoicing.b2brouter.api_version'),
-                'Accept'            => 'application/json',
-            ])
+            ->withHeaders($headers)
             ->timeout((int) config('invoicing.b2brouter.timeout', 15));
     }
 
@@ -89,7 +128,10 @@ final class B2BRouterClient
         $accountId = trim((string) config('invoicing.b2brouter.account_id'));
 
         if ($accountId === '') {
-            throw new B2BRouterApiException('B2BROUTER_ACCOUNT_ID no está configurado.');
+            throw new B2BRouterApiException(
+                message: 'B2BROUTER_ACCOUNT_ID no está configurado.',
+                retryable: false,
+            );
         }
 
         return $accountId;
@@ -104,9 +146,7 @@ final class B2BRouterClient
                 'body'   => $response->json() ?? $response->body(),
             ]);
 
-            throw new B2BRouterApiException(
-                "B2BRouter respondió con error al {$action} (HTTP {$response->status()})."
-            );
+            throw B2BRouterApiException::fromHttpStatus($action, $response->status());
         }
 
         return (array) ($response->json() ?? []);

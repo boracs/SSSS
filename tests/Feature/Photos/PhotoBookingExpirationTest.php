@@ -79,6 +79,57 @@ test('cancelExpiredPending cancela pendientes vencidos', function () {
         ->and($alive->fresh()->status)->toBe(PhotoSessionBooking::STATUS_PENDING);
 });
 
+test('webhook con pago confirma una reserva cancelada por caducidad', function () {
+    $booking = $this->service->createBooking([
+        'photo_session_id' => $this->session->id,
+        'fecha_inicio' => BusinessDateTime::now()->addDay()->setTime(15, 0)->toDateTimeString(),
+        'party_size' => 1,
+        'is_admin_guest' => true,
+        'guest_first_name' => 'Pago',
+        'guest_email' => 'pago@example.test',
+        'expires_in_minutes' => 30,
+    ]);
+    $booking->update([
+        'expires_at' => BusinessDateTime::now()->subMinute(),
+        'status' => PhotoSessionBooking::STATUS_CANCELLED,
+        'admin_notes' => 'Caducada: pago no completado',
+    ]);
+
+    $out = app(ConfirmPhotoBookingPaymentAction::class)->execute($booking->fresh(), 'card');
+
+    expect($out['ok'])->toBeTrue()
+        ->and($booking->fresh()->status)->toBe(PhotoSessionBooking::STATUS_CONFIRMED)
+        ->and($booking->fresh()->payment_status)->toBe(PhotoSessionBooking::PAYMENT_CONFIRMED)
+        ->and((string) $booking->fresh()->admin_notes)->toContain('Resucitada');
+});
+
+test('con APP_TIMEZONE=UTC un expires_at ya vencido en Madrid se detecta como caducado', function () {
+    $prevConfig = (string) config('app.timezone');
+    $prevPhp = date_default_timezone_get();
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+
+    try {
+        $booking = $this->service->createBooking([
+            'photo_session_id' => $this->session->id,
+            'fecha_inicio' => BusinessDateTime::now()->addDay()->setTime(16, 0)->toDateTimeString(),
+            'party_size' => 1,
+            'is_admin_guest' => true,
+            'guest_first_name' => 'Utc',
+            'guest_email' => 'utc@example.test',
+            'expires_in_minutes' => 30,
+        ]);
+        $booking->update(['expires_at' => BusinessDateTime::now()->subMinute()]);
+
+        $fresh = $booking->fresh();
+        expect($fresh->isCheckoutExpired())->toBeTrue()
+            ->and($fresh->expires_at->isPast())->toBeTrue();
+    } finally {
+        config(['app.timezone' => $prevConfig]);
+        date_default_timezone_set($prevPhp);
+    }
+});
+
 test('confirm sobre rejected lanza ValidationException', function () {
     $user = User::factory()->create(['role' => 'user']);
     $booking = $this->service->createBooking([

@@ -27,6 +27,8 @@ final class ChatbotService
 
     private const CLASS_PRICE_PATTERN = '/\b(precio|precios|cuant\w*|coste|valor|valen|vale|tarifa|tarifas|euros?)\b.*\b(clase|clases|surf|particular)\b|\b(clase|clases|particular)\b.*\b(precio|precios|cuant\w*|cuestan?|suelt|suelta|euros?)\b/u';
 
+    private const PRIVATE_CLASS_PATTERN = '/\b(particular|clase\s+particular|privad|1\s+a\s+1|solo\s+para\s+mi)\b/u';
+
     private const OWN_BOARD_PATTERN = '/\b(traer|llevar|usar)\b.*\b(mi|propia|personal)\b.*\b(tabla|surfboard)\b|\b(mi|propia)\s+tabla\b|\b(tabla)\b.*\b(propia|personal)\b.*\b(clase|iniciacion|principiante)\b/u';
 
     private const LOGISTICS_PATTERN = '/\b(horario|hora\s+de\s+apertura|como\s+llegar|direccion|ubicacion|donde\s+estais|donde\s+esta|punto\s+de\s+encuentro|aparcar|parking|instagram)\b/u';
@@ -46,7 +48,7 @@ final class ChatbotService
         [
             'pattern' => '/^(hola|buenas|hey|saludos|que\s+tal|help|ayuda|buenos\s+dias|buenas\s+tardes)\b/u',
             'context' => 'general.greeting',
-            'response' => '¡Hola! 👋 Soy **Maider**, de **San Sebastian Surf School**. '
+            'response' => '¡Hola! 👋 Soy **Maider**, de **San Sebastián Surf School**. '
                 .'Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del día a día. '
                 .'¿Qué necesitas?',
         ],
@@ -92,14 +94,6 @@ final class ChatbotService
                 .'Si el problema continúa, mándanos captura por **WhatsApp** y te ayudamos.',
         ],
         [
-            'pattern' => '/\b(particular|clase\s+particular|privad|1\s+a\s+1|solo\s+para\s+mi)\b/u',
-            'context' => 'classes.private',
-            'response' => 'La **clase particular** es para ti (o tu grupo cerrado) con monitor dedicado — **1,5 h**, tabla y neopreno incluidos.'."\n\n"
-                .'**Precio según personas:** 1 → **80€** · 2 → **55€**/pers · 3 → **40€**/pers · 4–6 → **30€**/pers.'."\n\n"
-                .'Resérvala desde **Academia** o [**Clases de surf**](/servicios/surf). '
-                .'Si pagas con **bono grupal**, una particular cuenta como **2 clases** del pack.',
-        ],
-        [
             'pattern' => '/\b(grupo|grupos?)\s*(de\s*)?(7|siete|8|ocho|9|nueve|10|diez|11|once|12|doce)\b|\b(7|siete)\s*(personas|amigos|gente)\b/u',
             'context' => 'classes.large_group',
             'response' => 'Para grupos **grandes (7 o más personas)** necesitamos **organizar dos monitores** por seguridad. '
@@ -127,8 +121,8 @@ final class ChatbotService
         [
             'pattern' => '/\b(donde\s+(nos\s+vemos|quedamos|esta|is)|punto\s+de\s+encuentro|ubicacion|zurriola|playa)\b/u',
             'context' => 'classes.meeting_point',
-            'response' => 'Las clases son en la **playa de Zurriola (Donostia)**, junto a nuestras **instalaciones del club**. '
-                .'Al reservar verás la hora exacta. Llega **10–15 minutos antes** para equiparte con calma. '
+            'response' => 'La **sede** está en **Paseo Colón 41 bajo** (Gros). Las **clases** son en la **playa de Zurriola**, a pocos minutos. '
+                .'Al reservar verás la hora exacta. Llega **10–15 minutos antes** al punto de encuentro en la playa. '
                 .'Si es tu primera vez y no encuentras el punto, escríbenos por **WhatsApp** el día de la clase.',
         ],
 
@@ -320,6 +314,10 @@ final class ChatbotService
             return new ChatbotReplyDto($this->businessContext->surfPricingFaqText(), 'classes.pricing');
         }
 
+        if (preg_match(self::PRIVATE_CLASS_PATTERN, $normalized) === 1) {
+            return new ChatbotReplyDto($this->privateClassFaqText(), 'classes.private');
+        }
+
         if (preg_match(self::LOGISTICS_PATTERN, $normalized) === 1) {
             return new ChatbotReplyDto($this->businessContext->logisticsFaqText(), 'logistics.general');
         }
@@ -371,6 +369,14 @@ final class ChatbotService
         return preg_match('/^(que\s+tal|como\s+estas)[\s!?.]*$/u', $remainder) === 1;
     }
 
+    private function privateClassFaqText(): string
+    {
+        return 'La **clase particular** es para ti (o tu grupo cerrado) con monitor dedicado — **1,5 h**, tabla y neopreno incluidos.'."\n\n"
+            .$this->businessContext->privateLessonPricesFaqText()."\n\n"
+            .'Resérvala desde **Academia** o [**Clases de surf**](/servicios/surf). '
+            .'Si pagas con **bono grupal**, una particular cuenta como **2 clases** del pack.';
+    }
+
     private function isBonoOrLockerPriceQuery(string $normalized): bool
     {
         $asksPrice = preg_match('/\b(precio|precios|cuant\w*|coste|valor|tarifa|euros?|€)\b/u', $normalized) === 1;
@@ -398,14 +404,14 @@ final class ChatbotService
     {
         if ($displayName !== null && $displayName !== '') {
             return sprintf(
-                '¡Hola, **%s**! 👋 Soy **Maider**, de **San Sebastian Surf School**. '
+                '¡Hola, **%s**! 👋 Soy **Maider**, de **San Sebastián Surf School**. '
                 .'Me alegra verte por aquí. Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del día a día. '
                 .'¿Qué necesitas?',
                 $displayName,
             );
         }
 
-        return '¡Hola! 👋 Soy **Maider**, de **San Sebastian Surf School**. '
+        return '¡Hola! 👋 Soy **Maider**, de **San Sebastián Surf School**. '
             .'Te ayudo con **reservar clases**, **bonos**, **alquiler de tablas**, **cancelaciones** y dudas del día a día. '
             .'¿Qué necesitas?';
     }

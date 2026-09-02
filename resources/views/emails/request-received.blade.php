@@ -13,6 +13,6 @@
         <a href="{{ $payUrl }}" style="display: inline-block; background: #0d234d; color: white; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 600;">Pagar ahora</a>
     </p>
     <p style="font-size: 14px; color: #64748b;">El enlace te lleva a completar el pago de forma segura. Si el tiempo vence, la plaza se libera automáticamente.</p>
-    <p style="margin-top: 24px; font-size: 14px; color: #64748b;">San Sebastian Surf School · S4</p>
+    <p style="margin-top: 24px; font-size: 14px; color: #64748b;">San Sebastián Surf School · S4</p>
 </body>
 </html>

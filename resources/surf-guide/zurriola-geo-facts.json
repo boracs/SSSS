@@ -18,7 +18,7 @@
     {
       "id": "winter",
       "title": "Invierno (diciembre–marzo)",
-      "body": "Predominan vientos del noroeste. Al soplar de mar a tierra (onshore), el mar suele ir picado y revuelto: olas más grandes, pero a menudo de peor calidad. En esta época es habitual surfear en Zurriola."
+      "body": "Predominan vientos del noroeste. Al soplar de mar a tierra (onshore), el mar suele ir picado y revuelto: olas más grandes, pero a menudo de peor calidad. En esta época es más habitual surfear en La Concha, ya que suele haber más maretones."
     },
     {
       "id": "shoulder",
@@ -29,11 +29,6 @@
       "id": "summer",
       "title": "Verano (junio–agosto)",
       "body": "En general hay menos oleaje, más adecuado para principiantes, y vientos más suaves que suelen reforzarse a mediodía."
-    },
-    {
-      "id": "heavy_swell",
-      "title": "Mucho maretón / swell fuerte (fuera de verano)",
-      "body": "A veces se puede ir a La Concha (Donostia / San Sebastián), que normalmente está más plana y, con swell fuerte, puede coger ola. En invierno lo habitual es surfear en Zurriola."
     }
   ],
   "summer_windows": [
@@ -46,7 +41,7 @@
       "range": "Aprox. 19:00–22:00"
     }
   ],
-  "levels_intro": "Los niveles (iniciación / intermedio / avanzado) se orientan con bandas de energía en kJ del modelo operativo S4 (mismas franjas que la logística del spot: ~100, 400, 800, 1500, 2500…). Son orientación empírica: viento, marea y el monitor mandan el día concreto.",
+  "levels_intro": "Los niveles (iniciación / intermedio / avanzado) se orientan con bandas de energía en kJ del modelo operativo S4 (mismas franjas que la logística del spot: ~100, 400, 800, 1500, 2500, 3000). Son orientación empírica: viento, marea y el monitor mandan el día concreto. Por encima de ~3000 kJ la playa se desfasa y no se entra, sea cual sea el nivel.",
   "energy_bands": [
     {
       "range_label": "< 50 kJ",
@@ -91,10 +86,16 @@
       "avanzado": "Posible al límite; alternativa Pico del Loro (La Concha)"
     },
     {
-      "range_label": "≥ 2500 kJ",
-      "iniciacion": "Evitar Zurriola — peligroso",
-      "intermedio": "Evitar — saturación y corrientes",
-      "avanzado": "Evitar Zurriola; ir a La Concha / otra playa"
+      "range_label": "2501–3000 kJ",
+      "iniciacion": "Evitar Zurriola — peligroso (opción Hendaye)",
+      "intermedio": "Evitar — saturación y corrientes (opción Hendaye)",
+      "avanzado": "Evitar Zurriola; ir a La Concha / Hendaye / otra playa"
+    },
+    {
+      "range_label": "> 3000 kJ",
+      "iniciacion": "No se entra: la playa está desfasada",
+      "intermedio": "No se entra: demasiado mar para este spot",
+      "avanzado": "No se entra tampoco con nivel alto ni experiencia profesional"
     }
   ],
   "energy_bands_note": "Esta tabla es orientativa. Los partes y previsiones no son siempre 100 % precisos: a veces viene más mar del previsto y otras veces menos. Contrasta siempre con la webcam y el criterio del monitor. Lo que haces en el agua es tu responsabilidad.",
@@ -110,7 +111,7 @@
   "cancellation_policy": null,
   "faqs": [
     {
-      "question": "¿Dónde está San Sebastian Surf School respecto a Zurriola?",
+      "question": "¿Dónde está San Sebastián Surf School respecto a Zurriola?",
       "answer": "En la playa de la Zurriola (Donostia / San Sebastián), a pie de playa, a unos 20 metros de la arena. Orientación NW; beach break de arena."
     },
     {
@@ -123,20 +124,32 @@
     },
     {
       "question": "¿Zurriola se queda a menudo plana?",
-      "answer": "Rara vez. Es una playa que casi siempre tiene ola. Con swell muy fuerte fuera de verano, a veces La Concha puede coger ola; en invierno lo habitual es surfear en Zurriola."
+      "answer": "Rara vez. Es una playa que casi siempre tiene ola. En invierno, con tantos maretones, es más habitual surfear en La Concha."
     },
     {
       "question": "¿Dónde ver la webcam de Zurriola en directo?",
-      "answer": "En la [webcam de Zurriola en directo](/servicios/webcams#webcam-directo) de San Sebastian Surf School (S4): señal de la playa con fuente oficial de Gipuzkoa, junto a la [previsión de olas](/servicios/webcams#prevision-forecast) y el [parte del día](/servicios/webcams#parte-s4-hoy). La escuela está a unos 20 metros de la arena."
+      "answer": "En la [webcam de Zurriola en directo](/servicios/webcams#webcam-directo) de San Sebastián Surf School (S4): señal de la playa con fuente oficial de Gipuzkoa, junto a la [previsión de olas](/servicios/webcams#prevision-forecast) y el [parte del día](/servicios/webcams#parte-s4-hoy). La escuela está a unos 20 metros de la arena."
     },
     {
       "question": "¿Cómo leer la previsión de olas en Zurriola?",
       "answer": "Mira altura y dirección del swell, periodo (segundos entre olas), energía en kJ y viento: el sur suele limpiar (offshore) y el norte pica (onshore). Contrasta siempre el forecast con la [webcam en directo](/servicios/webcams#webcam-directo). S4 publica una guía técnica en la [tabla de previsión](/servicios/webcams#prevision-forecast) y el artículo del Taller [Cómo interpretar el parte de olas](/taller/como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas)."
     },
     {
+      "question": "¿Dónde hay que entrar al agua en Zurriola según tu nivel?",
+      "answer": "Mirando al mar desde la arena, la izquierda es el lado del espigón (Kursaal) y la derecha el de Sagüés. Iniciación entra por la izquierda, al abrigo del espigón, y puede abrirse al centro cuando hay poca fuerza (por debajo de ~200 kJ). Intermedio, al centro. Avanzado depende de la marea: con marea baja y a partir de ~300 kJ funciona el fondo de la punta del espigón; según sube la marea ese fondo se llena de agua y la zona se va de la mitad de la playa hacia la derecha, salvo los días grandes (~550 kJ o más), en que la izquierda vuelve a resguardar. El [parte S4 del día](/servicios/webcams#parte-s4-hoy) concreta la zona con la marea y la energía reales."
+    },
+    {
+      "question": "¿Hay alguna norma en la zona de la derecha de Zurriola?",
+      "answer": "En la parte de Sagüés suele juntarse gente con nivel y el pico está más disputado. No es una zona cerrada ni prohibida, pero sí conviene ir con criterio: respetar las prioridades, no cruzarse en la ola de otro y no colocarse en el pico si aún no controlas. Si no se respeta, es habitual que haya roces. Si estás empezando, se entra mejor por la izquierda y el centro."
+    },
+    {
+      "question": "¿Qué significa que Zurriola esté desfasada?",
+      "answer": "Que llega demasiado mar para el tamaño del spot: la playa se satura de agua y de masa, y la ola deja de romper de forma surfeable. A partir de unos 2000 kJ de energía cabe la posibilidad de que ocurra, y por encima de unos 3000 kJ es casi seguro: ahí no se entra, tampoco con nivel avanzado ni experiencia profesional. Cuando pasa, La Concha o Hendaye suelen ser alternativas. Compruébalo siempre en la [webcam de Zurriola en directo](/servicios/webcams#webcam-directo), porque el desfase se ve."
+    },
+    {
       "question": "¿Qué es el parte S4 del día en Zurriola?",
       "answer": "Resumen orientativo de las condiciones de hoy: estado general del mar y recomendación por nivel (iniciación, intermedio, avanzado). Se actualiza con datos del modelo y criterio del monitor; no sustituye mirar la webcam ni la seguridad en el agua. Ver el [parte S4 del día](/servicios/webcams#parte-s4-hoy)."
     }
   ],
-  "disclaimer": "Orientación general de San Sebastian Surf School (S4). Condiciones reales según el parte del día, el monitor y el mar. Fondos de arena variables. La decisión de entrar al agua es siempre del surfista."
+  "disclaimer": "Orientación general de San Sebastián Surf School (S4). Condiciones reales según el parte del día, el monitor y el mar. Fondos de arena variables. La decisión de entrar al agua es siempre del surfista."
 }

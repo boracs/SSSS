@@ -21,6 +21,12 @@ use Throwable;
  */
 final class PaymentWebhookController extends Controller
 {
+    /**
+     * Marca de log para los cobros que Stripe dio por buenos y la app no puede confirmar.
+     * Reintentar no los arregla: exigen intervención manual.
+     */
+    public const ALERT_PERMANENT_FAILURE = 'payment_webhook_permanent_failure';
+
     public function __construct(
         private readonly PaymentGatewayService $gateway,
     ) {}
@@ -79,7 +85,19 @@ final class PaymentWebhookController extends Controller
         );
 
         if (! $result['ok']) {
-            Log::error('PaymentWebhookController confirmación fallida', [
+            // Responder 200 a un fallo que se resolvería solo deja el cobro en `pending` para
+            // siempre: Stripe da el evento por entregado y no reintenta.
+            if ($result['retryable'] ?? false) {
+                Log::error('PaymentWebhookController confirmación fallida — se pide reintento a Stripe', [
+                    'session_id' => $sessionId,
+                    'result'     => $result,
+                ]);
+
+                return response('Confirmación fallida — reintentar', 503);
+            }
+
+            Log::critical('PaymentWebhookController confirmación imposible — cobrado en Stripe sin confirmar en la app', [
+                'alert'      => self::ALERT_PERMANENT_FAILURE,
                 'session_id' => $sessionId,
                 'result'     => $result,
             ]);

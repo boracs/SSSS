@@ -8,7 +8,7 @@ export const SURF_LEVELS = [
         level: "iniciacion",
         label: "Iniciación",
         title: "Tus primeras espumas",
-        body: "Estás en este nivel si te manejas en la orilla y con el agua por la cintura: coges la espuma, la ola ya rota que llega blanca, e intentas ponerte de pie sobre la tabla. Aún no remas hasta donde rompen las olas ni sales tú solo.",
+        body: "Estás en este nivel si te manejas en la orilla y con el agua por la cintura: coges la espuma, la ola ya rota que llega blanca, e intentas ponerte de pie sobre la tabla. En mar pequeño también puedes coger olas sin romper. Si hay más de medio metro, te cuesta pasar la rompiente y aún no sales tú solo.",
         next: "Señal de que ya no eres de este nivel: te levantas casi siempre y quieres pasar la rompiente.",
         labelClass: "bg-emerald-100 text-emerald-800 ring-emerald-200",
         idleClass:

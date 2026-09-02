@@ -47,37 +47,31 @@ class CreditEngineService
 
     /**
      * Devuelve unidades al bono vigente vinculado a la inscripción.
+     *
+     * @return int Unidades restauradas (0 si ya estaba reembolsada).
      */
-    public function refundCredits(LessonUser $enrollment, string $reason = 'Mal mar'): void
+    public function refundCredits(LessonUser $enrollment, string $reason = 'Mal mar'): int
     {
-        DB::transaction(function () use ($enrollment, $reason) {
+        return (int) DB::transaction(function () use ($enrollment, $reason) {
             $locked = LessonUser::query()->whereKey($enrollment->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status === LessonUser::STATUS_REFUNDED) {
-                return;
+                return 0;
             }
 
-            $unitsToRestore = $this->resolveRefundUnits($locked);
+            $consumption = $this->lockLatestConsumption($locked);
+            $unitsToRestore = $this->resolveRefundUnits($locked, $consumption);
 
-            if ($unitsToRestore > 0) {
-                $consumption = BonoConsumption::query()
-                    ->where('user_id', $locked->user_id)
-                    ->where('lesson_id', $locked->lesson_id)
-                    ->orderByDesc('id')
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($consumption !== null && $consumption->user_bono_id !== null) {
-                    $bono = UserBono::query()->whereKey($consumption->user_bono_id)->lockForUpdate()->first();
-                    if ($bono !== null) {
-                        $bono->increment('clases_restantes', $unitsToRestore);
-                        Log::info('CreditEngineService::refundCredits bono restaurado', [
-                            'user_bono_id' => $bono->id,
-                            'lesson_user_id' => $locked->id,
-                            'units' => $unitsToRestore,
-                            'reason' => $reason,
-                        ]);
-                    }
+            if ($unitsToRestore > 0 && $consumption !== null && $consumption->user_bono_id !== null) {
+                $bono = UserBono::query()->whereKey($consumption->user_bono_id)->lockForUpdate()->first();
+                if ($bono !== null) {
+                    $bono->increment('clases_restantes', $unitsToRestore);
+                    Log::info('CreditEngineService::refundCredits bono restaurado', [
+                        'user_bono_id' => $bono->id,
+                        'lesson_user_id' => $locked->id,
+                        'units' => $unitsToRestore,
+                        'reason' => $reason,
+                    ]);
                 }
             }
 
@@ -95,6 +89,8 @@ class CreditEngineService
                 'lesson_user_id' => $locked->id,
                 'description' => $reason,
             ]);
+
+            return $unitsToRestore;
         });
     }
 
@@ -160,8 +156,31 @@ class CreditEngineService
         });
     }
 
-    private function resolveRefundUnits(LessonUser $enrollment): int
+    private function lockLatestConsumption(LessonUser $enrollment): ?BonoConsumption
     {
+        if ($enrollment->user_id === null || $enrollment->lesson_id === null) {
+            return null;
+        }
+
+        return BonoConsumption::query()
+            ->where('user_id', $enrollment->user_id)
+            ->where('lesson_id', $enrollment->lesson_id)
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * Unidades a devolver: las persistidas en el consumo si existen;
+     * si no, el cálculo legacy (unitsForCharge por quantity de la plaza).
+     */
+    private function resolveRefundUnits(LessonUser $enrollment, ?BonoConsumption $consumption): int
+    {
+        $persisted = $consumption?->getAttributes()['units_consumed'] ?? null;
+        if ($persisted !== null && $persisted !== '') {
+            return max(0, (int) $persisted);
+        }
+
         $lesson = $enrollment->relationLoaded('lesson') ? $enrollment->lesson : $enrollment->lesson()->first();
         if ($lesson === null) {
             return max(1, (int) $enrollment->credits_locked);

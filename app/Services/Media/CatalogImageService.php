@@ -134,7 +134,12 @@ final class CatalogImageService
             return null;
         }
 
-        return $this->publicUrl($this->normalizeStoredPath($storedPath));
+        $storedPath = $this->normalizeStoredPath($storedPath);
+        if ($this->isRemoteOrPublicAsset($storedPath)) {
+            return $this->publicUrl($storedPath);
+        }
+
+        return $this->publicUrl($this->resolveOnDiskPath($storedPath));
     }
 
     public function publicThumbUrl(?string $storedPath): ?string
@@ -148,6 +153,7 @@ final class CatalogImageService
             return $this->publicUrl($storedPath);
         }
 
+        $storedPath = $this->resolveOnDiskPath($storedPath);
         $thumb = $this->thumbPathFor($storedPath);
         if ($thumb !== null && Storage::disk(self::DISK)->exists($thumb)) {
             return $this->publicUrl($thumb);
@@ -170,6 +176,11 @@ final class CatalogImageService
 
         $disk = Storage::disk(self::DISK);
         if (! $disk->exists($storedPath)) {
+            $resolved = $this->resolveOnDiskPath($storedPath);
+            if ($resolved !== $storedPath && $disk->exists($resolved)) {
+                return $resolved;
+            }
+
             return null;
         }
 
@@ -376,5 +387,27 @@ final class CatalogImageService
         }
 
         return $path;
+    }
+
+    /**
+     * Si el path de BD apunta a un RAW ya borrado, usa el máster WebP hermano.
+     */
+    private function resolveOnDiskPath(string $storedPath): string
+    {
+        $disk = Storage::disk(self::DISK);
+        if ($disk->exists($storedPath)) {
+            return $storedPath;
+        }
+
+        $stem = pathinfo($storedPath, PATHINFO_FILENAME);
+        if ($stem === '' || str_ends_with($stem, '-thumb')) {
+            return $storedPath;
+        }
+
+        $dir = dirname($storedPath);
+        $prefix = $dir === '.' ? '' : $dir.'/';
+        $webp = $prefix.$stem.'.webp';
+
+        return $disk->exists($webp) ? $webp : $storedPath;
     }
 }

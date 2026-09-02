@@ -52,6 +52,7 @@ final class MostradorTicketService
         }
 
         $this->assertClientAndLines($user, $guestName, $lines);
+        $this->assertGuestEmailForCashInvoicing($user, $guestEmail);
 
         $totalCents = array_sum(array_map(fn (MostradorTicketLineDto $l) => $l->amountCents, $lines));
         $notes = trim((string) ($meta['notes'] ?? ''));
@@ -282,6 +283,23 @@ final class MostradorTicketService
                     ]);
                 }
             }
+        }
+    }
+
+    /**
+     * TicketBAI exige email de contacto. Con INVOICING_ENABLED el cobro cash
+     * a walk-in no se cierra sin él (decisión del dueño 2026-08-27).
+     */
+    private function assertGuestEmailForCashInvoicing(?User $user, ?string $guestEmail): void
+    {
+        if ($user !== null || ! (bool) config('invoicing.enabled', false)) {
+            return;
+        }
+
+        if (trim((string) $guestEmail) === '') {
+            throw ValidationException::withMessages([
+                'guest_email' => ['Con la facturación TicketBAI activa, el cobro en efectivo necesita el email del cliente.'],
+            ]);
         }
     }
 

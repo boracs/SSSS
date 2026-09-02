@@ -22,6 +22,20 @@ final class ChatbotDisplayName
             return null;
         }
 
+        if (! self::isAllowlisted($first)) {
+            return null;
+        }
+
         return $first;
+    }
+
+    /** Letras (tildes/ñ), espacios, apóstrofe y guion. Rechaza tokens de inyección. */
+    private static function isAllowlisted(string $name): bool
+    {
+        if (preg_match('/^[\\p{L}]+(?:[ \'\\-][\\p{L}]+)*$/u', $name) !== 1) {
+            return false;
+        }
+
+        return preg_match('/\\b(ignor\\w*|olvid\\w*|disregard|forget|jailbreak|system|prompt|override)\\b/iu', $name) !== 1;
     }
 }

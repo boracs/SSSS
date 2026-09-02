@@ -21,7 +21,7 @@ function SortHeader({ label, active, direction, onClick }) {
             onClick={onClick}
             aria-label={`Ordenar por ${label}`}
             className={`inline-flex items-center gap-1 transition hover:text-slate-900 ${
-                active ? "text-surf-primary" : ""
+                active ? "text-s4" : ""
             }`}
         >
             {label}
@@ -277,7 +277,7 @@ export default function Index({ surfboards, bookings, filters }) {
                                         { preserveScroll: true }
                                     )
                                 }
-                                className="mt-1 w-full rounded-xl border-slate-300 focus:border-surf-primary focus:ring-surf-primary"
+                                className="mt-1 w-full rounded-xl border-slate-300 focus:border-s4-cyan focus:ring-s4-cyan/50"
                             >
                                 <option value="">Todas</option>
                                 {(surfboards || []).map((s) => (
@@ -304,7 +304,7 @@ export default function Index({ surfboards, bookings, filters }) {
                                         { preserveScroll: true }
                                     )
                                 }
-                                className="mt-1 w-full rounded-xl border-slate-300 focus:border-surf-primary focus:ring-surf-primary"
+                                className="mt-1 w-full rounded-xl border-slate-300 focus:border-s4-cyan focus:ring-s4-cyan/50"
                             >
                                 <option value="all">Todos</option>
                                 <option value="pending">Pendiente</option>
@@ -482,7 +482,7 @@ export default function Index({ surfboards, bookings, filters }) {
                                 preserveScroll
                                 className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
                                     l.active
-                                        ? "bg-surf-primary text-white"
+                                        ? "bg-s4 text-white"
                                         : "bg-white text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
                                 } ${!l.url ? "opacity-50 pointer-events-none" : ""}`}
                                 dangerouslySetInnerHTML={{ __html: l.label }}

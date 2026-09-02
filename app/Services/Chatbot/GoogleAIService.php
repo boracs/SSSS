@@ -49,10 +49,15 @@ final class GoogleAIService
         );
         $contents[] = ['role' => 'user', 'parts' => [['text' => $currentMessage]]];
 
+        $endpoint = sprintf(self::ENDPOINT, $model);
+
         try {
             $response = Http::timeout(self::TIMEOUT_SECONDS)
-                ->withHeaders(['Content-Type' => 'application/json'])
-                ->post(sprintf(self::ENDPOINT, $model).'?key='.$apiKey, [
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'x-goog-api-key' => $apiKey,
+                ])
+                ->post($endpoint, [
                     'contents' => $contents,
                     'systemInstruction' => ['parts' => [['text' => $systemInstruction]]],
                     'generationConfig' => [
@@ -69,15 +74,17 @@ final class GoogleAIService
                     ],
                 ]);
         } catch (Throwable $e) {
-            Log::warning('GoogleAIService: fallo de red hacia Gemini.', ['error' => $e->getMessage()]);
+            Log::warning('GoogleAIService: fallo de red hacia Gemini.', [
+                'error' => $this->redactApiKey($e->getMessage(), $apiKey),
+            ]);
 
-            throw new GeminiUnavailableException('Fallo de red hacia Gemini: '.$e->getMessage(), previous: $e);
+            throw new GeminiUnavailableException('Fallo de red hacia Gemini.', previous: $e);
         }
 
         if ($response->failed()) {
             Log::warning('GoogleAIService: Gemini respondió con error HTTP.', [
                 'status' => $response->status(),
-                'body' => $response->body(),
+                'body' => $this->redactApiKey($response->body(), $apiKey),
             ]);
 
             throw new GeminiUnavailableException("Gemini HTTP {$response->status()}");
@@ -90,5 +97,14 @@ final class GoogleAIService
         }
 
         return trim($text);
+    }
+
+    private function redactApiKey(string $text, string $apiKey): string
+    {
+        if ($apiKey === '') {
+            return $text;
+        }
+
+        return str_replace($apiKey, '[redacted]', $text);
     }
 }

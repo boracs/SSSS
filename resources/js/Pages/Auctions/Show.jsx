@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, router, useForm, usePage } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "@/components/seo/SeoHead";
 import {
     ArrowLeft,
@@ -431,9 +431,9 @@ export default function AuctionsShow({ auction, relatedAuctions = [], seo = null
     ];
 
     return (
-        <Layout1>
+        <PageShell variant="night">
             <SeoHead seo={seo} />
-            <div className="relative overflow-hidden bg-[#070b14] pb-16">
+            <div className="relative overflow-hidden pb-16">
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_0%,rgba(251,146,60,0.1),transparent)]"
@@ -465,7 +465,7 @@ export default function AuctionsShow({ auction, relatedAuctions = [], seo = null
                                         {phaseBadge.label}
                                     </span>
                                 </div>
-                                <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
+                                <h1 className="font-heading text-2xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
                                     {auction.title}
                                 </h1>
                                 {auction.description ? (
@@ -735,6 +735,6 @@ export default function AuctionsShow({ auction, relatedAuctions = [], seo = null
                     </div>
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

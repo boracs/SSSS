@@ -29,14 +29,14 @@ export default function SurfTripFab({ lesson, className = "" }) {
                         <button
                             type="button"
                             onClick={confirm}
-                            className="btn-primary flex-1 text-sm"
+                            className="s4-btn s4-btn-primary s4-btn--sm flex-1"
                         >
                             Confirmar asistencia
                         </button>
                         <button
                             type="button"
                             onClick={refund}
-                            className="btn-secondary flex-1 text-sm"
+                            className="s4-btn s4-btn-secondary s4-btn--sm flex-1"
                         >
                             Solicitar reembolso
                         </button>
@@ -46,7 +46,7 @@ export default function SurfTripFab({ lesson, className = "" }) {
             <button
                 type="button"
                 onClick={() => setOpen(!open)}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-accent text-white shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-s4-cyan text-white shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl"
                 aria-label="Opciones Surf-Trip"
             >
                 <span className="text-xl">🏄</span>

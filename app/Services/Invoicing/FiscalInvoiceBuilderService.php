@@ -54,8 +54,8 @@ final class FiscalInvoiceBuilderService
     {
         $pedido = Pedido::query()->with('usuario')->find($pedidoId);
 
-        if ($pedido === null || $pedido->usuario === null) {
-            throw new MissingFiscalDataException("Pedido #{$pedidoId} no encontrado o sin usuario asociado.");
+        if ($pedido === null) {
+            throw new MissingFiscalDataException("Pedido #{$pedidoId} no encontrado.");
         }
 
         return new FiscalInvoiceDraftDto(
@@ -63,7 +63,12 @@ final class FiscalInvoiceBuilderService
             payableId: $pedido->id,
             stripeSessionId: $stripeSessionId,
             invoiceDate: Carbon::now()->toDateString(),
-            contact: $this->buildContact($pedido->usuario),
+            contact: $this->buildContactForUser(
+                user: $pedido->usuario,
+                fallbackName: $pedido->guest_name,
+                fallbackEmail: $pedido->guest_email,
+                context: "Pedido #{$pedido->id}",
+            ),
             lines: [$this->line("Pedido S4 #{$pedido->id}", $amountCents)],
         );
     }

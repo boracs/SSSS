@@ -12,9 +12,7 @@ import {
 
 /**
  * Ficha pública de alquiler (catálogo Index + página Show).
- * Galería, specs, descripción y bloque de reserva embedded (tone dark).
- * Las tarifas detalladas viven en el selector de reserva y en /tablas-alquiler,
- * así que aquí no se duplican.
+ * Superficie clara alineada con tienda (C3/C16).
  */
 export default function SurfboardPublicDetail({
     board,
@@ -55,9 +53,9 @@ export default function SurfboardPublicDetail({
     const specs = boardSpecs(board);
 
     return (
-        <div className="space-y-5 text-slate-100">
+        <div className="space-y-5 text-slate-800">
             <header>
-                <TitleTag className="font-heading text-2xl font-extrabold tracking-tight text-cyan-300 sm:text-3xl">
+                <TitleTag className="font-heading text-2xl font-extrabold tracking-tight text-s4 sm:text-3xl">
                     {name}
                 </TitleTag>
             </header>
@@ -68,7 +66,7 @@ export default function SurfboardPublicDetail({
                         type="button"
                         onClick={() => openImage(activeSrc)}
                         aria-label="Ampliar imagen"
-                        className="group relative block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/60 transition hover:border-cyan-400/60"
+                        className="group relative block w-full cursor-zoom-in overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:border-cyan-400/60"
                     >
                         <div className="aspect-[4/3] w-full sm:aspect-[16/10]">
                             <SafeImage
@@ -79,7 +77,7 @@ export default function SurfboardPublicDetail({
                             />
                         </div>
                         <span
-                            className="pointer-events-none absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-950/75 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm transition group-hover:bg-cyan-600/95"
+                            className="pointer-events-none absolute bottom-3 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/75 text-white shadow-lg ring-1 ring-white/25 backdrop-blur-sm transition group-hover:bg-cyan-600/95"
                             aria-hidden="true"
                         >
                             <Plus className="h-5 w-5" strokeWidth={2.5} />
@@ -87,7 +85,7 @@ export default function SurfboardPublicDetail({
                     </button>
                 ) : (
                     <div
-                        className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-dashed border-slate-700 bg-slate-900/80 text-sm text-slate-500 sm:aspect-[16/10]"
+                        className="flex aspect-[4/3] w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 sm:aspect-[16/10]"
                         aria-hidden="true"
                     >
                         Sin imagen
@@ -108,7 +106,7 @@ export default function SurfboardPublicDetail({
                                     className={`relative h-14 w-20 shrink-0 overflow-hidden rounded-xl border transition sm:h-16 sm:w-24 ${
                                         selected
                                             ? "border-cyan-400 ring-2 ring-cyan-400/35"
-                                            : "border-slate-700 hover:border-cyan-500/50"
+                                            : "border-slate-200 hover:border-cyan-500/50"
                                     }`}
                                 >
                                     <SafeImage
@@ -134,7 +132,7 @@ export default function SurfboardPublicDetail({
                             <dt className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                                 {label}
                             </dt>
-                            <dd className="mt-0.5 font-heading text-base font-bold tabular-nums text-slate-100">
+                            <dd className="mt-0.5 font-heading text-base font-bold tabular-nums text-slate-900">
                                 {value || "—"}
                             </dd>
                         </div>
@@ -143,15 +141,15 @@ export default function SurfboardPublicDetail({
             </div>
 
             {description || priceTeaser ? (
-                <div className="border-t border-white/10 pt-4">
+                <div className="border-t border-slate-200 pt-4">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
                         Descripción
                     </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-300">
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
                         {description}
                         {description && priceTeaser ? " " : ""}
                         {priceTeaser ? (
-                            <span className="font-semibold text-cyan-300">{priceTeaser}</span>
+                            <span className="font-semibold text-s4">{priceTeaser}</span>
                         ) : null}
                     </p>
                     <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
@@ -169,6 +167,7 @@ export default function SurfboardPublicDetail({
                 initialStart={initialStart}
                 initialEnd={initialEnd}
                 embedded
+                surfaceTone="light"
             />
         </div>
     );

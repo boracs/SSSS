@@ -14,8 +14,8 @@ export function storeAddToCartClassName({
     surface = "light",
 } = {}) {
     const size = compact
-        ? "gap-1.5 rounded-lg py-1.5 text-xs"
-        : "gap-2 rounded-xl py-2.5 text-xs sm:text-sm";
+        ? "min-h-9 gap-1.5 rounded-lg py-1.5 text-xs"
+        : "min-h-11 gap-2 rounded-xl py-2.5 text-xs sm:text-sm";
 
     if (disabled) {
         if (surface === "dark") {

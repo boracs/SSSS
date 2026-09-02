@@ -43,13 +43,13 @@ const VOLUME_RANGE_PRESETS = [
 ];
 
 const selectClass =
-    "w-full rounded-lg border border-slate-600 bg-slate-900 px-2.5 py-1.5 text-sm font-medium text-slate-100 outline-none transition hover:border-slate-500 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30";
+    "w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm font-medium text-slate-800 outline-none transition hover:border-slate-300 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/30";
 
 const chipBaseClass =
     "rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-inset transition";
 const chipActiveClass = "bg-cyan-600 text-white ring-cyan-500";
 const chipIdleClass =
-    "bg-slate-900 text-slate-300 ring-slate-600 hover:bg-slate-800 hover:text-slate-100";
+    "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50 hover:text-slate-900";
 
 export default function Index({
     surfboards,
@@ -218,9 +218,9 @@ export default function Index({
     return (
         <>
             <SeoHead seo={seo} />
-            <div className="min-h-screen bg-black py-6 sm:py-8">
+            <div className="s4-surface-light min-h-screen py-6 sm:py-8">
                 <div
-                    className="mx-auto w-full max-w-7xl rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-900 px-4 py-6 shadow-sm sm:px-6 lg:px-7"
+                    className="mx-auto w-full max-w-7xl rounded-3xl border border-slate-200 bg-white px-4 py-6 shadow-sm ring-1 ring-slate-200 sm:px-6 lg:px-7"
                     style={{ fontFamily: "'Inter', 'Geist', sans-serif" }}
                 >
                     <RentalTariffTable tariffTable={tariffTable} />
@@ -229,14 +229,14 @@ export default function Index({
                         {/* ── Catálogo ── */}
                         <section
                             id="catalogo-tablas"
-                            className="scroll-mt-24 rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur"
+                            className="scroll-mt-24 rounded-3xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200"
                         >
                             {/* Cabecera con título + filtros */}
-                            <div className="border-b border-slate-700 p-6">
-                                <h1 className="text-[32px] font-extrabold tracking-tight text-slate-100">
+                            <div className="border-b border-slate-200 p-6">
+                                <h1 className="font-heading text-[32px] font-extrabold tracking-tight text-slate-900">
                                     Tablas de alquiler
                                 </h1>
-                                <p className="mt-1 text-sm text-slate-300">
+                                <p className="mt-1 text-sm text-slate-600">
                                     Consulta disponibilidad y reserva en
                                     segundos.
                                 </p>
@@ -268,7 +268,7 @@ export default function Index({
                                                 className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-inset transition-all duration-200 ${
                                                     selected
                                                         ? activeClass
-                                                        : "bg-slate-900 text-slate-300 ring-slate-600 hover:-translate-y-px hover:bg-slate-800 hover:text-slate-100"
+                                                        : chipIdleClass
                                                 }`}
                                             >
                                                 {accent ? (
@@ -287,16 +287,16 @@ export default function Index({
                                     })}
                                 </div>
 
-                                <div className="mt-4 rounded-2xl border border-slate-700 bg-slate-800/70 p-3">
+                                <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
-                                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-300">
+                                        <p className="text-[11px] font-bold uppercase tracking-wide text-slate-700">
                                             Filtros por medidas
                                         </p>
                                         {hasMeasureFilters ? (
                                             <button
                                                 type="button"
                                                 onClick={clearMeasureFilters}
-                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-cyan-300 transition hover:bg-cyan-500/15"
+                                                className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold text-s4 transition hover:bg-cyan-50"
                                             >
                                                 <RotateCcw className="h-3.5 w-3.5" />
                                                 Limpiar
@@ -305,7 +305,7 @@ export default function Index({
                                     </div>
 
                                     <div className="mt-3">
-                                        <p className="text-[11px] font-semibold text-slate-400">
+                                        <p className="text-[11px] font-semibold text-slate-600">
                                             Altura de la tabla
                                         </p>
                                         <div
@@ -345,7 +345,7 @@ export default function Index({
                                     </div>
 
                                     <div className="mt-3">
-                                        <p className="text-[11px] font-semibold text-slate-400">
+                                        <p className="text-[11px] font-semibold text-slate-600">
                                             Volumen
                                         </p>
                                         <div
@@ -384,7 +384,7 @@ export default function Index({
                                         </div>
                                     </div>
 
-                                    <div className="mt-3 border-t border-slate-700/80 pt-2">
+                                    <div className="mt-3 border-t border-slate-200 pt-2">
                                         <button
                                             type="button"
                                             aria-expanded={showAdvancedMeasures}
@@ -393,7 +393,7 @@ export default function Index({
                                                     (open) => !open,
                                                 )
                                             }
-                                            className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-slate-400 transition hover:text-slate-200"
+                                            className="inline-flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-left text-xs font-semibold text-slate-600 transition hover:text-slate-900"
                                         >
                                             <span>Ajuste fino</span>
                                             <ChevronDown
@@ -409,7 +409,7 @@ export default function Index({
                                         {showAdvancedMeasures ? (
                                             <div className="mt-2 grid grid-cols-2 gap-2">
                                                 <label className="block">
-                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-700">
                                                         Altura mínima
                                                     </span>
                                                     <select
@@ -437,7 +437,7 @@ export default function Index({
                                                     </select>
                                                 </label>
                                                 <label className="block">
-                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-700">
                                                         Altura máxima
                                                     </span>
                                                     <select
@@ -465,7 +465,7 @@ export default function Index({
                                                     </select>
                                                 </label>
                                                 <label className="block">
-                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-700">
                                                         Volumen mínimo
                                                     </span>
                                                     <select
@@ -493,7 +493,7 @@ export default function Index({
                                                     </select>
                                                 </label>
                                                 <label className="block">
-                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-300">
+                                                    <span className="mb-1 block text-[11px] font-semibold text-slate-700">
                                                         Volumen máximo
                                                     </span>
                                                     <select
@@ -585,8 +585,8 @@ export default function Index({
                                                     <div
                                                         className={`group rounded-2xl border p-3 transition-all duration-200 ${
                                                             selected
-                                                                ? "border-cyan-400 bg-cyan-500/10 shadow-sm"
-                                                                : "border-slate-700 bg-slate-900 hover:-translate-y-0.5 hover:border-slate-500 hover:bg-slate-800/80 hover:shadow-sm"
+                                                                ? "border-cyan-400 bg-cyan-50 shadow-sm ring-1 ring-cyan-200"
+                                                                : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-cyan-300/60 hover:shadow-sm"
                                                         }`}
                                                     >
                                                         <AccordionTrigger
@@ -611,7 +611,7 @@ export default function Index({
                                                                     ? `mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-200 ${
                                                                           selected
                                                                               ? "bg-cyan-600 text-white shadow-md ring-2 ring-cyan-200"
-                                                                              : "bg-slate-800 text-slate-300 ring-1 ring-slate-600 group-hover:bg-cyan-500/15 group-hover:text-cyan-300 group-hover:ring-cyan-500/40"
+                                                                              : "bg-slate-100 text-slate-600 ring-1 ring-slate-200 group-hover:bg-cyan-50 group-hover:text-s4 group-hover:ring-cyan-300"
                                                                       }`
                                                                     : undefined
                                                             }
@@ -628,16 +628,16 @@ export default function Index({
                                                                 />
                                                             </div>
                                                             <div className="min-w-0 flex-1">
-                                                                <p className="truncate font-heading text-[15px] font-semibold text-slate-100">
+                                                                <p className="truncate font-heading text-[15px] font-semibold text-slate-900">
                                                                     {name}
                                                                 </p>
-                                                                <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-slate-400">
+                                                                <p className="mt-0.5 truncate text-xs uppercase tracking-wide text-slate-500">
                                                                     {metaParts.join(
                                                                         " · ",
                                                                     )}
                                                                 </p>
                                                                 {fromPrice ? (
-                                                                    <p className="mt-0.5 truncate text-xs font-medium text-cyan-300/90">
+                                                                    <p className="mt-0.5 truncate text-xs font-medium text-s4">
                                                                         {
                                                                             fromPrice
                                                                         }
@@ -645,7 +645,7 @@ export default function Index({
                                                                 ) : null}
                                                             </div>
                                                         </AccordionTrigger>
-                                                        <div className="mt-2 flex justify-end border-t border-white/5 pt-2">
+                                                        <div className="mt-2 flex justify-end border-t border-slate-100 pt-2">
                                                             <Link
                                                                 href={route(
                                                                     "rentals.surfboards.show",
@@ -654,7 +654,7 @@ export default function Index({
                                                                 onClick={(e) =>
                                                                     e.stopPropagation()
                                                                 }
-                                                                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-cyan-300/90 transition hover:bg-cyan-500/15 hover:text-cyan-200 lg:hidden"
+                                                                className="rounded-lg px-2 py-1 text-[11px] font-semibold text-s4 transition hover:bg-cyan-50 lg:hidden"
                                                             >
                                                                 Ver ficha
                                                             </Link>
@@ -665,7 +665,7 @@ export default function Index({
                                                     {selected && !isLgUp ? (
                                                         <div
                                                             id={panelId}
-                                                            className="overflow-hidden rounded-2xl border border-slate-700 bg-slate-900/95 p-4 shadow-sm transition-all duration-300 ease-in-out sm:p-5"
+                                                            className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm ring-1 ring-slate-200 transition-all duration-300 ease-in-out sm:p-5"
                                                         >
                                                             <SurfboardPublicDetail
                                                                 board={s}
@@ -692,16 +692,16 @@ export default function Index({
 
                         {/* Panel lateral: solo montado en ≥lg (nunca debajo de la lista en tablet) */}
                         {isLgUp ? (
-                            <section className="rounded-3xl border border-slate-700 bg-slate-900/95 shadow-sm backdrop-blur">
+                            <section className="rounded-3xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200">
                                 <div className="p-6">
                                     {!selectedBoard ? (
-                                        <div className="grid place-items-center rounded-2xl border border-dashed border-slate-700 bg-slate-900 p-8 text-center">
+                                        <div className="grid place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
                                             <div>
-                                                <p className="text-lg font-semibold text-slate-100">
+                                                <p className="text-lg font-semibold text-slate-900">
                                                     Selecciona una tabla para
                                                     ver los detalles
                                                 </p>
-                                                <p className="mt-1 text-sm text-slate-400">
+                                                <p className="mt-1 text-sm text-slate-600">
                                                     Aquí verás imágenes,
                                                     especificaciones y opciones
                                                     de reserva.

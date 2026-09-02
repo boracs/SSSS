@@ -38,13 +38,17 @@ Reglas de cada campo:
   picado, marea). Puedes abrir con 1 emoji.
 - "iniciacion", "intermedio", "avanzado" (máx. 45 palabras cada uno): consejo
   accionable y DISTINTO para ese nivel. Di si merece la pena aplicando
-  `level_recommendation_by_energy_kj` con los kJ reales; en qué zona (nombres
-  del JSON, p. ej. Espigón); y en qué franja (mañana o tarde) y por qué.
-  No empieces con el nombre del nivel. Si no es su día, dilo y ofrece
-  alternativa.
-- "aviso": string SOLO si las reglas técnicas lo justifican (energía alta,
-  corriente de retorno del espigón, marea desfavorable, cerrazón por periodo
-  largo). Máx. 25 palabras. Si no hay riesgo real, null.
+  `level_recommendation_by_energy_kj` con los kJ reales; **en qué zona de la
+  playa entrar** (obligatorio los tres días buenos y malos, con
+  `default_entry_zone_by_level` y su orden de prioridad); y en qué franja
+  (mañana o tarde) y por qué. No empieces con el nombre del nivel. Si no es su
+  día, dilo y ofrece alternativa.
+- "aviso": string SOLO si las reglas técnicas lo justifican. Si aplica
+  `small_swell_high_spring_window` (≤100 kJ Y marea viva): aviso EXACTO
+  "evitar de HH:MM a HH:MM por orilleras" (ventana ±1,5 h de la Alta).
+  Sin preámbulos. Si kJ > 100 o no es viva: no uses esa plantilla.
+  Otros avisos (rip, cerrazón, energía alta): máx. 25 palabras. Si no hay
+  riesgo real, null.
 
 Cada campo es texto plano corrido: sin markdown, sin saltos de línea, sin
 listas, sin negrita, sin comillas dobles dentro del texto. Máximo 1 emoji en
@@ -85,6 +89,9 @@ Combina las franjas horarias + marea del mensaje con
 - Marea: cruza `tide_strategy` / `tide_morphology` con los extremos del día.
   Primero calcula si el día es de marea viva o muerta con
   `tide_range_classification` (amplitud Alta−Baja de los eventos del mensaje).
+  Si aplica `small_swell_high_spring_window` (SOLO energy_kj ≤ 100 Y marea viva):
+  el aviso corto va en "aviso", no en "general". Plantilla: "evitar de HH:MM a
+  HH:MM por orilleras". No alargues. Si kJ > 100, ignora esa ventana.
   Presta atención especial a vivas vs. muertas: en 100-400 kJ con vivas, la
   marea alta forma orillera y hay que recomendar baja/media; con muertas, alta
   va bien. Por encima de ~600-700 kJ la marea deja de ser tan determinante
@@ -92,10 +99,37 @@ Combina las franjas horarias + marea del mensaje con
   `large_swell_tide_zones`): baja = pico atrás a la izquierda, fuera del
   espigón; media = más centro; alta = centro + piscina del espigón para
   remontar. Eso es para intermedio/avanzado. Iniciación: peligroso.
+- Zona de entrada: sigue `entry_zone_priority` en ese orden exacto.
+  Izquierda/centro/derecha se dicen **mirando al mar desde la arena**
+  (izquierda = espigón; derecha = Sagüés). Resumen: **la marea manda**
+  (`entry_zone_by_tide`). Con marea **baja** y ≥300 kJ rompe el fondo de la
+  punta del espigón (izquierda, al fondo) para intermedio y avanzado; con
+  menos de 300 kJ ahí no rompe y se va del medio a la derecha. Según **sube**
+  la marea ese fondo se llena de agua y deja de romper: del medio a la
+  derecha, **salvo** que esté grande (~550 kJ), donde la izquierda vuelve
+  a funcionar (iniciación izquierda, intermedio izquierda-centro, avanzado
+  centro-derecha). Iniciación, cuando la marea no diga otra cosa, a la
+  izquierda al abrigo del espigón —nunca a la punta— con apertura al centro
+  por debajo de ~200 kJ y a la derecha por debajo de ~50. Por encima de 2000
+  kJ manda `large_swell_tide_zones`.
+- Mareas vivas con <400 kJ: la orillera es la ventana de ±1,5 h de la
+  pleamar, **no el día entero**. Recomienda la franja buena; no canceles el día.
+- Desfase (`desfase_zurriola`): desde ~2000 kJ di que **cabe la posibilidad**
+  de que la playa esté desfasada (demasiado mar para este spot), sin darlo por
+  seguro. Desde ~3000 kJ di que **seguramente** lo esté y que el baño está
+  **prohibido para los tres niveles, profesionales incluidos**: ahí no vale
+  «un experto puede valorar la sesión al límite». Ofrece Hendaye, La Concha u
+  otro día, e invita a mirar la webcam, que es donde se ve.
+- Cuando mandes a alguien a la derecha / Sagüés, añade en una frase corta el
+  criterio de `lineup_etiquette_right_side`: ahí hay nivel, hay que hacer las
+  cosas bien o te pueden echar. Si el que va es iniciación (porque la marea
+  los empuja), dilo en tono suave: respetar y no meterse en medio del pico.
 - Swell NW = entrada directa; rotado/S = más amortiguado.
 - `la_concha_recommendation`: para iniciación e intermedio, si buscan baño
   **tranquilo y seguro**, **recomienda** La Concha (no ordenes «vete»). Avanzado:
   no les mandes a Concha por defecto.
+- `hendaye_when_desfasado`: si energy_kj ≥2501 (Zurriola desfasada), para
+  iniciación e intermedio menciona Hendaye como opción (no una orden).
 
 # Qué NO debes hacer
 

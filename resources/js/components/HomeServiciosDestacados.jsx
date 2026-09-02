@@ -12,7 +12,12 @@ const SERVICIOS = [
         title: "Clases de surf",
         benefit: "Aprende en Zurriola con material incluido.",
         href: () => route("servicios.surf"),
-        image: "/img/sunset_surf.webp",
+        image: "/img/home-tiles/sunset_surf-800.webp",
+        imageSrcSet:
+            "/img/home-tiles/sunset_surf-800.webp 800w, /img/sunset_surf.webp 1280w",
+        imageSizes: "(min-width: 1024px) 72rem, 100vw",
+        imageWidth: 1280,
+        imageHeight: 854,
         imageAlt: "Clase de surf al atardecer en Zurriola",
         cta: "Ver clases",
         featured: true,
@@ -22,7 +27,12 @@ const SERVICIOS = [
         title: "Taquillas",
         benefit: "Guarda el equipo cerca de la playa.",
         href: () => route("taquillas.planes"),
-        image: "/img/instalaciones.jpg",
+        image: "/img/home-tiles/instalaciones-800.webp",
+        imageSrcSet:
+            "/img/home-tiles/instalaciones-800.webp 800w, /img/home-tiles/instalaciones-1280.webp 1280w",
+        imageSizes: "(min-width: 640px) 33vw, 100vw",
+        imageWidth: 800,
+        imageHeight: 600,
         imageAlt: "Instalaciones y taquillas del club S4",
         cta: "Ver planes",
         featured: false,
@@ -32,7 +42,9 @@ const SERVICIOS = [
         title: "Surfskate",
         benefit: "Mejora la técnica fuera del agua.",
         href: () => route("servicios.surfSkate"),
-        image: "/img/surf_skate.webp",
+        image: "/img/home-tiles/surf_skate-800.webp",
+        imageWidth: 800,
+        imageHeight: 535,
         imageAlt: "Sesión de surfskate",
         cta: "Ver surfskate",
         featured: false,
@@ -42,7 +54,9 @@ const SERVICIOS = [
         title: "Fotos",
         benefit: "Lleva a casa tu sesión en el agua.",
         href: () => route("servicios.fotografia"),
-        image: "/img/fotografo-playa-sunset.png",
+        image: "/img/home-tiles/fotografo-playa-sunset-800.webp",
+        imageWidth: 600,
+        imageHeight: 400,
         imageAlt: "Fotógrafo de surf en la playa al atardecer",
         cta: "Ver sesiones",
         featured: false,
@@ -63,9 +77,14 @@ function Tile({ item }) {
         >
             <img
                 src={item.image}
+                srcSet={item.imageSrcSet}
+                sizes={item.imageSizes ?? "(min-width: 640px) 33vw, 100vw"}
+                width={item.imageWidth}
+                height={item.imageHeight}
                 alt={item.imageAlt}
                 className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                 loading="lazy"
+                decoding="async"
             />
             <div
                 className="absolute inset-0 bg-gradient-to-t from-slate-950/65 via-slate-950/25 to-transparent"

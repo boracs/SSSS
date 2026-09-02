@@ -7,7 +7,10 @@
         "build": "vite build",
         "brand:assets": "node scripts/generate-brand-assets.mjs",
         "sponsor:assets": "node scripts/generate-sponsor-assets.mjs",
-        "share:tunnel": "vite build && node -e \"try{require('fs').unlinkSync('public/hot')}catch(e){}\""
+        "share:tunnel": "vite build && node -e \"try{require('fs').unlinkSync('public/hot')}catch(e){}\"",
+        "deploy:cloud": "bash scripts/deploy-cloud.sh",
+        "deploy:cloud:fast": "bash scripts/deploy-cloud.sh --skip-build",
+        "dev:local": "bash scripts/local-dev.sh"
     },
     "dependencies": {
         "@floating-ui/react": "^0.27.19",

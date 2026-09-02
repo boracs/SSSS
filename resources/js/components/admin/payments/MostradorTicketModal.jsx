@@ -244,6 +244,7 @@ export default function MostradorTicketModal({
     surfboards = [],
     categories = [],
     guestAllowedCategories = GUEST_ALLOWED,
+    invoicingEnabled = false,
     errors = {},
     busy = false,
     onClose,
@@ -341,6 +342,9 @@ export default function MostradorTicketModal({
         () => users.find((u) => u.id === userId) || null,
         [users, userId],
     );
+
+    const guestEmailRequired =
+        Boolean(invoicingEnabled) && mode === "cash" && useGuest;
 
     const allowedCategories = useMemo(() => {
         const all = categories.length ? categories : Object.keys(CATEGORY_LABELS);
@@ -804,6 +808,7 @@ export default function MostradorTicketModal({
         e.preventDefault();
         if (lines.length === 0) return;
         if (useGuest && !guestName.trim()) return;
+        if (guestEmailRequired && !guestEmail.trim()) return;
         if (!useGuest && !userId) return;
         if (tpvMismatch) return;
 
@@ -997,12 +1002,22 @@ export default function MostradorTicketModal({
                         />
                         <AdminFormField
                             type="email"
-                            label="Email (opcional)"
+                            label={
+                                guestEmailRequired
+                                    ? "Email *"
+                                    : "Email (opcional)"
+                            }
                             inputProps={{
+                                required: guestEmailRequired,
                                 value: guestEmail,
                                 onChange: (e) => setGuestEmail(e.target.value),
                             }}
                         />
+                        {guestEmailRequired ? (
+                            <p className="text-xs text-amber-200/80">
+                                Obligatorio para emitir TicketBAI.
+                            </p>
+                        ) : null}
                     </div>
                 )}
 
@@ -1066,7 +1081,19 @@ export default function MostradorTicketModal({
                                                     }))
                                                 }
                                             />
-                                            {p.nombre} · {p.precio} €
+                                            <span>
+                                                {p.nombre} ·{" "}
+                                                {formatCentsLabel(
+                                                    p.precio_cents,
+                                                )}
+                                            </span>
+                                            {Number(p.descuento) > 0 ? (
+                                                <span className="text-xs text-slate-500 line-through">
+                                                    {formatCentsLabel(
+                                                        p.precio_base_cents,
+                                                    )}
+                                                </span>
+                                            ) : null}
                                         </label>
                                     );
                                 })}
@@ -1122,7 +1149,7 @@ export default function MostradorTicketModal({
                             </AdminFormField>
                             <AdminFormField
                                 type="number"
-                                label="Nº personas"
+                                label="N.º de personas"
                                 inputProps={{
                                     min: 1,
                                     value: draft.party_size,
@@ -1952,7 +1979,12 @@ export default function MostradorTicketModal({
                         </AdminButton>
                         <AdminButton
                             type="submit"
-                            disabled={busy || lines.length === 0 || tpvMismatch}
+                            disabled={
+                                busy ||
+                                lines.length === 0 ||
+                                tpvMismatch ||
+                                (guestEmailRequired && !guestEmail.trim())
+                            }
                         >
                             {mode === "cash"
                                 ? "Cobrar ticket"

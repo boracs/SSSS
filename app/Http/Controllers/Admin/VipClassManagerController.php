@@ -9,7 +9,9 @@ use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Models\User;
 use App\Services\AvailabilityService;
+use App\Services\CreditEngineService;
 use App\Support\BusinessDateTime;
+use App\Support\LessonBonoCreditUnits;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +31,7 @@ class VipClassManagerController extends Controller
     public function __construct(
         private readonly AvailabilityService $availabilityService,
         private readonly SyncLessonStaffAction $syncLessonStaffAction,
+        private readonly CreditEngineService $creditEngine,
     ) {}
 
     /** @deprecated El calendario VIP vive en ClassManager; esta ruta solo redirige. */
@@ -179,7 +182,7 @@ class VipClassManagerController extends Controller
             'is_private' => false,
             'price' => 0.0,
             'currency' => 'EUR',
-            'internal_notes' => 'VIP_CREDIT_COST=1',
+            'internal_notes' => $this->vipSoloCreditNote(),
         ]);
 
         try {
@@ -189,7 +192,13 @@ class VipClassManagerController extends Controller
         }
         $this->rebalanceVipCapacitiesForDate($startsAt);
 
-        return back()->with('success', 'Clase VIP creada correctamente (consume 1 crédito por reserva).');
+        $soloUnits = $this->vipSoloCreditUnits();
+
+        return back()->with('success', sprintf(
+            'Clase VIP creada correctamente (en solitario consume %d %s).',
+            $soloUnits,
+            $soloUnits === 1 ? 'crédito' : 'créditos'
+        ));
     }
 
     public function update(Request $request, Lesson $lesson)
@@ -252,7 +261,7 @@ class VipClassManagerController extends Controller
             'location' => (string) ($validated['location'] ?? 'Zurriola'),
             'price' => 0.0,
             'currency' => 'EUR',
-            'internal_notes' => 'VIP_CREDIT_COST=1',
+            'internal_notes' => $this->vipSoloCreditNote(),
         ]);
 
         try {
@@ -269,18 +278,36 @@ class VipClassManagerController extends Controller
     {
         abort_unless((string) $lesson->modality === 'vip', 403, 'Solo se pueden borrar clases VIP en este panel.');
 
-        DB::transaction(function () use ($lesson): void {
+        $summary = DB::transaction(function () use ($lesson): array {
             $enrollments = LessonUser::query()
                 ->where('lesson_id', $lesson->id)
                 ->whereIn('status', self::ACTIVE_ENROLLMENT_STATUSES)
-                ->get(['id', 'user_id', 'status']);
+                ->lockForUpdate()
+                ->get();
 
-            $affectedUserIds = $enrollments->pluck('user_id')->unique()->values()->all();
-            if (! empty($affectedUserIds)) {
-                Log::warning('[VIP_MANAGER] Clase VIP eliminada con alumnos afectados', [
+            $refunds = [];
+            $unitsTotal = 0;
+
+            foreach ($enrollments as $enrollment) {
+                if (($enrollment->payment_method ?? '') !== 'bono_vip') {
+                    continue;
+                }
+
+                $units = $this->creditEngine->refundCredits($enrollment, 'Clase VIP eliminada');
+                if ($units > 0) {
+                    $refunds[] = [
+                        'user_id' => $enrollment->user_id,
+                        'units' => $units,
+                    ];
+                    $unitsTotal += $units;
+                }
+            }
+
+            if ($refunds !== []) {
+                Log::info('[VIP_MANAGER] Clase VIP eliminada: créditos devueltos', [
                     'lesson_id' => $lesson->id,
-                    'affected_users' => $affectedUserIds,
-                    'virtual_credit_refund_uc' => 1,
+                    'refunds' => $refunds,
+                    'units_total' => $unitsTotal,
                     'at' => BusinessDateTime::now()->toDateTimeString(),
                 ]);
             }
@@ -290,9 +317,22 @@ class VipClassManagerController extends Controller
             StaffAssignment::query()->where('lesson_id', $lesson->id)->delete();
             $lesson->delete();
             $this->rebalanceVipCapacitiesForDate($startsAt);
+
+            return [
+                'active' => $enrollments->count(),
+                'units' => $unitsTotal,
+            ];
         });
 
-        return back()->with('success', 'Clase VIP eliminada y consumos asociados revertidos.');
+        if ($summary['active'] === 0) {
+            return back()->with('success', 'Clase VIP eliminada. Sin alumnos inscritos.');
+        }
+
+        $units = $summary['units'];
+
+        return back()->with('success', $units === 1
+            ? 'Clase VIP eliminada. 1 crédito devuelto.'
+            : "Clase VIP eliminada. {$units} créditos devueltos.");
     }
 
     public function replicatePreviousWeek(Request $request): JsonResponse
@@ -337,7 +377,7 @@ class VipClassManagerController extends Controller
                 'is_private' => false,
                 'price' => 0.0,
                 'currency' => 'EUR',
-                'internal_notes' => 'VIP_CREDIT_COST=1',
+                'internal_notes' => $this->vipSoloCreditNote(),
             ]);
 
             $monitorAssignment = $prevLesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_MONITOR);
@@ -456,6 +496,16 @@ class VipClassManagerController extends Controller
         $oldDay = $lesson->starts_at->copy()->timezone(BusinessDateTime::businessTimezone())->startOfDay();
 
         return $oldDay->gte($today);
+    }
+
+    private function vipSoloCreditUnits(): int
+    {
+        return LessonBonoCreditUnits::unitsForCharge('vip', 1);
+    }
+
+    private function vipSoloCreditNote(): string
+    {
+        return 'VIP unidades en solitario: '.$this->vipSoloCreditUnits();
     }
 
     private function isQuarterMinute(Carbon $value): bool

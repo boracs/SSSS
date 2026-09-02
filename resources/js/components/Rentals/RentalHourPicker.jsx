@@ -16,7 +16,9 @@ export default function RentalHourPicker({
     blockedRanges = [],
     isChecking = false,
     onChange,
+    tone = "light",
 }) {
+    const isDark = tone === "dark";
     const resolvedPolicy = useMemo(() => resolveRentalPolicy(policy), [policy]);
 
     const availablePacks = useMemo(
@@ -90,16 +92,41 @@ export default function RentalHourPicker({
 
     if (availablePacks.length === 0) {
         return (
-            <p className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-sm text-slate-400">
+            <p
+                className={`rounded-xl border p-3 text-sm ${
+                    isDark
+                        ? "border-white/10 bg-slate-950/60 text-slate-400"
+                        : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
+            >
                 Esta tabla no tiene tarifas por horas. Elige el alquiler por días.
             </p>
         );
     }
 
+    const packIdleClass = isDark
+        ? "bg-slate-950/60 text-slate-300 ring-white/10 hover:bg-slate-800 hover:text-slate-100"
+        : "bg-white text-slate-700 ring-slate-200 hover:bg-slate-50 hover:text-slate-900";
+    const slotIdleClass = isDark
+        ? "bg-slate-950/60 text-slate-200 ring-white/10 hover:bg-slate-800"
+        : "bg-white text-slate-800 ring-slate-200 hover:bg-slate-50";
+    const slotDisabledClass = isDark
+        ? "cursor-not-allowed bg-slate-900/40 text-slate-600 line-through ring-white/5"
+        : "cursor-not-allowed bg-slate-100 text-slate-400 line-through ring-slate-100";
+    const summaryPanelClass = isDark
+        ? "rounded-xl border border-white/10 bg-slate-950/60 p-3 text-sm ring-1 ring-inset ring-white/5"
+        : "rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm ring-1 ring-inset ring-slate-100";
+    const labelMutedClass = isDark ? "text-slate-400" : "text-slate-600";
+    const valueClass = isDark ? "text-slate-100" : "text-slate-900";
+    const totalClass = isDark ? "text-cyan-300" : "text-s4";
+    const sectionLabelClass = isDark ? "text-slate-400" : "text-slate-500";
+    const hintClass = isDark ? "text-slate-400" : "text-slate-600";
+    const warnClass = isDark ? "text-amber-300/90" : "text-amber-700";
+
     return (
         <div className="space-y-4">
             <div>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <p className={`text-[11px] font-bold uppercase tracking-wide ${sectionLabelClass}`}>
                     Duración
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Duración del alquiler">
@@ -114,7 +141,7 @@ export default function RentalHourPicker({
                                 className={`rounded-xl px-3 py-2 text-sm font-semibold ring-1 ring-inset transition ${
                                     active
                                         ? "bg-cyan-600 text-white ring-cyan-500"
-                                        : "bg-slate-950/60 text-slate-300 ring-white/10 hover:bg-slate-800 hover:text-slate-100"
+                                        : packIdleClass
                                 }`}
                             >
                                 {pack.label}
@@ -133,7 +160,7 @@ export default function RentalHourPicker({
 
             <div className="board-availability-calendar">
                 <BookingCalendar
-                    tone="dark"
+                    tone={tone}
                     selectionMode="single"
                     selectedDate={day}
                     onDateChange={setDay}
@@ -145,14 +172,14 @@ export default function RentalHourPicker({
             </div>
 
             <div>
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                <p className={`text-[11px] font-bold uppercase tracking-wide ${sectionLabelClass}`}>
                     Hora de recogida
                 </p>
 
                 {!day ? (
-                    <p className="mt-2 text-sm text-slate-400">Elige primero el día.</p>
+                    <p className={`mt-2 text-sm ${hintClass}`}>Elige primero el día.</p>
                 ) : !hasSlots ? (
-                    <p className="mt-2 text-sm text-slate-400">
+                    <p className={`mt-2 text-sm ${hintClass}`}>
                         No hay horas para este pack dentro del horario de la escuela.
                     </p>
                 ) : (
@@ -180,8 +207,8 @@ export default function RentalHourPicker({
                                             active
                                                 ? "bg-cyan-600 text-white ring-cyan-500"
                                                 : slot.available
-                                                  ? "bg-slate-950/60 text-slate-200 ring-white/10 hover:bg-slate-800"
-                                                  : "cursor-not-allowed bg-slate-900/40 text-slate-600 line-through ring-white/5"
+                                                  ? slotIdleClass
+                                                  : slotDisabledClass
                                         }`}
                                     >
                                         {slot.time}
@@ -190,7 +217,7 @@ export default function RentalHourPicker({
                             })}
                         </div>
                         {!anyAvailable ? (
-                            <p className="mt-2 text-sm text-amber-300/90">
+                            <p className={`mt-2 text-sm ${warnClass}`}>
                                 Este día está completo para esta duración. Prueba otro día u otro pack.
                             </p>
                         ) : null}
@@ -199,22 +226,26 @@ export default function RentalHourPicker({
             </div>
 
             {selectedSlot ? (
-                <div className="rounded-xl border border-white/10 bg-slate-950/60 p-3 text-sm ring-1 ring-inset ring-white/5">
+                <div className={summaryPanelClass}>
                     <div className="flex items-center justify-between gap-3">
-                        <span className="text-slate-400">Recogida</span>
-                        <span className="font-heading font-semibold tabular-nums text-slate-100">
+                        <span className={labelMutedClass}>Recogida</span>
+                        <span className={`font-heading font-semibold tabular-nums ${valueClass}`}>
                             {formatTime(selectedSlot.pickupAt)}
                         </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-3">
-                        <span className="text-slate-400">Devolución</span>
-                        <span className="font-heading font-semibold tabular-nums text-slate-100">
+                        <span className={labelMutedClass}>Devolución</span>
+                        <span className={`font-heading font-semibold tabular-nums ${valueClass}`}>
                             {formatTime(selectedSlot.returnAt)}
                         </span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/10 pt-2">
-                        <span className="text-slate-400">Total estimado</span>
-                        <span className="font-heading font-semibold tabular-nums text-cyan-300">
+                    <div
+                        className={`mt-2 flex items-center justify-between gap-3 border-t pt-2 ${
+                            isDark ? "border-white/10" : "border-slate-200"
+                        }`}
+                    >
+                        <span className={labelMutedClass}>Total estimado</span>
+                        <span className={`font-heading font-semibold tabular-nums ${totalClass}`}>
                             {formatRentalEur(totalPrice) ?? "—"}
                         </span>
                     </div>

@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\User;
+use App\Services\Taquilla\TaquillaMembershipService;
 use App\Support\VipVirtualLocker;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class TaquillaController extends Controller
 {
+    public function __construct(
+        private readonly TaquillaMembershipService $taquillaService,
+    ) {}
+
     public function showForm($success = null)
     {
         $usuarios = User::query()
@@ -40,42 +44,16 @@ class TaquillaController extends Controller
         ]);
 
         $numero = (int) $request->numero_taquilla;
-        $newUserName = null;
 
-        DB::transaction(function () use ($request, $numero, &$newUserName) {
-            if (VipVirtualLocker::allowsMultipleAssignments($numero)) {
-                $usuario = User::query()
-                    ->whereKey((int) $request->usuario_id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-                $usuario->numeroTaquilla = $numero;
-                $usuario->save();
-                $newUserName = trim(($usuario->nombre ?? '').' '.($usuario->apellido ?? ''));
+        // El alta vive en el servicio: es el único sitio que sella la fecha de alta
+        // (la usa el cálculo de periodo de la cuota).
+        $usuario = $this->taquillaService->darDeAltaTaquilla(
+            User::query()->findOrFail((int) $request->usuario_id),
+            $numero,
+        );
 
-                return;
-            }
-
-            $ocupante = User::query()
-                ->where('numeroTaquilla', $numero)
-                ->lockForUpdate()
-                ->first();
-
-            // Solo se permite si está libre o ya es del mismo usuario (cambio a otra libre se hace
-            // actualizando su numeroTaquilla; la anterior queda libre al dejar de referenciarse).
-            if ($ocupante && (int) $ocupante->id !== (int) $request->usuario_id) {
-                abort(422, 'Esa taquilla ya está asignada a otro usuario.');
-            }
-
-            $usuario = User::query()
-                ->whereKey((int) $request->usuario_id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $usuario->numeroTaquilla = $numero;
-            $usuario->save();
-            $newUserName = trim(($usuario->nombre ?? '').' '.($usuario->apellido ?? ''));
-        });
-
-        $newLabel = $newUserName !== null && $newUserName !== '' ? $newUserName : 'el nuevo socio';
+        $newUserName = trim(($usuario->nombre ?? '').' '.($usuario->apellido ?? ''));
+        $newLabel = $newUserName !== '' ? $newUserName : 'el nuevo socio';
 
         return back()->with(
             'success',
@@ -89,24 +67,11 @@ class TaquillaController extends Controller
             'desasignar_vip' => 'sometimes|boolean',
         ]);
 
-        $desasignarVip = $request->boolean('desasignar_vip');
-        $vipRemoved = false;
+        // Liberar aquí también es una baja efectiva: si el club le quita la plaza,
+        // no se le devengan los meses que pase fuera.
+        $result = $this->taquillaService->liberarTaquilla($user, $request->boolean('desasignar_vip'));
 
-        DB::transaction(function () use ($user, $desasignarVip, &$vipRemoved) {
-            $target = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-            $target->numeroTaquilla = null;
-
-            if ($desasignarVip && (bool) $target->is_vip) {
-                $target->is_vip = false;
-                $vipRemoved = true;
-            } elseif ((bool) $target->is_vip) {
-                $target->numeroTaquilla = VipVirtualLocker::defaultNumber();
-            }
-
-            $target->save();
-        });
-
-        $message = $vipRemoved
+        $message = $result->vipRemoved
             ? 'Taquilla liberada y VIP desactivado correctamente.'
             : 'Taquilla liberada correctamente.';
 

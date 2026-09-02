@@ -34,6 +34,7 @@ class Auction extends Model
         'starts_at',
         'ends_at',
         'settled_at',
+        'payment_deadline_at',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class Auction extends Model
         'starts_at'            => 'datetime',
         'ends_at'              => 'datetime',
         'settled_at'           => 'datetime',
+        'payment_deadline_at'  => 'datetime',
     ];
 
     protected static function booted(): void
@@ -165,6 +167,20 @@ class Auction extends Model
         return $this->current_price_cents >= $this->reserve_price_cents;
     }
 
+    public function paymentDeadlineHasPassed(): bool
+    {
+        return $this->payment_deadline_at !== null
+            && $this->payment_deadline_at->lte(now());
+    }
+
+    public function isAwaitingWinnerPayment(): bool
+    {
+        return $this->status === AuctionStatus::Ended
+            && $this->payment_status === PaymentStatus::Pending
+            && $this->winner_user_id !== null
+            && ! $this->paymentDeadlineHasPassed();
+    }
+
     public function firstImage(): ?string
     {
         $images = $this->images ?? [];
@@ -196,7 +212,6 @@ class Auction extends Model
             'bid_count'             => $this->bid_count,
             'status'                => $this->status->value,
             'status_label'          => $this->status->label(),
-            'payment_status'        => $this->payment_status?->value,
             'is_live'               => $this->isLiveNow(),
             'has_ended'             => $this->status === AuctionStatus::Ended
                 || $this->status === AuctionStatus::Settled
@@ -205,12 +220,10 @@ class Auction extends Model
             'ends_at'               => $this->ends_at?->toIso8601String(),
             'minimum_next_bid_cents'=> $this->minimumNextBidCents(),
             'reserve_met'           => $this->reserveMet(),
-            'winner_user_id'        => $this->winner_user_id,
             'is_winner'             => $viewerUserId !== null && (int) $this->winner_user_id === $viewerUserId,
             'can_pay'               => $viewerUserId !== null
                 && (int) $this->winner_user_id === $viewerUserId
-                && $this->status === AuctionStatus::Ended
-                && $this->payment_status === PaymentStatus::Pending,
+                && $this->isAwaitingWinnerPayment(),
             'images'                => array_map(
                 fn (string $p) => self::publicImageUrl($p),
                 $this->images ?? [],

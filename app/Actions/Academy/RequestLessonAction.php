@@ -62,31 +62,6 @@ final class RequestLessonAction
             return ['ok' => false, 'message' => AcademyEnrollmentPolicy::enrollBlockedMessage()];
         }
 
-        $activeStatuses = [
-            LessonUser::STATUS_PENDING,
-            LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-            LessonUser::STATUS_CONFIRMED,
-            LessonUser::STATUS_ENROLLED,
-            LessonUser::STATUS_ATTENDED,
-        ];
-
-        if ($user !== null) {
-            if (LessonUser::query()
-                ->where('lesson_id', $lesson->id)
-                ->where('user_id', $user->id)
-                ->whereIn('status', $activeStatuses)
-                ->exists()) {
-                return ['ok' => false, 'message' => 'Ya tienes una solicitud o plaza activa en esta clase.'];
-            }
-        } elseif (LessonUser::query()
-            ->where('lesson_id', $lesson->id)
-            ->whereNull('user_id')
-            ->where('guest_email', $guestEmail)
-            ->whereIn('status', $activeStatuses)
-            ->exists()) {
-            return ['ok' => false, 'message' => 'Ya hay una solicitud activa con ese email en esta clase.'];
-        }
-
         $partySize = max(1, $partySize);
         $guestFirst = $participants[0]['first_name'] ?? null;
         $guestLast = $participants[0]['last_name'] ?? null;
@@ -120,19 +95,20 @@ final class RequestLessonAction
                         return ['ok' => false, 'message' => 'La clase no tiene horario válido.'];
                     }
 
+                    // Con la lección ya bloqueada: comprobación e INSERT comparten
+                    // la sección serializada, así el doble clic no duplica la fila.
+                    $duplicate = $this->activeEnrollmentExists($locked, $user, $guestEmail);
+                    if ($duplicate !== null) {
+                        return ['ok' => false, 'message' => $duplicate];
+                    }
+
                     $blockingStatuses = $this->availabilityService->occupancyStatuses();
                     $blockingParty = (int) LessonUser::query()
                         ->where('lesson_id', $locked->id)
                         ->whereIn('status', $blockingStatuses)
                         ->sum(DB::raw('COALESCE(quantity, party_size, 1)'));
 
-                    $seatStatuses = [
-                        LessonUser::STATUS_PENDING,
-                        LessonUser::STATUS_PENDING_EXTRA_MONITOR,
-                        LessonUser::STATUS_CONFIRMED,
-                        LessonUser::STATUS_ENROLLED,
-                        LessonUser::STATUS_ATTENDED,
-                    ];
+                    $seatStatuses = LessonUser::activeSeatStatuses();
                     $seatsTaken = (int) LessonUser::query()
                         ->where('lesson_id', $locked->id)
                         ->whereIn('status', $seatStatuses)
@@ -223,5 +199,39 @@ final class RequestLessonAction
         });
 
         return $result;
+    }
+
+    /**
+     * Mensaje de error si ya hay plaza o solicitud activa para ese socio o ese
+     * email invitado; null si se puede inscribir. Replica la clave del índice
+     * `lesson_user_active_enrollment_unique` (que ignora altas de mostrador).
+     */
+    private function activeEnrollmentExists(Lesson $lesson, ?User $user, ?string $guestEmail): ?string
+    {
+        $activeStatuses = LessonUser::activeSeatStatuses();
+
+        if ($user !== null) {
+            $exists = LessonUser::query()
+                ->where('lesson_id', $lesson->id)
+                ->where('user_id', $user->id)
+                ->whereIn('status', $activeStatuses)
+                ->exists();
+
+            return $exists ? 'Ya tienes una solicitud o plaza activa en esta clase.' : null;
+        }
+
+        if ($guestEmail === null || trim($guestEmail) === '') {
+            return null;
+        }
+
+        $exists = LessonUser::query()
+            ->where('lesson_id', $lesson->id)
+            ->whereNull('user_id')
+            ->where('is_admin_guest', false)
+            ->whereRaw('LOWER(guest_email) = ?', [mb_strtolower(trim($guestEmail))])
+            ->whereIn('status', $activeStatuses)
+            ->exists();
+
+        return $exists ? 'Ya hay una solicitud activa con ese email en esta clase.' : null;
     }
 }

@@ -67,6 +67,16 @@ test('deletePair borra máster y thumb', function () {
     }
 });
 
+test('publicMasterUrl usa el webp si el RAW de BD ya no está en disco', function () {
+    $service = app(CatalogImageService::class);
+    Storage::disk('public')->put('productos/neopreno-traje-frontal.webp', 'webp-bytes');
+
+    $url = $service->publicMasterUrl('productos/neopreno-traje-frontal.png');
+
+    expect($url)->toContain('neopreno-traje-frontal.webp')
+        ->and($url)->not->toContain('.png');
+});
+
 test('backfill es idempotente si ya hay thumb webp', function () {
     $service = app(CatalogImageService::class);
     $stored = $service->storeFromUpload(
@@ -79,4 +89,12 @@ test('backfill es idempotente si ya hay thumb webp', function () {
     expect($again)->toBe($stored->masterPath);
     Storage::disk('public')->assertExists($stored->masterPath);
     Storage::disk('public')->assertExists((string) $stored->thumbPath);
+});
+
+test('backfill reescribe a webp si el RAW desapareció y el máster sigue', function () {
+    $service = app(CatalogImageService::class);
+    Storage::disk('public')->put('productos/neopreno-traje-frontal.webp', 'webp-bytes');
+
+    expect($service->backfillStoredPath('productos/neopreno-traje-frontal.png'))
+        ->toBe('productos/neopreno-traje-frontal.webp');
 });

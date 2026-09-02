@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "@/components/seo/SeoHead";
 import {
     Gavel,
@@ -187,9 +187,9 @@ export default function AuctionsIndex({ auctions = [], seo = null }) {
     ];
 
     return (
-        <Layout1>
+        <PageShell variant="night">
             <SeoHead seo={seo} />
-            <div className="relative min-h-screen overflow-hidden bg-[#070b14]">
+            <div className="relative overflow-hidden">
                 <div
                     aria-hidden
                     className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-10%,rgba(251,146,60,0.14),transparent)]"
@@ -206,7 +206,7 @@ export default function AuctionsIndex({ auctions = [], seo = null }) {
                             <Sparkles className="h-3.5 w-3.5" />
                             Club exclusivo S4
                         </div>
-                        <h1 className="max-w-3xl text-3xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl">
+                        <h1 className="max-w-3xl font-heading text-3xl font-extrabold leading-[1.1] tracking-tight text-white sm:text-5xl">
                             Subastas de{" "}
                             <span className="bg-gradient-to-r from-orange-200 via-amber-200 to-orange-400 bg-clip-text text-transparent">
                                 material premium
@@ -287,6 +287,6 @@ export default function AuctionsIndex({ auctions = [], seo = null }) {
                     )}
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

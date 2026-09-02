@@ -1,6 +1,8 @@
 import React from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
+import S4Button from "@/components/S4Button";
 import {
     Activity,
     ArrowRight,
@@ -18,6 +20,15 @@ import {
     Waves,
 } from "lucide-react";
 import YowLogo from "../components/YowLogo";
+
+const ACCENT_MD =
+    "bg-gradient-to-r from-orange-500 to-amber-400 font-bold text-slate-900 shadow-lg hover:brightness-110";
+const ACCENT_LG =
+    "bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 font-bold text-slate-900 shadow-lg hover:brightness-110";
+const OUTLINE_GLASS_BLUR_MD =
+    "border border-white/20 bg-white/5 font-semibold text-white backdrop-blur-sm hover:bg-white/10";
+const OUTLINE_GLASS_BLUR_LG =
+    "border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white hover:bg-white/10";
 
 const PILARES = [
     {
@@ -228,7 +239,7 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
         <>
             <SeoHead seo={seo} />
 
-            <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#241405] to-slate-950 text-white">
+            <PageShell variant="warm" withGradient>
                 {/* Hero */}
                 <section className="relative overflow-hidden border-b border-orange-950/60">
                     <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(120,53,15,0.4),_transparent_55%)]" />
@@ -239,7 +250,7 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     <Sparkles className="h-3.5 w-3.5" />
                                     Surfskate · Guía de equipamiento
                                 </div>
-                                <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
+                                <h1 className="font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">
                                     ¿Qué surfskate te va bien según{" "}
                                     <span className="bg-gradient-to-r from-orange-300 to-amber-300 bg-clip-text text-transparent">
                                         tu altura y peso?
@@ -252,20 +263,18 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                     fluidez y no luches contra el equipo.
                                 </p>
                                 <div className="mt-7 flex flex-wrap gap-3">
-                                    <a
-                                        href="#tabla-seleccion"
-                                        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-5 py-2.5 text-sm font-bold text-slate-900 shadow-lg transition hover:brightness-110"
-                                    >
+                                    <S4Button href="#tabla-seleccion" variant="accent" className={ACCENT_MD}>
                                         <Table2 className="h-4 w-4" />
                                         Ver tabla rápida
-                                    </a>
-                                    <Link
+                                    </S4Button>
+                                    <S4Button
                                         href={route("servicios.surfSkate")}
-                                        className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                                        variant="secondary"
+                                        className={OUTLINE_GLASS_BLUR_MD}
                                     >
                                         Clases de surfskate
                                         <ArrowRight className="h-4 w-4" />
-                                    </Link>
+                                    </S4Button>
                                 </div>
                             </div>
 
@@ -642,24 +651,23 @@ export default function ServiciosSurfskateGuia({ seo = null }) {
                                 </ul>
                             </div>
                             <div className="flex shrink-0 flex-col gap-3 sm:flex-row lg:flex-col">
-                                <Link
-                                    href={route("contacto")}
-                                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:brightness-110"
-                                >
+                                <S4Button href={route("contacto")} variant="accent" size="lg" className={ACCENT_LG}>
                                     Consultar equipamiento
                                     <ArrowRight className="h-4 w-4" />
-                                </Link>
-                                <Link
+                                </S4Button>
+                                <S4Button
                                     href={route("servicios.surfSkate")}
-                                    className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                                    variant="secondary"
+                                    size="lg"
+                                    className={OUTLINE_GLASS_BLUR_LG}
                                 >
                                     Ver clases y precios
-                                </Link>
+                                </S4Button>
                             </div>
                         </div>
                     </div>
                 </section>
-            </div>
+            </PageShell>
         </>
     );
 }

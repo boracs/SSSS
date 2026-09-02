@@ -1,10 +1,37 @@
-import React from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import FlashErrorModal from "../components/FlashErrorModal";
 import PwaInstallBanner from "../components/PwaInstallBanner";
 import FloatingDockOffsetSync from "../components/FloatingDockOffsetSync";
-import Chatbot from "../components/Chatbot.jsx";
+
+const Chatbot = lazy(() => import("../components/Chatbot.jsx"));
+
+function DeferredChatbot() {
+    const [ready, setReady] = useState(false);
+
+    useEffect(() => {
+        const enable = () => setReady(true);
+
+        if (typeof window.requestIdleCallback === "function") {
+            const idleId = window.requestIdleCallback(enable, { timeout: 2500 });
+            return () => window.cancelIdleCallback(idleId);
+        }
+
+        const timeoutId = window.setTimeout(enable, 1200);
+        return () => window.clearTimeout(timeoutId);
+    }, []);
+
+    if (!ready) {
+        return null;
+    }
+
+    return (
+        <Suspense fallback={null}>
+            <Chatbot showChatLauncher />
+        </Suspense>
+    );
+}
 
 export default function PublicLayout({ children }) {
     return (
@@ -15,7 +42,7 @@ export default function PublicLayout({ children }) {
             <FlashErrorModal />
             <PwaInstallBanner />
             <FloatingDockOffsetSync />
-            <Chatbot showChatLauncher />
+            <DeferredChatbot />
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import {
     Dialog,
     DialogContent,
@@ -68,7 +68,7 @@ export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Admin · Llave de emergencia" />
 
             <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -258,6 +258,6 @@ export default function AdminEmergencyKeysIndex({ lock = {}, requests = [] }) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </Layout1>
+        </PageShell>
     );
 }

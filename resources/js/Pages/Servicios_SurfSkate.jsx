@@ -1,6 +1,8 @@
 import React from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
+import S4Button from "@/components/S4Button";
 import {
     Activity,
     CheckCircle2,
@@ -10,6 +12,14 @@ import {
     ArrowRight,
     BookOpen,
 } from "lucide-react";
+
+const ACCENT_LG =
+    "bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 font-bold text-slate-900 shadow-lg hover:brightness-110";
+const OUTLINE_GLASS_BLUR_LG =
+    "border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur-sm hover:bg-white/10";
+
+const RESERVE_ORANGE_PILL =
+    "rounded-full bg-orange-500/15 font-semibold text-orange-200 ring-1 ring-orange-400/30 hover:bg-orange-500/25";
 
 const CLASES = [
     {
@@ -121,13 +131,10 @@ const ClaseCard = ({ clase }) => {
                     </p>
                     <p className="text-xs text-slate-500">{clase.nota}</p>
                 </div>
-                <Link
-                    href={route("contacto")}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-orange-500/15 px-4 py-2 text-sm font-semibold text-orange-200 ring-1 ring-orange-400/30 transition hover:bg-orange-500/25"
-                >
+                <S4Button href={route("contacto")} variant="secondary" size="sm" className={RESERVE_ORANGE_PILL}>
                     Reservar
                     <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                </S4Button>
             </div>
         </div>
     );
@@ -135,7 +142,7 @@ const ClaseCard = ({ clase }) => {
 
 export default function ServiciosSurfSkate({ seo = null }) {
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#241405] to-slate-950 text-white">
+        <PageShell variant="warm" withGradient>
             <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-orange-950/60">
@@ -145,7 +152,7 @@ export default function ServiciosSurfSkate({ seo = null }) {
                         <Activity className="h-3.5 w-3.5" />
                         Surfskate · San Sebastián Surf School
                     </div>
-                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Clases de surfskate para{" "}
                         <span className="bg-gradient-to-r from-orange-300 to-amber-300 bg-clip-text text-transparent">
                             llevar tu surf a tierra
@@ -157,26 +164,27 @@ export default function ServiciosSurfSkate({ seo = null }) {
                         bonos mensuales para todos los niveles.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Link
-                            href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:brightness-110"
-                        >
+                        <S4Button href={route("contacto")} variant="accent" size="lg" className={ACCENT_LG}>
                             <Activity className="h-4 w-4" />
                             Reservar mi clase
-                        </Link>
-                        <Link
+                        </S4Button>
+                        <S4Button
                             href={route("servicios.surfSkate.guia")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                            variant="secondary"
+                            size="lg"
+                            className={OUTLINE_GLASS_BLUR_LG}
                         >
                             <BookOpen className="h-4 w-4" />
                             Guía: elige tu tabla
-                        </Link>
-                        <Link
+                        </S4Button>
+                        <S4Button
                             href={route("servicios.surf")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                            variant="secondary"
+                            size="lg"
+                            className={OUTLINE_GLASS_BLUR_LG}
                         >
                             Ver clases de surf
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </section>
@@ -197,6 +205,6 @@ export default function ServiciosSurfSkate({ seo = null }) {
                     ))}
                 </div>
             </section>
-        </div>
+        </PageShell>
     );
 }

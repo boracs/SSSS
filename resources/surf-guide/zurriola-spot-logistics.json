@@ -103,13 +103,31 @@
       "not_for": "Avanzado no se manda a Concha por defecto; solo si también quiere calma o Zurriola está al límite (≥1500 kJ / Pico del Loro).",
       "from_kj_hint": 1500
     },
+    "hendaye_when_desfasado": {
+      "tone": "recomendar, no ordenar",
+      "when": "Desde ~2000 kJ, que es cuando ya cabe la posibilidad de que Zurriola esté desfasada (ver `desfase_zurriola`). Sobre todo para iniciación e intermedio.",
+      "copy": "Cuando Zurriola está desfasada, Hendaye es una opción. No es una orden.",
+      "min_kj": 2000
+    },
+    "desfase_zurriola": {
+      "description": "«Desfasada» = demasiado mar para este spot. No es lo mismo que «grande»: cuando la playa se desfasa se satura de agua y masa, la ola deja de romper como ola y no funciona para NADIE. Es lo que limita por arriba toda la escala de kJ.",
+      "possible_min_kj": 2000,
+      "possible_copy": "A partir de ~2000 kJ hay que decir que CABE LA POSIBILIDAD de que la playa esté desfasada, es decir, demasiado mar para este spot. Dilo como posibilidad, no como certeza: hay días de 2000 que todavía funcionan. Desde aquí, para iniciación e intermedio, Hendaye ya entra como opción (`hendaye_when_desfasado`).",
+      "likely_min_kj": 3000,
+      "likely_copy": "A partir de ~3000 kJ ya no es una posibilidad: di que SEGURAMENTE esté desfasada.",
+      "forbidden_min_kj": 3000,
+      "forbidden_star_cap": 1,
+      "forbidden_copy": "Por encima de ~3000 kJ el baño está PROHIBIDO para los tres niveles, profesionales incluidos. Aquí no vale el «un experto puede valorar la sesión al límite»: no se entra. Ofrecer alternativa (Hendaye, La Concha) o directamente otro día.",
+      "coherence_note": "Por debajo de 3000 kJ esto no anula `large_swell_tide_zones`: si la playa NO está desfasada, esas zonas siguen siendo las buenas para intermedio y avanzado. Orden correcto: primero avisar de la posibilidad de desfase, después decir dónde estaría lo bueno si funciona.",
+      "check_webcam": "La certeza la da la webcam: el desfase se ve. Invitar a mirarla antes de bajar."
+    },
     "energy_kj": [
       {
         "min": 0,
         "max": 49,
         "label": "Minúsculo",
         "level": "Iniciación absoluta / Iniciación",
-        "zone_recommendation": "Cualquiera",
+        "zone_recommendation": "Ver `entry_zone_by_tide` y `default_entry_zone_by_level`: con tan poca fuerza la punta del espigón no rompe, así que del medio a la derecha; iniciación puede entrar incluso en el centro o la derecha",
         "notes": "Ideal para niños con poco peso o primer día de toma de contacto. Fuerza mínima. En Zurriola, con ~9–12 kJ (y en general <50), iniciación puede coger espumas y también olas pequeñas sin romper que se montan fácil — no digas 'solo espumas'. Para INTERMEDIO: escaso. Para AVANZADO: no merece la pena salir."
       },
       {
@@ -117,7 +135,7 @@
         "max": 69,
         "label": "Muy pequeño (límite)",
         "level": "Iniciación",
-        "zone_recommendation": "Cualquiera",
+        "zone_recommendation": "Ver `entry_zone_by_tide` y `default_entry_zone_by_level`: la punta del espigón aún no rompe, del medio a la derecha; iniciación puede abrirse al centro",
         "notes": "Fuerza justa para ponerse de pie: espumas y olas pequeñas sin romper (Zurriola lo permite con facilidad). Intermedio sigue escaso. Avanzado: aún no merece la pena de forma general."
       },
       {
@@ -125,7 +143,7 @@
         "max": 99,
         "label": "Muy pequeño (avanzado posible)",
         "level": "Iniciación / Avanzado (escaso pero posible)",
-        "zone_recommendation": "Cualquiera",
+        "zone_recommendation": "Ver `entry_zone_by_tide` y `default_entry_zone_by_level`: la punta del espigón aún no rompe, del medio a la derecha; iniciación puede abrirse al centro",
         "notes": "Iniciación: perfecto. Intermedio: escaso. Avanzado: pequeño. El viento decide las estrellas (glass/sur vs norte malo)."
       },
       {
@@ -133,7 +151,7 @@
         "max": 400,
         "label": "Pequeño a Medio",
         "level": "Principiante / Intermedio / Avanzado",
-        "zone_recommendation": "Cualquiera",
+        "zone_recommendation": "Ver `entry_zone_by_tide` (manda) y `default_entry_zone_by_level`: con baja y ≥300 kJ, punta del espigón para intermedio/avanzado; con menos, o con media/alta, del medio a la derecha. Iniciación, izquierda salvo que la marea la empuje al centro",
         "notes": "A partir de 100 kJ pueden surfear TODOS. Para avanzado: ola pequeña y muy técnica, ideal para mejorar la técnica (giros, timing, lectura de secciones) sin riesgo. Olas nobles para progresión."
       },
       {
@@ -141,15 +159,15 @@
         "max": 800,
         "label": "Medio a Considerable",
         "level": "Intermedio / Avanzado",
-        "zone_recommendation": "Espigón (Iniciación)",
-        "notes": "Empieza a haber fuerza real y se genera un buen baño. Los de iniciación deben quedarse estrictamente cerca del espigón por estar más resguardado."
+        "zone_recommendation": "Espigón (Iniciación). Intermedio/avanzado: con baja, punta del espigón; con media/alta, del medio a la derecha salvo la excepción de ~550 kJ (ver `entry_zone_by_tide`)",
+        "notes": "Empieza a haber fuerza real y se genera un buen baño. Los de iniciación deben quedarse estrictamente cerca del espigón (base resguardada, no la punta) por estar más protegido."
       },
       {
         "min": 801,
         "max": 1500,
         "label": "Fuerte",
         "level": "Avanzado / Experto",
-        "zone_recommendation": "Espigón (aprovechar corriente de retorno)",
+        "zone_recommendation": "Espigón (aprovechar corriente de retorno). Con baja, la punta del espigón es la referencia; con media/alta, izquierda para iniciación, izquierda-centro intermedio, centro-derecha avanzado (ver `entry_zone_by_tide`)",
         "notes": "Fuerza considerable, requiere buena condición física y lectura de corrientes. Se recomienda precaución."
       },
       {
@@ -162,11 +180,19 @@
       },
       {
         "min": 2501,
-        "max": 9999,
+        "max": 3000,
         "label": "Desfasado",
-        "level": "Mayoría: evitar Zurriola (Concha). Avanzado: al límite, no siempre 1★",
-        "zone_recommendation": "Iniciación/intermedio: La Concha. Avanzado: valorar Zurriola al límite o Pico del Loro",
-        "notes": "Playa saturada para la mayoría: mucha masa de agua, corrientes y riesgo de barra. Aviso: iniciación e intermedio fuera. Un avanzado puede tener sesión al límite (estrellas ~3); no digas que nadie puede."
+        "level": "Mayoría: evitar Zurriola (Hendaye o Concha). Avanzado: al límite, no siempre 1★",
+        "zone_recommendation": "Iniciación/intermedio: Hendaye (opción cuando Zurriola está desfasada) o La Concha. Avanzado: valorar Zurriola al límite, Pico del Loro o Hendaye",
+        "notes": "Playa saturada para la mayoría: mucha masa de agua, corrientes y riesgo de barra. Aviso: iniciación e intermedio fuera. Opción: Hendaye (ver `hendaye_when_desfasado`). Un avanzado puede tener sesión al límite (estrellas ~3); no digas que nadie puede."
+      },
+      {
+        "min": 3001,
+        "max": 9999,
+        "label": "Desfasado (prohibido)",
+        "level": "Nadie. Baño prohibido, profesionales incluidos",
+        "zone_recommendation": "Ninguna zona de Zurriola. Hendaye, La Concha u otro día",
+        "notes": "Seguramente la playa esté desfasada: demasiado mar para este spot. No hay sesión al límite que valga; aquí no se entra. Ver `desfase_zurriola`."
       }
     ],
     "level_skill_profiles": {
@@ -235,12 +261,101 @@
         },
         {
           "min_kj": 2501,
+          "max_kj": 3000,
           "stars": { "iniciacion": 1, "intermedio": 1, "avanzado": 3 },
-          "iniciacion": "1★. Solo orilla y espumas, agua máximo rodillas/cadera. Evitar huecos sin olas (corriente al mar); quedaros en mucha espuma (tira a tierra). Zurriola: marea baja o media. Si está alta, id a La Concha. Primeros 3 días puede ser un buen rato solo si cumplís esto.",
-          "intermedio": "Evitar Zurriola — peligroso.",
-          "avanzado": "Evitar Zurriola; ir a Playa de La Concha u otra opción. No aplastar a 1★ si un experto aún puede valorar la sesión al límite."
+          "iniciacion": "1★. Solo orilla y espumas, agua máximo rodillas/cadera. Evitar huecos sin olas (corriente al mar); quedaros en mucha espuma (tira a tierra). Zurriola: marea baja o media. Si está alta, La Concha. Si Zurriola está desfasada: Hendaye es una opción (no es una orden). Primeros 3 días puede ser un buen rato solo si cumplís el protocolo de orilla.",
+          "intermedio": "Evitar Zurriola — peligroso (saturación y corrientes). Opción: Hendaye, cuando Zurriola está desfasada. No es una orden.",
+          "avanzado": "Evitar Zurriola; ir a Hendaye, Playa de La Concha u otra opción. No aplastar a 1★ si un experto aún puede valorar la sesión al límite."
+        },
+        {
+          "min_kj": 3001,
+          "stars": { "iniciacion": 1, "intermedio": 1, "avanzado": 1 },
+          "iniciacion": "1★. Prohibido: la playa seguramente esté desfasada. No se entra. Hendaye, La Concha u otro día.",
+          "intermedio": "1★. Prohibido: demasiado mar para este spot. No se entra.",
+          "avanzado": "1★. Prohibido también para avanzado y para profesionales. Aquí no hay sesión al límite: la playa está desfasada y no funciona para nadie. Ver `desfase_zurriola`."
         }
       ]
+    },
+    "entry_zone_priority": {
+      "description": "Orden para decidir DÓNDE entrar. De mayor a menor: la primera regla que aplique manda y las de abajo no se usan. El parte debe decir zona en los tres bloques de nivel, todos los días.",
+      "order": [
+        "1) `iniciacion_foam_protocol_extreme_kj` (≥2501 kJ, solo iniciación) y `large_swell_tide_zones` (≥2000 kJ): mandan sobre todo lo demás.",
+        "2) `entry_zone_by_tide`: por debajo de 2000 kJ la marea decide dónde rompe y manda sobre la zona base.",
+        "3) `default_entry_zone_by_level`: zona base de cada nivel cuando lo anterior no dice nada de ese nivel."
+      ]
+    },
+    "entry_zone_by_tide": {
+      "description": "En Zurriola la marea decide DÓNDE rompe. Esto manda sobre la zona base de cada nivel. Aplica por debajo de 2000 kJ; a partir de ahí manda `large_swell_tide_zones`.",
+      "max_kj": 2000,
+      "orientation": "Izquierda / centro / derecha SIEMPRE mirando al mar desde la arena. Izquierda = espigón (Kursaal). Derecha = Sagüés.",
+      "low_tide": {
+        "espigon_point_bank": {
+          "min_kj": 300,
+          "max_kj": 1500,
+          "zone": "Punta del espigón: izquierda, al fondo.",
+          "effect": "Con marea baja y de ~300 a ~1500 kJ ahí hay un fondo que rompe bien. Es el mejor sitio del día.",
+          "levels": "Intermedio y avanzado. Iniciación NO va a la punta: es zona de fuerza. Ellos se quedan al abrigo de la base del espigón (ver `punta_espigon_zone.distinction`)."
+        },
+        "below_min_kj": {
+          "max_kj": 300,
+          "zone": "Del medio a la derecha.",
+          "effect": "Con poca fuerza, en la punta del espigón apenas rompe: la zona surfeable se va del medio hacia la derecha.",
+          "levels": "Intermedio y avanzado. Con marea BAJA iniciación NO se mueve: mantiene su zona base de `default_entry_zone_by_level` (izquierda, o centro por debajo de ~200 kJ). Lo de irse a la derecha con iniciación es cosa de marea media/alta, no de esta."
+        },
+        "above_max_kj": {
+          "min_kj": 1500,
+          "zone": "Atrás del todo, fuera del espigón, lado izquierdo.",
+          "effect": "Por encima de ~1500 kJ el pico se va aún más al fondo, igual que describe `large_swell_tide_zones.low` (que manda a partir de 2000 kJ). Entre 1500 y 2000 vale el mismo criterio. Solo avanzado; iniciación e intermedio, ver su banda de energía."
+        }
+      },
+      "mid_and_high_tide": {
+        "effect": "Según sube la marea, el fondo de la punta del espigón desaparece: se llena de agua y cubre demasiado como para que la ola rompa.",
+        "default_zone": "De la mitad de la playa hacia la derecha.",
+        "big_swell_exception": {
+          "min_kj": 550,
+          "description": "Salvo que esté grande: a partir de ~550 kJ la izquierda vuelve a funcionar porque el espigón resguarda (efecto piscina, ver `tide_morphology.high_tide`) y hay sitio repartido para los tres niveles.",
+          "iniciacion": "Izquierda, al abrigo del espigón.",
+          "intermedio": "Izquierda y centro.",
+          "avanzado": "Centro y derecha."
+        },
+        "spring_tide_shorebreak": {
+          "max_kj": 400,
+          "requires_spring_tide": true,
+          "window_hours_around_high": 1.5,
+          "effect": "Con mareas VIVAS y menos de ~400 kJ, en la ventana de ±1,5 h alrededor de la pleamar se forma orillera en toda la playa y casi no hay ola aprovechable.",
+          "do_not_say": "NO digas que el día entero está perdido: fuera de esa ventana (marea baja o media) sí se surfea. Recomienda la franja, no canceles el día. Ver `small_swell_high_spring_window` (≤100 kJ) y `tide_strategy.low_medium_100_400_spring_tide`."
+        }
+      }
+    },
+    "default_entry_zone_by_level": {
+      "description": "Zona base de cada nivel, para cuando `entry_zone_by_tide` no dice nada de ese nivel. Sustituye al `Cualquiera` que antes había en `energy_kj.zone_recommendation`: en el parte siempre se dice zona.",
+      "orientation": "Izquierda / centro / derecha SIEMPRE mirando al mar desde la arena. Izquierda = espigón (Kursaal). Derecha = Sagüés.",
+      "iniciacion": {
+        "default_zone": "Parte izquierda de la playa, al abrigo del espigón. Es su sitio por defecto a cualquier tamaño, salvo lo que digan los dos campos siguientes o `entry_zone_by_tide`.",
+        "center_allowed_below_kj": 200,
+        "right_allowed_below_kj": 50,
+        "progression_note": "Según adquiere nivel puede abrirse al centro. Por debajo de ~200 kJ el centro ya es razonable; por debajo de ~50 kJ incluso la derecha.",
+        "tide_note": "Con marea media o alta y menos de ~550 kJ, `entry_zone_by_tide` los manda igualmente del medio a la derecha: a la izquierda no rompe. Si van a la derecha, hay que darles `lineup_etiquette_right_side` en tono suave.",
+        "never": "No mandar iniciación a la punta del espigón: la punta es zona de fuerza, distinta de la base resguardada."
+      },
+      "intermedio": {
+        "default_zone": "Centro de la playa.",
+        "right_allowed_if": "Puede acercarse a la derecha (Sagüés) si va con criterio y respeta las prioridades. Si se le nombra esa zona, aplicar `lineup_etiquette_right_side`."
+      },
+      "avanzado": {
+        "description": "No tiene zona base fija: la zona la decide la marea. Usar siempre `entry_zone_by_tide` (baja con ≥300 kJ = punta del espigón; el resto = del medio a la derecha, salvo la excepción de mar grande).",
+        "small_swell_note": "Por debajo de ~200 kJ el fondo está casi siempre en el centro o a la derecha. Si además la banda de energía dice que no merece la pena salir, eso manda: primero di que no es su día y solo después, si encaja, dónde estaría lo poco que haya.",
+        "etiquette": "Siempre que se nombre la derecha / Sagüés, aplicar `lineup_etiquette_right_side`."
+      }
+    },
+    "lineup_etiquette_right_side": {
+      "description": "Convivencia en el pico de la derecha (Sagüés). Regla: si el parte manda a alguien a la derecha, ese alguien tiene que saber la norma.",
+      "zone": "Derecha de la playa (Sagüés), mirando al mar desde la arena.",
+      "rule": "Ahí hay nivel. Hay que hacer las cosas bien: respetar prioridades, no dropear, no remar por dentro y no colocarse en el pico si no controlas.",
+      "consequence": "Si no se hacen bien las cosas, la gente se enfada y te pueden echar de esa zona.",
+      "tone": "Aviso honesto y de tú a tú, sin dramatizar ni sonar elitista. No es una prohibición: es la norma del sitio.",
+      "when_to_mention": "Por defecto en intermedio y avanzado. También en iniciación cuando la marea los empuja del medio a la derecha (`entry_zone_by_tide.mid_and_high_tide`), pero ahí en tono suave: que respeten prioridades y no se metan en medio del pico, sin asustar.",
+      "for_levels": ["iniciacion", "intermedio", "avanzado"]
     },
     "iniciacion_foam_protocol_extreme_kj": {
       "description": "No es otra franja de kJ: es el protocolo de orilla cuando la energía es extrema (≥2501). Estrellas iniciación = 1 (aviso). El texto puede explicar la excepción de los primeros 3 días.",
@@ -299,12 +414,24 @@
       "summer_very_long_iniciacion_extra_subtract": 1
     },
     "tide_strategy": {
-      "very_low_under_100": "Marea media o baja. Fuerza mínima; con alta apenas queda ola aprovechable.",
-      "low_medium_100_400_spring_tide": "Con mareas VIVAS (rango grande), evitar marea alta: se forma orillera (shorebreak) que corta la ola en la misma orilla y deja de ser surfeable. Preferir baja o media.",
-      "low_medium_100_400_neap_tide": "Con mareas MUERTAS (rango pequeño) en este rango de energía, se recomienda marea alta como en el comportamiento general de la playa.",
-      "mid_400_to_600_700": "Se recomienda marea alta en general (salvo el caso de mareas vivas descrito arriba para el tramo 100-400 kJ).",
-      "high_above_600_700": "A partir de aquí la marea deja de ser determinante: funciona tanto alta como media, en vivas o en muertas. La referencia deja de ser la zona Espigón (base) y pasa a la Punta del Espigón (ver `punta_espigon_zone`).",
+      "very_low_under_100": "Marea media o baja. Fuerza mínima. Si además hay marea VIVA, aplica `small_swell_high_spring_window` (aviso corto junto a la señal: evitar HH–HH por orilleras).",
+      "low_medium_100_400_spring_tide": "Con mareas VIVAS (rango grande) en 100-400 kJ, evitar el pico de marea alta: se forma orillera. Preferir baja o media. NO uses `small_swell_high_spring_window` (eso es solo ≤100 kJ).",
+      "low_medium_100_400_neap_tide": "Con mareas MUERTAS (rango pequeño) en este rango de energía, se recomienda marea alta como en el comportamiento general de la playa. Ojo: eso es CUÁNDO, no DÓNDE — con alta y menos de ~550 kJ se entra de la mitad a la derecha (`entry_zone_by_tide`).",
+      "mid_400_to_600_700": "Se recomienda marea alta en general (salvo el caso de mareas vivas descrito arriba para el tramo 100-400 kJ). La zona, según `entry_zone_by_tide`.",
+      "high_above_600_700": "A partir de aquí la marea deja de ser determinante para SI HAY OLA: funciona tanto alta como media, en vivas o en muertas. Sí cambia DÓNDE: con baja la referencia es la Punta del Espigón (`punta_espigon_zone`); según sube ese fondo se llena y la zona se reparte según `entry_zone_by_tide.mid_and_high_tide`.",
       "seasonal_note_2026": "Nota de esta temporada (revisar en temporadas siguientes, no tratar como criterio permanente): con mareas muertas está saliendo peor tanto en alta como en baja, posiblemente por cambio en los bancos de arena."
+    },
+    "small_swell_high_spring_window": {
+      "description": "SOLO mar muy pequeño (≤100 kJ) + marea viva: aviso corto al lado de la señal del día. No aplica por encima de 100 kJ.",
+      "max_kj": 100,
+      "requires_spring_tide": true,
+      "applies_when": "energy_kj ≤ 100 (incluye exactamente 100) Y marea viva: amplitud Alta−Baja ≳ 2,6 m (vivas claras ≥ 3 m). Si kJ > 100 o la marea no es viva: aviso = null y no uses esta regla.",
+      "dead_window_before_hours": 1.5,
+      "dead_window_after_hours": 1.5,
+      "aviso_copy": "evitar de HH:MM a HH:MM por orilleras",
+      "aviso_field": "El texto va SOLO en el campo JSON 'aviso', copiando aviso_copy con las horas reales de la ventana (±1,5 h centrada en la Alta diurna). Máx. 12 palabras. Prohibido alargar ('Mucha precaución…', 'casi no habrá ola…').",
+      "general_field": "En 'general' no repitas la ventana ni el 'evitar'. Puedes citar la hora de la Alta en media frase si encaja.",
+      "effect": "En esa ventana el banco queda cubierto y se forma orillera (shorebreak): casi no hay ola aprovechable."
     },
     "tide_morphology": {
       "high_tide": {
@@ -326,11 +453,11 @@
       "name": "Punta del Espigón",
       "distinction": "No confundir con la zona 'Espigón' (base, resguardada, refugio de iniciación en energía alta). Esta es el extremo final de la estructura, más allá del abrigo.",
       "exposure": "Totalmente expuesta a la dirección NW del oleaje; no está tapada por el espigón como sí lo está la zona base.",
-      "trigger_energy_kj_min": 600,
-      "trigger_energy_kj_typical": "600-700 kJ, algunos días hasta 700-800 kJ",
-      "tide": "Indiferente por encima del umbral: funciona con alta o media, vivas o muertas.",
-      "level": "Avanzado — lo opuesto a la zona Espigón base, que es de iniciación.",
-      "notes": "Con esa fuerza de mar, en la punta expuesta rompe una ola buena y aprovechable que no está disponible en el resto de la playa con esas condiciones."
+      "trigger_energy_kj_min": 300,
+      "trigger_energy_kj_typical": "El fondo de la punta rompe desde ~300 kJ y aguanta hasta ~1500 kJ. A partir de 600-700 kJ pasa a ser la referencia principal de la playa (antes lo era la zona Espigón base).",
+      "tide": "MANDA LA MAREA BAJA. Con baja es cuando el fondo de la punta rompe. Según sube, ese fondo se llena de agua y cubre demasiado: la ola ya no llega a romper ahí y la zona se va de la mitad de la playa a la derecha. Detalle en `entry_zone_by_tide`.",
+      "level": "Intermedio y avanzado — lo opuesto a la zona Espigón base, que es el refugio de iniciación.",
+      "notes": "Con esa fuerza de mar y marea baja, en la punta expuesta rompe una ola buena y aprovechable que no está disponible en el resto de la playa con esas condiciones."
     },
     "swell_direction": {
       "NW": {
@@ -372,9 +499,9 @@
     },
     "seasonal_bathymetry": {
       "summer_months": [6, 7, 8, 9],
-      "effect": "El oleaje suave estival aplana los fondos. El riesgo de que la ola cierre en barra con periodos superiores a 12 segundos se duplica.",
+      "summer_effect": "El oleaje suave estival aplana los fondos. El riesgo de que la ola cierre en barra con periodos superiores a 12 segundos se duplica.",
       "winter_months": [11, 12, 1, 2, 3],
-      "effect": "Los temporales excavan canales profundos. La playa aguanta mejor los periodos altos, pero las corrientes son más intensas."
+      "winter_effect": "Los temporales excavan canales profundos. La playa aguanta mejor los periodos altos, pero las corrientes son más intensas."
     }
   },
   "ui_metric_help": {

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { ArrowDown, ArrowUpDown, Lock, ShieldCheck, Sparkles } from "lucide-react";
 import Producto from "../components/Producto";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
 import { hasStoreAccess } from "@/utils/hasStoreAccess";
@@ -73,12 +73,12 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
     }, [tagActivo, orden]);
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <SeoHead seo={seo} />
             <StorePromoBanner slides={storePromoSlides} variant="bleed" />
 
-            <div className="s4-surface-light mx-auto w-full max-w-[96rem] bg-gradient-to-b from-slate-50 via-white to-slate-100 px-2 pt-1 sm:px-4 sm:pt-2 lg:px-6 lg:pb-6">
-                <h1 className="mb-4 text-xl font-extrabold tracking-tight text-slate-900 sm:mb-5 sm:text-2xl lg:text-3xl">
+            <div className="mx-auto w-full max-w-[96rem] px-2 pt-1 sm:px-4 sm:pt-2 lg:px-6 lg:pb-6">
+                <h1 className="mb-4 font-heading text-xl font-extrabold tracking-tight text-slate-900 sm:mb-5 sm:text-2xl lg:text-3xl">
                     Tienda · San Sebastián Surf School
                 </h1>
                 <aside
@@ -147,7 +147,7 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                                     value={orden}
                                     onChange={(e) => setOrden(e.target.value)}
                                     aria-label="Ordenar productos"
-                                    className="max-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[10px] font-semibold text-slate-800 shadow-sm outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/15 sm:max-w-none sm:py-1.5 sm:text-xs"
+                                    className="max-w-[9.5rem] rounded-lg border border-slate-200 bg-white px-2 py-2.5 text-[10px] font-semibold text-slate-800 shadow-sm outline-none transition focus:border-s4-cyan/60 focus:ring-2 focus:ring-s4-cyan/15 sm:max-w-none sm:py-1.5 sm:text-xs"
                                 >
                                     {SORT_OPTIONS.map((option) => (
                                         <option key={option.value} value={option.value}>
@@ -209,7 +209,7 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                             unidades={producto.unidades}
                             descuento={producto.descuento}
                             producto={producto}
-                            surface="dark"
+                            surface="light"
                         />
                     ))}
                 </div>
@@ -253,7 +253,7 @@ const Tienda = ({ productos, productTagOptions = [], storePromoSlides = [], seo 
                     onClose={() => setContactOpen(false)}
                 />
             ) : null}
-        </Layout1>
+        </PageShell>
     );
 };
 

@@ -7,6 +7,8 @@ namespace App\Http\Controllers;
 use App\Actions\Payments\InitiatePaymentAction;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\DTOs\Payments\PaymentLineItemDto;
+use App\DTOs\Taquilla\AltaTaquillaDto;
+use App\Http\Requests\Taquilla\AltaTaquillaRequest;
 use App\Http\Requests\Taquilla\ReassignLockerRequest;
 use App\Http\Requests\Taquilla\RegistrarPagoTaquillaRequest;
 use App\Http\Requests\Taquilla\StorePlanTaquillaRequest;
@@ -17,6 +19,7 @@ use App\Models\User;
 use App\Services\Seo\PublicPageSeoService;
 use App\Services\Taquilla\TaquillaMembershipService;
 use App\Support\AcademyContact;
+use App\Support\VipVirtualLocker;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -96,11 +99,50 @@ class PlanesTaquillasController extends Controller
 
         return Inertia::render('Admin/Taquillas/Vigencia', [
             'usuarios' => $this->taquillaService->buildVigenciaPayload(),
+            'exSocios' => $this->taquillaService->buildExSociosPayload(),
+            'sharedLockerNumbers' => VipVirtualLocker::sharedNumbers(),
             'flash' => [
                 'success' => session('success'),
                 'error' => session('error'),
             ],
         ]);
+    }
+
+    /**
+     * Alta en taquilla desde el panel de vigencia (readmisión de un ex-socio).
+     */
+    public function altaTaquilla(AltaTaquillaRequest $request, User $user): RedirectResponse
+    {
+        $dto = AltaTaquillaDto::fromValidated($request->validated());
+
+        try {
+            $updated = $this->taquillaService->darDeAltaTaquilla($user, $dto->numero, $dto->altaElDate());
+        } catch (ValidationException $e) {
+            $msg = collect($e->errors())->flatten()->first() ?: 'No se pudo dar de alta la taquilla.';
+
+            return back()->with('error', $msg);
+        } catch (Throwable $e) {
+            Log::error('taquilla.alta_failed', [
+                'user_id' => $user->id,
+                'numero' => $dto->numero,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'No se pudo dar de alta la taquilla.');
+        }
+
+        $name = trim(($updated->nombre ?? '').' '.($updated->apellido ?? ''));
+        $label = $name !== '' ? $name : (string) $updated->email;
+        $programada = $updated->taquilla_alta_programada_at?->format('d/m/Y');
+
+        if ($programada !== null) {
+            return back()->with(
+                'success',
+                "Plaza #{$dto->numero} reservada para {$label}. El alta comienza el {$programada}.",
+            );
+        }
+
+        return back()->with('success', "Alta confirmada: {$label} ocupa la taquilla #{$dto->numero}.");
     }
 
     public function userPaymentHistory(User $user): JsonResponse
@@ -348,6 +390,7 @@ class PlanesTaquillasController extends Controller
             cancelPath: '/taquilla/planes',
             customerEmail: $user->email,
             metadata: ['pago_cuota_id' => (string) $pago->id],
+            expiresAt: $pago->expires_at,
         );
     }
 

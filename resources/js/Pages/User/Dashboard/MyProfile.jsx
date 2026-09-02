@@ -1,20 +1,21 @@
 import { Head, Link } from "@inertiajs/react";
 import VipProfileDashboard from "@/components/VipProfile/VipProfileDashboard";
+import S4Button from "@/components/S4Button";
 
 export default function MyProfile({ performanceData = null, isVip = false }) {
     return (
         <>
             <Head title="Mi Perfil" />
-            <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950">
+            <div className="s4-surface-light min-h-screen">
                 <div className="mx-auto max-w-6xl space-y-5 p-4 sm:p-6">
                     <div className="space-y-1">
-                        <h1 className="text-2xl font-bold text-white">Mi Perfil</h1>
-                        <p className="max-w-3xl text-sm text-slate-400">
+                        <h1 className="font-heading text-2xl font-bold text-slate-900">Mi Perfil</h1>
+                        <p className="max-w-3xl text-sm text-slate-600">
                             Tu evolución como alumno: saldo VIP, calendario de asistencia, estadísticas
                             e historial de consumo de créditos. Para reservar clases o alquileres, ve a{" "}
                             <Link
                                 href={route("my-reservations.index")}
-                                className="font-medium text-cyan-400 hover:text-cyan-300"
+                                className="font-medium text-s4 hover:text-s4-hover"
                             >
                                 Mis Reservas
                             </Link>
@@ -23,16 +24,17 @@ export default function MyProfile({ performanceData = null, isVip = false }) {
                     </div>
 
                     {!isVip ? (
-                        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-6 text-center">
-                            <p className="text-sm font-medium text-amber-100">
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+                            <p className="text-sm font-medium text-amber-900">
                                 El panel VIP (créditos y asistencia) está disponible para miembros VIP.
                             </p>
-                            <Link
+                            <S4Button
                                 href={route("bonos.index")}
-                                className="mt-4 inline-flex rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-900 hover:bg-amber-400"
+                                variant="accent"
+                                className="mt-4 bg-amber-500 font-semibold text-slate-900 hover:bg-amber-400"
                             >
                                 Ver bonos y activar VIP
-                            </Link>
+                            </S4Button>
                         </div>
                     ) : (
                         <VipProfileDashboard
@@ -43,18 +45,20 @@ export default function MyProfile({ performanceData = null, isVip = false }) {
 
                     {isVip ? (
                         <div className="flex flex-wrap justify-center gap-3 pt-2">
-                            <Link
+                            <S4Button
                                 href={route("bonos.index")}
-                                className="rounded-xl border border-teal-500/30 bg-teal-500/10 px-4 py-2 text-sm font-semibold text-teal-200 hover:bg-teal-500/20"
+                                variant="secondary"
+                                className="border-teal-200 bg-teal-50 font-semibold text-teal-800 hover:bg-teal-100"
                             >
                                 Recargar créditos
-                            </Link>
-                            <Link
+                            </S4Button>
+                            <S4Button
                                 href={route("academy.lessons.index")}
-                                className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-white/10"
+                                variant="secondary"
+                                className="border-slate-200 bg-white font-semibold text-slate-700 hover:bg-slate-50"
                             >
                                 Reservar clase
-                            </Link>
+                            </S4Button>
                         </div>
                     ) : null}
                 </div>

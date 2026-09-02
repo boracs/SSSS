@@ -1,5 +1,6 @@
 import React from 'react';
-import Layout1 from '../layouts/Layout1'; // Asegúrate de que la ruta sea correcta
+import PageShell from "@/layouts/PageShell";
+ // Asegúrate de que la ruta sea correcta
 import { Link } from '@inertiajs/react';
 
 
@@ -11,12 +12,12 @@ const ProductosModificado = ({ productos, mensaje }) => {
   }, [mensaje]);
 
   return (
-    <Layout1>
+    <PageShell variant="light">
       <div className="min-h-screen flex flex-col bg-gray-50 py-12 sm:py-16 lg:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-              Artículo Modificado Exitosamente
+              Artículo modificado con éxito
             </h1>
             <p className="mt-2 text-lg text-gray-500">
               El producto se ha actualizado correctamente en la base de datos.
@@ -34,7 +35,7 @@ const ProductosModificado = ({ productos, mensaje }) => {
           </div>
         </div>
       </div>
-    </Layout1>
+    </PageShell>
   );
 };
 

@@ -8,10 +8,11 @@ import {
     CreditCard,
     Calendar,
 } from "lucide-react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { formatEur } from "@/utils/money";
 import StoreFiscalInvoiceActions from "@/components/StoreFiscalInvoiceActions";
 import AccordionTrigger from "@/components/ui/AccordionTrigger";
+import S4Button from "@/components/S4Button";
 
 const formatDate = (value) => {
     if (!value) return "—";
@@ -164,9 +165,9 @@ const MostrarPedidos = () => {
     };
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <Head title="Mis pedidos" />
-            <div className="min-h-screen s4-surface-light px-4 py-10 sm:px-6">
+            <div className="px-4 py-10 sm:px-6">
                 <div className="mx-auto w-full max-w-3xl">
                     {/* Cabecera */}
                     <div className="mb-8">
@@ -174,7 +175,7 @@ const MostrarPedidos = () => {
                             <Package className="h-3.5 w-3.5" aria-hidden />
                             Tienda socios
                         </div>
-                        <h1 className="mt-3 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                        <h1 className="mt-3 font-heading text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                             Mis pedidos
                         </h1>
                         <p className="mt-1.5 max-w-lg text-sm text-slate-600">
@@ -199,13 +200,14 @@ const MostrarPedidos = () => {
                                     Cuando realices tu primera compra, aparecerá aquí
                                     con todo su detalle.
                                 </p>
-                                <Link
+                                <S4Button
                                     href={route("tienda")}
-                                    className="mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                    variant="primary"
+                                    className="mt-6"
                                 >
                                     <ShoppingBag className="h-4 w-4" />
                                     Ir a la tienda
-                                </Link>
+                                </S4Button>
                             </div>
                         </div>
                     ) : (
@@ -307,7 +309,7 @@ const MostrarPedidos = () => {
                     )}
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 };
 

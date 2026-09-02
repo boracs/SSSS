@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, usePage } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "../../components/seo/SeoHead";
 import SafeImage from "../../components/SafeImage";
 import WhatsAppIcon from "../../components/icons/WhatsAppIcon";
 import Breadcrumbs from "../../components/Breadcrumbs";
+import SharePageButton from "../../components/SharePageButton";
 import { formatEurFromCents } from "../../utils/money";
 import { rememberedCatalogHref } from "../../lib/secondHandCatalog";
 import { resolveAcademyWhatsappUrl } from "../../lib/whatsapp";
@@ -448,8 +449,8 @@ export default function SecondHandShow(props) {
     const heightLabel = board.height_label ?? "";
 
     const whatsappMsg = isReserved
-        ? `Hola! Me interesa la tabla de segunda mano ${board.name} (ID #${board.id}), ahora aparece reservada. ¿Me avisáis si se libera?`
-        : `Hola! Estoy interesado en la tabla de segunda mano: ${board.name} (ID #${board.id}). ¿Está disponible?`;
+        ? `¡Hola! Me interesa la tabla de segunda mano ${board.name} (ID #${board.id}), ahora aparece reservada. ¿Me avisáis si se libera?`
+        : `¡Hola! Estoy interesado en la tabla de segunda mano: ${board.name} (ID #${board.id}). ¿Está disponible?`;
 
     const whatsappHref = resolveAcademyWhatsappUrl(
         null,
@@ -458,10 +459,10 @@ export default function SecondHandShow(props) {
     );
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <SeoHead seo={seo} />
             <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                <h1 className="sr-only">{board.name}</h1>
+                <h1 className="sr-only font-heading">{board.name}</h1>
                 <div className="mb-5">
                     <Link
                         href={catalogHref}
@@ -557,6 +558,15 @@ export default function SecondHandShow(props) {
                                             <WhatsAppCta href={whatsappHref} label="Avisadme si se libera" />
                                         </div>
                                     )}
+                                    <div className="mt-3 flex justify-center">
+                                        <SharePageButton
+                                            variant="dark"
+                                            label="Compartir tabla"
+                                            title={`${board.name} · segunda mano S4`}
+                                            text="Tabla de segunda mano en San Sebastián Surf School (Zurriola, Donostia)."
+                                            path={route("second-hand.show", board.id)}
+                                        />
+                                    </div>
                                     <p className="mt-3 text-center text-[11px] leading-relaxed text-slate-500">
                                         Puedes verla en el club (Zurriola). Recogida en tienda, sin envío.
                                     </p>
@@ -566,6 +576,6 @@ export default function SecondHandShow(props) {
                     </div>
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

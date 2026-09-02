@@ -42,6 +42,8 @@ Si el tema lo requiere y **no** tienes el archivo, di: *"Pega `docs/...`"* antes
 | 9 | Ticket mostrador (datáfono) | `node scripts/deepseek-ask.mjs --topic ticket` (adjunta modal + backend datáfono) |
 | 10 | Teoría / profesor / cuaderno | `docs/aprendizaje/` (`INDICE.md` + temas). También Cursor puede guardar aquí. |
 | 11 | Despliegue / runtime / túnel / cola / cron | `docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md` + `docs/EN-EL-MOMENTO-DE-DESPLEGAR.md` + `.cursor/rules/tunnel-share-modes.mdc` |
+| 12 | Backend (auditar/planificar/criticar) | `docs/taller-prompts/AGENTE-BACKEND-SENIOR.md` |
+| 13 | Frontend (React/Inertia, ingeniería) | `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` (S14) + `.cursor/rules/ui-admin-s4.mdc` |
 
 ## 4) Reglas del router
 

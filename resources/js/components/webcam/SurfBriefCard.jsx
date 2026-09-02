@@ -50,7 +50,7 @@ export default function SurfBriefCard({ brief }) {
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Nota opcional para el aviso (ej. temporal previsto por la tarde)"
                 rows={2}
-                className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-100 outline-none focus:border-cyan-500"
+                className="mb-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-100 outline-none focus:border-s4-cyan"
             />
             <div className="flex flex-wrap gap-2">
                 {SURF_BRIEF_OVERRIDE_ORDER.map((key) => {

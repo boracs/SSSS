@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import {
     PlusCircle,
     Pencil,
@@ -51,7 +51,7 @@ export default function AdminAuctionsIndex({ auctions = [], filters = {}, status
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Gestión de subastas" />
             <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
@@ -197,6 +197,6 @@ export default function AdminAuctionsIndex({ auctions = [], filters = {}, status
                     )}
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

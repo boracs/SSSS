@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import {
     ArrowUp,
     CalendarRange,
@@ -16,6 +16,7 @@ import { weatherIconMeta } from "./WeatherDetailPanel";
 import { surfBriefOverrideMeta } from "./surfBriefOverride";
 import { LevelStarsStack } from "./LevelStars";
 import SurfForecastSheetFooter from "./SurfForecastSheetFooter";
+import ForecastSheetFrame from "./ForecastSheetFrame";
 
 /**
  * Panel "Ver resumen por día": bottom-sheet con slider horizontal de días
@@ -53,7 +54,7 @@ function DayFusionCard({ day, weatherDay }) {
     const starsAva = day.qualityStarsAvanzado ?? 1;
 
     return (
-        <div className="flex min-h-[22rem] w-[10.5rem] shrink-0 flex-col rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-3.5 sm:min-h-[24rem] sm:w-[11.5rem] sm:px-3.5 sm:py-4">
+        <div className="flex w-[10.5rem] shrink-0 flex-col rounded-2xl border border-white/10 bg-slate-900/80 px-3 py-3.5 sm:w-[11.5rem] sm:px-3.5 sm:py-4">
             <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-200 capitalize sm:text-xs">
                 {day.dayLabel}
             </p>
@@ -216,49 +217,14 @@ export default function SurfFullForecastOverlay({
 }) {
     const weatherByDate = new Map(weatherDaily.map((day) => [day.date, day]));
 
-    useEffect(() => {
-        if (!open) return undefined;
-
-        const previousOverflow = document.body.style.overflow;
-        document.body.style.overflow = "hidden";
-
-        const onKeyDown = (event) => {
-            if (event.key === "Escape") onClose?.();
-        };
-        window.addEventListener("keydown", onKeyDown);
-
-        return () => {
-            document.body.style.overflow = previousOverflow;
-            window.removeEventListener("keydown", onKeyDown);
-        };
-    }, [open, onClose]);
-
     return (
-        <>
-            <div
-                className={`fixed inset-0 z-[520] bg-slate-950/70 transition-opacity duration-500 ${
-                    open
-                        ? "opacity-100"
-                        : "pointer-events-none opacity-0"
-                }`}
-                onClick={onClose}
-                aria-hidden="true"
-            />
-
-            <div
-                id={panelId}
-                role="dialog"
-                aria-modal="true"
-                aria-label="Resumen por día: oleaje y tiempo, todos los días"
-                aria-hidden={!open}
-                className={`fixed inset-x-0 bottom-0 z-[530] flex h-[min(72dvh,36rem)] max-h-[40rem] transform flex-col rounded-t-3xl border-t border-cyan-500/25 bg-slate-950/95 shadow-2xl backdrop-blur-md transition-transform duration-500 ease-in-out sm:h-[min(68vh,38rem)] ${
-                    open
-                        ? "translate-x-0"
-                        : "translate-x-full pointer-events-none"
-                }`}
-                style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-            >
-                <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
+        <ForecastSheetFrame
+            open={open}
+            panelId={panelId}
+            label="Resumen por día: oleaje y tiempo, todos los días"
+            maxHeightClass="h-fit max-h-[90dvh]"
+        >
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
                     <div className="inline-flex min-w-0 items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-cyan-200">
                         <CalendarRange
                             className="h-3.5 w-3.5 shrink-0"
@@ -270,15 +236,18 @@ export default function SurfFullForecastOverlay({
                     </div>
                     <button
                         type="button"
-                        onClick={onClose}
+                        onClick={(event) => {
+                            event.stopPropagation();
+                            onClose?.();
+                        }}
                         aria-label="Cerrar forecast completo"
-                        className="shrink-0 rounded-full border border-white/10 p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
+                        className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border border-white/10 p-2 text-slate-400 transition hover:bg-white/5 hover:text-white"
                     >
                         <X className="h-4 w-4" aria-hidden />
                     </button>
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 py-3 sm:px-5 sm:py-4">
+                <div className="min-h-0 overflow-x-hidden overflow-y-hidden px-3 py-4 sm:px-5 sm:py-5">
                     {weatherLoading ? (
                         <p className="mb-2 flex shrink-0 items-center gap-2 text-xs text-amber-200/80">
                             <Loader2
@@ -297,11 +266,11 @@ export default function SurfFullForecastOverlay({
                     ) : null}
 
                     {days.length > 0 ? (
-                        <div className="flex min-h-0 flex-1 flex-col">
+                        <div className="flex flex-col">
                             <p className="mb-2 shrink-0 text-[10px] leading-snug text-slate-500">
                                 Estrellas: verde iniciación · azul intermedio · rojo avanzado (orientativo)
                             </p>
-                            <div className="min-h-0 flex-1">
+                            <div>
                                 <ForecastSlider>
                                     <div className="flex items-stretch gap-3 pb-1 pr-2 sm:gap-3.5">
                                         {days.map((day) => (
@@ -330,7 +299,6 @@ export default function SurfFullForecastOverlay({
                     webcamAnchorId={webcamAnchorId}
                     sheetOpen={open}
                 />
-            </div>
-        </>
+        </ForecastSheetFrame>
     );
 }

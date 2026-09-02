@@ -58,7 +58,7 @@ final class ProductDetailPageService
         $imagenes = $producto->imagenes
             ->map(fn ($img): array => [
                 'id' => $img->id,
-                'ruta' => Producto::publicImageUrl($img->ruta) ?? asset('img/placeholder.svg'),
+                'ruta' => $this->catalogImages->publicMasterUrl($img->ruta) ?? asset('img/placeholder.svg'),
                 'thumb' => $this->catalogImages->publicThumbUrl($img->ruta) ?? asset('img/placeholder.svg'),
                 'es_principal' => (bool) $img->es_principal,
             ])

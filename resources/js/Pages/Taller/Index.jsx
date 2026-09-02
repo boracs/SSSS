@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Contenedor_productos from "../../layouts/Contenedor_productos";
 import SeoHead from "../../components/seo/SeoHead";
 import { TallerPageShell, TallerHero, TallerBadge, fadeUp, motion } from "../../components/Taller/TallerShell";
@@ -11,7 +11,7 @@ export default function Index({ articles = [], productos = [], seo = null }) {
     const [featured, ...rest] = articles;
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <SeoHead seo={seo} />
 
             <TallerPageShell>
@@ -67,6 +67,6 @@ export default function Index({ articles = [], productos = [], seo = null }) {
                     />
                 </motion.div>
             </TallerPageShell>
-        </Layout1>
+        </PageShell>
     );
 }

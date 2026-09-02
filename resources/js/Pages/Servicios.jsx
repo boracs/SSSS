@@ -1,24 +1,32 @@
 import { useState } from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactBlock from "../components/ContactBlock";
+import RepairStepCard from "../components/RepairStepCard";
+import RepairClubReviews from "../components/RepairClubReviews";
+import S4Button from "@/components/S4Button";
 import {
     ArrowRight,
     Banknote,
     CheckCircle2,
     ClipboardList,
-    ExternalLink,
     HandCoins,
     Lock,
     MessageCircle,
     Package,
     ShieldCheck,
-    Sparkles,
     Sticker,
     Tag,
     Wrench,
 } from "lucide-react";
 
+const ACCENT_MD =
+    "bg-gradient-to-r from-cyan-500 to-emerald-500 font-bold text-slate-950 shadow-md hover:brightness-110";
+const OUTLINE_GLASS_MD =
+    "border border-white/20 bg-white/10 font-semibold text-white hover:bg-white/15";
+const WHATSAPP_SOLID =
+    "bg-emerald-600 font-bold text-white from-emerald-600 to-emerald-600 hover:bg-emerald-500 hover:brightness-100";
 const STEPS = [
     {
         step: 1,
@@ -79,74 +87,39 @@ const EDY_CHECKLIST = [
     "Colocar pegatina con el precio de la reparación",
 ];
 
-function StepCard({ step, icon: Icon, title, body, highlight, isLast }) {
-    return (
-        <div className="relative flex gap-4 sm:gap-6">
-            {!isLast ? (
-                <div
-                    className="absolute left-[1.15rem] top-12 hidden h-[calc(100%-0.5rem)] w-px bg-gradient-to-b from-cyan-400/50 to-cyan-400/10 sm:block"
-                    aria-hidden
-                />
-            ) : null}
-            <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-400/40 bg-cyan-500/15 text-sm font-bold text-cyan-200 ring-4 ring-slate-950 sm:h-10 sm:w-10">
-                {step}
-            </div>
-            <article className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300 ring-1 ring-cyan-400/25">
-                    <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-lg font-bold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">{body}</p>
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-200">
-                    <Sparkles className="h-3 w-3" />
-                    {highlight}
-                </p>
-            </article>
-        </div>
-    );
-}
-
 export default function Servicios({ whatsappHelpUrl = null, edyContact = null, seo = null }) {
     const [edyContactOpen, setEdyContactOpen] = useState(false);
 
     const edy = edyContact ?? {};
     const hasEdyDirectContact = Boolean(edy.phone || edy.email || edy.whatsappUrl);
 
-    const whatsappRepairUrl = whatsappHelpUrl
-        ? `${whatsappHelpUrl.split("?")[0]}?text=${encodeURIComponent(
-              "Hola, tengo una duda sobre el servicio de reparación de tablas con Edy Mulder.",
-          )}`
-        : null;
+    // WhatsApp del reparador si existe; si no, la escuela con el texto de duda de tablas.
+    const whatsappRepairUrl = edy.whatsappUrl
+        ? edy.whatsappUrl
+        : whatsappHelpUrl
+          ? (() => {
+                const url = new URL(whatsappHelpUrl);
+                url.searchParams.set(
+                    "text",
+                    "Hola, tengo una duda sobre el servicio de reparación de tablas con Edy Mulder.",
+                );
+                return url.toString();
+            })()
+          : null;
+    const whatsappRepairLabel = edy.whatsappUrl ? "WhatsApp Edy" : "WhatsApp";
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950 text-white">
+        <PageShell variant="dark" withGradient>
             <SeoHead seo={seo} />
             {/* Hero */}
             <section className="relative overflow-hidden border-b border-cyan-950/50">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(15,95,116,0.35),_transparent_55%)]" />
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-                    {hasEdyDirectContact ? (
-                        <div className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5">
-                            <p className="text-sm leading-relaxed text-slate-200 sm:text-base">
-                                ¿Dudas sobre si merece la pena reparar? ¿Crees que el arreglo saldría demasiado caro?
-                                Consulta con Edy antes de marcar la tabla con cinta azul.
-                            </p>
-                            <ContactBlock
-                                contact={edy}
-                                open={edyContactOpen}
-                                onToggle={() => setEdyContactOpen((v) => !v)}
-                                mailSubject="Consulta reparación de tabla"
-                                mailIconClassName="text-cyan-300"
-                                fallbackName="Edy"
-                            />
-                        </div>
-                    ) : null}
-
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-cyan-200">
-                        <Wrench className="h-3.5 w-3.5" />
+                        <Wrench className="h-3.5 w-3.5" aria-hidden />
                         Servicio para socios
                     </div>
-                    <h1 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-4xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Reparación de tablas con{" "}
                         <span className="bg-gradient-to-r from-cyan-300 to-emerald-300 bg-clip-text text-transparent">
                             Edy Mulder
@@ -157,20 +130,26 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                         Anotas tu taquilla, marcas los toques con cinta azul y Edy se encarga del resto: recogida,
                         reparación, devolución y cobro transparente.
                     </p>
-                    <div className="mt-8 flex flex-wrap gap-3">
-                        <a
-                            href="#como-funciona"
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-md transition hover:brightness-110"
-                        >
-                            Ver cómo funciona
-                            <ArrowRight className="h-4 w-4" />
-                        </a>
+                    <p className="mt-5 max-w-3xl text-sm leading-relaxed text-slate-400">
+                        ¿Dudas de si merece la pena? Pregunta a Edy antes de marcar la cinta azul. Los canales están al
+                        final de la página.
+                    </p>
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                        <S4Button href="#como-funciona" variant="accent" className={ACCENT_MD}>
+                            Así se deja la tabla
+                            <ArrowRight className="h-4 w-4" aria-hidden />
+                        </S4Button>
+                        <S4Button href={route("taquillas.planes")} variant="secondary" className={OUTLINE_GLASS_MD}>
+                            Ver planes de taquilla
+                        </S4Button>
+                    </div>
+                    <div className="mt-5">
                         <Link
-                            href={route("nosotros") + "#taller-edy-mulder"}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/15"
+                            href={route("servicios.reparacionNeoprenos")}
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-300 transition hover:text-cyan-200 hover:underline"
                         >
-                            Instalaciones del club
-                            <ExternalLink className="h-4 w-4" />
+                            También reparamos neoprenos
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                     </div>
                 </div>
@@ -181,7 +160,7 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                 <div className="grid gap-5 lg:grid-cols-3">
                     <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-6 lg:col-span-2">
                         <div className="flex items-start gap-4">
-                            <ShieldCheck className="mt-0.5 h-8 w-8 shrink-0 text-emerald-300" />
+                            <ShieldCheck className="mt-0.5 h-8 w-8 shrink-0 text-emerald-300" aria-hidden />
                             <div>
                                 <h2 className="text-xl font-bold text-white">Te desentiendes de todo</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
@@ -195,7 +174,7 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                         <div className="flex items-center gap-3">
-                            <Lock className="h-6 w-6 text-cyan-300" />
+                            <Lock className="h-6 w-6 text-cyan-300" aria-hidden />
                             <h3 className="font-bold text-white">¿Quién puede usarlo?</h3>
                         </div>
                         <p className="mt-3 text-sm leading-relaxed text-slate-400">
@@ -207,11 +186,13 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                             className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-cyan-300 hover:underline"
                         >
                             Ver planes de taquilla
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                     </div>
                 </div>
             </section>
+
+            <RepairClubReviews accent="cyan" headingId="tablas-google-reviews" />
 
             {/* Pasos */}
             <section id="como-funciona" className="scroll-mt-24 border-y border-white/5 bg-slate-950/40">
@@ -223,14 +204,33 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                             Todo el flujo pasa en el local y en el taller de Edy. La pizarra y la cinta azul son las
                             únicas señales que necesitas recordar.
                         </p>
+                        <p className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold">
+                            <Link
+                                href={`${route("nosotros")}#taller-edy-mulder`}
+                                className="text-cyan-300/90 transition hover:text-cyan-200 hover:underline"
+                            >
+                                Instalaciones del club
+                            </Link>
+                            <Link
+                                href={route("taller.show", "guia-practica-como-reparar-una-tabla-de-surf")}
+                                className="text-cyan-300/90 transition hover:text-cyan-200 hover:underline"
+                            >
+                                Toques pequeños en casa
+                            </Link>
+                        </p>
                     </div>
 
                     <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-12">
-                        <div className="space-y-6">
+                        <ol className="space-y-6">
                             {STEPS.map((item, index) => (
-                                <StepCard key={item.step} {...item} isLast={index === STEPS.length - 1} />
+                                <RepairStepCard
+                                    key={item.step}
+                                    {...item}
+                                    accent="cyan"
+                                    isLast={index === STEPS.length - 1}
+                                />
                             ))}
-                        </div>
+                        </ol>
 
                         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
                             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -238,7 +238,7 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                                 <ul className="mt-4 space-y-3">
                                     {CLIENT_CHECKLIST.map((item) => (
                                         <li key={item} className="flex items-start gap-2.5 text-sm text-slate-300">
-                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
                                             {item}
                                         </li>
                                     ))}
@@ -249,7 +249,7 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                                 <ul className="mt-4 space-y-3">
                                     {EDY_CHECKLIST.map((item) => (
                                         <li key={item} className="flex items-start gap-2.5 text-sm text-slate-300">
-                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" />
+                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-400" aria-hidden />
                                             {item}
                                         </li>
                                     ))}
@@ -278,14 +278,14 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 p-5">
-                                <MessageCircle className="h-6 w-6 text-emerald-300" />
+                                <MessageCircle className="h-6 w-6 text-emerald-300" aria-hidden />
                                 <h3 className="mt-3 font-bold text-white">Bizum</h3>
                                 <p className="mt-2 text-sm text-slate-400">
                                     Pago rápido directamente a Edy una vez validada la reparación.
                                 </p>
                             </div>
                             <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-5">
-                                <Banknote className="h-6 w-6 text-amber-300" />
+                                <Banknote className="h-6 w-6 text-amber-300" aria-hidden />
                                 <h3 className="mt-3 font-bold text-white">Buzón en el local</h3>
                                 <p className="mt-2 text-sm text-slate-400">
                                     Sobre con tu nombre, n.º de taquilla e importe. Buzón exclusivo para Edy.
@@ -304,33 +304,42 @@ export default function Servicios({ whatsappHelpUrl = null, edyContact = null, s
                         Escríbenos o pásate por el local. Si aún no eres socio, te explicamos cómo conseguir taquilla y
                         acceder al servicio.
                     </p>
+                    {hasEdyDirectContact ? (
+                        <div className="mx-auto mt-6 max-w-md text-left">
+                            <ContactBlock
+                                contact={edy}
+                                open={edyContactOpen}
+                                onToggle={() => setEdyContactOpen((v) => !v)}
+                                mailSubject="Consulta reparación de tabla"
+                                mailIconClassName="text-cyan-300"
+                                fallbackName="Edy"
+                            />
+                        </div>
+                    ) : null}
                     <div className="mt-6 flex flex-wrap justify-center gap-3">
                         {whatsappRepairUrl ? (
-                            <a
+                            <S4Button
                                 href={whatsappRepairUrl}
+                                external
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500"
+                                variant="accent"
+                                className={WHATSAPP_SOLID}
                             >
-                                <MessageCircle className="h-4 w-4" />
-                                WhatsApp
-                            </a>
+                                <MessageCircle className="h-4 w-4" aria-hidden />
+                                {whatsappRepairLabel}
+                            </S4Button>
                         ) : null}
-                        <Link
+                        <S4Button
                             href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm font-semibold transition hover:bg-white/15"
+                            variant="secondary"
+                            className={OUTLINE_GLASS_MD}
                         >
                             Formulario de contacto
-                        </Link>
-                        <Link
-                            href={route("nosotros")}
-                            className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-6 py-2.5 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-500/15"
-                        >
-                            Conocer el club
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </section>
-        </div>
+        </PageShell>
     );
 }

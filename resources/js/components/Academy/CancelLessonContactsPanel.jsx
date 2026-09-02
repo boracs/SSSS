@@ -21,7 +21,7 @@ function cancellationMessage(lesson, person) {
     const when = lesson?.starts_at
         ? `${formatDateTimeMadrid(lesson.starts_at, { day: "2-digit", month: "2-digit", year: "numeric" })} a las ${formatTimeMadrid(lesson.starts_at)}`
         : "la fecha programada";
-    return `Hola ${first}, te contactamos de San Sebastian Surf School: la clase del ${when} ha sido cancelada. Disculpa las molestias.`;
+    return `Hola ${first}, te contactamos de San Sebastián Surf School: la clase del ${when} ha sido cancelada. Disculpa las molestias.`;
 }
 
 function statusLabel(status) {

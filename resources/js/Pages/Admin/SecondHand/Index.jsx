@@ -485,7 +485,7 @@ function BoardRow({
 const FILTER_LABEL =
     "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500";
 const FILTER_CONTROL =
-    "h-10 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-sm text-white placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
+    "h-10 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-sm text-white placeholder:text-slate-500 transition focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20";
 
 export default function AdminSecondHandIndex({ boards, filters = {}, boardTypes = [] }) {
     const { props } = usePage();

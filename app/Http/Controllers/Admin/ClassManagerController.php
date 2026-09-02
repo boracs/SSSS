@@ -63,7 +63,7 @@ class ClassManagerController extends Controller
             ], StaffVisualIdentity::forUser($u, $staffPoolIds)))
             ->values();
 
-        $lessons = Lesson::query()
+        $lessonsModels = Lesson::query()
             ->with([
                 'staffAssignments.user:id,nombre,apellido',
                 'enrollments.user:id,nombre,apellido,telefono,email',
@@ -72,8 +72,12 @@ class ClassManagerController extends Controller
             ->whereIn('modality', ['vip', 'grupal', 'semanal', 'particular'])
             ->whereBetween('starts_at', [$start, $end])
             ->orderBy('starts_at')
-            ->get()
-            ->map(fn (Lesson $lesson) => $this->mapLesson($lesson, $staffPoolIds))
+            ->get();
+
+        $intervals = $this->availabilityService->intervalsFromLoadedLessons($lessonsModels);
+
+        $lessons = $lessonsModels
+            ->map(fn (Lesson $lesson) => $this->mapLesson($lesson, $staffPoolIds, $intervals))
             ->values();
 
         $monthStats = [
@@ -93,8 +97,10 @@ class ClassManagerController extends Controller
         ]);
     }
 
-    /** @param  list<int>  $staffPoolIds */
-    private function mapLesson(Lesson $lesson, array $staffPoolIds = []): array
+    /** @param  list<int>  $staffPoolIds
+     *  @param  list<array<string, mixed>>  $intervals
+     */
+    private function mapLesson(Lesson $lesson, array $staffPoolIds = [], array $intervals = []): array
     {
         $modality = (string) ($lesson->modality ?: ($lesson->is_private ? 'particular' : 'grupal'));
         $monitor = $lesson->staffAssignments->first(fn ($s) => $s->role === StaffAssignment::ROLE_MONITOR);
@@ -117,7 +123,8 @@ class ClassManagerController extends Controller
             $occupancy,
             (int) ($lesson->max_slots ?? $lesson->max_capacity ?? 6)
         );
-        $evaluation = $this->availabilityService->preview(
+        $evaluation = $this->availabilityService->evaluateLoaded(
+            $intervals,
             $lesson->starts_at,
             $lesson->ends_at,
             $projectedPartySize,

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useId } from "react";
 import { Link } from "@inertiajs/react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
 import AccordionTrigger from "../components/ui/AccordionTrigger";
@@ -169,8 +169,8 @@ function InstalacionesGallery() {
             <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                     <SectionLabel>Galería</SectionLabel>
-                    <h2 className="text-3xl font-extrabold text-white">Nuestras instalaciones</h2>
-                    <p className="mt-2 max-w-xl text-sm text-slate-400">
+                    <h2 className="text-3xl font-extrabold text-slate-900">Nuestras instalaciones</h2>
+                    <p className="mt-2 max-w-xl text-sm text-slate-600">
                         Un espacio diseñado para el surfista moderno: almacenamiento, secado, entrenamiento y confort
                         a escasos metros del Cantábrico.
                     </p>
@@ -194,7 +194,7 @@ function InstalacionesGallery() {
                             key={img.src}
                             type="button"
                             onClick={() => openAt(idx)}
-                            className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/50 text-left shadow-lg transition hover:border-cyan-500/30 hover:shadow-cyan-500/10 ${layout}`}
+                            className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition hover:border-cyan-400/40 hover:shadow-md ${layout}`}
                         >
                             <img
                                 src={img.src}
@@ -257,7 +257,7 @@ function BenefitVerMas({ detail, trigger = "Ver dinámica" }) {
             {open ? (
                 <div
                     id={panelId}
-                    className="mt-2 rounded-xl border border-orange-500/20 bg-slate-950/90 p-3 text-xs leading-relaxed text-slate-300 shadow-lg"
+                    className="mt-2 rounded-xl border border-orange-200 bg-orange-50 p-3 text-xs leading-relaxed text-slate-700 shadow-sm"
                 >
                     {detail}
                 </div>
@@ -269,8 +269,8 @@ function BenefitVerMas({ detail, trigger = "Ver dinámica" }) {
 function MicroServiceItem({ icon: Icon, label, sub, more, href, anchorId }) {
     const hasNav = Boolean(href || anchorId);
     const className = [
-        "group flex w-full items-start gap-2.5 rounded-xl border border-white/5 bg-white/[0.03] p-3 text-left transition-colors",
-        hasNav ? "hover:border-white/15 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40" : "",
+        "group flex w-full items-start gap-2.5 rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition-colors",
+        hasNav ? "hover:border-cyan-200 hover:bg-cyan-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/40" : "",
         more ? "sm:col-span-2" : "",
     ]
         .filter(Boolean)
@@ -278,15 +278,15 @@ function MicroServiceItem({ icon: Icon, label, sub, more, href, anchorId }) {
 
     const body = (
         <>
-            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden />
             <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold leading-tight text-white">{label}</p>
+                <p className="text-xs font-semibold leading-tight text-slate-900">{label}</p>
                 {sub ? <p className="mt-0.5 text-[10px] text-slate-500">{sub}</p> : null}
                 {more ? <BenefitVerMas detail={more} /> : null}
             </div>
             {hasNav ? (
                 <ChevronRight
-                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-600 transition-colors group-hover:text-cyan-300"
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 transition-colors group-hover:text-s4"
                     aria-hidden
                 />
             ) : null}
@@ -323,18 +323,18 @@ function MicroServiceItem({ icon: Icon, label, sub, more, href, anchorId }) {
 }
 
 const MICRO_SERVICES = [
-    { icon: Coffee,      label: "Maquina de cafe",             sub: "Trae tus capsulas" },
-    { icon: Refrigerator,label: "Frigorifico comunitario",      sub: "Guarda tus tapers, bebidas..." },
-    { icon: Zap,         label: "Vending tecnico",              sub: "Parafina, Solarez, quillas" },
-    { icon: Droplets,    label: "Ducha de agua caliente",       sub: "Aclarado post-sesion" },
-    { icon: Scissors,    label: "Secador de pelo",              sub: "Profesional de uso comun" },
+    { icon: Coffee,      label: "Máquina de café",             sub: "Trae tus cápsulas" },
+    { icon: Refrigerator,label: "Frigorífico comunitario",      sub: "Guarda tus tápers, bebidas..." },
+    { icon: Zap,         label: "Vending técnico",              sub: "Parafina, Solarez, quillas" },
+    { icon: Droplets,    label: "Ducha de agua caliente",       sub: "Aclarado post-sesión" },
+    { icon: Scissors,    label: "Secador de pelo",              sub: "Profesional de uso común" },
     { icon: Plug,        label: "Enchufes y carga USB",         sub: "En cada taquilla" },
-    { icon: Wifi,        label: "WiFi alta velocidad",          sub: "En toda la instalacion" },
-    { icon: Music,       label: "Alexa smart speaker",          sub: "Musica y domótica" },
-    { icon: Heart,       label: "Botiquin primeros auxilios",   sub: "Siempre disponible" },
-    { icon: Ruler,       label: "Zona de encerado y reparaciones pequenas", sub: "Material comun: Solarez, lijas, luz UV..." },
-    { icon: Wind,        label: "Zona de secado rapido para neoprenos", sub: "Baja humedad relativa" },
-    { icon: Bath,        label: "Baños",                        sub: "A disposicion de socios" },
+    { icon: Wifi,        label: "Wifi de alta velocidad",       sub: "En toda la instalación" },
+    { icon: Music,       label: "Alexa smart speaker",          sub: "Música y domótica" },
+    { icon: Heart,       label: "Botiquín primeros auxilios",   sub: "Siempre disponible" },
+    { icon: Ruler,       label: "Zona de encerado y reparaciones pequeñas", sub: "Material común: Solarez, lijas, luz UV..." },
+    { icon: Wind,        label: "Zona de secado rápido para neoprenos", sub: "Baja humedad relativa" },
+    { icon: Bath,        label: "Baños",                        sub: "A disposición de socios" },
     {
         icon: Package,
         label: "Taquillas",
@@ -343,11 +343,11 @@ const MICRO_SERVICES = [
     },
     {
         icon: Wrench,
-        label: "Servicio de reparacion automatizado",
-        sub: "Pizarra fisica + seguimiento semanal",
+        label: "Servicio de reparación automatizado",
+        sub: "Pizarra física + seguimiento semanal",
         anchorId: "taller-edy-mulder",
     },
-    { icon: Dumbbell,    label: "Zona de calentamiento",        sub: "TRX y multi ejercicios" },
+    { icon: Dumbbell,    label: "Zona de calentamiento",        sub: "TRX y multiejercicios" },
     {
         icon: Video,
         label: "Webcam Zurriola",
@@ -356,14 +356,14 @@ const MICRO_SERVICES = [
     },
     {
         icon: CalendarDays,
-        label: "Surf forecast 16 dias",
-        sub: "Prevision marina Zurriola",
+        label: "Surf forecast 16 días",
+        sub: "Previsión marina Zurriola",
         href: `${route("servicios.webcams")}#prevision-forecast`,
     },
     {
         icon: Star,
-        label: "Recomendacion por nivel",
-        sub: "Ini / Int / Ava segun el parte",
+        label: "Recomendación por nivel",
+        sub: "Ini / Int / Ava según el parte",
         href: `${route("servicios.webcams")}#parte-s4-hoy`,
     },
     {
@@ -381,19 +381,19 @@ const MICRO_SERVICES = [
 ];
 
 const TAQUILLA_BENEFITS = [
-    "Zona de secado rapido de trajes",
-    "Extras: Alexa, frigorifico y maquina de cafe",
-    "Zona de calentamiento (TRX, maquina multi ejercicios)",
-    "Descuentos de hasta el 50% en articulos para socios",
+    "Zona de secado rápido de trajes",
+    "Extras: Alexa, frigorífico y máquina de café",
+    "Zona de calentamiento (TRX, máquina de multiejercicios)",
+    "Descuentos de hasta el 50% en artículos para socios",
     "1 vez al mes: alquiler de material gratis para un invitado (el socio responde del invitado)",
     "Precios especiales en clases y bonos",
-    "Banos a disposicion",
+    "Baños a disposición",
     "Rack para almacenar dos tablas + taquilla",
-    "Camara de vigilancia",
+    "Cámara de vigilancia",
     {
-        text: "Llave electronica — acceso inmediato al local mediante candado con contrasena (solicitud online con registro de accesos).",
-        tagline: "En caso de extravio de la llave no te quedas fuera.",
-        more: "Acceso a la contrasena del candado ubicada en la entrada del local y accesible desde fuera mediante la aplicacion web, a la que podra entrar desde cualquier movil y solicitar la contrasena del candado para poder abrirlo y adquirir la llave que contiene y poder acceder al local. Posteriormente el administrador podra desactivar la llave anterior en caso de extravio y asignar esta nueva al usuario que la solicito (mediante la aplicacion). Esto supondra un coste de dos euros por molestias ocasionadas mas coste de la llave en caso de extravio total. De no extraviarla no supondra ningun coste.",
+        text: "Llave electrónica — acceso inmediato al local mediante candado con contraseña (solicitud online con registro de accesos).",
+        tagline: "En caso de extravío de la llave no te quedas fuera.",
+        more: "Acceso a la contraseña del candado ubicado en la entrada del local y accesible desde fuera mediante la aplicación web, a la que podrá entrar desde cualquier móvil y solicitar la contraseña del candado para poder abrirlo y adquirir la llave que contiene y poder acceder al local. Posteriormente el administrador podrá desactivar la llave anterior en caso de extravío y asignar esta nueva al usuario que la solicitó (mediante la aplicación). Esto supondrá un coste de dos euros por molestias ocasionadas más coste de la llave en caso de extravío total. De no extraviarla no supondrá ningún coste.",
     },
 ];
 
@@ -402,40 +402,40 @@ const EDY_STEPS = [
         step: 1,
         icon: ClipboardList,
         title: "Registro en Pizarra",
-        body: "El socio anota su numero de taquilla en la pizarra fisica del local antes del viernes. Sin aplicaciones ni formularios.",
+        body: "El socio anota su número de taquilla en la pizarra física del local antes del viernes. Sin aplicaciones ni formularios.",
     },
     {
         step: 2,
         icon: Search,
-        title: "Inspeccion y Marcado",
-        body: "Edy Mulder pasa los viernes. Primero revisa la pizarra para saber que numeros de taquilla tienen tablas para reparar. A continuacion se dirige a cada taquilla, recoge la tabla que tenga cinta azul marcando los toques a reparar y la traslada al taller.",
+        title: "Inspección y Marcado",
+        body: "Edy Mulder pasa los viernes. Primero revisa la pizarra para saber qué números de taquilla tienen tablas para reparar. A continuación se dirige a cada taquilla, recoge la tabla que tenga cinta azul marcando los toques a reparar y la traslada al taller.",
     },
     {
         step: 3,
         icon: Wrench,
-        title: "Reparacion en Taller",
+        title: "Reparación en Taller",
         body: "Traslado al taller especializado. La tabla vuelve al rack a la semana siguiente con su etiqueta de precio transparente.",
     },
     {
         step: 4,
         icon: ShieldCheck,
-        title: "Garantia de Entrega",
-        body: "Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparacion. El socio valida el arreglo en el local y abona el importe a Edy: por Bizum o en metalico introduciendo un sobre con su nombre y numero de taquilla en el buzon exclusivo de Edy situado en el local.",
+        title: "Garantía de Entrega",
+        body: "Edy devuelve la tabla al rack con una pegatina indicando el precio de la reparación. El socio valida el arreglo en el local y abona el importe a Edy: por Bizum o en metálico introduciendo un sobre con su nombre y número de taquilla en el buzón exclusivo de Edy situado en el local.",
     },
 ];
 
 function StepCard({ step, icon: Icon, title, body }) {
     return (
-        <div className="flex h-full gap-4 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-500/40 bg-orange-500/10 text-orange-400">
+        <div className="flex h-full gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-200">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-orange-200 bg-orange-50 text-orange-500">
                 <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-widest text-orange-400">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-orange-500">
                     Paso {step}
                 </p>
-                <h4 className="mt-1 text-base font-bold text-white">{title}</h4>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">{body}</p>
+                <h4 className="mt-1 text-base font-bold text-slate-900">{title}</h4>
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
             </div>
         </div>
     );
@@ -447,49 +447,37 @@ export default function SobreNosotros({ seo = null }) {
     const [showContact, setShowContact] = useState(false);
 
     return (
-        <Layout1>
+        <PageShell variant="light" transparent>
             <SeoHead seo={seo} />
 
-            {/* ── Fondo premium aislado ── */}
-            <div className="relative min-h-screen overflow-hidden bg-slate-950">
-
-                {/* Orbes de luz decorativos — estilo Stripe/Vercel */}
-                <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-                    {/* Orbe teal superior izquierda */}
-                    <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-[#0f5f74]/25 blur-[120px]" />
-                    {/* Orbe naranja centro-derecha */}
-                    <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-orange-500/10 blur-[100px]" />
-                    {/* Orbe teal inferior */}
-                    <div className="absolute bottom-0 left-1/2 h-[350px] w-[700px] -translate-x-1/2 rounded-full bg-[#0f5f74]/15 blur-[120px]" />
-                </div>
-
-                {/* Rejilla sutil de fondo */}
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0"
-                    style={{
-                        backgroundImage:
-                            "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-                        backgroundSize: "64px 64px",
-                    }}
-                />
-
-                {/* Contenido */}
-                <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-
-                {/* ══════════════════════════════════════════
-                    HERO
-                ══════════════════════════════════════════ */}
-                <header className="mb-16 text-center">
+            <div className="min-h-screen">
+                {/* Hero oscuro local (modelo home) */}
+                <section className="relative overflow-hidden bg-slate-950 text-white">
+                    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+                        <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-[#0f5f74]/25 blur-[120px]" />
+                        <div className="absolute right-0 top-1/3 h-[400px] w-[400px] rounded-full bg-orange-500/10 blur-[100px]" />
+                        <div className="absolute bottom-0 left-1/2 h-[350px] w-[700px] -translate-x-1/2 rounded-full bg-[#0f5f74]/15 blur-[120px]" />
+                    </div>
+                    <div
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0"
+                        style={{
+                            backgroundImage:
+                                "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
+                            backgroundSize: "64px 64px",
+                        }}
+                    />
+                    <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                        <header className="text-center">
                     {/* Overline institucional */}
                     <p className="mb-4 text-xs font-bold uppercase tracking-[0.25em] text-[#4ecde6]">
                         Sobre nosotros · Escuela oficial de surf · Zurriola
                     </p>
 
                     {/* Título principal */}
-                    <h1 className="text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="font-heading text-4xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
                         <span className="block text-white">
-                            San Sebastian Surf School
+                            San Sebastián Surf School
                         </span>
                         <span className="mt-2 block bg-gradient-to-r from-[#0f5f74] via-[#1aa3c0] to-[#4ecde6] bg-clip-text text-transparent">
                             Tu escuela y club en el Cantábrico
@@ -538,7 +526,11 @@ export default function SobreNosotros({ seo = null }) {
                         </div>
                     </div>
                 </header>
+                    </div>
+                </section>
 
+                <div className="s4-surface-light">
+                    <div className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
                 {/* ══════════════════════════════════════════
                     INTRO — Quiénes somos
                 ══════════════════════════════════════════ */}
@@ -547,27 +539,27 @@ export default function SobreNosotros({ seo = null }) {
                         {INTRO_PILLARS.map(({ icon: Icon, title, body }) => (
                             <div
                                 key={title}
-                                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm transition hover:border-cyan-500/20"
+                                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ring-1 ring-slate-200 transition hover:border-cyan-300/60"
                             >
-                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-300">
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-s4">
                                     <Icon className="h-5 w-5" />
                                 </div>
-                                <h2 className="text-lg font-bold text-white">{title}</h2>
-                                <p className="mt-2 text-sm leading-relaxed text-slate-400">{body}</p>
+                                <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+                                <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
                             </div>
                         ))}
                     </div>
                     <div className="mt-6 flex flex-wrap justify-center gap-3">
                         <Link
                             href={route("servicios.surf")}
-                            className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition hover:bg-cyan-500/20"
+                            className="inline-flex items-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-2.5 text-sm font-semibold text-s4 transition hover:bg-cyan-100"
                         >
                             Ver clases de surf
                             <ChevronRight className="h-4 w-4" />
                         </Link>
                         <Link
                             href={route("taquillas.planes")}
-                            className="inline-flex items-center gap-2 rounded-xl border border-orange-500/30 bg-orange-500/10 px-4 py-2.5 text-sm font-semibold text-orange-200 transition hover:bg-orange-500/20"
+                            className="inline-flex items-center gap-2 rounded-xl border border-orange-200 bg-orange-50 px-4 py-2.5 text-sm font-semibold text-orange-700 transition hover:bg-orange-100"
                         >
                             Planes de taquilla
                             <ChevronRight className="h-4 w-4" />
@@ -586,13 +578,13 @@ export default function SobreNosotros({ seo = null }) {
                 <section className="mb-16">
                     <div className="mb-6">
                         <SectionLabel>Instalaciones de Primer Nivel</SectionLabel>
-                        <h2 className="text-3xl font-extrabold text-white">Todo lo que necesitas, cuando lo necesitas</h2>
+                        <h2 className="text-3xl font-extrabold text-slate-900">Todo lo que necesitas, cuando lo necesitas</h2>
                     </div>
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
 
                         {/* Tarjeta grande — Taquillas Premium (2 col) */}
-                        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-800/80 to-slate-900/90 p-7 backdrop-blur-md md:col-span-2">
+                        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-7 shadow-sm ring-1 ring-slate-200 md:col-span-2">
                             {/* Badge Mas Popular */}
                             <div className="absolute right-5 top-5 flex items-center gap-1.5 rounded-full border border-orange-400/40 bg-orange-500/15 px-3 py-1 text-[11px] font-bold text-orange-300 shadow-[0_0_12px_rgba(251,146,60,0.3)]">
                                 <Star className="h-3 w-3 fill-orange-400 text-orange-400" />
@@ -600,12 +592,12 @@ export default function SobreNosotros({ seo = null }) {
                             </div>
                             <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1">
                                 <Package className="h-8 w-8 shrink-0 text-orange-400" />
-                                <h3 className="text-xl font-extrabold text-white">Pack premium</h3>
-                                <span className="text-4xl font-extrabold leading-none text-orange-400">40€</span>
-                                <span className="text-sm text-slate-400">/mes</span>
+                                <h3 className="text-xl font-extrabold text-slate-900">Pack premium</h3>
+                                <span className="text-4xl font-extrabold leading-none text-orange-500">40€</span>
+                                <span className="text-sm text-slate-500">/mes</span>
                             </div>
-                            <p className="mt-3 text-sm text-slate-400">
-                                Tu espacio privado a pie de playa, listo antes y despues de cada sesion.
+                            <p className="mt-3 text-sm text-slate-600">
+                                Tu espacio privado a pie de playa, listo antes y después de cada sesión.
                             </p>
                             {/* Lista completa de beneficios */}
                             <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -617,7 +609,7 @@ export default function SobreNosotros({ seo = null }) {
                                     return (
                                         <li
                                             key={text}
-                                            className={`flex items-start gap-2 text-sm text-slate-300 ${more ? "sm:col-span-2" : ""}`}
+                                            className={`flex items-start gap-2 text-sm text-slate-700 ${more ? "sm:col-span-2" : ""}`}
                                         >
                                             <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-400" />
                                             <span className="min-w-0 flex-1">
@@ -636,13 +628,13 @@ export default function SobreNosotros({ seo = null }) {
                         </div>
 
                         {/* Tarjeta — Secado Rapido */}
-                        <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md">
-                            <Wind className="h-8 w-8 text-cyan-400" />
-                            <h3 className="text-lg font-bold text-white">Secado de Trajes</h3>
-                            <p className="text-sm leading-relaxed text-slate-400">
-                                Tecnologia de secado rapido mediante control de
-                                <strong className="text-white"> Baja Humedad Relativa (Baja HR)</strong>.
-                                Tu neopreno siempre seco y sin hongos antes de cada sesion.
+                        <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm ring-1 ring-slate-200">
+                            <Wind className="h-8 w-8 text-s4" />
+                            <h3 className="text-lg font-bold text-slate-900">Secado de Trajes</h3>
+                            <p className="text-sm leading-relaxed text-slate-600">
+                                Tecnología de secado rápido mediante control de
+                                <strong className="text-slate-900"> Baja Humedad Relativa (Baja HR)</strong>.
+                                Tu neopreno siempre seco y sin hongos antes de cada sesión.
                             </p>
                             <div className="mt-auto overflow-hidden rounded-2xl border border-cyan-500/10">
                                 <img
@@ -654,25 +646,25 @@ export default function SobreNosotros({ seo = null }) {
                         </div>
 
                         {/* Tarjeta — Performance Zone */}
-                        <div className="flex flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md">
+                        <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm ring-1 ring-slate-200">
                             <div className="flex items-center gap-3">
-                                <Dumbbell className="h-8 w-8 shrink-0 text-emerald-400" />
-                                <h3 className="text-lg font-bold text-white">Performance Zone</h3>
+                                <Dumbbell className="h-8 w-8 shrink-0 text-emerald-600" />
+                                <h3 className="text-lg font-bold text-slate-900">Performance Zone</h3>
                             </div>
-                            <p className="text-sm leading-relaxed text-slate-400">
+                            <p className="text-sm leading-relaxed text-slate-600">
                                 Zona de calentamiento funcional orientada a la
-                                <strong className="text-white"> movilidad y preparacion fisica</strong> pre-baño.
-                                Activa los musculos correctos antes de entrar al agua.
+                                <strong className="text-slate-900"> movilidad y preparación física</strong> pre-baño.
+                                Activa los músculos correctos antes de entrar al agua.
                             </p>
-                            <p className="text-sm leading-relaxed text-slate-400">
+                            <p className="text-sm leading-relaxed text-slate-600">
                                 Evita lesiones y mejora tu agilidad utilizando nuestros foam rollers, bandas
-                                elasticas y equipamiento de calentamiento.{" "}
-                                <strong className="text-emerald-400">¡Entra al agua al 100%!</strong>
+                                elásticas y equipamiento de calentamiento.{" "}
+                                <strong className="text-emerald-700">¡Entra al agua al 100%!</strong>
                             </p>
                             <div className="mt-auto overflow-hidden rounded-2xl border border-emerald-500/10">
                                 <img
                                     src="/img/zona-calentamiento.png"
-                                    alt="Zona de calentamiento con maquina multi ejercicios del club"
+                                    alt="Zona de calentamiento con máquina de multiejercicios del club"
                                     className="h-44 w-full object-cover"
                                 />
                             </div>
@@ -681,12 +673,12 @@ export default function SobreNosotros({ seo = null }) {
                         {/* Tarjeta — Micro-servicios (grid completo) */}
                         <div
                             id="micro-servicios-club"
-                            className="flex scroll-mt-24 flex-col gap-5 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-md md:col-span-2"
+                            className="flex scroll-mt-24 flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-7 shadow-sm ring-1 ring-slate-200 md:col-span-2"
                         >
                             <div className="flex items-center gap-3">
-                                <Layers className="h-8 w-8 shrink-0 text-amber-400" />
+                                <Layers className="h-8 w-8 shrink-0 text-amber-500" />
                                 <div>
-                                    <h3 className="text-lg font-bold text-white">Micro-servicios del Club</h3>
+                                    <h3 className="text-lg font-bold text-slate-900">Micro-servicios del Club</h3>
                                     <p className="text-xs text-slate-500">
                                         +{MICRO_SERVICES.length} servicios incluidos para socios
                                     </p>
@@ -704,39 +696,39 @@ export default function SobreNosotros({ seo = null }) {
                 {/* ══════════════════════════════════════════
                     BLOQUE 2 — BENEFICIOS FINANCIEROS
                 ══════════════════════════════════════════ */}
-                <section className="mb-16 overflow-hidden rounded-3xl border border-white/10 bg-slate-900/80 backdrop-blur-md">
+                <section className="mb-16 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200">
                     <div className="grid grid-cols-1 lg:grid-cols-2">
 
                         {/* Izquierda — Header y descripcion */}
                         <div className="flex flex-col justify-center p-8 lg:p-10">
                             <SectionLabel>Club de Socios</SectionLabel>
-                            <h2 className="mt-2 text-3xl font-extrabold leading-tight text-white lg:text-4xl">
+                            <h2 className="mt-2 text-3xl font-extrabold leading-tight text-slate-900 lg:text-4xl">
                                 Descuentos de hasta el{" "}
-                                <span className="text-orange-400">50%</span>{" "}
+                                <span className="text-orange-500">50%</span>{" "}
                                 para socios con rutina de taquilla
                             </h2>
-                            <p className="mt-4 text-sm leading-relaxed text-slate-400">
+                            <p className="mt-4 text-sm leading-relaxed text-slate-600">
                                 Ser socio no es solo tener una taquilla. Es acceder a un ecosistema de
-                                beneficios exclusivos que hacen que cada sesion cueste menos y disfrutes mas.
+                                beneficios exclusivos que hacen que cada sesión cueste menos y disfrutes más.
                             </p>
-                            <div className="mt-6 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                                <p className="text-sm font-bold text-emerald-300">Pase de Invitados Mensual</p>
-                                <p className="mt-1.5 text-sm text-slate-400">
-                                    Como socio puedes traer hasta <strong className="text-white">2 invitados una vez al mes</strong> con acceso completo a tablas y neoprenos de test.
-                                    A partir de la tercera persona, el resto abonara el precio estandar de alquiler.
+                            <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                                <p className="text-sm font-bold text-emerald-800">Pase de Invitados Mensual</p>
+                                <p className="mt-1.5 text-sm text-slate-600">
+                                    Como socio puedes traer hasta <strong className="text-slate-900">2 invitados una vez al mes</strong> con acceso completo a tablas y neoprenos de test.
+                                    A partir de la tercera persona, el resto abonará el precio estándar de alquiler.
                                 </p>
                             </div>
                         </div>
 
                         {/* Derecha — Tabla de ahorro */}
-                        <div className="flex items-center justify-center border-t border-white/5 p-8 lg:border-l lg:border-t-0 lg:p-10">
+                        <div className="flex items-center justify-center border-t border-slate-200 p-8 lg:border-l lg:border-t-0 lg:p-10">
                             <div className="w-full max-w-sm">
                                 <p className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500">
                                     Desglose del ahorro — Pase Invitado
                                 </p>
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="border-b border-white/10">
+                                        <tr className="border-b border-slate-200">
                                             <th className="pb-2 text-left text-xs font-semibold text-slate-500">Concepto</th>
                                             <th className="pb-2 text-center text-xs font-semibold text-slate-500">Precio normal</th>
                                             <th className="pb-2 text-right text-xs font-semibold text-slate-500">Precio socio</th>
@@ -747,22 +739,22 @@ export default function SobreNosotros({ seo = null }) {
                                             { concepto: "Alquiler Tabla (1.5h)", normal: "15€", socio: "Gratis" },
                                             { concepto: "Alquiler Traje",        normal: "10€", socio: "Gratis" },
                                         ].map(({ concepto, normal, socio }) => (
-                                            <tr key={concepto} className="border-b border-white/5">
-                                                <td className="py-3 text-slate-300">{concepto}</td>
+                                            <tr key={concepto} className="border-b border-slate-100">
+                                                <td className="py-3 text-slate-700">{concepto}</td>
                                                 <td className="py-3 text-center text-slate-500 line-through">{normal}</td>
-                                                <td className="py-3 text-right font-bold text-emerald-400">{socio}</td>
+                                                <td className="py-3 text-right font-bold text-emerald-700">{socio}</td>
                                             </tr>
                                         ))}
-                                        <tr className="border-t-2 border-orange-500/30">
-                                            <td className="pt-3 font-bold text-white">Ahorro por visita</td>
-                                            <td className="pt-3 text-center font-bold text-slate-400 line-through">25€</td>
-                                            <td className="pt-3 text-right font-extrabold text-orange-400">100% gratis</td>
+                                        <tr className="border-t-2 border-orange-200">
+                                            <td className="pt-3 font-bold text-slate-900">Ahorro por visita</td>
+                                            <td className="pt-3 text-center font-bold text-slate-500 line-through">25€</td>
+                                            <td className="pt-3 text-right font-extrabold text-orange-600">100% gratis</td>
                                         </tr>
                                     </tbody>
                                 </table>
-                                <div className="mt-5 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-4 text-center">
-                                    <p className="text-xs text-slate-400">Ahorro anual acumulado (x12 meses)</p>
-                                    <p className="mt-1 text-3xl font-extrabold text-cyan-300">300€</p>
+                                <div className="mt-5 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-center">
+                                    <p className="text-xs text-slate-600">Ahorro anual acumulado (x12 meses)</p>
+                                    <p className="mt-1 text-3xl font-extrabold text-s4">300€</p>
                                     <p className="text-xs text-slate-500">solo en descuentos de socio</p>
                                 </div>
                             </div>
@@ -775,12 +767,12 @@ export default function SobreNosotros({ seo = null }) {
                 ══════════════════════════════════════════ */}
                 <section id="taller-edy-mulder" className="mb-16 scroll-mt-24">
                     <div className="mb-10 text-center">
-                        <SectionLabel>Artesania Local</SectionLabel>
-                        <h2 className="mt-2 text-3xl font-extrabold text-white">
-                            Taller de Reparacion con Edy Mulder
+                        <SectionLabel>Artesanía Local</SectionLabel>
+                        <h2 className="mt-2 text-3xl font-extrabold text-slate-900">
+                            Taller de Reparación con Edy Mulder
                         </h2>
-                        <p className="mx-auto mt-3 max-w-xl text-sm text-slate-400">
-                            Tu tabla en manos del mejor shaper local de San Sebastian.
+                        <p className="mx-auto mt-3 max-w-xl text-sm text-slate-600">
+                            Tu tabla en manos del mejor shaper local de San Sebastián.
                             Un proceso semanal, riguroso y transparente.
                         </p>
                     </div>
@@ -795,11 +787,11 @@ export default function SobreNosotros({ seo = null }) {
                 {/* ══════════════════════════════════════════
                     FOOTER CTA
                 ══════════════════════════════════════════ */}
-                <section className="rounded-3xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-slate-900/80 to-slate-900/90 p-10 text-center backdrop-blur-md">
-                    <h2 className="text-3xl font-extrabold text-white lg:text-4xl">
+                <section className="rounded-3xl border border-orange-200 bg-gradient-to-br from-orange-50 via-white to-slate-50 p-10 text-center shadow-sm ring-1 ring-orange-100">
+                    <h2 className="text-3xl font-extrabold text-slate-900 lg:text-4xl">
                         Listo para unirte al club?
                     </h2>
-                    <p className="mx-auto mt-3 max-w-lg text-sm text-slate-400">
+                    <p className="mx-auto mt-3 max-w-lg text-sm text-slate-600">
                         La comunidad de San Sebastián Surf School te espera en Zurriola. Escríbenos y te contamos cómo unirte al club.
                     </p>
                     <div className="mt-7 flex justify-center">
@@ -812,8 +804,9 @@ export default function SobreNosotros({ seo = null }) {
                     </div>
                 </section>
 
+                    </div>
                 </div>
-            </div>{/* fin fondo premium */}
+            </div>
 
             {/* Modal de contacto */}
             {showContact ? (
@@ -822,6 +815,6 @@ export default function SobreNosotros({ seo = null }) {
                     onClose={() => setShowContact(false)}
                 />
             ) : null}
-        </Layout1>
+        </PageShell>
     );
 }

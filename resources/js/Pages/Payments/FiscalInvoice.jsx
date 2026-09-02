@@ -1,4 +1,5 @@
 import { Head, Link } from "@inertiajs/react";
+import S4Button from "@/components/S4Button";
 
 function euros(cents) {
     return (Number(cents || 0) / 100).toFixed(2).replace(".", ",") + " €";
@@ -15,28 +16,28 @@ export default function FiscalInvoice({
     return (
         <>
             <Head title="Factura TicketBAI" />
-            <div className="min-h-screen bg-slate-950 px-4 py-12 text-white">
-                <div className="mx-auto w-full max-w-lg rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300/80">
+            <div className="s4-surface-light min-h-screen px-4 py-12">
+                <div className="mx-auto w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-8 shadow-lg ring-1 ring-slate-100">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
                         Factura fiscal · TicketBAI
                     </p>
-                    <h1 className="mt-2 text-2xl font-bold tracking-tight">
+                    <h1 className="mt-2 font-heading text-2xl font-bold tracking-tight text-slate-900">
                         {ready ? "Tu factura está lista" : invoice?.status_label || "Factura"}
                     </h1>
-                    <p className="mt-2 text-sm text-white/65">
-                        Importe: <span className="font-semibold text-white">{euros(invoice?.amount_cents)}</span>
+                    <p className="mt-2 text-sm text-slate-600">
+                        Importe: <span className="font-semibold text-slate-900">{euros(invoice?.amount_cents)}</span>
                     </p>
 
                     {pending_message ? (
-                        <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                             {pending_message}
                         </p>
                     ) : null}
 
                     {ready && invoice?.tbai_identifier ? (
                         <div className="mt-6 space-y-2">
-                            <p className="text-xs uppercase tracking-wide text-white/50">Identificador TicketBAI</p>
-                            <p className="break-all rounded-xl bg-black/30 px-4 py-3 font-mono text-sm text-emerald-200">
+                            <p className="text-xs uppercase tracking-wide text-slate-500">Identificador TicketBAI</p>
+                            <p className="break-all rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 font-mono text-sm text-emerald-800">
                                 {invoice.tbai_identifier}
                             </p>
                             {String(invoice.tbai_identifier).startsWith("http") ? (
@@ -44,7 +45,7 @@ export default function FiscalInvoice({
                                     href={invoice.tbai_identifier}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-block text-sm text-emerald-300 underline underline-offset-2"
+                                    className="inline-block text-sm text-emerald-700 underline underline-offset-2 hover:text-emerald-800"
                                 >
                                     Verificar en Hacienda Foral
                                 </a>
@@ -54,32 +55,35 @@ export default function FiscalInvoice({
 
                     {ready && invoice?.qr_image_src ? (
                         <div className="mt-6 flex flex-col items-center gap-3">
-                            <p className="text-xs uppercase tracking-wide text-white/50">Código QR TicketBAI</p>
+                            <p className="text-xs uppercase tracking-wide text-slate-500">Código QR TicketBAI</p>
                             <img
                                 src={invoice.qr_image_src}
                                 alt="Código QR TicketBAI de la factura"
-                                className="h-44 w-44 rounded-xl bg-white p-2"
+                                className="h-44 w-44 rounded-xl border border-slate-200 bg-white p-2"
                             />
                         </div>
                     ) : null}
 
                     <div className="mt-8 flex flex-col gap-3">
                         {ready && invoice?.pdf_url ? (
-                            <a
+                            <S4Button
                                 href={invoice.pdf_url}
+                                external
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center rounded-xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400"
+                                variant="accent"
+                                className="bg-emerald-600 font-semibold text-white hover:bg-emerald-500"
                             >
                                 Descargar / ver PDF de la factura
-                            </a>
+                            </S4Button>
                         ) : null}
-                        <Link
+                        <S4Button
                             href={back_url}
-                            className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white/80 transition hover:bg-white/5"
+                            variant="secondary"
+                            className="border-slate-200 bg-white font-semibold text-slate-700 hover:bg-slate-50"
                         >
                             {back_label}
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </div>

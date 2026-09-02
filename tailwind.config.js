@@ -22,18 +22,6 @@ export default {
                     "Montserrat",
                     ...defaultTheme.fontFamily.sans,
                 ],
-                editorial: ["Georgia", "Cambria", "Times New Roman", "serif"],
-            },
-            // Tus escalas tipográficas originales
-            fontSize: {
-                "scale-xs": ["0.64rem", { lineHeight: "1.25" }],
-                "scale-sm": ["0.8rem", { lineHeight: "1.375" }],
-                "scale-base": ["1rem", { lineHeight: "1.625" }],
-                "scale-lg": ["1.25rem", { lineHeight: "1.5" }],
-                "scale-xl": ["1.563rem", { lineHeight: "1.4" }],
-                "scale-2xl": ["1.953rem", { lineHeight: "1.3" }],
-                "scale-3xl": ["2.441rem", { lineHeight: "1.25" }],
-                "scale-4xl": ["3.052rem", { lineHeight: "1.2" }],
             },
             // Fusión de colores: Tus marcas + Variables dinámicas de v0
             colors: {
@@ -77,46 +65,38 @@ export default {
                     DEFAULT: "oklch(var(--card) / <alpha-value>)",
                     foreground: "oklch(var(--card-foreground) / <alpha-value>)",
                 },
-                // --- Marca S4 (fuente de verdad visual marketing) ---
+                // s4-cyan = acento interactivo (#06b6d4). brand-deep/primary = navy marca (#0d234d) ≠ s4-deep (#0a1f2e).
                 s4: {
                     DEFAULT: "#0f5f74",
                     hover: "#0d4f60",
                     cyan: "#06b6d4",
                     deep: "#0a1f2e",
                     surface: "#f8fafc",
+                    "surface-light": "#f8fafc",
+                    "surface-dark": "#0a2233",
+                    "surface-dark-night": "#070b14",
+                    "surface-dark-teal": "#0a2a33",
+                    "surface-dark-royal": "#1a0f2e",
+                    "surface-dark-warm": "#241405",
+                    "surface-dark-coach": "#0a2230",
                     ink: "#0f172a",
                 },
-                // --- Tus colores originales de Surf Premium ---
                 brand: {
                     deep: "#0d234d",
-                    accent: "#06b6d4",
-                    bg: "#f8fafc",
                     primary: "#0d234d",
-                    action: "#06b6d4",
-                    surface: "#f8fafc",
-                },
-                ocean: {
-                    primary: "#0d234d",
-                    accent: "#06b6d4",
-                    "accent-light": "#22d3ee",
-                },
-                softdark: {
-                    base: "#111827",
-                    surface: "#1F2937",
-                    border: "#374151",
-                    text: "#E5E7EB",
-                    muted: "#9CA3AF",
                 },
             },
-            // Tus Z-index originales
+            // Escala z-index (documentada — C8): header < overlay < modal < chatbot < toast
             zIndex: {
-                header: "70",
-                dropdown: "80",
-                modal: "90",
-                toast: "999",
+                header: "500",
+                dropdown: "510",
+                "overlay-backdrop": "540",
+                "overlay-panel": "550",
+                modal: "800",
                 chatbot: "850",
+                toast: "999",
             },
-            // Bordes: v0 usa --radius, tú usabas custom
+            // Bordes: lg/md/sm usan var(--radius) definido en resources/css/app.css :root
             borderRadius: {
                 lg: "var(--radius)",
                 md: "calc(var(--radius) - 2px)",

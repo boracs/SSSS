@@ -705,11 +705,11 @@ export default function GlobalNav() {
 
     return (
         <div
-            className="relative z-[600] w-full bg-[#071326] text-slate-100"
+            className="relative w-full bg-[#071326] text-slate-100"
             onMouseLeave={scheduleClose}
         >
             <nav
-                aria-label="Navegacion global"
+                aria-label="Navegación global"
                 className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6"
             >
                 <Link
@@ -724,7 +724,7 @@ export default function GlobalNav() {
                     />
                     {/* Nombre largo solo en desktop ancho; en tablet libera sitio al menú */}
                     <span className="hidden text-sm font-bold leading-tight text-white xl:inline">
-                        San Sebastian Surf School
+                        San Sebastián Surf School
                     </span>
                 </Link>
 
@@ -842,7 +842,7 @@ export default function GlobalNav() {
                                 </button>
                                 <div
                                     role="menu"
-                                    className={`absolute right-0 top-full z-[40] w-56 transition-all ${
+                                    className={`absolute right-0 top-full z-dropdown w-56 transition-all ${
                                         accountOpen
                                             ? "pointer-events-auto opacity-100"
                                             : "pointer-events-none -translate-y-1 opacity-0"
@@ -1129,7 +1129,7 @@ export default function GlobalNav() {
             {/* Dialogo de confirmacion de cierre de sesion */}
             {logoutConfirmOpen ? (
                 <div
-                    className="fixed inset-0 z-[60] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-modal grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm"
                     onClick={() => setLogoutConfirmOpen(false)}
                     role="dialog"
                     aria-modal="true"

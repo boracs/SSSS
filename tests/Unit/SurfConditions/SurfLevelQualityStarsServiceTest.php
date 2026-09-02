@@ -71,6 +71,40 @@ final class SurfLevelQualityStarsServiceTest extends TestCase
     }
 
     #[Test]
+    public function desfase_above_3000_kj_forbids_every_level(): void
+    {
+        $out = $this->stars()->forSlot(
+            energyKj: 3200,
+            waveHeightM: 4.0,
+            wavePeriodS: 14,
+            windState: SurfWindStateClassifier::GLASSY,
+            windSpeedKmh: 5,
+            signal: SurfDailyBrief::OVERRIDE_CAUTION,
+            at: Carbon::parse('2026-01-15 10:00:00'),
+        );
+
+        $this->assertSame(1, $out->iniciacion);
+        $this->assertSame(1, $out->intermedio);
+        $this->assertSame(1, $out->avanzado);
+    }
+
+    #[Test]
+    public function desfase_cap_survives_south_wind_that_would_open_tubes(): void
+    {
+        $out = $this->stars()->forSlot(
+            energyKj: 3200,
+            waveHeightM: 4.0,
+            wavePeriodS: 14,
+            windState: SurfWindStateClassifier::OFFSHORE,
+            windSpeedKmh: 25,
+            signal: SurfDailyBrief::OVERRIDE_CAUTION,
+            at: Carbon::parse('2026-01-15 10:00:00'),
+        );
+
+        $this->assertSame(1, $out->avanzado);
+    }
+
+    #[Test]
     public function rip_current_caps_iniciacion_harder_than_avanzado(): void
     {
         $out = $this->stars()->forSlot(

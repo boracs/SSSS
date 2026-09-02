@@ -66,7 +66,7 @@ export default function SharePageButton({
         <button
             type="button"
             onClick={share}
-            className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${shell} ${className}`}
+            className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${shell} ${className}`}
             aria-label={copied ? "Enlace copiado" : label}
         >
             {copied ? (

@@ -3,11 +3,12 @@ import React, { useMemo, useRef, useState } from "react";
 import { toast as notify } from "react-toastify";
 import { Combobox } from "@headlessui/react";
 import { CheckIcon, ChevronUpDownIcon, TrashIcon } from "@heroicons/react/24/outline";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Breadcrumbs from "../components/Breadcrumbs";
 import { showInertiaErrors } from "../lib/inertiaErrors";
 import { whatsappUrlFromPhone } from "../lib/whatsapp";
 import WhatsAppIcon from "../components/icons/WhatsAppIcon";
+import { listAssignableLockerOptions, PHYSICAL_LOCKER_MAX } from "@/components/admin/LockerNumberCombobox";
 
 function ComboboxGroupLabel({ children }) {
     return (
@@ -25,7 +26,7 @@ const sectionEyebrow =
 const sectionHint = "mb-4 text-xs text-slate-500";
 const labelClass = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400";
 const inputClass =
-    "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-brand-action/50 focus:outline-none focus:ring-2 focus:ring-brand-action/20";
+    "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20";
 const comboboxOptionsClass = `
     z-[100] w-[var(--input-width)] !max-h-64 overflow-auto rounded-xl
     border border-white/10 bg-slate-900 p-1.5
@@ -38,10 +39,10 @@ const comboboxOptionsClass = `
 `;
 const optionItemClass = ({ active, selected }) =>
     `cursor-pointer rounded-lg px-3 py-2.5 text-sm transition-colors ${
-        active ? "bg-brand-action/20 text-cyan-50" : "text-slate-200"
-    } ${selected ? "ring-1 ring-brand-action/40" : ""}`;
+        active ? "bg-s4-cyan/20 text-cyan-50" : "text-slate-200"
+    } ${selected ? "ring-1 ring-s4-cyan/40" : ""}`;
 const btnPrimary =
-    "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-action px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-brand-action/90 disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-s4-cyan px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-s4-cyan/90 disabled:cursor-not-allowed disabled:opacity-50";
 const btnGhost =
     "rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:opacity-50";
 const modalShell =
@@ -125,18 +126,10 @@ export default function AsignarTaquilla() {
         !!selectedUser &&
         Number(occupiedMap.get(lockerValue)?.id) !== Number(selectedUser.id);
 
-    const totalLockers = 200;
+    const totalLockers = PHYSICAL_LOCKER_MAX;
     const occupiedCount = usersWithLocker.length;
     const freeCount = Math.max(0, totalLockers - occupiedCount);
     const freePct = Math.round((freeCount / totalLockers) * 100);
-
-    const freeLockers = useMemo(() => {
-        const list = [];
-        for (let i = 1; i <= 200; i += 1) {
-            if (!occupiedMap.has(i)) list.push(i);
-        }
-        return list;
-    }, [occupiedMap]);
 
     const sharedLockersSorted = useMemo(
         () => [...sharedLockerNumbers].map(Number).sort((a, b) => a - b),
@@ -144,20 +137,11 @@ export default function AsignarTaquilla() {
     );
 
     const lockerOptions = useMemo(() => {
-        const free = freeLockers.map((n) => ({
-            n,
-            kind: "free",
-            title: `Taquilla #${n}`,
-            subtitle: "Libre",
-        }));
-        const shared = sharedLockersSorted.map((n) => ({
-            n,
-            kind: "shared",
-            title: `Taquilla #${n}`,
-            subtitle: "Compartida (varios usuarios)",
-        }));
-        return [...free, ...shared];
-    }, [freeLockers, sharedLockersSorted]);
+        const occupied = usersWithLocker
+            .map((u) => Number(u.numeroTaquilla))
+            .filter((n) => Number.isFinite(n) && n > 0);
+        return listAssignableLockerOptions(occupied, sharedLockerNumbers);
+    }, [usersWithLocker, sharedLockerNumbers]);
 
     const filteredLockerOptions = useMemo(() => {
         const q = lockerQuery.trim().toLowerCase();
@@ -305,13 +289,13 @@ export default function AsignarTaquilla() {
     );
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Asignador de Taquillas" />
 
-            <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
                 <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div className="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-cyan-500/10 blur-[100px]" />
-                    <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-brand-action/10 blur-[90px]" />
+                    <div className="absolute bottom-0 right-0 h-80 w-80 rounded-full bg-s4-cyan/10 blur-[90px]" />
                 </div>
 
                 <div className="relative mx-auto max-w-7xl space-y-6">
@@ -359,7 +343,7 @@ export default function AsignarTaquilla() {
                                             Ocupadas
                                         </p>
                                     </div>
-                                    <div className="rounded-xl border border-brand-action/30 bg-brand-action/10 p-2.5 text-center ring-1 ring-inset ring-brand-action/10">
+                                    <div className="rounded-xl border border-s4-cyan/30 bg-s4-cyan/10 p-2.5 text-center ring-1 ring-inset ring-s4-cyan/10">
                                         <p className="text-xl font-extrabold tabular-nums text-cyan-300 sm:text-2xl">
                                             {freeCount}
                                         </p>
@@ -448,7 +432,7 @@ export default function AsignarTaquilla() {
                                                     className={`${inputClass} pr-10`}
                                                     onChange={(e) => setLockerQuery(e.target.value)}
                                                     displayValue={(opt) => (opt ? opt.title : "")}
-                                                    placeholder="Buscar nº libre…"
+                                                    placeholder="Buscar n.º libre…"
                                                 />
                                                 <Combobox.Button className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-200">
                                                     <ChevronUpDownIcon className="h-5 w-5" />
@@ -473,7 +457,7 @@ export default function AsignarTaquilla() {
                                     </div>
 
                                     {selectedUser || hasLockerValue ? (
-                                        <div className="rounded-xl border border-brand-action/25 bg-brand-action/10 p-3.5 text-sm ring-1 ring-inset ring-brand-action/10">
+                                        <div className="rounded-xl border border-s4-cyan/25 bg-s4-cyan/10 p-3.5 text-sm ring-1 ring-inset ring-s4-cyan/10">
                                             {selectedUser ? (
                                                 <>
                                                     <p className="font-semibold text-white">
@@ -692,6 +676,6 @@ export default function AsignarTaquilla() {
                     </div>
                 </div>
             ) : null}
-        </Layout1>
+        </PageShell>
     );
 }

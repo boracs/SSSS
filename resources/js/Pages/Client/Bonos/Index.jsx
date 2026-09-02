@@ -8,7 +8,7 @@ import { whatsappUrlWithMessage } from "@/lib/whatsapp";
 function ConsumptionDetailsPanel({ details }) {
     if (!details) {
         return (
-            <p className="text-sm text-gray-400">No hay información adicional para esta sesión.</p>
+            <p className="text-sm text-slate-500">No hay información adicional para esta sesión.</p>
         );
     }
 
@@ -17,56 +17,56 @@ function ConsumptionDetailsPanel({ details }) {
     return (
         <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">Nivel</p>
-                <p className="text-sm text-gray-100">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Nivel</p>
+                <p className="text-sm text-slate-800">
                     {details.level_label || "Iniciación"}
                     {details.modality_label ? (
-                        <span className="text-gray-400"> · {details.modality_label}</span>
+                        <span className="text-slate-500"> · {details.modality_label}</span>
                     ) : null}
                 </p>
                 {details.location ? (
-                    <p className="text-xs text-gray-400">{details.location}</p>
+                    <p className="text-xs text-slate-500">{details.location}</p>
                 ) : null}
             </div>
 
             <div className="space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">Compañeros en clase</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Compañeros en clase</p>
                 {classmates.length > 0 ? (
                     <ul className="flex flex-wrap gap-1.5">
                         {classmates.map((name) => (
                             <li
                                 key={name}
-                                className="rounded-full bg-teal-500/10 px-2.5 py-0.5 text-xs font-medium text-teal-100 ring-1 ring-teal-400/25"
+                                className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-700 ring-1 ring-teal-200"
                             >
                                 {name}
                             </li>
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-sm text-gray-400">Sesión individual o sin otros alumnos registrados.</p>
+                    <p className="text-sm text-slate-500">Sesión individual o sin otros alumnos registrados.</p>
                 )}
             </div>
 
             <div className="space-y-1 sm:col-span-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">Objetivos trabajados</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Objetivos trabajados</p>
                 {details.objectives ? (
-                    <p className="text-sm leading-relaxed text-gray-200">{details.objectives}</p>
+                    <p className="text-sm leading-relaxed text-slate-700">{details.objectives}</p>
                 ) : (
-                    <p className="text-sm text-gray-400">Sin objetivos registrados para esta sesión.</p>
+                    <p className="text-sm text-slate-500">Sin objetivos registrados para esta sesión.</p>
                 )}
             </div>
 
             <div className="space-y-1 sm:col-span-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">Comentario del monitor</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">Comentario del monitor</p>
                 {details.monitor_comment ? (
-                    <blockquote className="rounded-lg border border-amber-500/20 bg-amber-950/30 px-3 py-2 text-sm leading-relaxed text-amber-50/90">
+                    <blockquote className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-relaxed text-amber-900">
                         {details.monitor_name ? (
-                            <footer className="mb-1 text-xs font-semibold text-amber-200/70">{details.monitor_name}</footer>
+                            <footer className="mb-1 text-xs font-semibold text-amber-700">{details.monitor_name}</footer>
                         ) : null}
                         {details.monitor_comment}
                     </blockquote>
                 ) : (
-                    <p className="text-sm text-gray-400">Sin comentarios del monitor para esta sesión.</p>
+                    <p className="text-sm text-slate-500">Sin comentarios del monitor para esta sesión.</p>
                 )}
             </div>
         </div>
@@ -84,14 +84,14 @@ function LoadMoreButton({ label, onClick, remaining }) {
     }
 
     return (
-        <div className="border-t border-white/5 px-4 py-3 text-center">
+        <div className="border-t border-slate-200 px-4 py-3 text-center">
             <button
                 type="button"
                 onClick={onClick}
-                className="inline-flex items-center gap-2 rounded-xl bg-gray-800/90 px-4 py-2 text-sm font-semibold text-amber-100 ring-1 ring-amber-500/30 transition hover:bg-gray-700/90"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50"
             >
                 {label}
-                <span className="text-xs font-normal text-gray-400">({remaining} más)</span>
+                <span className="text-xs font-normal text-slate-500">({remaining} más)</span>
             </button>
         </div>
     );
@@ -223,28 +223,29 @@ export default function ClientBonosIndex({
 
     const usageBadgeClass = (usageStatus) => {
         const key = String(usageStatus || "").toLowerCase();
-        if (key === "in_use" || key === "active" || key === "available") return "bg-teal-900/35 text-teal-200 ring-1 ring-teal-500/35";
-        if (key === "queued") return "bg-indigo-900/35 text-indigo-200 ring-1 ring-indigo-500/35";
-        if (key === "consumed" || key === "exhausted") return "bg-slate-800/80 text-slate-400 ring-1 ring-slate-600/40";
-        if (key === "pending_validation" || key === "pending") return "bg-amber-900/35 text-amber-200 ring-1 ring-amber-500/35";
-        if (key === "rejected") return "bg-rose-900/35 text-rose-200 ring-1 ring-rose-500/35";
-        return "bg-gray-800 text-gray-200 ring-1 ring-white/10";
+        if (key === "in_use" || key === "active" || key === "available") return "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
+        if (key === "queued") return "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200";
+        if (key === "consumed" || key === "exhausted") return "bg-slate-100 text-slate-600 ring-1 ring-slate-200";
+        if (key === "pending_validation" || key === "pending") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+        if (key === "rejected") return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+        return "bg-slate-100 text-slate-600 ring-1 ring-slate-200";
     };
 
     return (
         <>
             <Head title="Bonos VIP" />
-            <div className="mx-auto max-w-6xl space-y-6 p-6 text-gray-200">
+            <div className="s4-surface-light min-h-screen">
+            <div className="mx-auto max-w-6xl space-y-6 p-4 py-8 sm:p-6">
                 <div>
                     <div className="flex flex-wrap items-center gap-3">
-                        <h1 className="text-2xl font-bold text-white">Bonos VIP</h1>
+                        <h1 className="font-heading text-2xl font-bold text-slate-900">Bonos VIP</h1>
                         {!vipActive ? (
-                            <span className="inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200 ring-1 ring-amber-400/30">
+                            <span className="inline-flex rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 ring-1 ring-amber-200">
                                 Perfil inactivo — modo consulta
                             </span>
                         ) : null}
                     </div>
-                    <p className="mt-1 max-w-3xl text-sm text-gray-400">
+                    <p className="mt-1 max-w-3xl text-sm text-slate-600">
                         Créditos para clases grupales de surf. Tu nivel debe estar validado por el monitor antes de
                         reservar. Si también tienes taquilla física en el club, los bonos son independientes de tu cuota
                         de casillero.
@@ -259,19 +260,19 @@ export default function ClientBonosIndex({
                 {vipActive ? (
                     <section className="space-y-3">
                         <div>
-                            <h2 className="text-lg font-bold text-white">Comprar bonos</h2>
-                            <p className="mt-1 text-sm text-gray-400">
-                                Bonos para <strong className="text-gray-200">clases grupales</strong> según el nivel que el
+                            <h2 className="text-lg font-bold text-slate-900">Comprar bonos</h2>
+                            <p className="mt-1 text-sm text-slate-600">
+                                Bonos para <strong className="text-slate-800">clases grupales</strong> según el nivel que el
                                 monitor haya validado contigo. Los créditos se consumen al reservar sesiones compatibles con
                                 tu perfil.
                             </p>
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                             {packs.map((pack) => (
-                                <div key={pack.id} className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
-                                    <p className="text-lg font-semibold text-gray-100">{pack.nombre}</p>
-                                    <p className="text-gray-300">{pack.num_clases} clases</p>
-                                    <p className="mt-2 text-2xl font-bold text-sky-300">{Number(pack.precio).toFixed(2)} €</p>
+                                <div key={pack.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                    <p className="text-lg font-semibold text-slate-900">{pack.nombre}</p>
+                                    <p className="text-slate-600">{pack.num_clases} clases</p>
+                                    <p className="mt-2 text-2xl font-bold text-sky-600">{Number(pack.precio).toFixed(2)} €</p>
                                     <button type="button" onClick={() => setSelectedPack(pack)} className="mt-3 rounded-xl bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700">
                                         Comprar
                                     </button>
@@ -280,8 +281,8 @@ export default function ClientBonosIndex({
                         </div>
                     </section>
                 ) : (
-                    <section className="rounded-2xl border border-amber-500/25 bg-amber-950/20 p-4 sm:p-5">
-                        <p className="text-sm leading-relaxed text-amber-50/90">
+                    <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
+                        <p className="text-sm leading-relaxed text-amber-900">
                             Tu perfil VIP no está activo actualmente. Aquí puedes consultar tu historial de bonos y
                             clases, pero no puedes comprar bonos nuevos ni reservar clases VIP hasta reactivar tu
                             perfil.
@@ -301,22 +302,22 @@ export default function ClientBonosIndex({
                 )}
 
                 {/* Resumen — siempre visible */}
-                <section className="rounded-2xl border border-teal-500/25 bg-gradient-to-br from-gray-950 via-teal-950/20 to-gray-950 p-4 sm:p-5">
+                <section className="rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 via-white to-slate-50 p-4 sm:p-5">
                     <div className="flex flex-wrap items-end justify-between gap-4">
                         <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-300/80">
+                            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-teal-700">
                                 Tu saldo VIP
                             </p>
-                            <p className="mt-1 text-3xl font-extrabold tabular-nums text-teal-300 sm:text-4xl">
+                            <p className="mt-1 text-3xl font-extrabold tabular-nums text-teal-700 sm:text-4xl">
                                 {creditsSummary.balance}{" "}
-                                <span className="text-lg font-semibold text-teal-200/80 sm:text-xl">
+                                <span className="text-lg font-semibold text-teal-600 sm:text-xl">
                                     {creditsSummary.balance === 1 ? "crédito" : "créditos"}
                                 </span>
                             </p>
-                            <p className="mt-2 text-xs text-slate-400">
+                            <p className="mt-2 text-xs text-slate-600">
                                 {creditsSummary.active ? (
                                     <>
-                                        En uso: <span className="text-slate-200">{creditsSummary.active.pack}</span>
+                                        En uso: <span className="text-slate-800">{creditsSummary.active.pack}</span>
                                         {creditsSummary.queued > 0 ? (
                                             <span className="text-slate-500">
                                                 {" "}
@@ -330,7 +331,7 @@ export default function ClientBonosIndex({
                                     "Compra un bono para empezar"
                                 )}
                                 {creditsSummary.pending > 0 ? (
-                                    <span className="text-amber-300/90">
+                                    <span className="text-amber-700">
                                         {" "}
                                         · {creditsSummary.pending}{" "}
                                         {creditsSummary.pending === 1 ? "compra pendiente" : "compras pendientes"} de
@@ -353,8 +354,8 @@ export default function ClientBonosIndex({
                                     panelId="bonos-historial-panel"
                                     className={
                                         showHistory
-                                            ? "border-amber-500/40 bg-amber-500/15 text-amber-100"
-                                            : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                                            ? "border-amber-300 bg-amber-50 text-amber-800"
+                                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                     }
                                 >
                                     {showHistory ? "Ocultar historial" : `Ver historial (${consumptionHistory.length})`}
@@ -367,8 +368,8 @@ export default function ClientBonosIndex({
                                     panelId="bonos-mis-bonos-panel"
                                     className={
                                         showMyBonos
-                                            ? "border-indigo-500/40 bg-indigo-500/15 text-indigo-100"
-                                            : "border-white/15 bg-white/5 text-slate-200 hover:bg-white/10"
+                                            ? "border-indigo-300 bg-indigo-50 text-indigo-800"
+                                            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                     }
                                 >
                                     {showMyBonos ? "Ocultar bonos" : `Mis bonos (${myBonos.length})`}
@@ -379,25 +380,25 @@ export default function ClientBonosIndex({
                 </section>
 
                 {showHistory ? (
-                <div id="bonos-historial-panel" className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-gray-950 via-gray-900 to-teal-950/50 p-[1px] shadow-xl shadow-amber-900/20">
-                    <div className="rounded-2xl bg-gray-950/90 px-4 pb-4 pt-3">
+                <div id="bonos-historial-panel" className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+                    <div className="rounded-2xl px-4 pb-4 pt-3">
                         <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                             <div>
-                                <h2 className="text-lg font-bold tracking-tight text-transparent bg-gradient-to-r from-amber-200 via-orange-200 to-teal-200 bg-clip-text">
+                                <h2 className="text-lg font-bold tracking-tight text-slate-900">
                                     Historial de movimientos
                                 </h2>
-                                <p className="mt-1 text-xs text-amber-100/70">
-                                    El <span className="font-semibold text-teal-200/90">saldo</span> es el total de créditos
+                                <p className="mt-1 text-xs text-slate-600">
+                                    El <span className="font-semibold text-teal-700">saldo</span> es el total de créditos
                                     acumulados. Las{" "}
-                                    <span className="font-semibold text-emerald-300">compras suman</span> y cada sesión
+                                    <span className="font-semibold text-emerald-700">compras suman</span> y cada sesión
                                     descuenta:{" "}
-                                    <span className="font-semibold text-teal-200/90">grupal o semanal = 1</span>
+                                    <span className="font-semibold text-teal-700">grupal o semanal = 1</span>
                                     {" · "}
-                                    <span className="font-semibold text-amber-200/90">particular = 2</span>.
+                                    <span className="font-semibold text-amber-700">particular = 2</span>.
                                 </p>
                             </div>
                         </div>
-                        <div className="rounded-xl border border-white/5">
+                        <div className="rounded-xl border border-slate-200">
                             <table className="w-full table-fixed text-sm">
                                 <colgroup>
                                     <col className="w-[22%]" />
@@ -406,7 +407,7 @@ export default function ClientBonosIndex({
                                     <col className="w-[14%]" />
                                     <col className="w-[16%]" />
                                 </colgroup>
-                                <thead className="bg-gradient-to-r from-amber-900/35 via-gray-900/80 to-teal-900/35 text-[11px] font-semibold uppercase tracking-wide text-amber-50/90">
+                                <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                                     <tr>
                                         <th className="px-3 py-2.5 text-left">Fecha</th>
                                         <th className="px-3 py-2.5 text-left">Concepto</th>
@@ -415,7 +416,7 @@ export default function ClientBonosIndex({
                                         <th className="px-3 py-2.5 text-center">Detalles</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5 text-gray-100">
+                                <tbody className="divide-y divide-slate-100 text-slate-800">
                                     {visibleConsumptionHistory.map((row, idx) => {
                                         const entryType = row.entry_type || "consumption";
                                         const isPurchase = entryType === "purchase";
@@ -425,30 +426,30 @@ export default function ClientBonosIndex({
                                         const creditsAdded = Number(row.credits_added ?? 0);
                                         const isExpanded = expandedConsumptionId === row.id;
 
-                                        let rowBg = idx % 2 === 0 ? "bg-gray-900/25 hover:bg-gray-800/40" : "bg-gray-900/10 hover:bg-gray-800/35";
-                                        if (isExpanded) rowBg = "bg-teal-950/35";
-                                        if (isPurchase) rowBg = isExpanded ? "bg-emerald-950/40" : "bg-emerald-950/20 hover:bg-emerald-950/30";
-                                        if (isPurchasePending) rowBg = isExpanded ? "bg-amber-950/35" : "bg-amber-950/15 hover:bg-amber-950/25";
+                                        let rowBg = idx % 2 === 0 ? "bg-white hover:bg-slate-50" : "bg-slate-50/50 hover:bg-slate-50";
+                                        if (isExpanded) rowBg = "bg-teal-50";
+                                        if (isPurchase) rowBg = isExpanded ? "bg-emerald-50" : "bg-emerald-50/60 hover:bg-emerald-50";
+                                        if (isPurchasePending) rowBg = isExpanded ? "bg-amber-50" : "bg-amber-50/60 hover:bg-amber-50";
 
                                         const creditsBadge = isPurchase
-                                            ? "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/45"
+                                            ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
                                             : isPurchasePending
-                                              ? "bg-amber-500/15 text-amber-100 ring-1 ring-amber-400/35"
+                                              ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
                                               : uc >= 2
-                                                ? "bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/40"
-                                                : "bg-teal-500/15 text-teal-100 ring-1 ring-teal-400/30";
+                                                ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                                : "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
 
                                         return (
                                             <Fragment key={row.id}>
                                                 <tr className={rowBg}>
-                                                    <td className="px-3 py-2.5 text-gray-200">{row.date_human || "—"}</td>
+                                                    <td className="px-3 py-2.5 text-slate-700">{row.date_human || "—"}</td>
                                                     <td
                                                         className={`break-words px-3 py-2.5 ${
                                                             isPurchase
-                                                                ? "font-medium text-emerald-100"
+                                                                ? "font-medium text-emerald-800"
                                                                 : isPurchasePending
-                                                                  ? "font-medium text-amber-100"
-                                                                  : "text-gray-100"
+                                                                  ? "font-medium text-amber-800"
+                                                                  : "text-slate-800"
                                                         }`}
                                                     >
                                                         {row.lesson_name || "Clase de surf"}
@@ -469,10 +470,10 @@ export default function ClientBonosIndex({
                                                     <td
                                                         className={`px-3 py-2.5 text-right font-semibold tabular-nums ${
                                                             isPurchase
-                                                                ? "text-emerald-300"
+                                                                ? "text-emerald-700"
                                                                 : isPurchasePending
-                                                                  ? "text-amber-200/70"
-                                                                  : "text-teal-200"
+                                                                  ? "text-amber-700"
+                                                                  : "text-teal-700"
                                                         }`}
                                                     >
                                                         {isPurchasePending && row.remaining_after != null
@@ -490,8 +491,8 @@ export default function ClientBonosIndex({
                                                                 stopPropagation={false}
                                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                     isExpanded
-                                                                        ? "bg-teal-500/20 text-teal-100 ring-1 ring-teal-400/40"
-                                                                        : "bg-gray-800/80 text-amber-100/90 ring-1 ring-amber-500/25 hover:bg-gray-700/80"
+                                                                        ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                                                                        : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                                                                 }`}
                                                                 chevronClassName="h-3 w-3"
                                                             >
@@ -505,48 +506,48 @@ export default function ClientBonosIndex({
                                                                 stopPropagation={false}
                                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                                     isExpanded
-                                                                        ? "bg-emerald-500/20 text-emerald-100 ring-1 ring-emerald-400/40"
-                                                                        : "bg-gray-800/80 text-emerald-100/90 ring-1 ring-emerald-500/25 hover:bg-gray-700/80"
+                                                                        ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                                                                        : "bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50"
                                                                 }`}
                                                                 chevronClassName="h-3 w-3"
                                                             >
                                                                 {isExpanded ? "Ocultar" : "Ver más"}
                                                             </AccordionTrigger>
                                                         ) : (
-                                                            <span className="text-xs text-gray-500">—</span>
+                                                            <span className="text-xs text-slate-400">—</span>
                                                         )}
                                                     </td>
                                                 </tr>
                                                 {isExpanded && isConsumption ? (
-                                                    <tr className="bg-teal-950/20">
+                                                    <tr className="bg-teal-50/50">
                                                         <td
                                                             colSpan={5}
                                                             id={`bonos-consumo-${row.id}`}
-                                                            className="border-t border-teal-500/15 px-4 py-4"
+                                                            className="border-t border-teal-200 px-4 py-4"
                                                         >
                                                             <ConsumptionDetailsPanel details={row.details} />
                                                         </td>
                                                     </tr>
                                                 ) : null}
                                                 {isExpanded && (isPurchase || isPurchasePending) ? (
-                                                    <tr className={isPurchase ? "bg-emerald-950/25" : "bg-amber-950/20"}>
+                                                    <tr className={isPurchase ? "bg-emerald-50/80" : "bg-amber-50/80"}>
                                                         <td
                                                             colSpan={5}
                                                             id={`bonos-consumo-${row.id}`}
-                                                            className="border-t border-white/5 px-4 py-3 text-sm text-slate-300"
+                                                            className="border-t border-slate-200 px-4 py-3 text-sm text-slate-700"
                                                         >
                                                             <p>
-                                                                <span className="font-semibold text-white">
+                                                                <span className="font-semibold text-slate-900">
                                                                     {row.purchase?.pack_name || row.lesson_name}
                                                                 </span>
                                                                 {row.purchase?.precio > 0 ? (
-                                                                    <span className="text-slate-400">
+                                                                    <span className="text-slate-500">
                                                                         {" "}
                                                                         · {formatEur(row.purchase.precio)}
                                                                     </span>
                                                                 ) : null}
                                                             </p>
-                                                            <p className="mt-1 text-xs text-slate-400">
+                                                            <p className="mt-1 text-xs text-slate-500">
                                                                 {isPurchasePending
                                                                     ? "Compra enviada y pendiente de validación por el equipo."
                                                                     : `${row.purchase?.num_clases ?? creditsAdded} créditos añadidos a tu saldo tras confirmar el pago.`}
@@ -559,7 +560,7 @@ export default function ClientBonosIndex({
                                     })}
                                     {consumptionHistory.length === 0 ? (
                                         <tr>
-                                            <td colSpan={5} className="px-3 py-6 text-center text-sm text-gray-400">
+                                            <td colSpan={5} className="px-3 py-6 text-center text-sm text-slate-500">
                                                 Aún no hay movimientos registrados.
                                             </td>
                                         </tr>
@@ -577,14 +578,14 @@ export default function ClientBonosIndex({
                 ) : null}
 
                 {showMyBonos ? (
-                <div ref={myBonosSectionRef} id="bonos-mis-bonos-panel" className="scroll-mt-24 rounded-xl border border-gray-700 bg-gray-900 p-4">
+                <div ref={myBonosSectionRef} id="bonos-mis-bonos-panel" className="scroll-mt-24 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="mb-3">
-                        <h2 className="text-lg font-semibold text-white">Detalle por bono</h2>
-                        <p className="mt-1 text-xs text-gray-400">
+                        <h2 className="text-lg font-semibold text-slate-900">Detalle por bono</h2>
+                        <p className="mt-1 text-xs text-slate-600">
                             Solo se consume un bono a la vez. Los demás quedan en cola. El historial completo está arriba.
                         </p>
                     </div>
-                    <ul className="space-y-2 text-sm text-gray-200">
+                    <ul className="space-y-2 text-sm text-slate-800">
                         {visibleMyBonos.map((b) => {
                             const total = Math.max(0, Number(b.num_clases ?? 0));
                             const remaining = Math.max(0, Number(b.clases_restantes ?? 0));
@@ -597,12 +598,12 @@ export default function ClientBonosIndex({
                             return (
                                 <li
                                     key={b.id}
-                                    className={`overflow-hidden rounded-lg border bg-gray-800/70 ${isExpanded ? "border-teal-500/30" : "border-gray-700"}`}
+                                    className={`overflow-hidden rounded-lg border bg-slate-50 ${isExpanded ? "border-teal-300" : "border-slate-200"}`}
                                 >
                                     <div className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between">
                                         <div className="min-w-0 flex-1">
-                                            <p className="truncate font-semibold text-gray-100">{b.pack}</p>
-                                            <p className="mt-0.5 text-xs text-gray-400">
+                                            <p className="truncate font-semibold text-slate-900">{b.pack}</p>
+                                            <p className="mt-0.5 text-xs text-slate-600">
                                                 {total > 0 ? (
                                                     <>
                                                         {remaining} de {total} clases restantes
@@ -624,7 +625,7 @@ export default function ClientBonosIndex({
                                                     href={b.proof_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="inline-flex rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-semibold text-emerald-200 ring-1 ring-emerald-400/30 hover:bg-emerald-500/25"
+                                                    className="inline-flex rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100"
                                                 >
                                                     Recibo
                                                 </a>
@@ -632,7 +633,7 @@ export default function ClientBonosIndex({
                                             {b.fiscal_invoice_url && b.status === "confirmed" ? (
                                                 <a
                                                     href={b.fiscal_invoice_url}
-                                                    className="inline-flex rounded-lg bg-sky-500/15 px-2.5 py-1 text-xs font-semibold text-sky-200 ring-1 ring-sky-400/30 hover:bg-sky-500/25"
+                                                    className="inline-flex rounded-lg bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100"
                                                 >
                                                     {b.fiscal_invoice_ready ? "Factura TBAI" : "Factura…"}
                                                 </a>
@@ -644,8 +645,8 @@ export default function ClientBonosIndex({
                                                 stopPropagation={false}
                                                 className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                                                     isExpanded
-                                                        ? "bg-teal-500/20 text-teal-100 ring-1 ring-teal-400/40"
-                                                        : "bg-gray-900/80 text-amber-100/90 ring-1 ring-amber-500/25 hover:bg-gray-700/80"
+                                                        ? "bg-teal-50 text-teal-700 ring-1 ring-teal-200"
+                                                        : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
                                                 }`}
                                                 chevronClassName="h-3 w-3"
                                             >
@@ -657,33 +658,33 @@ export default function ClientBonosIndex({
                                     {isExpanded ? (
                                         <div
                                             id={`bonos-compra-${b.id}`}
-                                            className="border-t border-white/5 bg-gray-900/50 px-3 py-3"
+                                            className="border-t border-slate-200 bg-white px-3 py-3"
                                         >
-                                            <div className="mb-3 grid gap-2 text-xs text-gray-400 sm:grid-cols-2">
+                                            <div className="mb-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
                                                 <p>
-                                                    <span className="font-semibold uppercase tracking-wide text-gray-500">Comprado</span>
+                                                    <span className="font-semibold uppercase tracking-wide text-slate-500">Comprado</span>
                                                     <br />
-                                                    <span className="text-sm text-gray-200">{b.purchased_at_human || "—"}</span>
+                                                    <span className="text-sm text-slate-800">{b.purchased_at_human || "—"}</span>
                                                 </p>
                                                 <p>
-                                                    <span className="font-semibold uppercase tracking-wide text-gray-500">Importe</span>
+                                                    <span className="font-semibold uppercase tracking-wide text-slate-500">Importe</span>
                                                     <br />
-                                                    <span className="text-sm text-gray-200">
+                                                    <span className="text-sm text-slate-800">
                                                         {Number(b.precio || 0).toFixed(2).replace(".", ",")} €
                                                     </span>
                                                 </p>
                                             </div>
 
-                                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-200/80">
+                                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-700">
                                                 Clases de este bono ({bonoClasses.length})
                                             </p>
 
                                             {bonoClasses.length === 0 ? (
-                                                <p className="text-sm text-gray-400">
+                                                <p className="text-sm text-slate-500">
                                                     Aún no hay clases registradas en este bono.
                                                 </p>
                                             ) : (
-                                                <div className="overflow-hidden rounded-xl border border-white/5">
+                                                <div className="overflow-hidden rounded-xl border border-slate-200">
                                                     <table className="w-full table-fixed text-sm">
                                                         <colgroup>
                                                             <col className="w-[24%]" />
@@ -692,7 +693,7 @@ export default function ClientBonosIndex({
                                                             <col className="w-[14%]" />
                                                             <col className="w-[12%]" />
                                                         </colgroup>
-                                                        <thead className="bg-gray-900/80 text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                                        <thead className="bg-slate-50 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
                                                             <tr>
                                                                 <th className="px-2 py-2 text-left">Fecha</th>
                                                                 <th className="px-2 py-2 text-left">Clase</th>
@@ -703,7 +704,7 @@ export default function ClientBonosIndex({
                                                                 </th>
                                                             </tr>
                                                         </thead>
-                                                        <tbody className="divide-y divide-white/5 text-gray-100">
+                                                        <tbody className="divide-y divide-slate-100 text-slate-800">
                                                             {bonoClasses.map((row) => {
                                                                 const uc = Math.max(1, Number(row.credits_consumed ?? 1));
                                                                 const classKey = `${b.id}:${row.id}`;
@@ -711,20 +712,20 @@ export default function ClientBonosIndex({
                                                                 const classExpanded = expandedPurchaseClassKey === classKey;
                                                                 const ucBadge =
                                                                     uc >= 2
-                                                                        ? "bg-amber-500/20 text-amber-100 ring-1 ring-amber-400/40"
-                                                                        : "bg-teal-500/15 text-teal-100 ring-1 ring-teal-400/30";
+                                                                        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                                                        : "bg-teal-50 text-teal-700 ring-1 ring-teal-200";
 
                                                                 return (
                                                                     <Fragment key={row.id}>
-                                                                        <tr className={classExpanded ? "bg-teal-950/25" : "bg-gray-900/20"}>
-                                                                            <td className="px-2 py-2 text-xs text-gray-300">{row.date_human || "—"}</td>
+                                                                        <tr className={classExpanded ? "bg-teal-50" : "bg-white"}>
+                                                                            <td className="px-2 py-2 text-xs text-slate-600">{row.date_human || "—"}</td>
                                                                             <td className="break-words px-2 py-2 text-xs">{row.lesson_name || "Clase de surf"}</td>
                                                                             <td className="px-2 py-2 text-center">
                                                                                 <span className={`inline-flex min-w-[1.75rem] justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold ${ucBadge}`}>
                                                                                     {uc}
                                                                                 </span>
                                                                             </td>
-                                                                            <td className="px-2 py-2 text-right text-xs font-semibold text-teal-200 tabular-nums">
+                                                                            <td className="px-2 py-2 text-right text-xs font-semibold text-teal-700 tabular-nums">
                                                                                 {row.remaining_after}
                                                                             </td>
                                                                             <td className="px-2 py-2 text-center">
@@ -742,19 +743,19 @@ export default function ClientBonosIndex({
                                                                                     stopPropagation={false}
                                                                                     className={`inline-flex h-6 w-6 items-center justify-center rounded-md ${
                                                                                         classExpanded
-                                                                                            ? "bg-teal-500/20 text-teal-100"
-                                                                                            : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                                                                                            ? "bg-teal-50 text-teal-700"
+                                                                                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                                                                                     }`}
                                                                                     chevronClassName="h-3 w-3"
                                                                                 />
                                                                             </td>
                                                                         </tr>
                                                                         {classExpanded ? (
-                                                                            <tr className="bg-teal-950/15">
+                                                                            <tr className="bg-teal-50/50">
                                                                                 <td
                                                                                     colSpan={5}
                                                                                     id={classPanelId}
-                                                                                    className="border-t border-teal-500/10 px-3 py-3"
+                                                                                    className="border-t border-teal-200 px-3 py-3"
                                                                                 >
                                                                                     <ConsumptionDetailsPanel details={row.details} />
                                                                                 </td>
@@ -772,7 +773,7 @@ export default function ClientBonosIndex({
                                 </li>
                             );
                         })}
-                        {myBonos.length === 0 ? <li className="text-gray-400">Aún no tienes bonos.</li> : null}
+                        {myBonos.length === 0 ? <li className="text-slate-500">Aún no tienes bonos.</li> : null}
                     </ul>
                     <LoadMoreButton
                         label="Ver más bonos"
@@ -782,22 +783,23 @@ export default function ClientBonosIndex({
                 </div>
                 ) : null}
             </div>
+            </div>
 
             {/* Modal de confirmación de compra bono → redirige a Stripe */}
             {!!selectedPack && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setSelectedPack(null)} />
-                    <div className="relative w-full max-w-sm rounded-3xl border border-white/20 bg-gradient-to-br from-slate-900 to-slate-800 p-7 shadow-2xl text-white">
+                <div className="fixed inset-0 z-modal flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedPack(null)} />
+                    <div className="relative w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-7 shadow-2xl text-slate-900">
                         <h2 className="text-xl font-bold">Confirmar compra</h2>
-                        <p className="mt-2 text-sm text-white/70">Vas a comprar el siguiente bono VIP:</p>
-                        <div className="mt-4 rounded-xl bg-white/10 p-4 text-sm">
-                            <div className="font-semibold">{selectedPack.nombre}</div>
-                            <div className="mt-1 text-white/60">{selectedPack.num_clases} clases</div>
-                            <div className="mt-2 text-lg font-bold text-emerald-400">
+                        <p className="mt-2 text-sm text-slate-600">Vas a comprar el siguiente bono VIP:</p>
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                            <div className="font-semibold text-slate-900">{selectedPack.nombre}</div>
+                            <div className="mt-1 text-slate-600">{selectedPack.num_clases} clases</div>
+                            <div className="mt-2 text-lg font-bold text-emerald-600">
                                 {Number(selectedPack.precio).toFixed(2).replace(".", ",")} €
                             </div>
                         </div>
-                        <p className="mt-3 text-xs text-white/50">
+                        <p className="mt-3 text-xs text-slate-500">
                             Serás redirigido a la pasarela de pago seguro (Stripe). Tu bono se activará automáticamente al confirmar el pago.
                         </p>
                         <div className="mt-5 flex gap-3">
@@ -826,7 +828,7 @@ export default function ClientBonosIndex({
                             </button>
                             <button
                                 onClick={() => setSelectedPack(null)}
-                                className="rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white hover:bg-white/20"
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                             >
                                 Cancelar
                             </button>

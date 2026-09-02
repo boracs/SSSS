@@ -1,22 +1,32 @@
 import { useState } from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactBlock from "../components/ContactBlock";
+import RepairStepCard from "../components/RepairStepCard";
+import RepairClubReviews from "../components/RepairClubReviews";
+import S4Button from "@/components/S4Button";
 import {
     ArrowRight,
     Banknote,
     CheckCircle2,
     ClipboardList,
-    ExternalLink,
     FilePen,
+    Lock,
     MapPin,
     MessageCircle,
     Pin,
     ShieldCheck,
-    Sparkles,
     Sticker,
     Shirt,
 } from "lucide-react";
+
+const ACCENT_MD =
+    "bg-gradient-to-r from-violet-500 to-fuchsia-500 font-bold text-white shadow-md hover:brightness-110";
+const OUTLINE_GLASS_MD =
+    "border border-white/20 bg-white/10 font-semibold text-white hover:bg-white/15";
+const WHATSAPP_SOLID =
+    "bg-emerald-600 font-bold text-white from-emerald-600 to-emerald-600 hover:bg-emerald-500 hover:brightness-100";
 
 const STEPS = [
     {
@@ -85,73 +95,38 @@ const WILLY_CHECKLIST = [
     "Devolver el traje a su zona con el importe visible",
 ];
 
-function StepCard({ step, icon: Icon, title, body, highlight, isLast }) {
-    return (
-        <div className="relative flex gap-4 sm:gap-6">
-            {!isLast ? (
-                <div
-                    className="absolute left-[1.15rem] top-12 hidden h-[calc(100%-0.5rem)] w-px bg-gradient-to-b from-violet-400/50 to-violet-400/10 sm:block"
-                    aria-hidden
-                />
-            ) : null}
-            <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-violet-400/40 bg-violet-500/15 text-sm font-bold text-violet-200 ring-4 ring-slate-950 sm:h-10 sm:w-10">
-                {step}
-            </div>
-            <article className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm sm:p-6">
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-300 ring-1 ring-violet-400/25">
-                    <Icon className="h-5 w-5" />
-                </div>
-                <h3 className="text-lg font-bold text-white">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-300">{body}</p>
-                <p className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-200">
-                    <Sparkles className="h-3 w-3" />
-                    {highlight}
-                </p>
-            </article>
-        </div>
-    );
-}
-
 export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, willyContact = null, seo = null }) {
     const [willyContactOpen, setWillyContactOpen] = useState(false);
 
     const willy = willyContact ?? {};
     const hasWillyDirectContact = Boolean(willy.phone || willy.email || willy.whatsappUrl);
 
-    const whatsappSchoolUrl = whatsappHelpUrl
-        ? `${whatsappHelpUrl.split("?")[0]}?text=${encodeURIComponent(
-              "Hola, tengo una duda sobre el servicio de reparación de neoprenos del club.",
-          )}`
-        : null;
+    // WhatsApp de Willy si existe; si no, la escuela con el texto de duda de neoprenos. Uno solo, nunca los dos.
+    const whatsappFinalUrl = willy.whatsappUrl
+        ? willy.whatsappUrl
+        : whatsappHelpUrl
+          ? (() => {
+                const url = new URL(whatsappHelpUrl);
+                url.searchParams.set(
+                    "text",
+                    "Hola, tengo una duda sobre el servicio de reparación de neoprenos del club.",
+                );
+                return url.toString();
+            })()
+          : null;
+    const whatsappFinalLabel = willy.whatsappUrl ? "WhatsApp Willy" : "WhatsApp S4";
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#1a0f2e] to-slate-950 text-white">
+        <PageShell variant="royal" withGradient>
             <SeoHead seo={seo} />
             <section className="relative overflow-hidden border-b border-violet-950/50">
                 <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(109,40,217,0.28),_transparent_55%)]" />
                 <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
-                    {hasWillyDirectContact ? (
-                        <div className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 sm:p-5">
-                            <p className="text-sm leading-relaxed text-slate-200 sm:text-base">
-                                ¿Dudas sobre si merece la pena reparar? ¿Quieres fijar un tope de precio antes de que
-                                Willy recoja el traje? Escríbele y evita malentendidos.
-                            </p>
-                            <ContactBlock
-                                contact={willy}
-                                open={willyContactOpen}
-                                onToggle={() => setWillyContactOpen((v) => !v)}
-                                mailSubject="Consulta reparación de neopreno"
-                                mailIconClassName="text-violet-300"
-                                fallbackName="Willy"
-                            />
-                        </div>
-                    ) : null}
-
                     <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-violet-400/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-violet-200">
-                        <Shirt className="h-3.5 w-3.5" />
+                        <Shirt className="h-3.5 w-3.5" aria-hidden />
                         Servicio para socios
                     </div>
-                    <h1 className="max-w-4xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-4xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Reparación de neoprenos con{" "}
                         <span className="bg-gradient-to-r from-violet-300 to-fuchsia-300 bg-clip-text text-transparent">
                             Willy
@@ -162,20 +137,26 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                         pizarra y perchas exclusivas de reparación: tú señalas el traje, marcas las zonas a arreglar y él
                         se encarga del resto.
                     </p>
-                    <div className="mt-8 flex flex-wrap gap-3">
-                        <a
-                            href="#como-funciona"
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:brightness-110"
-                        >
-                            Ver cómo funciona
-                            <ArrowRight className="h-4 w-4" />
-                        </a>
+                    <p className="mt-5 max-w-3xl text-sm leading-relaxed text-slate-400">
+                        ¿Quieres un tope de precio? Indícalo en el traje o escribe a Willy antes de colgarlo. Los
+                        canales están al final de la página.
+                    </p>
+                    <div className="mt-8 flex flex-wrap items-center gap-3">
+                        <S4Button href="#como-funciona" variant="accent" className={ACCENT_MD}>
+                            Así se deja el traje
+                            <ArrowRight className="h-4 w-4" aria-hidden />
+                        </S4Button>
+                        <S4Button href={route("taquillas.planes")} variant="secondary" className={OUTLINE_GLASS_MD}>
+                            Ver planes de taquilla
+                        </S4Button>
+                    </div>
+                    <div className="mt-5">
                         <Link
                             href={route("servicios")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-semibold transition hover:bg-white/15"
+                            className="inline-flex items-center gap-1.5 text-sm font-semibold text-violet-300 transition hover:text-violet-200 hover:underline"
                         >
                             Reparación de tablas
-                            <ExternalLink className="h-4 w-4" />
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
                         </Link>
                     </div>
                 </div>
@@ -185,7 +166,7 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                 <div className="grid gap-5 lg:grid-cols-3">
                     <div className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-6 lg:col-span-2">
                         <div className="flex items-start gap-4">
-                            <ShieldCheck className="mt-0.5 h-8 w-8 shrink-0 text-violet-300" />
+                            <ShieldCheck className="mt-0.5 h-8 w-8 shrink-0 text-violet-300" aria-hidden />
                             <div>
                                 <h2 className="text-xl font-bold text-white">Sin malentendidos</h2>
                                 <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
@@ -193,21 +174,34 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                                     el arreglo. Willy revisa la pizarra, recoge el traje en la zona exclusiva y lo devuelve
                                     con el precio señalado. Tú validas y pagas en metálico en su buzón.
                                 </p>
+                                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                                    Usa solo las perchas de reparación (color y formato distintos del secadero). Ahí
+                                    cuelga el traje pendiente.
+                                </p>
                             </div>
                         </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
                         <div className="flex items-center gap-3">
-                            <Pin className="h-6 w-6 text-fuchsia-300" />
-                            <h3 className="font-bold text-white">Perchas de reparación</h3>
+                            <Lock className="h-6 w-6 text-violet-300" aria-hidden />
+                            <h3 className="font-bold text-white">¿Quién puede usarlo?</h3>
                         </div>
                         <p className="mt-3 text-sm leading-relaxed text-slate-400">
-                            Color y formato propios, distintos de las perchas del secadero habitual. Solo se usan para
-                            trajes pendientes de reparar.
+                            Servicio pensado para socios con taquilla en el club S4, donde guardan sus trajes a pie de
+                            Zurriola.
                         </p>
+                        <Link
+                            href={route("taquillas.planes")}
+                            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-violet-300 hover:underline"
+                        >
+                            Ver planes de taquilla
+                            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                        </Link>
                     </div>
                 </div>
             </section>
+
+            <RepairClubReviews accent="violet" headingId="neoprenos-google-reviews" />
 
             <section id="como-funciona" className="scroll-mt-24 border-y border-white/5 bg-slate-950/40">
                 <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16">
@@ -221,11 +215,16 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                     </div>
 
                     <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:gap-12">
-                        <div className="space-y-6">
+                        <ol className="space-y-6">
                             {STEPS.map((item, index) => (
-                                <StepCard key={item.step} {...item} isLast={index === STEPS.length - 1} />
+                                <RepairStepCard
+                                    key={item.step}
+                                    {...item}
+                                    accent="violet"
+                                    isLast={index === STEPS.length - 1}
+                                />
                             ))}
-                        </div>
+                        </ol>
 
                         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
                             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -233,7 +232,7 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                                 <ul className="mt-4 space-y-3">
                                     {CLIENT_CHECKLIST.map((item) => (
                                         <li key={item} className="flex items-start gap-2.5 text-sm text-slate-300">
-                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" aria-hidden />
                                             {item}
                                         </li>
                                     ))}
@@ -244,7 +243,7 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                                 <ul className="mt-4 space-y-3">
                                     {WILLY_CHECKLIST.map((item) => (
                                         <li key={item} className="flex items-start gap-2.5 text-sm text-slate-300">
-                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-400" />
+                                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-400" aria-hidden />
                                             {item}
                                         </li>
                                     ))}
@@ -270,7 +269,7 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                             </p>
                         </div>
                         <div className="rounded-2xl border border-violet-500/25 bg-violet-500/10 p-5">
-                            <Banknote className="h-6 w-6 text-violet-300" />
+                            <Banknote className="h-6 w-6 text-violet-300" aria-hidden />
                             <h3 className="mt-3 font-bold text-white">Buzón exclusivo</h3>
                             <p className="mt-2 text-sm text-slate-400">
                                 Pago en metálico, como acordéis con Willy. Si tienes dudas sobre el precio antes de
@@ -288,37 +287,42 @@ export default function ServiciosReparacionNeoprenos({ whatsappHelpUrl = null, w
                         Escríbenos o contacta con Willy para aclarar zonas, precio máximo o plazos antes de colgar el
                         traje.
                     </p>
+                    {hasWillyDirectContact ? (
+                        <div className="mx-auto mt-6 max-w-md text-left">
+                            <ContactBlock
+                                contact={willy}
+                                open={willyContactOpen}
+                                onToggle={() => setWillyContactOpen((v) => !v)}
+                                mailSubject="Consulta reparación de neopreno"
+                                mailIconClassName="text-violet-300"
+                                fallbackName="Willy"
+                            />
+                        </div>
+                    ) : null}
                     <div className="mt-6 flex flex-wrap justify-center gap-3">
-                        {willy.whatsappUrl ? (
-                            <a
-                                href={willy.whatsappUrl}
+                        {whatsappFinalUrl ? (
+                            <S4Button
+                                href={whatsappFinalUrl}
+                                external
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-500"
+                                variant="accent"
+                                className={WHATSAPP_SOLID}
                             >
-                                <MessageCircle className="h-4 w-4" />
-                                WhatsApp Willy
-                            </a>
+                                <MessageCircle className="h-4 w-4" aria-hidden />
+                                {whatsappFinalLabel}
+                            </S4Button>
                         ) : null}
-                        {whatsappSchoolUrl ? (
-                            <a
-                                href={whatsappSchoolUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-6 py-2.5 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/15"
-                            >
-                                WhatsApp S4
-                            </a>
-                        ) : null}
-                        <Link
+                        <S4Button
                             href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 py-2.5 text-sm font-semibold transition hover:bg-white/15"
+                            variant="secondary"
+                            className={OUTLINE_GLASS_MD}
                         >
                             Formulario de contacto
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </section>
-        </div>
+        </PageShell>
     );
 }

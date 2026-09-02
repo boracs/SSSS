@@ -44,10 +44,10 @@ function FooterLinks({ items, onOpenContact }) {
     );
 }
 
-function ContactBlock({ onOpenContact, className = "", mapsUrl = null }) {
+function ContactBlock({ onOpenContact, className = "", mapsUrl = null, streetLine = null }) {
     return (
         <ul className={`space-y-2.5 text-sm leading-snug text-slate-300 ${className}`}>
-            <li>Playa de Zurriola · Donostia</li>
+            <li>{streetLine || "Paseo Colón 41 bajo · Donostia"}</li>
             {mapsUrl ? (
                 <li>
                     <a
@@ -78,6 +78,8 @@ export default function Footer() {
     const [contactOpen, setContactOpen] = useState(false);
     const { academyLocation } = usePage().props;
     const mapsUrl = academyLocation?.googleMapsUrl ?? null;
+    const streetLine = academyLocation?.label ?? "Paseo Colón 41 bajo · Donostia";
+    const legalLine = academyLocation?.legalLine ?? null;
     const openContact = () => setContactOpen(true);
 
     const explorarLinks = [
@@ -104,7 +106,7 @@ export default function Footer() {
                     <div className="flex flex-col items-start text-left lg:col-span-4">
                         <BrandLogo variant="whiteMark" className="h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem]" />
                         <p className="mt-3 font-heading text-lg font-bold tracking-tight text-white sm:mt-4 sm:text-xl">
-                            San Sebastian Surf School
+                            San Sebastián Surf School
                         </p>
                         <FooterSocialLinks className="mt-4 sm:mt-5" />
                     </div>
@@ -112,7 +114,7 @@ export default function Footer() {
                     {/* Móvil: banda de contacto ancho completo (CTA claro, sin columna huérfana) */}
                     <div className="col-span-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 sm:hidden">
                         <p className="text-center text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
-                            Playa de Zurriola · Donostia
+                            {streetLine}
                         </p>
                         {mapsUrl ? (
                             <a
@@ -150,7 +152,7 @@ export default function Footer() {
                         </FooterSection>
 
                         <FooterSection title="Contacto" className="hidden sm:block">
-                            <ContactBlock onOpenContact={openContact} mapsUrl={mapsUrl} />
+                            <ContactBlock onOpenContact={openContact} mapsUrl={mapsUrl} streetLine={streetLine} />
                         </FooterSection>
                     </div>
                 </div>
@@ -163,7 +165,7 @@ export default function Footer() {
             <div className="border-t border-white/10 bg-slate-950/50">
                 <div className="mx-auto max-w-7xl px-4 py-4 text-center sm:px-6 sm:text-left">
                     <p className="text-[11px] leading-relaxed text-slate-500 sm:text-xs">
-                        © {year} San Sebastian Surf School · S4. Todos los derechos reservados.
+                        © {year} {legalLine || "San Sebastian Surf School S.L. · CIF B26739128 · Paseo Colón 41 bajo, 20002 Donostia-San Sebastián"}. Todos los derechos reservados.
                     </p>
                 </div>
             </div>

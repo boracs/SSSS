@@ -11,6 +11,7 @@ class EmergencyKeyRequest extends Model
 {
     protected $fillable = [
         'user_id',
+        'locker_number',
         'requested_at',
         'resolved_code_shown',
         'admin_key_deactivated_at',
@@ -57,7 +58,7 @@ class EmergencyKeyRequest extends Model
             'id'                       => $this->id,
             'user_id'                  => $this->user_id,
             'member_name'              => trim(($user?->nombre ?? '') . ' ' . ($user?->apellido ?? '')) ?: ($user?->email ?? '—'),
-            'locker_number'            => $user?->numeroTaquilla,
+            'locker_number'            => $this->locker_number ?? $user?->numeroTaquilla,
             'requested_at'             => $this->requested_at?->toIso8601String(),
             'requested_at_label'       => $this->requested_at?->format('d/m/Y H:i'),
             'resolved_code_shown'      => $this->resolved_code_shown,

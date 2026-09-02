@@ -31,6 +31,7 @@ Solo continuar tras un **sí explícito**. Detalle en `CONTRATO-IA.md` §5.1.
 - Estado compartido → `docs/taller-prompts/COORDINACION.md` + `HANDOFF.md` (fin de chat) + `REGISTRO.md`
 - Teoría / profesor / cuaderno → `/profesor-aprendizaje` → `docs/aprendizaje/INDICE.md`
 - UI-UX / marketing → `/marketing-diseno` → `docs/taller-prompts/AGENTE-MARKETING-DISENO.md`
+- Backend (consulta/auditoría; NO implementa) → `docs/taller-prompts/AGENTE-BACKEND-SENIOR.md` · Frontend ingeniería (React) → `/marketing-diseno` S14 + `.cursor/rules/ui-admin-s4.mdc`
 - Prompts → `PROTOCOLO.md` + `PLANTILLA-UX-MODAL.md`
 - DeepSeek-web → `docs/taller-prompts/MASTER-PROMPT-DEEPSEEK.md`
 - Gemini (sin repo) → `docs/RESUMEN-PARA-GEMINI.md` (resumen compacto; árbol completo en `docs/PROJECT_TREE_FOR_GEMINI.md`)

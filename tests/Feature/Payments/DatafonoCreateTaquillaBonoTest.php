@@ -66,7 +66,7 @@ test('reconcile taquilla nueva crea PagoCuota confirmado y asigna datáfono', fu
 });
 
 test('reconcile bono nuevo crea UserBono confirmado y asigna datáfono', function () {
-    $user = User::factory()->create(['role' => 'user']);
+    $user = User::factory()->create(['role' => 'user', 'is_vip' => true]);
     $pack = PackBono::query()->create([
         'nombre' => 'Pack 5 datáfono',
         'num_clases' => 5,

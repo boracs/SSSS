@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\Payments;
 
+use DateTimeInterface;
 use InvalidArgumentException;
 
 /**
@@ -24,6 +25,7 @@ final readonly class InitiatePaymentDto
         public string $cancelPath,
         public ?string $customerEmail = null,
         public array $metadata = [],
+        public ?DateTimeInterface $expiresAt = null,
     ) {
         if ($this->payableType === '' || $this->payableId <= 0) {
             throw new InvalidArgumentException('payable_type y payable_id son obligatorios.');

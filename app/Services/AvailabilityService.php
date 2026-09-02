@@ -105,6 +105,76 @@ class AvailabilityService
     }
 
     /**
+     * Una sola lectura de `lessons` para N ventanas (N7: slots de particulares).
+     *
+     * @param  list<array{start: Carbon, end: Carbon}>  $windows
+     * @return list<array<string, mixed>>
+     */
+    public function previewManyWindows(array $windows, int $projectedPartySize = 1): array
+    {
+        if ($windows === []) {
+            return [];
+        }
+
+        return DB::transaction(function () use ($windows, $projectedPartySize) {
+            $first = $windows[0]['start']->copy()->timezone(BusinessDateTime::businessTimezone());
+            $dayStart = $first->copy()->startOfDay()->setTime(8, 0);
+            $dayEnd = $first->copy()->startOfDay()->setTime(22, 0);
+            $intervals = $this->buildIntervals($dayStart, $dayEnd, 0);
+
+            $out = [];
+            foreach ($windows as $window) {
+                $out[] = $this->composeEvaluation(
+                    $intervals,
+                    $window['start'],
+                    $window['end'],
+                    $projectedPartySize,
+                    0
+                );
+            }
+
+            return $out;
+        });
+    }
+
+    /**
+     * Intervalos en memoria a partir de lessons ya eager-loaded (R1: class-manager).
+     *
+     * @param  iterable<Lesson>  $lessons
+     * @return list<array<string, mixed>>
+     */
+    public function intervalsFromLoadedLessons(iterable $lessons): array
+    {
+        return collect($lessons)
+            ->map(fn (Lesson $lesson) => $this->intervalFromLesson($lesson))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Evaluación sin query extra. No exige transacción.
+     *
+     * @param  list<array<string, mixed>>  $intervals
+     * @return array<string, mixed>
+     */
+    public function evaluateLoaded(
+        array $intervals,
+        Carbon $startsAt,
+        Carbon $endsAt,
+        int $projectedPartySize = 1,
+        int $excludeLessonId = 0
+    ): array {
+        return $this->composeEvaluation(
+            $intervals,
+            $startsAt,
+            $endsAt,
+            $projectedPartySize,
+            $excludeLessonId
+        );
+    }
+
+    /**
      * @return array{start: Carbon, end: Carbon}
      */
     public function operationalWindow(Carbon $startsAt, Carbon $endsAt, int $partySize): array
@@ -141,54 +211,16 @@ class AvailabilityService
 
         $startsAt = $startsAt->copy()->timezone(BusinessDateTime::businessTimezone());
         $endsAt = $endsAt->copy()->timezone(BusinessDateTime::businessTimezone());
-        $requestMonitors = $this->monitorsRequiredForPartySize($projectedPartySize);
         $requestWindow = $this->operationalWindow($startsAt, $endsAt, $projectedPartySize);
         $intervals = $this->buildIntervals($requestWindow['start'], $requestWindow['end'], $excludeLessonId);
-        $peakMonitorsUsed = $this->peakUsage($intervals, $requestWindow['start'], $requestWindow['end']);
-        $freeAtPeak = max(0, self::MAX_MONITORS - $peakMonitorsUsed);
 
-        $maxCapacity = $freeAtPeak >= 2 ? 12 : ($freeAtPeak === 1 ? 6 : 0);
-        $allowed = ($peakMonitorsUsed + $requestMonitors) <= self::MAX_MONITORS;
-
-        $conflicts = collect($intervals)
-            ->filter(fn (array $row) => $this->overlaps(
-                $row['window_start'],
-                $row['window_end'],
-                $requestWindow['start'],
-                $requestWindow['end']
-            ))
-            ->map(fn (array $row) => [
-                'lesson_id' => (int) $row['lesson_id'],
-                'title' => (string) $row['title'],
-                'party_size' => (int) $row['party_size'],
-                'monitors_required' => (int) $row['monitors_required'],
-                'window_start' => BusinessDateTime::toApi($row['window_start']),
-                'window_end' => BusinessDateTime::toApi($row['window_end']),
-            ])
-            ->values()
-            ->all();
-
-        $occupiedLessonIds = collect($conflicts)->pluck('lesson_id')->unique()->values()->all();
-
-        Log::info('AvailabilityService::evaluate', [
-            'request_monitors' => $requestMonitors,
-            'projected_party_size' => $projectedPartySize,
-            'peak_monitors_used' => $peakMonitorsUsed,
-            'allowed' => $allowed,
-            'exclude_lesson_id' => $excludeLessonId,
-            'conflicts_count' => count($conflicts),
-        ]);
-
-        return [
-            'allowed' => $allowed,
-            'request_monitors' => $requestMonitors,
-            'peak_monitors_used' => $peakMonitorsUsed,
-            'max_capacity' => $maxCapacity,
-            'request_window_start' => BusinessDateTime::toApi($requestWindow['start']),
-            'request_window_end' => BusinessDateTime::toApi($requestWindow['end']),
-            'occupied_lesson_ids' => $occupiedLessonIds,
-            'conflicts' => $conflicts,
-        ];
+        return $this->composeEvaluation(
+            $intervals,
+            $startsAt,
+            $endsAt,
+            $projectedPartySize,
+            $excludeLessonId
+        );
     }
 
     /**
@@ -330,33 +362,110 @@ class AvailabilityService
             ->get(['id', 'title', 'starts_at', 'ends_at', 'max_slots', 'max_capacity']);
 
         return $lessons
-            ->map(function (Lesson $lesson) {
-                $enrolledPartySize = (int) $lesson->enrollments->sum(
-                    fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1)
-                );
-                $configuredMax = (int) ($lesson->max_slots ?? $lesson->max_capacity ?? 6);
-                $hasAssignedMonitor = $lesson->staffAssignments->isNotEmpty();
-                $partySize = $this->effectivePartySizeForLesson($enrolledPartySize, $configuredMax);
-                $partySize = max($partySize, $hasAssignedMonitor ? 1 : 0);
-
-                if ($partySize <= 0) {
-                    return null;
-                }
-
-                $window = $this->operationalWindow($lesson->starts_at, $lesson->ends_at, $partySize);
-
-                return [
-                    'lesson_id' => (int) $lesson->id,
-                    'title' => (string) ($lesson->title ?? 'Clase'),
-                    'party_size' => $partySize,
-                    'monitors_required' => $this->monitorsRequiredForPartySize($partySize),
-                    'window_start' => $window['start'],
-                    'window_end' => $window['end'],
-                ];
-            })
+            ->map(fn (Lesson $lesson) => $this->intervalFromLesson($lesson))
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $intervals
+     * @return array<string, mixed>
+     */
+    private function composeEvaluation(
+        array $intervals,
+        Carbon $startsAt,
+        Carbon $endsAt,
+        int $projectedPartySize,
+        int $excludeLessonId
+    ): array {
+        $startsAt = $startsAt->copy()->timezone(BusinessDateTime::businessTimezone());
+        $endsAt = $endsAt->copy()->timezone(BusinessDateTime::businessTimezone());
+        $requestMonitors = $this->monitorsRequiredForPartySize($projectedPartySize);
+        $requestWindow = $this->operationalWindow($startsAt, $endsAt, $projectedPartySize);
+
+        $scoped = collect($intervals)
+            ->filter(fn (array $row) => (int) $row['lesson_id'] !== $excludeLessonId)
+            ->values()
+            ->all();
+
+        $peakMonitorsUsed = $this->peakUsage($scoped, $requestWindow['start'], $requestWindow['end']);
+        $freeAtPeak = max(0, self::MAX_MONITORS - $peakMonitorsUsed);
+
+        $maxCapacity = $freeAtPeak >= 2 ? 12 : ($freeAtPeak === 1 ? 6 : 0);
+        $allowed = ($peakMonitorsUsed + $requestMonitors) <= self::MAX_MONITORS;
+
+        $conflicts = collect($scoped)
+            ->filter(fn (array $row) => $this->overlaps(
+                $row['window_start'],
+                $row['window_end'],
+                $requestWindow['start'],
+                $requestWindow['end']
+            ))
+            ->map(fn (array $row) => [
+                'lesson_id' => (int) $row['lesson_id'],
+                'title' => (string) $row['title'],
+                'party_size' => (int) $row['party_size'],
+                'monitors_required' => (int) $row['monitors_required'],
+                'window_start' => BusinessDateTime::toApi($row['window_start']),
+                'window_end' => BusinessDateTime::toApi($row['window_end']),
+            ])
+            ->values()
+            ->all();
+
+        $occupiedLessonIds = collect($conflicts)->pluck('lesson_id')->unique()->values()->all();
+
+        Log::info('AvailabilityService::evaluate', [
+            'request_monitors' => $requestMonitors,
+            'projected_party_size' => $projectedPartySize,
+            'peak_monitors_used' => $peakMonitorsUsed,
+            'allowed' => $allowed,
+            'exclude_lesson_id' => $excludeLessonId,
+            'conflicts_count' => count($conflicts),
+        ]);
+
+        return [
+            'allowed' => $allowed,
+            'request_monitors' => $requestMonitors,
+            'peak_monitors_used' => $peakMonitorsUsed,
+            'max_capacity' => $maxCapacity,
+            'request_window_start' => BusinessDateTime::toApi($requestWindow['start']),
+            'request_window_end' => BusinessDateTime::toApi($requestWindow['end']),
+            'occupied_lesson_ids' => $occupiedLessonIds,
+            'conflicts' => $conflicts,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function intervalFromLesson(Lesson $lesson): ?array
+    {
+        $statuses = $this->occupancyStatuses();
+        $enrolledPartySize = (int) $lesson->enrollments
+            ->filter(fn ($e) => in_array((string) $e->status, $statuses, true))
+            ->sum(fn ($e) => (int) ($e->quantity ?? $e->party_size ?? 1));
+        $configuredMax = (int) ($lesson->max_slots ?? $lesson->max_capacity ?? 6);
+        $hasAssignedMonitor = $lesson->staffAssignments
+            ->filter(fn ($assignment) => $assignment->role === StaffAssignment::ROLE_MONITOR)
+            ->isNotEmpty();
+        $partySize = $this->effectivePartySizeForLesson($enrolledPartySize, $configuredMax);
+        $partySize = max($partySize, $hasAssignedMonitor ? 1 : 0);
+
+        if ($partySize <= 0) {
+            return null;
+        }
+
+        $window = $this->operationalWindow($lesson->starts_at, $lesson->ends_at, $partySize);
+
+        return [
+            'lesson_id' => (int) $lesson->id,
+            'title' => (string) ($lesson->title ?? 'Clase'),
+            'party_size' => $partySize,
+            'monitors_required' => $this->monitorsRequiredForPartySize($partySize),
+            'window_start' => $window['start'],
+            'window_end' => $window['end'],
+        ];
     }
 
     /**

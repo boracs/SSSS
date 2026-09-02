@@ -3,7 +3,9 @@ import { Link } from "@inertiajs/react";
 import {
     ArrowRight,
     ArrowUpRight,
+    BookMarked,
     BookOpen,
+    CalendarRange,
     Camera,
     Clapperboard,
     Compass,
@@ -11,7 +13,6 @@ import {
     GitCompareArrows,
     GraduationCap,
     Layers,
-    MapPin,
     ShieldCheck,
     Shirt,
     ShoppingBag,
@@ -62,7 +63,7 @@ const directorioServicios = [
         blurb: "Aprende, progresa y reserva según tu nivel.",
         items: [
             {
-                label: "Reservar clases",
+                label: "Reservar tu clase",
                 hint: "Academia y grupos",
                 href: route("academy.lessons.index"),
                 icon: GraduationCap,
@@ -91,6 +92,12 @@ const directorioServicios = [
                 hint: "Viajes y camps",
                 href: route("servicios.surfTrips"),
                 icon: Compass,
+            },
+            {
+                label: "Guía surfskate",
+                hint: "Altura y peso",
+                href: route("servicios.surfSkate.guia"),
+                icon: BookMarked,
             },
         ],
     },
@@ -122,6 +129,12 @@ const directorioServicios = [
                 hint: "Sesiones en el agua",
                 href: route("servicios.fotografia"),
                 icon: Camera,
+            },
+            {
+                label: "Forecast al detalle",
+                hint: "Tabla 16 días",
+                href: `${route("servicios.webcams")}#prevision-forecast`,
+                icon: CalendarRange,
             },
         ],
     },
@@ -184,12 +197,6 @@ const directorioServicios = [
                 hint: "Taller S4",
                 href: route("taller.index"),
                 icon: BookOpen,
-            },
-            {
-                label: "Sobre nosotros",
-                hint: "Escuela y club",
-                href: route("nosotros"),
-                icon: MapPin,
             },
         ],
     },
@@ -321,10 +328,15 @@ export default function HomeExploraDirectorio() {
                 >
                     <div className="relative hidden min-h-[12rem] lg:col-span-2 lg:block">
                         <img
-                            src="/img/nosotros/galeria/instalaciones-01.png"
+                            src="/img/home-tiles/instalaciones-01-800.webp"
+                            srcSet="/img/home-tiles/instalaciones-01-800.webp 800w, /img/home-tiles/instalaciones-01-1280.webp 1024w"
+                            sizes="(min-width: 1024px) 40vw, 100vw"
+                            width={1024}
+                            height={559}
                             alt="Instalaciones premium de San Sebastián Surf School en Zurriola"
                             className="h-full w-full object-cover opacity-90"
                             loading="lazy"
+                            decoding="async"
                         />
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-slate-950/80" />
                     </div>
@@ -333,7 +345,7 @@ export default function HomeExploraDirectorio() {
                             id="sobre-nosotros-heading"
                             className="font-heading text-xl font-extrabold text-white sm:text-2xl"
                         >
-                            San Sebastian Surf School
+                            San Sebastián Surf School
                             <span className="mt-1 block text-base font-bold text-cyan-200 sm:text-lg">
                                 Tu escuela y club en el Cantábrico
                             </span>

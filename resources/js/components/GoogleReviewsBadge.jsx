@@ -78,7 +78,7 @@ function GoogleVerifyButton({
     const isPrimary = variant === "primary";
 
     const base =
-        "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40";
+        "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-s4-cyan/40";
 
     let tone = "";
     if (isPrimary) {
@@ -226,7 +226,6 @@ export default function GoogleReviewsBadge({
     const visibleSnippets =
         variant === "inline" ? snippets.slice(0, 2) : snippets.slice(0, 4);
     const isDark = surface === "dark";
-    const primaryCtaLabel = `Ver las ${countLabel} reseñas en Google`;
 
     if (variant === "inline") {
         return (
@@ -288,13 +287,6 @@ export default function GoogleReviewsBadge({
                 {showPartnerNote && partnerNote ? (
                     <p className="mt-2 text-xs leading-relaxed text-slate-500">{partnerNote}</p>
                 ) : null}
-                <GoogleVerifyButton
-                    reviewsUrl={reviewsUrl}
-                    surface={surface}
-                    variant="primary"
-                    label={primaryCtaLabel}
-                    className="mt-4 sm:w-auto sm:min-w-[18rem]"
-                />
             </div>
         );
     }
@@ -346,15 +338,6 @@ export default function GoogleReviewsBadge({
                                 surface={surface}
                             />
                         ))}
-                    </div>
-                    <div className="mt-6 flex justify-center sm:justify-start">
-                        <GoogleVerifyButton
-                            reviewsUrl={reviewsUrl}
-                            surface="light"
-                            variant="primary"
-                            label={primaryCtaLabel}
-                            className="w-full max-w-md sm:w-auto sm:min-w-[20rem]"
-                        />
                     </div>
                 </div>
             ) : null}

@@ -10,7 +10,7 @@ import AccordionTrigger from "../../../components/ui/AccordionTrigger";
 import { BOARD_CATEGORIES, boardCategoryLabel } from "../../../lib/surfboardCategories";
 
 const inputClass =
-    "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20";
+    "w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 transition focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20";
 const labelClass = "mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400";
 const cardClass =
     "rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900/90 to-slate-950/90 p-5 shadow-xl shadow-black/20 backdrop-blur-sm";
@@ -190,7 +190,7 @@ function SurfboardInlineEditor({ detail }) {
                             type="checkbox"
                             checked={!!data.is_active}
                             onChange={(e) => setData("is_active", e.target.checked)}
-                            className="h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-500 focus:ring-cyan-500/30"
+                            className="h-4 w-4 rounded border-white/20 bg-slate-950 text-cyan-500 focus:ring-s4-cyan/30"
                         />
                         <label htmlFor={`is_active_${surfboard.id}`} className="text-sm text-slate-300">
                             Activa para reservas

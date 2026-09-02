@@ -6,6 +6,7 @@ namespace App\Services\Taller;
 
 use App\DTOs\Taller\ArticleCardDto;
 use App\DTOs\Taller\ArticleRelatedPageDto;
+use App\DTOs\Taller\TallerGuideRailItemDto;
 use App\Models\Article;
 use App\Models\Producto;
 
@@ -14,6 +15,45 @@ final class TallerArticleService
     public const RELATED_INITIAL_LIMIT = 3;
 
     public const RELATED_PAGE_LIMIT = 6;
+
+    /**
+     * Guías de mar para el raíl de `/servicios/webcams` (orden fijo).
+     * Chip es presentación (Mar / Técnica), no lógica de negocio.
+     *
+     * @var array<string, string>
+     */
+    public const WEBCAM_GUIDE_SLUGS = [
+        'como-interpretar-el-parte-de-olas-guia-avanzada-para-surfistas' => 'Mar',
+        'guia-de-olas-y-rompientes-tipos-fondos-y-factores-que-influyen-en-el-surf' => 'Mar',
+        'donde-colocarse-en-el-agua-para-coger-mas-olas-guia-de-posicionamiento' => 'Técnica',
+        'como-hacer-el-pato-en-surf-duck-dive' => 'Técnica',
+        'guia-de-corrientes-en-la-playa-como-detectarlas-utilizarlas-y-surfear-seguro' => 'Mar',
+        'como-saber-en-que-direccion-rompe-una-ola' => 'Mar',
+    ];
+
+    /**
+     * @return list<array{id: int, title: string, slug: string, excerpt: string, cover_image: string|null, chip: string}>
+     */
+    public function webcamGuideCards(): array
+    {
+        $slugs = array_keys(self::WEBCAM_GUIDE_SLUGS);
+        $articles = Article::query()
+            ->select(['id', 'title', 'slug', 'excerpt', 'cover_image'])
+            ->whereIn('slug', $slugs)
+            ->get()
+            ->keyBy('slug');
+
+        $items = [];
+        foreach (self::WEBCAM_GUIDE_SLUGS as $slug => $chip) {
+            $article = $articles->get($slug);
+            if (! $article instanceof Article) {
+                continue;
+            }
+            $items[] = TallerGuideRailItemDto::fromModel($article, $chip)->toArray();
+        }
+
+        return $items;
+    }
 
     public function listCards(): array
     {

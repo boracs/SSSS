@@ -13,13 +13,12 @@ use App\Models\LessonUser;
 use App\Models\StaffAssignment;
 use App\Models\User;
 use App\Services\Payments\PaymentReceiptAccessService;
-use App\Services\AutoReleaseService;
 use App\Services\AvailabilityService;
 use App\Support\AcademyContact;
+use App\Support\AcademyLocation;
 use App\Support\BusinessDateTime;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -29,15 +28,12 @@ use Inertia\Inertia;
 class AcademyController extends Controller
 {
     public function __construct(
-        protected AutoReleaseService $autoReleaseService,
         protected AvailabilityService $availabilityService,
         protected AdminGuestEnrollmentAction $guestEnrollmentAction,
         protected SyncLessonStaffAction $syncLessonStaffAction,
         protected PaymentReceiptAccessService $paymentReceipts,
     ) {
-        Cache::remember('auto_cleanup_check', 900, function () {
-            return $this->autoReleaseService->cleanupExpiredReservations();
-        });
+        // El barrido de reservas caducadas vive en `academy:cleanup` (routes/console.php).
     }
 
     /**
@@ -718,7 +714,7 @@ class AcademyController extends Controller
             'refund_status' => null,
             'reviewed_at' => null,
         ]);
-        $googleMapsUrl = config('services.academy.maps_url');
+        $googleMapsUrl = AcademyLocation::mapsUrl();
         if ($enrollment->user && $enrollment->user->email) {
             try {
                 Mail::to($enrollment->user->email)->queue(new ReservationConfirmedMail($enrollment->user, $enrollment->lesson, $googleMapsUrl));
@@ -765,7 +761,7 @@ class AcademyController extends Controller
             return back()->with('error', 'El usuario no tiene un email válido para reenviar.');
         }
 
-        $googleMapsUrl = config('services.academy.maps_url');
+        $googleMapsUrl = AcademyLocation::mapsUrl();
         try {
             Mail::to($enrollment->user->email)->queue(new ReservationConfirmedMail($enrollment->user, $enrollment->lesson, $googleMapsUrl));
             $this->stampEmailStatus($enrollment, 'sent', null, true);

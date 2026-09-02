@@ -59,7 +59,7 @@ const scrollFabSoloClass =
     "motion-reduce:transition-none";
 
 const fieldShell =
-    "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-s4/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-cyan-500/15";
+    "group relative flex flex-1 items-center gap-3 rounded-2xl border border-slate-200/90 bg-slate-50/90 px-4 py-2.5 transition-all duration-200 focus-within:border-s4/50 focus-within:bg-white focus-within:ring-4 focus-within:ring-s4-cyan/15";
 
 const fieldInput =
     "min-w-0 flex-1 border-0 bg-transparent py-1 text-[15px] text-slate-900 outline-none placeholder:text-slate-400";

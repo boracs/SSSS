@@ -9,12 +9,6 @@ const OFFLINE_IMAGE = "/img/webcam/zurriola-offline.webp";
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 const ZOOM_STEP = 0.5;
-const LIVE_LAG_S = 2.5;
-const MIN_DVR_WINDOW_S = 3;
-const USABLE_DVR_S = 18;
-const FALLBACK_DVR_S = 18;
-const SEEK_HEADROOM_S = 0.6;
-const STALL_MS = 2200;
 
 const OFFLINE_TITLE = "La cámara está inhabilitada";
 const OFFLINE_SUBTITLE = "Sentimos las molestias. Vuelve a intentarlo más tarde.";
@@ -48,121 +42,13 @@ function clampPan(x, y, zoom, width, height) {
     if (zoom <= 1 || width <= 0 || height <= 0) {
         return { x: 0, y: 0 };
     }
-    const maxX = ((zoom - 1) * width) / (2 * zoom);
-    const maxY = ((zoom - 1) * height) / (2 * zoom);
+    // Pan en px de pantalla (capa translate aparte de scale). Tope = borde de la imagen.
+    const maxX = ((zoom - 1) * width) / 2;
+    const maxY = ((zoom - 1) * height) / 2;
     return {
         x: clamp(x, -maxX, maxX),
         y: clamp(y, -maxY, maxY),
     };
-}
-
-function readTimeRangeWindow(ranges) {
-    if (!ranges || ranges.length === 0) return null;
-    const start = ranges.start(0);
-    const end = ranges.end(ranges.length - 1);
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end - start < MIN_DVR_WINDOW_S) {
-        return null;
-    }
-    return { start, end };
-}
-
-function readHlsPlaylistWindow(hls) {
-    if (!hls) return null;
-    const details =
-        (hls.currentLevel >= 0 ? hls.levels?.[hls.currentLevel]?.details : null) ||
-        hls.levels?.[hls.loadLevel]?.details ||
-        hls.levels?.[0]?.details ||
-        null;
-    const fragments = details?.fragments;
-    if (!fragments?.length) return null;
-
-    // El fragmento más viejo del sliding window de Wowza suele haber caído ya.
-    const firstPlayable = fragments.length >= 3 ? fragments[1] : fragments[0];
-    const start = Number(firstPlayable.start);
-    const last = fragments[fragments.length - 1];
-    const playlistEnd = Number(last.start) + Number(last.duration || 0);
-    const liveEdgeRaw = hls.liveSyncPosition;
-    const detailsEdge = Number(details.edge);
-    const endCandidates = [playlistEnd];
-    if (Number.isFinite(liveEdgeRaw)) endCandidates.push(liveEdgeRaw);
-    if (Number.isFinite(detailsEdge)) endCandidates.push(detailsEdge);
-    const end = Math.max(...endCandidates);
-
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end - start < MIN_DVR_WINDOW_S) {
-        return null;
-    }
-    return { start, end };
-}
-
-function clipToUsableDvr(start, end) {
-    const clippedStart = Math.max(start, end - USABLE_DVR_S);
-    if (end - clippedStart < MIN_DVR_WINDOW_S) return null;
-    return { start: clippedStart, end };
-}
-
-function readLiveWindow(video, hls) {
-    if (!video) return null;
-
-    const playlist = readHlsPlaylistWindow(hls);
-    const buffered = readTimeRangeWindow(video.buffered);
-
-    let start = null;
-    let end = null;
-
-    if (playlist) {
-        end = playlist.end;
-        start = playlist.start;
-        // seekable en HLS live suele ser un stub de 1–2 s; no lo uses para el ancho.
-        if (buffered && buffered.end - buffered.start >= MIN_DVR_WINDOW_S) {
-            start = Math.max(start, buffered.start);
-        }
-    } else if (buffered) {
-        start = buffered.start;
-        end = buffered.end;
-    }
-
-    if (start == null || end == null || end - start < MIN_DVR_WINDOW_S) {
-        const liveEdge = Number.isFinite(hls?.liveSyncPosition)
-            ? hls.liveSyncPosition
-            : Number.isFinite(video.currentTime) && video.currentTime > MIN_DVR_WINDOW_S
-              ? video.currentTime
-              : null;
-        if (liveEdge == null) return null;
-        start = Math.max(0, liveEdge - FALLBACK_DVR_S);
-        end = liveEdge;
-    }
-
-    const clipped = clipToUsableDvr(start, end);
-    if (!clipped) return null;
-    start = clipped.start;
-    end = clipped.end;
-
-    const raw = Number(video.currentTime);
-    const inWindow = Number.isFinite(raw) && raw >= start - 0.5 && raw <= end + 1.5;
-    const current = inWindow ? clamp(raw, start, end) : end;
-
-    return {
-        start,
-        end,
-        current,
-    };
-}
-
-function liveEdgeTime(video, hls) {
-    const windowLive = readLiveWindow(video, hls);
-    if (Number.isFinite(hls?.liveSyncPosition)) {
-        const edge = hls.liveSyncPosition;
-        if (windowLive) return clamp(edge, windowLive.start, windowLive.end);
-        return edge;
-    }
-    return windowLive?.end ?? null;
-}
-
-function formatDelay(secondsBehind) {
-    const total = Math.max(0, Math.round(secondsBehind));
-    const minutes = Math.floor(total / 60);
-    const secs = total % 60;
-    return `−${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
 function isZoomUiTarget(target) {
@@ -183,7 +69,9 @@ export default function ZurriolaWebcamPlayer() {
         startDist: 0,
         startPoint: { x: 0, y: 0 },
         lastTapAt: 0,
+        lastTouchAt: 0,
         moved: false,
+        pointerId: null,
     });
 
     const [status, setStatus] = useState("loading");
@@ -192,13 +80,6 @@ export default function ZurriolaWebcamPlayer() {
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [animate, setAnimate] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [dvr, setDvr] = useState(null);
-    const [behindLive, setBehindLive] = useState(false);
-    const [scrubbing, setScrubbing] = useState(false);
-    const scrubbingRef = useRef(false);
-    const userSeekedRef = useRef(false);
-    const lastMediaTimeRef = useRef(0);
-    const lastProgressAtRef = useRef(0);
 
     const commitView = useCallback((nextZoom, nextPan = null, withAnimation = false) => {
         const viewport = viewportRef.current;
@@ -292,18 +173,9 @@ export default function ZurriolaWebcamPlayer() {
         };
 
         const snapToLive = () => {
-            const edge = liveEdgeTime(video, hlsRef.current);
-            const buffered = video.buffered;
-            const bufEnd =
-                buffered.length > 0 ? buffered.end(buffered.length - 1) : null;
-            let target = edge;
-            if (Number.isFinite(edge) && Number.isFinite(bufEnd) && edge > bufEnd + 1) {
-                target = bufEnd;
-            } else if (!Number.isFinite(target) && Number.isFinite(bufEnd)) {
-                target = bufEnd;
-            }
-            if (Number.isFinite(target) && Math.abs(video.currentTime - target) > 0.45) {
-                video.currentTime = target;
+            const edge = hlsRef.current?.liveSyncPosition;
+            if (Number.isFinite(edge) && Math.abs(video.currentTime - edge) > 0.45) {
+                video.currentTime = edge;
             }
             video.play().catch(() => {});
             hlsRef.current?.startLoad?.();
@@ -313,7 +185,6 @@ export default function ZurriolaWebcamPlayer() {
             try {
                 setStatus("loading");
                 setErrorMsg("");
-                userSeekedRef.current = false;
 
                 try {
                     await loadHlsScript();
@@ -327,9 +198,8 @@ export default function ZurriolaWebcamPlayer() {
                         enableWorker: true,
                         lowLatencyMode: false,
                         startPosition: -1,
-                        backBufferLength: FALLBACK_DVR_S,
-                        liveSyncDurationCount: 1,
-                        liveMaxLatencyDurationCount: 3,
+                        backBufferLength: 30,
+                        liveSyncDurationCount: 3,
                         maxBufferHole: 0.5,
                         nudgeMaxRetry: 8,
                     });
@@ -403,9 +273,9 @@ export default function ZurriolaWebcamPlayer() {
         };
 
         const onWaiting = () => {
-            if (cancelled || scrubbingRef.current) return;
+            if (cancelled) return;
             window.setTimeout(() => {
-                if (cancelled || scrubbingRef.current) return;
+                if (cancelled) return;
                 if (!video.paused && video.readyState >= 3) return;
                 video.play().catch(() => {});
                 hlsRef.current?.startLoad?.();
@@ -431,139 +301,6 @@ export default function ZurriolaWebcamPlayer() {
     }, []);
 
     useEffect(() => {
-        if (status !== "live") {
-            setDvr(null);
-            setBehindLive(false);
-            return undefined;
-        }
-
-        const tick = () => {
-            const video = videoRef.current;
-            const windowLive = readLiveWindow(video, hlsRef.current);
-            if (!windowLive || !video) {
-                setDvr(null);
-                setBehindLive(false);
-                return;
-            }
-
-            const now = Date.now();
-            const mediaTime = video.currentTime;
-            if (!scrubbingRef.current && !video.paused && mediaTime > 0) {
-                if (Math.abs(mediaTime - lastMediaTimeRef.current) > 0.05) {
-                    lastMediaTimeRef.current = mediaTime;
-                    lastProgressAtRef.current = now;
-                } else if (
-                    lastProgressAtRef.current > 0 &&
-                    now - lastProgressAtRef.current > STALL_MS
-                ) {
-                    lastProgressAtRef.current = now;
-                    const buffered = video.buffered;
-                    const bufEnd =
-                        buffered.length > 0
-                            ? buffered.end(buffered.length - 1)
-                            : null;
-                    if (Number.isFinite(bufEnd) && bufEnd > mediaTime + 0.4) {
-                        video.currentTime = bufEnd - 0.15;
-                    }
-                    video.play().catch(() => {});
-                    hlsRef.current?.startLoad?.();
-                }
-            }
-
-            const lagNow = windowLive.end - windowLive.current;
-            const pinLive = !scrubbingRef.current && !userSeekedRef.current;
-            const shownCurrent = pinLive ? windowLive.end : windowLive.current;
-            setBehindLive(!pinLive && lagNow > LIVE_LAG_S);
-            if (!scrubbingRef.current) {
-                setDvr({ ...windowLive, current: shownCurrent });
-            } else {
-                setDvr((prev) =>
-                    prev
-                        ? { ...windowLive, current: clamp(prev.current, windowLive.start, windowLive.end) }
-                        : { ...windowLive, current: shownCurrent },
-                );
-            }
-        };
-
-        tick();
-        const id = window.setInterval(tick, 400);
-        return () => window.clearInterval(id);
-    }, [status]);
-
-    const seekTo = (time) => {
-        const video = videoRef.current;
-        if (!video) return;
-        const windowLive = readLiveWindow(video, hlsRef.current);
-        if (!windowLive) {
-            const edge = liveEdgeTime(video, hlsRef.current);
-            if (Number.isFinite(edge)) video.currentTime = edge;
-            video.play().catch(() => {});
-            return;
-        }
-        const minSeek = windowLive.start + SEEK_HEADROOM_S;
-        const maxSeek = windowLive.end;
-        const next = clamp(time, minSeek, maxSeek);
-        if (!Number.isFinite(next)) return;
-        video.currentTime = next;
-        video.play().catch(() => {});
-    };
-
-    const seekLive = (event) => {
-        event?.preventDefault?.();
-        event?.stopPropagation?.();
-        const video = videoRef.current;
-        scrubbingRef.current = false;
-        setScrubbing(false);
-        userSeekedRef.current = false;
-        setBehindLive(false);
-        setDvr((prev) => (prev ? { ...prev, current: prev.end } : prev));
-        const edge = liveEdgeTime(video, hlsRef.current);
-        if (video && Number.isFinite(edge)) {
-            video.currentTime = edge;
-            video.play().catch(() => {});
-        } else {
-            video?.play?.().catch(() => {});
-        }
-    };
-
-    const onScrubStart = () => {
-        scrubbingRef.current = true;
-        setScrubbing(true);
-    };
-
-    const onScrubChange = (event) => {
-        const next = Number(event.target.value);
-        const liveEnd = Number(event.target.max);
-        if (!Number.isFinite(next)) return;
-        setDvr((prev) => (prev ? { ...prev, current: next } : prev));
-        if (Number.isFinite(liveEnd)) {
-            setBehindLive(liveEnd - next > LIVE_LAG_S);
-        }
-    };
-
-    const onScrubEnd = (event) => {
-        const next = Number(event.target.value);
-        const liveEnd = Number(event.target.max);
-        const wasScrubbing = scrubbingRef.current;
-        scrubbingRef.current = false;
-        setScrubbing(false);
-        if (!Number.isFinite(next)) return;
-        if (Number.isFinite(liveEnd)) {
-            const behind = liveEnd - next > LIVE_LAG_S;
-            userSeekedRef.current = behind;
-            if (wasScrubbing || event.type === "keyup") {
-                lastProgressAtRef.current = Date.now();
-                if (behind) {
-                    seekTo(next);
-                } else {
-                    seekLive();
-                }
-            }
-            return;
-        }
-    };
-
-    useEffect(() => {
         const viewport = viewportRef.current;
         if (!viewport) return undefined;
 
@@ -572,10 +309,22 @@ export default function ZurriolaWebcamPlayer() {
             return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
         };
 
+        const toggleMaxZoom = (clientX, clientY) => {
+            if (zoomRef.current >= MAX_ZOOM - 0.01) {
+                commitView(MIN_ZOOM, { x: 0, y: 0 }, true);
+                return;
+            }
+            const rect = viewport.getBoundingClientRect();
+            const cx = clientX - rect.left - rect.width / 2;
+            const cy = clientY - rect.top - rect.height / 2;
+            commitView(MAX_ZOOM, { x: -cx, y: -cy }, true);
+        };
+
         const onTouchStart = (event) => {
             if (isZoomUiTarget(event.target)) return;
 
             const g = gestureRef.current;
+            g.lastTouchAt = Date.now();
             g.moved = false;
 
             if (event.touches.length === 2) {
@@ -607,19 +356,18 @@ export default function ZurriolaWebcamPlayer() {
                 return;
             }
 
-            if ((g.mode === "pan" || g.mode === "tap") && event.touches.length === 1) {
+            if (g.mode === "pan" && event.touches.length === 1) {
                 const dx = event.touches[0].clientX - g.startPoint.x;
                 const dy = event.touches[0].clientY - g.startPoint.y;
                 if (Math.hypot(dx, dy) > 8) {
                     g.moved = true;
-                    g.mode = "pan";
                 }
-                if (g.mode === "pan" && zoomRef.current > 1) {
+                if (zoomRef.current > 1) {
                     event.preventDefault();
                     const z = zoomRef.current;
                     commitView(z, {
-                        x: g.startPan.x + dx / z,
-                        y: g.startPan.y + dy / z,
+                        x: g.startPan.x + dx,
+                        y: g.startPan.y + dy,
                     }, false);
                 }
             }
@@ -635,11 +383,7 @@ export default function ZurriolaWebcamPlayer() {
             if (event.touches.length === 0) {
                 const now = Date.now();
                 if (!g.moved && g.mode !== "pinch" && now - g.lastTapAt < 280) {
-                    if (zoomRef.current <= 1) {
-                        commitView(2, null, true);
-                    } else {
-                        commitView(1, { x: 0, y: 0 }, true);
-                    }
+                    toggleMaxZoom(g.startPoint.x, g.startPoint.y);
                     g.lastTapAt = 0;
                 } else if (!g.moved && g.mode !== "pinch") {
                     g.lastTapAt = now;
@@ -656,6 +400,13 @@ export default function ZurriolaWebcamPlayer() {
             }
         };
 
+        const onDblClick = (event) => {
+            if (isZoomUiTarget(event.target)) return;
+            if (Date.now() - (gestureRef.current.lastTouchAt || 0) < 600) return;
+            event.preventDefault();
+            toggleMaxZoom(event.clientX, event.clientY);
+        };
+
         const onWheel = (event) => {
             if (!event.ctrlKey && !event.metaKey) return;
             event.preventDefault();
@@ -665,50 +416,59 @@ export default function ZurriolaWebcamPlayer() {
 
         const onPointerDown = (event) => {
             if (isZoomUiTarget(event.target)) return;
-            if (event.pointerType !== "mouse" || event.button !== 0 || zoomRef.current <= 1) return;
+            if (event.pointerType === "touch") return;
+            if (event.button !== 0 || zoomRef.current <= 1) return;
 
+            event.preventDefault();
             const g = gestureRef.current;
             g.mode = "pan";
             g.moved = false;
+            g.pointerId = event.pointerId;
             g.startPan = { ...panRef.current };
             g.startPoint = { x: event.clientX, y: event.clientY };
-            viewport.setPointerCapture(event.pointerId);
         };
 
         const onPointerMove = (event) => {
             const g = gestureRef.current;
-            if (g.mode !== "pan" || event.pointerType !== "mouse") return;
-            g.moved = true;
-            const z = zoomRef.current;
-            commitView(z, {
-                x: g.startPan.x + (event.clientX - g.startPoint.x) / z,
-                y: g.startPan.y + (event.clientY - g.startPoint.y) / z,
+            if (g.mode !== "pan" || event.pointerType === "touch") return;
+            if (g.pointerId != null && event.pointerId !== g.pointerId) return;
+            const dx = event.clientX - g.startPoint.x;
+            const dy = event.clientY - g.startPoint.y;
+            if (Math.hypot(dx, dy) > 2) g.moved = true;
+            commitView(zoomRef.current, {
+                x: g.startPan.x + dx,
+                y: g.startPan.y + dy,
             }, false);
         };
 
-        const onPointerUp = () => {
-            gestureRef.current.mode = null;
-            gestureRef.current.moved = false;
+        const onPointerUp = (event) => {
+            const g = gestureRef.current;
+            if (g.pointerId != null && event.pointerId !== g.pointerId) return;
+            g.mode = null;
+            g.moved = false;
+            g.pointerId = null;
         };
 
         viewport.addEventListener("touchstart", onTouchStart, { passive: false });
         viewport.addEventListener("touchmove", onTouchMove, { passive: false });
         viewport.addEventListener("touchend", onTouchEnd);
         viewport.addEventListener("wheel", onWheel, { passive: false });
+        viewport.addEventListener("dblclick", onDblClick);
         viewport.addEventListener("pointerdown", onPointerDown);
-        viewport.addEventListener("pointermove", onPointerMove);
-        viewport.addEventListener("pointerup", onPointerUp);
-        viewport.addEventListener("pointercancel", onPointerUp);
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerUp);
 
         return () => {
             viewport.removeEventListener("touchstart", onTouchStart);
             viewport.removeEventListener("touchmove", onTouchMove);
             viewport.removeEventListener("touchend", onTouchEnd);
             viewport.removeEventListener("wheel", onWheel);
+            viewport.removeEventListener("dblclick", onDblClick);
             viewport.removeEventListener("pointerdown", onPointerDown);
-            viewport.removeEventListener("pointermove", onPointerMove);
-            viewport.removeEventListener("pointerup", onPointerUp);
-            viewport.removeEventListener("pointercancel", onPointerUp);
+            window.removeEventListener("pointermove", onPointerMove);
+            window.removeEventListener("pointerup", onPointerUp);
+            window.removeEventListener("pointercancel", onPointerUp);
         };
     }, [commitView]);
 
@@ -789,28 +549,37 @@ export default function ZurriolaWebcamPlayer() {
 
             <div
                 ref={viewportRef}
-                className={`relative overflow-hidden bg-black ${
+                className={`relative overflow-hidden bg-black select-none ${
                     isFullscreen ? "min-h-0 flex-1" : "aspect-video"
                 } ${zoom > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                 style={{ touchAction: "none" }}
             >
                 <div
-                    className="h-full w-full origin-center will-change-transform"
+                    className="pointer-events-none h-full w-full will-change-transform"
                     style={{
-                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                        transform: `translate(${pan.x}px, ${pan.y}px)`,
                         transition: animate ? "transform 140ms ease-out" : "none",
                     }}
                 >
-                    <video
-                        ref={videoRef}
-                        className="h-full w-full object-cover"
-                        playsInline
-                        muted
-                        autoPlay
-                        preload="auto"
-                        controls={false}
-                        title="Webcam en directo — Playa de Zurriola, Donostia"
-                    />
+                    <div
+                        className="pointer-events-none h-full w-full origin-center will-change-transform"
+                        style={{
+                            transform: `scale(${zoom})`,
+                            transition: animate ? "transform 140ms ease-out" : "none",
+                        }}
+                    >
+                        <video
+                            ref={videoRef}
+                            className="pointer-events-none h-full w-full object-cover"
+                            playsInline
+                            muted
+                            autoPlay
+                            preload="auto"
+                            controls={false}
+                            draggable={false}
+                            title="Webcam en directo — Playa de Zurriola, Donostia"
+                        />
+                    </div>
                 </div>
 
                 {status === "loading" ? (
@@ -842,68 +611,6 @@ export default function ZurriolaWebcamPlayer() {
                     </div>
                 ) : null}
             </div>
-
-            {status === "live" ? (
-                <div
-                    data-zoom-ui
-                    className="flex flex-col gap-2 overflow-visible border-t border-cyan-400/25 bg-slate-900 px-4 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-5"
-                >
-                    {dvr ? (
-                        <>
-                            <label className="flex min-h-11 min-w-0 flex-1 items-center px-1">
-                                <span className="sr-only">Ir unos segundos atrás en la señal en directo</span>
-                                <input
-                                    type="range"
-                                    min={dvr.start}
-                                    max={dvr.end}
-                                    step={0.25}
-                                    value={dvr.current}
-                                    onPointerDown={onScrubStart}
-                                    onMouseDown={onScrubStart}
-                                    onTouchStart={onScrubStart}
-                                    onChange={onScrubChange}
-                                    onPointerUp={onScrubEnd}
-                                    onPointerCancel={onScrubEnd}
-                                    onMouseUp={onScrubEnd}
-                                    onTouchEnd={onScrubEnd}
-                                    onKeyUp={onScrubEnd}
-                                    aria-valuetext={
-                                        behindLive
-                                            ? `${formatDelay(dvr.end - dvr.current)} respecto al directo`
-                                            : "Al vivo"
-                                    }
-                                    className="h-11 w-full cursor-pointer accent-cyan-400"
-                                />
-                            </label>
-                            <div className="flex min-h-11 items-center justify-between gap-2 sm:justify-end">
-                                <span className="min-w-[3.25rem] text-right text-[11px] font-semibold tabular-nums text-cyan-100">
-                                    {behindLive || (scrubbing && dvr.end - dvr.current > LIVE_LAG_S)
-                                        ? formatDelay(dvr.end - dvr.current)
-                                        : "Al vivo"}
-                                </span>
-                                {behindLive || (scrubbing && dvr.end - dvr.current > LIVE_LAG_S) ? (
-                                    <button
-                                        type="button"
-                                        onClick={seekLive}
-                                        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl bg-red-600 px-3 text-sm font-semibold text-white transition hover:bg-red-500"
-                                    >
-                                        <Radio className="h-3.5 w-3.5" aria-hidden />
-                                        Volver al directo
-                                    </button>
-                                ) : (
-                                    <span className="text-[11px] font-medium text-slate-400">
-                                        Últimos {Math.max(5, Math.round(dvr.end - dvr.start))} s
-                                    </span>
-                                )}
-                            </div>
-                        </>
-                    ) : (
-                        <p className="min-h-11 text-sm text-cyan-100/80">
-                            Sincronizando la señal reciente…
-                        </p>
-                    )}
-                </div>
-            ) : null}
         </div>
     );
 }

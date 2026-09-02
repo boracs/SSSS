@@ -5,7 +5,6 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatbotController; // Asegúrate de tener esta importación
 
 use App\Http\Controllers\Admin\BookingController as AdminBookingController;
-use App\Http\Controllers\PlanesTaquillasController;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,9 +34,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 
 
-// Rutas bajo autenticación (admin/taquilla y disponibilidad)
-Route::middleware(['auth'])->group(function () {
-    Route::get('/taquilla', [PlanesTaquillasController::class, 'AdminIndex'])->name('taquilla.index.admin');
+// Rutas de mostrador: exponen detalle interno (ids y estados crudos), así que exigen rol admin,
+// no solo sesión iniciada. El calendario público usa las rutas de `routes/web.php`.
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/bookings/check-availability', [AdminBookingController::class, 'checkAvailability']);
 });
 

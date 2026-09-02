@@ -8,6 +8,7 @@ use App\DTOs\Seo\SeoMetaDto;
 use App\Models\Article;
 use App\Models\Surfboard;
 use App\Services\SurfConditions\ZurriolaGeoFactsService;
+use App\Support\AcademyLocation;
 use App\Support\AcademySocialLinks;
 use App\Support\MoneyCents;
 
@@ -40,7 +41,7 @@ final class PublicPageSeoService
 
     public function home(): SeoMetaDto
     {
-        $title = 'San Sebastian Surf School | S4 · Zurriola, Donostia';
+        $title = 'San Sebastián Surf School | S4 · Zurriola, Donostia';
         $description = 'Clases de surf en la playa de Zurriola (Donostia – San Sebastián). Escuela, club y material a pie de playa. Técnica, seguridad y parte del día en el Cantábrico.';
 
         return $this->make(
@@ -68,8 +69,8 @@ final class PublicPageSeoService
 
     public function nosotros(): SeoMetaDto
     {
-        $title = 'Sobre nosotros | San Sebastian Surf School · Zurriola';
-        $description = 'Conoce San Sebastian Surf School (S4): escuela de surf en Zurriola (Donostia-San Sebastián). Instalaciones a pie de playa, club, material y equipo local en el Cantábrico.';
+        $title = 'Sobre nosotros | San Sebastián Surf School · Zurriola';
+        $description = 'Conoce San Sebastián Surf School (S4): escuela de surf en Zurriola (Donostia-San Sebastián). Instalaciones a pie de playa, club, material y equipo local en el Cantábrico.';
         $path = '/nosotros';
 
         return $this->make(
@@ -91,8 +92,8 @@ final class PublicPageSeoService
 
     public function contacto(): SeoMetaDto
     {
-        $title = 'Contacto | San Sebastian Surf School · Donostia';
-        $description = 'Contacta con San Sebastian Surf School (S4) en Zurriola, Donostia. Resuelve dudas sobre clases, club, material o reservas.';
+        $title = 'Contacto | San Sebastián Surf School · Donostia';
+        $description = 'Contacta con San Sebastián Surf School (S4) en Zurriola, Donostia. Resuelve dudas sobre clases, club, material o reservas.';
         $path = '/contacto';
 
         return $this->make(
@@ -114,8 +115,8 @@ final class PublicPageSeoService
 
     public function servicios(): SeoMetaDto
     {
-        $title = 'Reparación de tablas | San Sebastian Surf School · Zurriola';
-        $description = 'Reparación de tablas de surf con Edy Mulder en el club de San Sebastian Surf School (Zurriola, Donostia). Marca tu taquilla, señala los toques y recoge la tabla lista.';
+        $title = 'Reparación de tablas | San Sebastián Surf School · Zurriola';
+        $description = 'Reparación de tablas de surf con Edy Mulder en el club de San Sebastián Surf School (Zurriola, Donostia). Marca tu taquilla, señala los toques y recoge la tabla lista.';
 
         return $this->make(
             title: $title,
@@ -124,7 +125,7 @@ final class PublicPageSeoService
             jsonLd: [
                 $this->organizationNode(),
                 $this->serviceNode(
-                    'Reparación de tablas de surf · San Sebastian Surf School',
+                    'Reparación de tablas de surf · San Sebastián Surf School',
                     $description,
                     '/servicios',
                 ),
@@ -134,8 +135,8 @@ final class PublicPageSeoService
 
     public function serviciosSurf(): SeoMetaDto
     {
-        $title = 'Clases de surf en Zurriola | San Sebastian Surf School';
-        $description = 'Clases particulares y bonos de surf en la playa de Zurriola (Donostia). Academia de San Sebastian Surf School con equipo incluido y monitores locales.';
+        $title = 'Clases de surf en Zurriola | San Sebastián Surf School';
+        $description = 'Clases particulares y bonos de surf en la playa de Zurriola (Donostia). Academia de San Sebastián Surf School con equipo incluido y monitores locales.';
         $path = '/servicios/surf';
 
         return $this->make(
@@ -147,7 +148,7 @@ final class PublicPageSeoService
                 $this->localBusinessNode(),
                 $this->webPageNode($title, $description, $path, 'WebPage', self::SURF_CLASSES_OG_IMAGE),
                 $this->serviceNode('Clases de surf en Zurriola', $description, $path),
-                $this->courseNode('Clases y bonos de surf · San Sebastian Surf School', $description, $path),
+                $this->courseNode('Clases y bonos de surf · San Sebastián Surf School', $description, $path),
                 $this->breadcrumbListNode([
                     ['name' => 'Inicio', 'path' => '/'],
                     ['name' => 'Clases de surf', 'path' => $path],
@@ -160,8 +161,8 @@ final class PublicPageSeoService
 
     public function serviciosSurfSkate(): SeoMetaDto
     {
-        $title = 'Clases de surfskate | San Sebastian Surf School';
-        $description = 'Clases de surfskate en Donostia con San Sebastian Surf School: equilibrio, fluidez y técnica en tierra. Sesiones individuales, grupales y bonos.';
+        $title = 'Clases de surfskate | San Sebastián Surf School';
+        $description = 'Clases de surfskate en Donostia con San Sebastián Surf School: equilibrio, fluidez y técnica en tierra. Sesiones individuales, grupales y bonos.';
 
         return $this->make(
             title: $title,
@@ -169,16 +170,16 @@ final class PublicPageSeoService
             path: '/servicios/surf-skate',
             jsonLd: [
                 $this->organizationNode(),
-                $this->serviceNode('Clases de surfskate · San Sebastian Surf School', $description, '/servicios/surf-skate'),
-                $this->courseNode('Surfskate · San Sebastian Surf School', $description, '/servicios/surf-skate'),
+                $this->serviceNode('Clases de surfskate · San Sebastián Surf School', $description, '/servicios/surf-skate'),
+                $this->courseNode('Surfskate · San Sebastián Surf School', $description, '/servicios/surf-skate'),
             ],
         );
     }
 
     public function serviciosSurfSkateGuia(): SeoMetaDto
     {
-        $title = 'Guía para elegir tu surfskate · altura y peso | San Sebastian Surf School';
-        $description = 'Guía práctica de San Sebastian Surf School para elegir surfskate YOW según tu altura, peso y estilo. Tabla de medidas y consejos sin tecnicismos.';
+        $title = 'Guía para elegir tu surfskate · altura y peso | San Sebastián Surf School';
+        $description = 'Guía práctica de San Sebastián Surf School para elegir surfskate YOW según tu altura, peso y estilo. Tabla de medidas y consejos sin tecnicismos.';
 
         return $this->make(
             title: $title,
@@ -193,8 +194,8 @@ final class PublicPageSeoService
 
     public function serviciosSurfTrips(): SeoMetaDto
     {
-        $title = 'Surf trips desde Guipúzcoa | San Sebastian Surf School';
-        $description = 'Surf trips desde Donostia hacia País Vasco, Côte Basque y Landas. Excursiones con monitor de San Sebastian Surf School y opción gastronómica al terminar.';
+        $title = 'Surf trips desde Guipúzcoa | San Sebastián Surf School';
+        $description = 'Surf trips desde Donostia hacia País Vasco, Côte Basque y Landas. Excursiones con monitor de San Sebastián Surf School y opción gastronómica al terminar.';
 
         return $this->make(
             title: $title,
@@ -202,15 +203,15 @@ final class PublicPageSeoService
             path: '/servicios/surf-trips',
             jsonLd: [
                 $this->organizationNode(),
-                $this->serviceNode('Surf trips · San Sebastian Surf School', $description, '/servicios/surf-trips'),
+                $this->serviceNode('Surf trips · San Sebastián Surf School', $description, '/servicios/surf-trips'),
             ],
         );
     }
 
     public function serviciosFotos(): SeoMetaDto
     {
-        $title = 'Fotografía de surf en Zurriola | San Sebastian Surf School';
-        $description = 'Fotografía de surf en la playa de Zurriola (Donostia). Captura tu sesión con el servicio de fotos de San Sebastian Surf School.';
+        $title = 'Fotografía de surf en Zurriola | San Sebastián Surf School';
+        $description = 'Fotografía de surf en la playa de Zurriola (Donostia). Captura tu sesión con el servicio de fotos de San Sebastián Surf School.';
 
         return $this->make(
             title: $title,
@@ -218,15 +219,15 @@ final class PublicPageSeoService
             path: '/servicios/fotos',
             jsonLd: [
                 $this->organizationNode(),
-                $this->serviceNode('Fotografía de surf · San Sebastian Surf School', $description, '/servicios/fotos'),
+                $this->serviceNode('Fotografía de surf · San Sebastián Surf School', $description, '/servicios/fotos'),
             ],
         );
     }
 
     public function serviciosVideograbaciones(): SeoMetaDto
     {
-        $title = 'Videograbaciones de surf | San Sebastian Surf School';
-        $description = 'Videograbaciones de surf en Zurriola con análisis técnico. Ve tu sesión, detecta errores y mejora con San Sebastian Surf School en Donostia.';
+        $title = 'Videograbaciones de surf | San Sebastián Surf School';
+        $description = 'Videograbaciones de surf en Zurriola con análisis técnico. Ve tu sesión, detecta errores y mejora con San Sebastián Surf School en Donostia.';
 
         return $this->make(
             title: $title,
@@ -234,15 +235,15 @@ final class PublicPageSeoService
             path: '/servicios/videograbaciones',
             jsonLd: [
                 $this->organizationNode(),
-                $this->serviceNode('Videograbaciones de surf · San Sebastian Surf School', $description, '/servicios/videograbaciones'),
+                $this->serviceNode('Videograbaciones de surf · San Sebastián Surf School', $description, '/servicios/videograbaciones'),
             ],
         );
     }
 
     public function serviciosReparacionNeoprenos(): SeoMetaDto
     {
-        $title = 'Reparación de neoprenos | San Sebastian Surf School';
-        $description = 'Servicio de reparación de neoprenos del club de San Sebastian Surf School en Zurriola, Donostia. Deja tu traje en la percha y recupéralo listo para el agua.';
+        $title = 'Reparación de neoprenos en Zurriola | San Sebastián Surf School';
+        $description = 'Servicio de reparación de neoprenos del club de San Sebastián Surf School en Zurriola, Donostia. Deja tu traje en la percha y recupéralo listo para el agua.';
 
         return $this->make(
             title: $title,
@@ -250,14 +251,14 @@ final class PublicPageSeoService
             path: '/servicios/reparacion-neoprenos',
             jsonLd: [
                 $this->organizationNode(),
-                $this->serviceNode('Reparación de neoprenos · San Sebastian Surf School', $description, '/servicios/reparacion-neoprenos'),
+                $this->serviceNode('Reparación de neoprenos · San Sebastián Surf School', $description, '/servicios/reparacion-neoprenos'),
             ],
         );
     }
 
     public function serviciosTaquillas(): SeoMetaDto
     {
-        $title = 'Taquillas surf en Zurriola | Planes y cuotas · San Sebastian Surf School';
+        $title = 'Taquillas surf en Zurriola | Planes y cuotas · San Sebastián Surf School';
         $description = 'Taquillas privadas a pie de playa en Zurriola (Donostia): planes mensuales y anuales del club S4. Guarda tablas y neoprenos, duchas, descuentos en tienda y micro-servicios para socios.';
         $path = '/servicios/taquillas';
 
@@ -270,7 +271,7 @@ final class PublicPageSeoService
                 $this->localBusinessNode(),
                 $this->webPageNode($title, $description, $path, 'WebPage', self::NOSOTROS_OG_IMAGE),
                 $this->serviceNode(
-                    'Taquillas y membresía club · San Sebastian Surf School',
+                    'Taquillas y membresía club · San Sebastián Surf School',
                     $description,
                     $path,
                 ),
@@ -286,8 +287,8 @@ final class PublicPageSeoService
 
     public function webcams(): SeoMetaDto
     {
-        $title = 'Webcam Zurriola en directo y previsión surf | San Sebastian Surf School';
-        $description = 'Webcam en directo de la playa de la Zurriola (Donostia): olas, viento y previsión de surf. Parte del día y forecast de San Sebastian Surf School — escuela a unos 20 m de la playa.';
+        $title = 'Webcam Zurriola en directo y previsión surf | San Sebastián Surf School';
+        $description = 'Webcam en directo de la playa de la Zurriola (Donostia): olas, viento y previsión de surf. Parte del día y forecast de San Sebastián Surf School — escuela a unos 20 m de la playa.';
         $path = '/servicios/webcams';
         $jsonLd = [
             $this->organizationNode(),
@@ -311,11 +312,26 @@ final class PublicPageSeoService
         );
     }
 
+    /**
+     * Comparador de maniobras (uploads). Noindex en página; no va en sitemap ni en Disallow
+     * (con Disallow Google no vería la meta).
+     */
+    public function comparadorSurf(): SeoMetaDto
+    {
+        return $this->make(
+            title: 'Comparador de maniobras | S4 AutoCoach',
+            description: 'Compara tu maniobra de surf con un vídeo de referencia. Herramienta de San Sebastián Surf School (Zurriola).',
+            path: '/comparador-surf',
+            robots: 'noindex, nofollow',
+            jsonLd: [],
+        );
+    }
+
     /** Carrito autenticado: no indexable (robots.txt + meta noindex). */
     public function carrito(): SeoMetaDto
     {
-        $title = 'Carrito | San Sebastian Surf School';
-        $description = 'Tu carrito de compra en la tienda de San Sebastian Surf School (S4).';
+        $title = 'Carrito | San Sebastián Surf School';
+        $description = 'Tu carrito de compra en la tienda de San Sebastián Surf School (S4).';
 
         return $this->make(
             title: $title,
@@ -329,7 +345,7 @@ final class PublicPageSeoService
     /** Catálogo subastas socios: no indexable. */
     public function subastasIndex(): SeoMetaDto
     {
-        $title = 'Subastas | San Sebastian Surf School';
+        $title = 'Subastas | San Sebastián Surf School';
         $description = 'Subastas de material S4 para socios con taquilla o VIP. Pujas en la web del club.';
 
         return $this->make(
@@ -346,9 +362,9 @@ final class PublicPageSeoService
         $trimmed = trim($auctionTitle);
         $title = $trimmed !== ''
             ? $trimmed.' | Subastas S4'
-            : 'Subasta | San Sebastian Surf School';
+            : 'Subasta | San Sebastián Surf School';
         $description = $trimmed !== ''
-            ? 'Subasta '.$trimmed.' — San Sebastian Surf School (S4). Zona reservada a socios.'
+            ? 'Subasta '.$trimmed.' — San Sebastián Surf School (S4). Zona reservada a socios.'
             : 'Detalle de subasta del club S4.';
 
         return $this->make(
@@ -363,7 +379,7 @@ final class PublicPageSeoService
     public function subastasAccessRequired(): SeoMetaDto
     {
         return $this->make(
-            title: 'Subastas — acceso socios | San Sebastian Surf School',
+            title: 'Subastas — acceso socios | San Sebastián Surf School',
             description: 'Las subastas S4 están reservadas a socios con taquilla o VIP.',
             path: '/subastas',
             robots: 'noindex, nofollow',
@@ -373,8 +389,8 @@ final class PublicPageSeoService
 
     public function tienda(): SeoMetaDto
     {
-        $title = 'Tienda oficial | San Sebastian Surf School';
-        $description = 'Tienda de material y accesorios de San Sebastian Surf School (S4) en Zurriola, Donostia. Productos para socios del club.';
+        $title = 'Tienda oficial | San Sebastián Surf School';
+        $description = 'Tienda de material y accesorios de San Sebastián Surf School (S4) en Zurriola, Donostia. Productos para socios del club.';
 
         return $this->make(
             title: $title,
@@ -390,8 +406,8 @@ final class PublicPageSeoService
     public function tallerIndex(): SeoMetaDto
     {
         $path = '/taller';
-        $title = 'Blog educativo · Guías y consejos | San Sebastian Surf School';
-        $description = 'Blog educativo de San Sebastian Surf School: material, lectura del mar, seguridad e iniciación. Artículos prácticos desde Zurriola (Donostia-San Sebastián).';
+        $title = 'Blog educativo · Guías y consejos | San Sebastián Surf School';
+        $description = 'Blog educativo de San Sebastián Surf School: material, lectura del mar, seguridad e iniciación. Artículos prácticos desde Zurriola (Donostia-San Sebastián).';
 
         return $this->make(
             title: $title,
@@ -411,7 +427,7 @@ final class PublicPageSeoService
         $title = trim((string) ($article->seo_title ?: $article->title));
         $description = trim((string) ($article->seo_description ?: $article->excerpt ?: ''));
         if ($description === '') {
-            $description = 'Artículo del blog educativo de San Sebastian Surf School: guías prácticas desde Zurriola, Donostia-San Sebastián.';
+            $description = 'Artículo del blog educativo de San Sebastián Surf School: guías prácticas desde Zurriola, Donostia-San Sebastián.';
         }
 
         $imagePath = $this->firstImageSrcFromHtml((string) $article->content);
@@ -442,8 +458,8 @@ final class PublicPageSeoService
 
     public function segundaManoIndex(): SeoMetaDto
     {
-        $title = 'Tablas de segunda mano | San Sebastian Surf School';
-        $description = 'Catálogo de tablas de surf de segunda mano en San Sebastian Surf School (Zurriola, Donostia). Precios públicos, sin compromiso; consulta disponibilidad en el club.';
+        $title = 'Tablas de segunda mano | San Sebastián Surf School';
+        $description = 'Catálogo de tablas de surf de segunda mano en San Sebastián Surf School (Zurriola, Donostia). Precios públicos, sin compromiso; consulta disponibilidad en el club.';
 
         return $this->make(
             title: $title,
@@ -485,9 +501,9 @@ final class PublicPageSeoService
         $imageUrl = (string) ($board['first_image_master'] ?? $board['first_image'] ?? '');
         $inStock = ($board['status'] ?? 'available') === 'available';
 
-        $title = $name.' | Segunda mano · San Sebastian Surf School';
+        $title = $name.' | Segunda mano · San Sebastián Surf School';
         $bits = array_values(array_filter([$brand, $model, $typeLabel !== '' ? $typeLabel : null]));
-        $description = $name.' de segunda mano en San Sebastian Surf School (Zurriola, Donostia).'
+        $description = $name.' de segunda mano en San Sebastián Surf School (Zurriola, Donostia).'
             .($bits !== [] ? ' '.implode(' · ', $bits).'.' : '')
             .($descBody !== '' ? ' '.mb_substr($descBody, 0, 120) : '');
 
@@ -504,7 +520,7 @@ final class PublicPageSeoService
                     priceEur: $this->formatEurFromCents($priceCents),
                     inStock: $inStock,
                     imageUrl: $imageUrl,
-                    brandName: $brand !== '' ? $brand : 'San Sebastian Surf School',
+                    brandName: $brand !== '' ? $brand : 'San Sebastián Surf School',
                     category: $typeLabel !== '' ? $typeLabel : 'Tabla de surf segunda mano',
                     sku: 'sh-'.$id,
                     itemCondition: self::CONDITION_USED,
@@ -529,11 +545,11 @@ final class PublicPageSeoService
         };
 
         $title = $label !== null
-            ? 'Alquiler de tablas '.$label.' | San Sebastian Surf School'
-            : 'Alquiler de tablas de surf | San Sebastian Surf School';
+            ? 'Alquiler de tablas '.$label.' | San Sebastián Surf School'
+            : 'Alquiler de tablas de surf | San Sebastián Surf School';
         $description = $label !== null
-            ? 'Alquila tablas '.$label.' en San Sebastian Surf School (Zurriola, Donostia). Consulta disponibilidad y reserva online.'
-            : 'Alquila tablas de surf (softboards, duras básicas y duras pro) en San Sebastian Surf School, a pie de Zurriola en Donostia.';
+            ? 'Alquila tablas '.$label.' en San Sebastián Surf School (Zurriola, Donostia). Consulta disponibilidad y reserva online.'
+            : 'Alquila tablas de surf (softboards, duras básicas y duras pro) en San Sebastián Surf School, a pie de Zurriola en Donostia.';
 
         return $this->make(
             title: $title,
@@ -571,8 +587,8 @@ final class PublicPageSeoService
         $priceDay = $board['price_day_eur'] ?? null;
         $inStock = (bool) ($board['is_active'] ?? true);
 
-        $title = $name.' · Alquiler | San Sebastian Surf School';
-        $description = 'Alquila '.$name.' ('.$categoryLabel.') en San Sebastian Surf School, Zurriola (Donostia).'
+        $title = $name.' · Alquiler | San Sebastián Surf School';
+        $description = 'Alquila '.$name.' ('.$categoryLabel.') en San Sebastián Surf School, Zurriola (Donostia).'
             .($descBody !== '' ? ' '.mb_substr($descBody, 0, 120) : '');
 
         $jsonLd = [$this->organizationNode()];
@@ -583,7 +599,7 @@ final class PublicPageSeoService
                 priceEur: number_format((float) $priceDay, 2, '.', ''),
                 inStock: $inStock,
                 imageUrl: $imageUrl,
-                brandName: 'San Sebastian Surf School',
+                brandName: 'San Sebastián Surf School',
                 category: $categoryLabel,
                 sku: 'rent-'.$id,
                 itemCondition: self::CONDITION_USED,
@@ -619,11 +635,11 @@ final class PublicPageSeoService
         string $description = '',
     ): SeoMetaDto {
         $path = '/producto-ver/'.$id;
-        $title = $name.' | Tienda San Sebastian Surf School';
+        $title = $name.' | Tienda San Sebastián Surf School';
         $trimmed = trim($description);
         $metaDescription = $trimmed !== ''
             ? mb_substr($trimmed, 0, 160)
-            : $name.' en la tienda oficial de San Sebastian Surf School (S4). Material y accesorios para socios con taquilla en Zurriola, Donostia.';
+            : $name.' en la tienda oficial de San Sebastián Surf School (S4). Material y accesorios para socios con taquilla en Zurriola, Donostia.';
         $category = implode(', ', array_values(array_filter($categoryLabels)));
 
         return $this->make(
@@ -639,7 +655,7 @@ final class PublicPageSeoService
                     priceEur: number_format($priceEur, 2, '.', ''),
                     inStock: $inStock,
                     imageUrl: $imageUrl,
-                    brandName: 'San Sebastian Surf School',
+                    brandName: 'San Sebastián Surf School',
                     category: $category !== '' ? $category : null,
                     sku: (string) $id,
                     itemCondition: self::CONDITION_NEW,
@@ -688,7 +704,9 @@ final class PublicPageSeoService
         return [
             '@context' => 'https://schema.org',
             '@type' => 'Organization',
-            'name' => 'San Sebastian Surf School',
+            'name' => 'San Sebastián Surf School',
+            'legalName' => AcademyLocation::legalName(),
+            'taxID' => AcademyLocation::cif(),
             'alternateName' => 'S4',
             'url' => $this->absoluteUrl('/'),
             'logo' => $this->absoluteUrl('/img/brand/logo-navy-mark.png'),
@@ -700,30 +718,31 @@ final class PublicPageSeoService
     /** @return array<string, mixed> */
     private function localBusinessNode(): array
     {
-        $lat = (float) config('services.zurriola_surf.latitude', 43.325);
-        $lon = (float) config('services.zurriola_surf.longitude', -1.975);
+        $loc = AcademyLocation::forFrontend();
 
         return [
             '@context' => 'https://schema.org',
             '@type' => 'SportsActivityLocation',
-            'name' => 'San Sebastian Surf School',
+            'name' => 'San Sebastián Surf School',
+            'legalName' => $loc['legalName'],
+            'taxID' => $loc['cif'],
             'alternateName' => 'S4 Surf School',
-            'description' => 'Escuela de surf en Zurriola, Donostia-San Sebastián. Clases, club e instalaciones a pie de playa.',
+            'description' => 'Escuela de surf en Zurriola, Donostia-San Sebastián. Sede en Paseo Colón 41 bajo (Gros). Clases en la playa.',
             'url' => $this->absoluteUrl('/'),
             'image' => $this->absoluteUrl(self::DEFAULT_OG_IMAGE),
             'email' => (string) config('services.academy.contact_email', 'info@sansebastiansurfschool.com'),
             'address' => [
                 '@type' => 'PostalAddress',
-                'streetAddress' => 'Playa de Zurriola',
-                'addressLocality' => 'Donostia-San Sebastián',
-                'addressRegion' => 'Gipuzkoa',
-                'postalCode' => '20001',
-                'addressCountry' => 'ES',
+                'streetAddress' => $loc['street'],
+                'addressLocality' => $loc['locality'],
+                'addressRegion' => $loc['region'],
+                'postalCode' => $loc['postalCode'],
+                'addressCountry' => $loc['country'],
             ],
             'geo' => [
                 '@type' => 'GeoCoordinates',
-                'latitude' => $lat,
-                'longitude' => $lon,
+                'latitude' => $loc['latitude'],
+                'longitude' => $loc['longitude'],
             ],
             'areaServed' => [
                 '@type' => 'Place',
@@ -748,7 +767,7 @@ final class PublicPageSeoService
             'url' => $this->absoluteUrl($path),
             'isPartOf' => [
                 '@type' => 'WebSite',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
                 'url' => $this->absoluteUrl('/'),
             ],
             'about' => [
@@ -783,7 +802,7 @@ final class PublicPageSeoService
         $node = $this->webPageNode($name, $description, $path, 'ContactPage', $imagePath);
         $node['mainEntity'] = [
             '@type' => 'Organization',
-            'name' => 'San Sebastian Surf School',
+            'name' => 'San Sebastián Surf School',
             'url' => $this->absoluteUrl('/'),
             'contactPoint' => $this->contactPointNode(),
         ];
@@ -841,7 +860,7 @@ final class PublicPageSeoService
             'url' => $this->absoluteUrl($path),
             'provider' => [
                 '@type' => 'Organization',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
                 'url' => $this->absoluteUrl('/'),
             ],
             'areaServed' => [
@@ -862,7 +881,7 @@ final class PublicPageSeoService
             'url' => $this->absoluteUrl($path),
             'provider' => [
                 '@type' => 'Organization',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
                 'url' => $this->absoluteUrl('/'),
             ],
         ];
@@ -879,7 +898,7 @@ final class PublicPageSeoService
         string $priceEur,
         bool $inStock,
         string $imageUrl = '',
-        string $brandName = 'San Sebastian Surf School',
+        string $brandName = 'San Sebastián Surf School',
         ?string $category = null,
         ?string $sku = null,
         string $itemCondition = self::CONDITION_NEW,
@@ -900,7 +919,7 @@ final class PublicPageSeoService
             'itemCondition' => $itemCondition,
             'seller' => [
                 '@type' => 'Organization',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
             ],
         ];
         if ($businessFunction !== null) {
@@ -957,12 +976,12 @@ final class PublicPageSeoService
             ],
             'author' => [
                 '@type' => 'Organization',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
                 'url' => $this->absoluteUrl('/'),
             ],
             'publisher' => [
                 '@type' => 'Organization',
-                'name' => 'San Sebastian Surf School',
+                'name' => 'San Sebastián Surf School',
                 'url' => $this->absoluteUrl('/'),
                 'logo' => [
                     '@type' => 'ImageObject',

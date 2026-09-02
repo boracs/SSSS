@@ -13,11 +13,13 @@ use App\Models\Surfboard;
 use App\Models\User;
 use App\Services\Payments\DatafonoPaymentReconciliationService;
 use App\Services\Payments\MostradorTicketService;
+use App\Services\Store\StoreProductPricing;
 use App\Support\MoneyCents;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use Inertia\Inertia;
@@ -56,13 +58,21 @@ final class DatafonoPaymentController extends Controller
             ->where('eliminado', false)
             ->orderBy('nombre')
             ->limit(300)
-            ->get(['id', 'nombre', 'precio'])
-            ->map(fn (Producto $p) => [
-                'id' => $p->id,
-                'nombre' => $p->nombre,
-                'precio' => (float) $p->precio,
-                'precio_cents' => MoneyCents::eurosToCents((float) $p->precio),
-            ])
+            ->get(['id', 'nombre', 'precio', 'descuento'])
+            ->map(function (Producto $p): array {
+                $descuento = max(0, min(100, (int) round((float) ($p->descuento ?? 0))));
+
+                return [
+                    'id' => $p->id,
+                    'nombre' => $p->nombre,
+                    // Mismo criterio de precio que la validación del ticket
+                    // (StoreProductPricing): si aquí saliera el PVP sin rebajar,
+                    // cualquier producto con descuento daría 422 en mostrador.
+                    'precio_cents' => StoreProductPricing::unitPriceCents($p->precio, $descuento),
+                    'precio_base_cents' => MoneyCents::eurosToCents((float) $p->precio),
+                    'descuento' => $descuento,
+                ];
+            })
             ->values()
             ->all();
 
@@ -133,6 +143,7 @@ final class DatafonoPaymentController extends Controller
             'surfboards' => $surfboards,
             'categories' => DatafonoPaymentReconciliationService::CATEGORIES,
             'guestAllowedCategories' => MostradorTicketService::GUEST_ALLOWED,
+            'invoicingEnabled' => (bool) config('invoicing.enabled', false),
         ]);
     }
 
@@ -146,7 +157,13 @@ final class DatafonoPaymentController extends Controller
             'paid_at' => ['required', 'date'],
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'guest_name' => ['nullable', 'string', 'max:120'],
-            'guest_email' => ['nullable', 'email', 'max:190'],
+            'guest_email' => [
+                Rule::requiredIf(fn () => (bool) config('invoicing.enabled', false)
+                    && empty($request->input('user_id'))),
+                'nullable',
+                'email',
+                'max:190',
+            ],
             'notes' => ['nullable', 'string', 'max:2000'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.category' => ['required', 'string', 'in:taquilla,bono,alquiler,clase,fotos,producto'],

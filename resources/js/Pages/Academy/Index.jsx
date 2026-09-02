@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useMemo, useState, useEffect, useRef } from "react";
 import { Head, Link, router, usePage } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SurfTripFab from "../../components/SurfTripFab";
 import AcademyFlowSteps from "./AcademyFlowSteps";
 import StudentCalendar, {
@@ -309,14 +309,14 @@ export default function AcademyIndex({
           : 1;
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Academia · Clases" />
-            <div className="min-h-screen bg-slate-950 px-4 pb-10 pt-24 sm:px-6 lg:px-8">
+            <div className="px-4 pb-10 pt-24 sm:px-6 lg:px-8">
                 <div className="mx-auto w-full max-w-7xl">
                     {/* Cabecera */}
                     <div className="mb-4 text-center">
                         <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-s4-cyan">
-                            Academia · San Sebastian Surf School
+                            Academia · San Sebastián Surf School
                         </p>
                         <h1 className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
                             Clases de surf
@@ -622,6 +622,6 @@ export default function AcademyIndex({
                     />
                 </Suspense>
             ) : null}
-        </Layout1>
+        </PageShell>
     );
 }

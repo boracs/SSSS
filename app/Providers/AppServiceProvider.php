@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Actions\Payments\InitiatePaymentAction;
 use App\Contracts\Invoicing\FiscalInvoiceIssuerInterface;
+use App\Contracts\Payments\FindsOpenCheckout;
 use App\Contracts\Payments\StartsCheckout;
+use App\Services\Payments\PaymentGatewayService;
 use App\Events\Payments\PaymentConfirmed;
 use App\Events\LessonRequestedEvent;
 use App\Events\PrivateLessonRequestedEvent;
@@ -16,9 +18,14 @@ use App\Listeners\SendLessonRequestedMailListener;
 use App\Listeners\SendPrivateLessonRequestedMailListener;
 use App\Listeners\SendSoloStudentNotification;
 use App\Listeners\Taquilla\EnviarCorreoConfirmacionTaquilla;
+use App\Models\Article;
 use App\Models\Lesson;
+use App\Models\Producto;
+use App\Models\SecondHandBoard;
+use App\Models\Surfboard;
 use App\Models\User;
 use App\Observers\LessonObserver;
+use App\Observers\SitemapCacheObserver;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
@@ -36,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Facturación fiscal (TicketBAI): driver configurable vía INVOICING_DRIVER.
         $this->app->bind(StartsCheckout::class, InitiatePaymentAction::class);
+        $this->app->bind(FindsOpenCheckout::class, PaymentGatewayService::class);
 
         $this->app->bind(FiscalInvoiceIssuerInterface::class, function ($app) {
             $driver = config('invoicing.driver', 'b2brouter');
@@ -55,6 +63,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Lesson::observe(LessonObserver::class);
+        Article::observe(SitemapCacheObserver::class);
+        Producto::observe(SitemapCacheObserver::class);
+        SecondHandBoard::observe(SitemapCacheObserver::class);
+        Surfboard::observe(SitemapCacheObserver::class);
         Event::listen(SoloStudentLocked::class, SendSoloStudentNotification::class);
         Event::listen(LessonRequestedEvent::class, SendLessonRequestedMailListener::class);
         Event::listen(PrivateLessonRequestedEvent::class, SendPrivateLessonRequestedMailListener::class);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Payments;
 
+use App\Contracts\Payments\FindsOpenCheckout;
 use App\DTOs\Payments\CheckoutSessionResultDto;
 use App\DTOs\Payments\InitiatePaymentDto;
 use App\Enums\PaymentStatus;
@@ -13,6 +14,7 @@ use App\Models\Booking;
 use App\Models\LessonUser;
 use App\Models\PagoCuota;
 use App\Models\Pedido;
+use App\Models\PaymentReceipt;
 use App\Models\PaymentWebhookIdempotency;
 use App\Models\PhotoSessionBooking;
 use App\Models\UserBono;
@@ -20,6 +22,8 @@ use App\Services\Auctions\AuctionSettlementService;
 use App\Services\BonoService;
 use App\Services\Taquilla\TaquillaMembershipService;
 use App\Support\BusinessDateTime;
+use Carbon\CarbonImmutable;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -30,7 +34,7 @@ use Throwable;
 /**
  * Orquestador de pagos (Stripe Checkout) con idempotencia de webhooks.
  */
-final class PaymentGatewayService
+final class PaymentGatewayService implements FindsOpenCheckout
 {
     private ?StripeClient $stripe = null;
 
@@ -72,24 +76,29 @@ final class PaymentGatewayService
 
         $idempotencyToken = (string) Str::uuid();
         $totalCents       = $dto->totalAmountCents();
+        $payload          = [
+            'payment_method_types' => ['card'],
+            'line_items'           => array_map(
+                static fn ($item) => $item->toStripeLineItem(),
+                $dto->lineItems,
+            ),
+            'mode'           => 'payment',
+            'customer_email' => $dto->customerEmail,
+            'success_url'    => $dto->successUrl(),
+            'cancel_url'     => $dto->cancelUrl(),
+            'metadata'       => array_merge($dto->metadata, [
+                'payable_type'      => $dto->payableType,
+                'payable_id'        => (string) $dto->payableId,
+                'idempotency_token' => $idempotencyToken,
+            ]),
+        ];
+        $stripeExpiresAt = $this->stripeExpiresAtTimestamp($dto->expiresAt);
+        if ($stripeExpiresAt !== null) {
+            $payload['expires_at'] = $stripeExpiresAt;
+        }
 
         try {
-            $session = $this->stripe()->checkout->sessions->create([
-                'payment_method_types' => ['card'],
-                'line_items'           => array_map(
-                    static fn ($item) => $item->toStripeLineItem(),
-                    $dto->lineItems,
-                ),
-                'mode'           => 'payment',
-                'customer_email' => $dto->customerEmail,
-                'success_url'    => $dto->successUrl(),
-                'cancel_url'     => $dto->cancelUrl(),
-                'metadata'       => array_merge($dto->metadata, [
-                    'payable_type'       => $dto->payableType,
-                    'payable_id'         => (string) $dto->payableId,
-                    'idempotency_token'  => $idempotencyToken,
-                ]),
-            ]);
+            $session = $this->stripe()->checkout->sessions->create($payload);
         } catch (ApiErrorException $e) {
             Log::error('PaymentGatewayService::createCheckoutSession Stripe API error', [
                 'message'      => $e->getMessage(),
@@ -119,12 +128,16 @@ final class PaymentGatewayService
             throw new \RuntimeException('Respuesta inesperada de la pasarela de pagos.');
         }
 
+        $expiresAtTs = (int) ($session->expires_at ?? 0);
+
         $this->registerPaymentIntent(
             transactionId: $sessionId,
             payableType: $dto->payableType,
             payableId: $dto->payableId,
             expectedAmountCents: $totalCents,
             idempotencyToken: $idempotencyToken,
+            checkoutUrl: $checkoutUrl,
+            expiresAt: $expiresAtTs > 0 ? CarbonImmutable::createFromTimestampUTC($expiresAtTs) : null,
         );
 
         Log::info('PaymentGatewayService::createCheckoutSession sesión creada', [
@@ -149,13 +162,15 @@ final class PaymentGatewayService
         int $payableId,
         int $expectedAmountCents,
         string $idempotencyToken = '',
+        ?string $checkoutUrl = null,
+        ?DateTimeInterface $expiresAt = null,
     ): PaymentWebhookIdempotency {
         $transactionId = trim($transactionId);
         if ($transactionId === '') {
             throw new \InvalidArgumentException('transaction_id vacío');
         }
 
-        return DB::transaction(function () use ($transactionId, $payableType, $payableId, $expectedAmountCents, $idempotencyToken) {
+        return DB::transaction(function () use ($transactionId, $payableType, $payableId, $expectedAmountCents, $idempotencyToken, $checkoutUrl, $expiresAt) {
             $existing = PaymentWebhookIdempotency::query()
                 ->where('transaction_id', $transactionId)
                 ->lockForUpdate()
@@ -168,19 +183,30 @@ final class PaymentGatewayService
             return PaymentWebhookIdempotency::query()->create([
                 'transaction_id'     => $transactionId,
                 'idempotency_token'  => $idempotencyToken !== '' ? $idempotencyToken : null,
+                'checkout_url'       => $checkoutUrl,
                 'payable_type'       => $payableType,
                 'payable_id'         => $payableId,
                 'amount'             => $expectedAmountCents,
                 'status'             => 'pending',
+                'expires_at'         => $expiresAt,
             ]);
         });
+    }
+
+    /**
+     * Sesión Stripe todavía utilizable para ese payable (F1/F2: evita abrir una
+     * segunda sesión con el doble clic y que el cliente pueda pagar dos veces).
+     */
+    public function openCheckoutUrlFor(string $payableType, int $payableId): ?string
+    {
+        return PaymentWebhookIdempotency::liveCheckoutUrlFor($payableType, $payableId);
     }
 
     /**
      * Respaldo idempotente cuando el usuario vuelve de Stripe Checkout.
      * El webhook sigue siendo la vía principal; esto cubre local sin túnel y latencia del webhook.
      *
-     * @return array{ok: bool, duplicate: bool, payable_type: string, payable_id: int, message: string, amount_cents?: int}
+     * @return array{ok: bool, duplicate: bool, retryable: bool, payable_type: string, payable_id: int, message: string, amount_cents?: int}
      */
     public function syncCheckoutSessionIfPaid(string $sessionId): array
     {
@@ -227,7 +253,11 @@ final class PaymentGatewayService
     /**
      * Confirma reserva/pedido tras webhook exitoso de Stripe.
      *
-     * @return array{ok: bool, duplicate: bool, payable_type: string, payable_id: int, message: string}
+     * `retryable` distingue el fallo que se resuelve solo (el llamante debe reintentar) del
+     * definitivo (reintentar no cambia nada). Lo consume PaymentWebhookController para
+     * elegir entre 5xx y 200.
+     *
+     * @return array{ok: bool, duplicate: bool, retryable: bool, payable_type: string, payable_id: int, message: string}
      */
     public function confirmPaymentFromWebhook(
         string $transactionId,
@@ -268,6 +298,7 @@ final class PaymentGatewayService
                 return [
                     'ok'           => true,
                     'duplicate'    => true,
+                    'retryable'    => false,
                     'payable_type' => $intent->payable_type,
                     'payable_id'   => (int) $intent->payable_id,
                     'message'      => 'Webhook ya procesado',
@@ -320,13 +351,26 @@ final class PaymentGatewayService
             };
 
             if (! $confirmed) {
+                $classified = $this->classifyUnconfirmablePayable(
+                    (string) $intent->payable_type,
+                    (int) $intent->payable_id,
+                );
+
                 Log::error('PaymentGatewayService::confirmPaymentFromWebhook payable no confirmable', [
                     'transaction_id' => $transactionId,
                     'payable_type'   => $intent->payable_type,
                     'payable_id'     => $intent->payable_id,
+                    'reason'         => $classified['reason'],
+                    'retryable'      => $classified['retryable'],
                 ]);
 
-                return $this->failure('No se pudo confirmar el payable', $intent->payable_type, (int) $intent->payable_id);
+                return $this->failure(
+                    $classified['message'],
+                    $intent->payable_type,
+                    (int) $intent->payable_id,
+                    retryable: $classified['retryable'],
+                    reason: $classified['reason'],
+                );
             }
 
             $intent->update([
@@ -344,6 +388,7 @@ final class PaymentGatewayService
             return [
                 'ok'           => true,
                 'duplicate'    => false,
+                'retryable'    => false,
                 'payable_type' => $intent->payable_type,
                 'payable_id'   => (int) $intent->payable_id,
                 'message'      => 'Pago confirmado',
@@ -384,6 +429,15 @@ final class PaymentGatewayService
         }
 
         if ($enrollment->payment_status === PaymentStatus::Confirmed->value) {
+            return true;
+        }
+
+        // Cupo extra: el cobro no salta la aprobación. El admin sigue pudiendo denegar.
+        if ($enrollment->status === LessonUser::STATUS_PENDING_EXTRA_MONITOR) {
+            $enrollment->update([
+                'payment_status' => PaymentStatus::Confirmed->value,
+            ]);
+
             return true;
         }
 
@@ -544,15 +598,177 @@ final class PaymentGatewayService
         }
     }
 
-    /** @return array{ok: bool, duplicate: bool, payable_type: string, payable_id: int, message: string} */
-    private function failure(string $message, string $payableType = '', int $payableId = 0): array
+    /**
+     * Reembolso Stripe del cobro original: sesión `cs_…` → PaymentIntent, o
+     * `payment_receipts.stripe_payment_intent_id`. No crea un Checkout nuevo.
+     */
+    public function refundOriginalCheckout(string $payableType, int $payableId): bool
     {
+        $paymentIntentId = $this->resolveOriginalPaymentIntentId($payableType, $payableId);
+        if ($paymentIntentId === null) {
+            Log::error('PaymentGatewayService::refundOriginalCheckout sin PaymentIntent', [
+                'payable_type' => $payableType,
+                'payable_id'   => $payableId,
+            ]);
+
+            return false;
+        }
+
+        try {
+            $this->stripe()->refunds->create(['payment_intent' => $paymentIntentId]);
+        } catch (ApiErrorException $e) {
+            Log::error('PaymentGatewayService::refundOriginalCheckout Stripe API error', [
+                'payable_type'       => $payableType,
+                'payable_id'         => $payableId,
+                'payment_intent_id'  => $paymentIntentId,
+                'message'            => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function resolveOriginalPaymentIntentId(string $payableType, int $payableId): ?string
+    {
+        $intent = PaymentWebhookIdempotency::query()
+            ->where('payable_type', $payableType)
+            ->where('payable_id', $payableId)
+            ->orderByDesc('id')
+            ->first();
+
+        if ($intent !== null) {
+            $sessionId = trim((string) $intent->transaction_id);
+            if ($sessionId !== '') {
+                try {
+                    $session = $this->stripe()->checkout->sessions->retrieve($sessionId, [
+                        'expand' => ['payment_intent'],
+                    ]);
+                    $pi = $session->payment_intent ?? null;
+                    $id = is_object($pi) ? (string) ($pi->id ?? '') : (string) $pi;
+                    if ($id !== '') {
+                        return $id;
+                    }
+                } catch (Throwable $e) {
+                    Log::warning('PaymentGatewayService: sesión Stripe no recuperable al reembolsar', [
+                        'session_id' => $sessionId,
+                        'error'      => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
+
+        $receipt = PaymentReceipt::query()
+            ->forPayable($payableType, $payableId)
+            ->whereNotNull('stripe_payment_intent_id')
+            ->orderByDesc('id')
+            ->first();
+
+        $fromReceipt = trim((string) ($receipt?->stripe_payment_intent_id ?? ''));
+
+        return $fromReceipt !== '' ? $fromReceipt : null;
+    }
+
+    /**
+     * Stripe Checkout solo admite expires_at entre 30 min y 24 h desde ahora.
+     *
+     * @return array{retryable: bool, reason: string, message: string}
+     */
+    private function classifyUnconfirmablePayable(string $payableType, int $payableId): array
+    {
+        if ($payableType === '' || $payableId <= 0) {
+            return [
+                'retryable' => false,
+                'reason'    => 'deleted',
+                'message'   => 'Payable no encontrado',
+            ];
+        }
+
+        try {
+            /** @var \Illuminate\Database\Eloquent\Model|null $model */
+            $model = $payableType::query()->whereKey($payableId)->first();
+        } catch (Throwable) {
+            return [
+                'retryable' => true,
+                'reason'    => 'transient',
+                'message'   => 'No se pudo confirmar el payable',
+            ];
+        }
+
+        if ($model === null) {
+            return [
+                'retryable' => false,
+                'reason'    => 'deleted',
+                'message'   => 'Payable eliminado',
+            ];
+        }
+
+        $status = (string) ($model->getAttribute('status') ?? '');
+        $payment = (string) ($model->getAttribute('payment_status') ?? '');
+        $terminal = [
+            'cancelled',
+            'rejected',
+            'refunded',
+            'cancelled_free',
+            'cancelled_late_lost',
+        ];
+
+        if (in_array($status, $terminal, true) || $payment === 'rejected') {
+            $reason = ($status === 'rejected' || $payment === 'rejected') ? 'rejected' : 'cancelled';
+
+            return [
+                'retryable' => false,
+                'reason'    => $reason,
+                'message'   => 'Payable en estado terminal',
+            ];
+        }
+
         return [
+            'retryable' => true,
+            'reason'    => 'transient',
+            'message'   => 'No se pudo confirmar el payable',
+        ];
+    }
+
+    private function stripeExpiresAtTimestamp(?DateTimeInterface $wanted): ?int
+    {
+        if ($wanted === null) {
+            return null;
+        }
+
+        $now = time();
+        $min = $now + (30 * 60);
+        $max = $now + (24 * 60 * 60);
+        $ts = $wanted->getTimestamp();
+
+        return max($min, min($max, $ts));
+    }
+
+    /**
+     * @param bool $retryable Si el fallo puede resolverse solo, el webhook debe responder 5xx
+     *                        para que Stripe reintente. Si no, reintentar solo genera ruido.
+     * @return array{ok: bool, duplicate: bool, retryable: bool, payable_type: string, payable_id: int, message: string, reason?: string}
+     */
+    private function failure(
+        string $message,
+        string $payableType = '',
+        int $payableId = 0,
+        bool $retryable = false,
+        string $reason = '',
+    ): array {
+        $out = [
             'ok'           => false,
             'duplicate'    => false,
+            'retryable'    => $retryable,
             'payable_type' => $payableType,
             'payable_id'   => $payableId,
             'message'      => $message,
         ];
+        if ($reason !== '') {
+            $out['reason'] = $reason;
+        }
+
+        return $out;
     }
 }

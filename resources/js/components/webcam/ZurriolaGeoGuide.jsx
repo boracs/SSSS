@@ -58,6 +58,39 @@ function FaqAnswerText({ text }) {
 }
 
 /**
+ * Frase de lugar a partir de hechos GEO (sin inventar localidad ni barrio).
+ */
+function placeNarrative(place) {
+    const beach = typeof place.beach_name === "string" ? place.beach_name.trim() : "";
+    const locality = typeof place.locality === "string" ? place.locality.trim() : "";
+    const breakType = typeof place.break_type === "string" ? place.break_type.trim() : "";
+    const orientation =
+        typeof place.orientation_label === "string" ? place.orientation_label.trim() : "";
+
+    const parts = [];
+    if (beach && locality) {
+        parts.push(`La escuela está junto a la ${beach}, en ${locality}.`);
+    } else if (beach) {
+        parts.push(`La escuela está junto a la ${beach}.`);
+    } else if (locality) {
+        parts.push(`En ${locality}.`);
+    }
+
+    const traits = [];
+    if (breakType) {
+        traits.push(breakType);
+    }
+    if (orientation) {
+        traits.push(`orientación ${orientation}`);
+    }
+    if (traits.length > 0) {
+        parts.push(`${traits.join(", ")}.`);
+    }
+
+    return parts.join(" ");
+}
+
+/**
  * Bloque GEO citables Zurriola (props desde ZurriolaGeoFactsService).
  * Sin lógica de negocio: solo render de hechos públicos.
  */
@@ -72,12 +105,13 @@ export default function ZurriolaGeoGuide({ facts = null }) {
     const windows = Array.isArray(facts.summer_windows) ? facts.summer_windows : [];
     const bands = Array.isArray(facts.energy_bands) ? facts.energy_bands : [];
     const faqs = Array.isArray(facts.faqs) ? facts.faqs : [];
-    const meters = school.meters ?? 20;
+    const meters = Number.isFinite(Number(school.meters)) ? Number(school.meters) : null;
+    const placeText = placeNarrative(place);
 
     return (
         <section
             id="zurriola-guia"
-            className="mx-auto max-w-6xl scroll-mt-24 space-y-8 px-4 pb-14 sm:px-6"
+            className="mx-auto max-w-6xl scroll-mt-24 space-y-8 px-4 pb-14 pt-10 sm:px-6 sm:pt-14"
             aria-labelledby="zurriola-geo-heading"
         >
             <div>
@@ -95,50 +129,34 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                 </p>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-cyan-100">Lugar</h3>
-                    <ul className="mt-3 space-y-1.5 text-sm text-slate-300">
-                        <li>
-                            <span className="text-slate-500">Playa:</span> {place.beach_name}
-                        </li>
-                        <li>
-                            <span className="text-slate-500">Localidad:</span> {place.locality}
-                        </li>
-                        <li>
-                            <span className="text-slate-500">Orientación:</span>{" "}
-                            {place.orientation_label}
-                        </li>
-                        <li>
-                            <span className="text-slate-500">Rompiente:</span> {place.break_type}
-                        </li>
-                    </ul>
-                    {place.break_note ? (
-                        <p className="mt-3 text-xs leading-relaxed text-slate-500">{place.break_note}</p>
-                    ) : null}
-                </article>
-
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-cyan-100">
-                        Escuela ↔ playa
+            {placeText || meters !== null || facts.consistency_note ? (
+                <article className="max-w-3xl border-l-2 border-cyan-400/40 pl-4 sm:pl-5">
+                    <h3 className="font-heading text-xl font-bold tracking-tight text-white sm:text-2xl">
+                        A pie de playa
+                        {meters !== null ? (
+                            <>
+                                <span className="font-semibold text-slate-500"> · </span>
+                                <span className="tabular-nums">{meters} m</span>
+                            </>
+                        ) : null}
                     </h3>
-                    <p className="mt-3 text-3xl font-extrabold tracking-tight text-white">
-                        {meters}
-                        <span className="ml-1 text-base font-semibold text-slate-400">m</span>
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-slate-300">{school.label}</p>
+                    {placeText ? (
+                        <p className="mt-3 text-sm leading-relaxed text-slate-300 sm:text-base">
+                            {placeText}
+                        </p>
+                    ) : null}
                     {facts.consistency_note ? (
-                        <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                        <p className="mt-3 text-sm leading-relaxed text-slate-200 sm:text-base">
                             {facts.consistency_note}
                         </p>
                     ) : null}
                 </article>
-            </div>
+            ) : null}
 
             {seasons.length > 0 ? (
                 <div id="zurriola-temporada" className="scroll-mt-24">
                     <h3 className="font-heading text-lg font-bold text-white">Temporada en Zurriola</h3>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
                         {seasons.map((season) => (
                             <article
                                 key={season.id || season.title}
@@ -152,7 +170,7 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                     {windows.length > 0 ? (
                         <div className="mt-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-4">
                             <p className="text-xs font-bold uppercase tracking-wide text-cyan-200">
-                                Franjas orientativas en verano
+                                Mejores horas para surfear en verano
                             </p>
                             <ul className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
                                 {windows.map((w) => (
@@ -258,8 +276,11 @@ export default function ZurriolaGeoGuide({ facts = null }) {
                 </div>
             ) : null}
 
-            {facts.disclaimer ? (
-                <p className="text-xs leading-relaxed text-slate-500">{facts.disclaimer}</p>
+            {facts.disclaimer || place.break_note ? (
+                <div className="space-y-2 text-xs leading-relaxed text-slate-500">
+                    {facts.disclaimer ? <p>{facts.disclaimer}</p> : null}
+                    {place.break_note ? <p>{place.break_note}</p> : null}
+                </div>
             ) : null}
         </section>
     );

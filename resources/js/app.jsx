@@ -1,7 +1,6 @@
 // Importamos los estilos y configuraciones iniciales
 import "../css/app.css";
 import "./bootstrap";
-import axios from 'axios';
 
 // Importamos Inertia y React
 import { createInertiaApp } from "@inertiajs/react";
@@ -50,20 +49,25 @@ createInertiaApp({
                 "Taller/Show",
                 "Productos",
                 "ProductoVer",
-                "Academy/Index",
                 "Rentals/Surfboards/Index",
                 "Rentals/Surfboards/Show",
                 "Pedido",
                 "Pedidos",
-                "PedidoConfirmacion",
                 "Payments/MyInvoices",
+                "Payments/Success",
+                "Payments/FiscalInvoice",
                 "Edit",
+                "User/Dashboard/MyProfile",
+                "User/Dashboard/MyReservations",
+                "Client/Bonos/Index",
+                "Client/Bonos/VipRequired",
+                "PlanesTaquillasClient",
             ];
             const shouldUseLightMode = lightModePages.includes(name);
             document.documentElement.classList.toggle("dark", !shouldUseLightMode);
         }
 
-        // Layout por defecto: PublicLayout (Header único) o GuestLayout (auth sin nav).
+        // Layout por defecto: PublicLayout (Header único) o passthrough en GUEST_SHELL_PAGES (auth sin nav).
         const page = module.default;
         if (!page.layout) {
             page.layout = GUEST_SHELL_PAGES.has(name)

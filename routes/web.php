@@ -61,7 +61,7 @@ Route::get('/nosotros', function (PublicPageSeoService $pageSeo) {
 })->name('nosotros');
 // TIENDA — tienda única oficial S4
 Route::get('/tienda', [TiendaController::class, 'index'])->name('tienda');
-Route::redirect('/tienda-oficial', '/tienda')->name('tienda.oficial');
+Route::redirect('/tienda-oficial', '/tienda', 301)->name('tienda.oficial');
 
 // SEGUNDA MANO — Catálogo público (accesible sin autenticación)
 Route::get('/segunda-mano', [SecondHandBoardController::class, 'index'])->name('second-hand.index');
@@ -241,12 +241,14 @@ Route::get('/servicios/webcams', function (
     \App\Services\SurfConditions\SurfDailyBriefService $surfBriefService,
     \App\Services\SurfConditions\SurfForecastTableService $surfForecastService,
     \App\Services\SurfConditions\ZurriolaGeoFactsService $zurriolaGeoFacts,
+    \App\Services\Taller\TallerArticleService $tallerArticles,
     PublicPageSeoService $pageSeo,
 ) {
     return Inertia::render('Servicios_Webcams', [
         'surfBrief' => $surfBriefService->publicPayload($request),
         'surfForecast' => $surfForecastService->publicPayload(),
         'zurriolaGeo' => $zurriolaGeoFacts->publicPayload(),
+        'tallerGuides' => $tallerArticles->webcamGuideCards(),
         'seo' => $pageSeo->webcams()->toArray(),
     ]);
 })->name('servicios.webcams');
@@ -257,12 +259,12 @@ Route::get('/servicios/webcams/tiempo', \App\Http\Controllers\ZurriolaWeatherCon
     ->name('servicios.webcams.weather');
 Route::get('/servicios/webcams/forecast-detallado', \App\Http\Controllers\SurfDetailedForecastController::class)
     ->name('servicios.webcams.forecast_detailed');
-Route::redirect('/webcams', '/servicios/webcams');
+Route::redirect('/webcams', '/servicios/webcams', 301);
 // Enlaces legacy del carrusel home (OpcionesIntro)
-Route::redirect('/clases-de-surf', '/servicios/surf');
-Route::redirect('/surftrips', '/servicios/surf-trips');
-Route::redirect('/surfskate', '/servicios/surf-skate');
-Route::redirect('/surfskate/guia', '/servicios/surf-skate/guia-equipamiento');
+Route::redirect('/clases-de-surf', '/servicios/surf', 301);
+Route::redirect('/surftrips', '/servicios/surf-trips', 301);
+Route::redirect('/surfskate', '/servicios/surf-skate', 301);
+Route::redirect('/surfskate/guia', '/servicios/surf-skate/guia-equipamiento', 301);
 Route::redirect('/taquillas/planes-y-cuotas', '/servicios/taquillas', 301);
 Route::redirect('/taquillas', '/servicios/taquillas', 301);
 
@@ -393,7 +395,11 @@ Route::middleware(['auth', 'verificarTaquilla'])->group(function () {
     });
 
     // PEDIDOS (acciones que requieren taquilla)
-    Route::post('/crear-pedido', [PedidoController::class, 'crear'])->name('crear.pedido');
+    // Defensa en profundidad del doble cargo: la serialización real está en
+    // CreateStoreCheckoutAction (lock del carrito); esto solo corta ráfagas.
+    Route::post('/crear-pedido', [PedidoController::class, 'crear'])
+        ->middleware('throttle:6,1')
+        ->name('crear.pedido');
     // La ruta de confirmación de pedido se gestionaría dentro del POST de 'crear-pedido'
 
     // CLIENT PANEL DE TAQUILLAS (REQUIERE TAQUILLA)
@@ -460,6 +466,8 @@ Route::middleware(['auth', 'admin', 'admin.verified', 'can:manage-vips'])->group
         ->name('taquilla.usuarios.baja-solicitada');
     Route::patch('/taquilla/admin/usuarios/{user}/confirmar-baja', [PlanesTaquillasController::class, 'confirmarBaja'])
         ->name('taquilla.usuarios.confirmar-baja');
+    Route::post('/taquilla/admin/usuarios/{user}/alta', [PlanesTaquillasController::class, 'altaTaquilla'])
+        ->name('taquilla.usuarios.alta');
     Route::post('/taquilla/admin/planes', [PlanesTaquillasController::class, 'storePlan'])->name('taquilla.planes.store');
     Route::put('/taquilla/admin/planes/{plan}', [PlanesTaquillasController::class, 'updatePlan'])->name('taquilla.planes.update');
     Route::patch('/taquilla/admin/planes/{plan}/toggle-active', [PlanesTaquillasController::class, 'togglePlanActive'])->name('taquilla.planes.toggle-active');

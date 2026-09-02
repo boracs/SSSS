@@ -33,7 +33,7 @@ class UserFactory extends Factory
              // Aquí agregas los campos adicionales de tu modelo de Usuario
             'role' => $this->faker->randomElement(['user', 'admin']),
             'telefono' => $this->faker->phoneNumber,
-            'numeroTaquilla' => $this->faker->numberBetween(1, 100),  // Suponiendo que hay 100 taquillas
+            'numeroTaquilla' => null,
             'apellido' => $this->faker->lastName, 
         ];
     }

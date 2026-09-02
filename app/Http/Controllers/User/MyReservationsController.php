@@ -57,6 +57,21 @@ class MyReservationsController extends Controller
             return back()->with('info', 'Esta clase ya está pagada.');
         }
 
+        if ($enrollment->status === LessonUser::STATUS_PENDING_EXTRA_MONITOR) {
+            return back()->with('error', 'Esta plaza espera la aprobación del club. El pago se abre cuando te confirmen el cupo extra.');
+        }
+
+        if (($enrollment->payment_method ?? '') === 'bono_vip') {
+            $hasBono = \App\Models\UserBono::query()
+                ->where('user_id', $user->id)
+                ->where('status', \App\Models\UserBono::STATUS_CONFIRMED)
+                ->where('clases_restantes', '>', 0)
+                ->exists();
+            if ($hasBono) {
+                return back()->with('error', 'Esta plaza la cubre tu bono VIP. No hace falta pagar con tarjeta.');
+            }
+        }
+
         $lesson = $enrollment->lesson;
         if ($lesson === null) {
             return back()->with('error', 'No se encontró la clase asociada.');

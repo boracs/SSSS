@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('academy:audit-lesson-credits')->everyFiveMinutes();
+// Academia: libera plazas de reservas pendientes sin comprobante (antes corría inline por request).
+Schedule::command('academy:cleanup')->everyFiveMinutes();
 // Alquiler: devuelve al inventario las tablas no recogidas (margen en config/rentals.php).
 Schedule::command('rentals:release-no-shows')->everyFiveMinutes();
 Schedule::command('autocoach:cleanup-uploads')->everyFiveMinutes();
@@ -14,8 +16,16 @@ Schedule::command('photos:cancel-expired')->everyFiveMinutes();
 Schedule::command('store:release-unpaid')->everyFiveMinutes();
 // Taquilla: borra cuotas pendientes cuyo checkout Stripe se abandonó.
 Schedule::command('taquilla:purge-expired-pending')->everyFiveMinutes();
+// Taquilla: sella altas programadas cuyo día D ya llegó.
+Schedule::command('taquilla:apply-scheduled-altas')->dailyAt('03:10');
+// Taquilla: alinea el caché de vigencia con MAX(periodo_fin) confirmado (incluye prepagos futuros).
+Schedule::command('taquilla:sync-expiry-cache')->dailyAt('03:20');
 // Alquiler: cancela reservas pendientes si no se pagó el depósito online a tiempo.
 Schedule::command('rentals:expire-pending-unpaid')->everyFiveMinutes();
+// Pagos: red de seguridad si el webhook de Stripe nunca llegó o no pudo confirmarse.
+Schedule::command('payments:sync-stripe-session')->everyFiveMinutes();
+// Subastas: si el ganador no paga a tiempo, se anula la adjudicación (Ended sin ganador).
+Schedule::command('auctions:expire-unpaid')->everyFiveMinutes();
 // Parte Zurriola: cada 6 h. Requiere crontab `* * * * * php artisan schedule:run` en servidor.
 Schedule::command('surf:generate-daily-brief', ['--force' => true])->everySixHours();
 

@@ -45,7 +45,10 @@
 | **Canónico** | Versión oficial / molde de referencia. Las pantallas lo reutilizan; los detalles (color, texto) van uno a uno | [03 §3.8](03-react-js.md) |
 | **AccordionTrigger** | Botón canónico del acordeón (clic → abre/cierra). No es trigger de MySQL ni Event de Laravel | [03 §3.8–3.9](03-react-js.md) |
 | **Trigger (frontend)** | Gatillo de la UI: clic, hover, submit. Ejecuta `onClick` / `onToggle` | [03 §3.9](03-react-js.md) |
-| **Trigger (BD)** | Código en MySQL que corre solo al INSERT/UPDATE/DELETE. No es un botón | [03 §3.9](03-react-js.md) |
+| **Trigger (BD)** | Código en MySQL que corre solo al INSERT/UPDATE/DELETE. No es un botón | [03 §3.9](03-react-js.md) + [01 §1.8](01-arquitectura.md) |
+| **Opus / Sonnet / Grok** | Modelos de IA (cerebros): Opus y Sonnet = Claude de Anthropic (el grande/potente y el equilibrado); Grok = xAI. **Composer** no es un modelo, es un modo de Cursor (trabajo multiarchivo) | [05 §5.17](05-flujos-de-trabajo.md) |
+| **Índice (BD)** | “Índice de libro”: MySQL localiza filas del `WHERE`/`ORDER` sin escanear toda la tabla | [01 §1.8](01-arquitectura.md) |
+| **Función / procedimiento SQL** | Código que vive en MySQL. No sustituye a un Service de Laravel | [01 §1.8](01-arquitectura.md) |
 | **Virtual DOM** | Copia en memoria del DOM; React aplica solo los cambios | [03 §3.5](03-react-js.md) |
 | **Async/await** | Esperar a que termine una operación de red antes de seguir | [03 §3.6](03-react-js.md) |
 | **TicketBAI** | Factura fiscal vasca (identificador + QR + Hacienda Foral). No es el recibo de Stripe | [07 §7.1–7.4](07-pagos-facturacion.md) |
@@ -62,6 +65,9 @@
 | **Texto plano** | Texto puro sin formato ni estructura (como el bloc de notas) — lo que mejor procesa un LLM para redactar | [05 §5.10](05-flujos-de-trabajo.md) |
 | **Cloudflare Tunnel** | Pasadizo de tu PC a Cloudflare: URL pública (`xxx.trycloudflare.com`) que reenvía peticiones a tu `localhost:8000` sin abrir puertos del router. Amigos la abren y prueban tu app local | rule `tunnel-share-modes.mdc` + memoria `cloudflare-tunnel-lecciones` |
 | **Bootstrap (término)** | "Arrancar / poner en marcha un sistema desde cero". NO es la librería CSS (esa solo es un caso particular). Ej. local: carpeta `bootstrap/app.php` de Laravel | [05 §5.12](05-flujos-de-trabajo.md) |
+| **Rama (Git)** | Línea de tiempo del proyecto entero, no un cajón de archivos. Todas las ramas tienen los mismos ficheros | [05 §5.15](05-flujos-de-trabajo.md) |
+| **Merge** | Juntar dos líneas de tiempo. Git suele combinar solo; no hace falta que cada rama toque archivos distintos | [05 §5.15](05-flujos-de-trabajo.md) |
+| **Conflicto (Git)** | Las dos ramas cambiaron las mismas líneas (o una borró y la otra editó). Git para y tú eliges. El resto se mezcla solo | [05 §5.15](05-flujos-de-trabajo.md) |
 
 ---
 

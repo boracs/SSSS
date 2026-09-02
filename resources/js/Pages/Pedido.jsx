@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Head, usePage, Link } from "@inertiajs/react";
+import { Head, usePage } from "@inertiajs/react";
 import {
     CheckCircle2,
     Package,
@@ -13,9 +13,10 @@ import {
     ArrowLeft,
     LayoutDashboard,
 } from "lucide-react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { formatEur } from "@/utils/money";
 import StoreFiscalInvoiceActions from "@/components/StoreFiscalInvoiceActions";
+import S4Button from "@/components/S4Button";
 
 const formatDate = (value) => {
     if (!value) return null;
@@ -87,11 +88,11 @@ const ConfirmacionPedido = () => {
 
     if (!pedido) {
         return (
-            <Layout1>
+            <PageShell variant="light">
                 <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-lg text-slate-600">
                     No se pudo cargar el pedido o no existe.
                 </div>
-            </Layout1>
+            </PageShell>
         );
     }
 
@@ -99,9 +100,9 @@ const ConfirmacionPedido = () => {
     const fechaPedido = formatDate(pedido.created_at) || "Pendiente";
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <Head title={`Pedido #${pedido.id}`} />
-            <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+            <div className="px-4 py-10 sm:px-6">
                 <div className="mx-auto w-full max-w-3xl">
                     {/* Cabecera */}
                     <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
@@ -117,7 +118,7 @@ const ConfirmacionPedido = () => {
                                     <CheckCircle2 className="h-8 w-8" />
                                 )}
                             </div>
-                            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                            <h1 className="font-heading text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
                                 {isAdmin ? `Detalle del pedido #${pedido.id}` : "¡Pedido confirmado!"}
                             </h1>
                             <p className="max-w-md text-sm text-slate-500">
@@ -265,44 +266,48 @@ const ConfirmacionPedido = () => {
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                         {isAdmin ? (
                             <>
-                                <Link
+                                <S4Button
                                     href={route("gestor.pedidos")}
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                    variant="primary"
+                                    className="flex-1"
                                 >
                                     <LayoutDashboard className="h-4 w-4" />
                                     Volver al gestor de pedidos
-                                </Link>
-                                <button
+                                </S4Button>
+                                <S4Button
                                     type="button"
+                                    variant="secondary"
+                                    className="flex-1"
                                     onClick={() => window.history.back()}
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
                                 >
                                     <ArrowLeft className="h-4 w-4" />
                                     Volver atrás
-                                </button>
+                                </S4Button>
                             </>
                         ) : (
                             <>
-                                <Link
+                                <S4Button
                                     href={route("tienda")}
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800"
+                                    variant="primary"
+                                    className="flex-1"
                                 >
                                     <ShoppingBag className="h-4 w-4" />
                                     Seguir comprando
-                                </Link>
-                                <Link
+                                </S4Button>
+                                <S4Button
                                     href={route("pedidos")}
-                                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                                    variant="secondary"
+                                    className="flex-1"
                                 >
                                     <Package className="h-4 w-4" />
                                     Ver mis pedidos
-                                </Link>
+                                </S4Button>
                             </>
                         )}
                     </div>
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 };
 

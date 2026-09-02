@@ -7,6 +7,7 @@ namespace App\Services\Chatbot;
 use App\Models\PackBono;
 use App\Models\PlanTaquilla;
 use App\Support\AcademyContact;
+use App\Support\AcademyLocation;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Cache;
  */
 final class S4BusinessContextService
 {
-    private const CACHE_KEY = 'chatbot:s4-business-context:v15';
+    private const CACHE_KEY = 'chatbot:s4-business-context:v16';
 
     private const CACHE_TTL_SECONDS = 300;
 
@@ -123,6 +124,11 @@ PROMPT;
         return implode("\n", $lines);
     }
 
+    public function privateLessonPricesFaqText(): string
+    {
+        return $this->knowledge->privateLessonPricesFaqText();
+    }
+
     /**
      * @deprecated alias — usar {@see self::surfPricingFaqText()}
      */
@@ -167,7 +173,7 @@ PROMPT;
         $hours = trim((string) config('services.academy.opening_hours', ''));
         $gettingHere = trim((string) config('services.academy.getting_here', ''));
         $email = AcademyContact::contactEmail();
-        $mapsUrl = trim((string) config('services.academy.maps_url', ''));
+        $mapsUrl = AcademyLocation::mapsUrl();
         $instagram = trim((string) config('services.academy.instagram_handle', ''));
 
         $lines = ['**Dónde estamos y cómo llegar:**', ''];
@@ -188,7 +194,7 @@ PROMPT;
         if ($instagram !== '') {
             $lines[] = '- **Instagram:** '.$instagram;
         }
-        if ($mapsUrl !== '' && ! str_contains($mapsUrl, 'TuUbicacion')) {
+        if ($mapsUrl !== '') {
             $lines[] = '- **Mapa:** '.$mapsUrl;
         }
 
@@ -203,8 +209,8 @@ PROMPT;
         $lines = [];
 
         $lines[] = '## Logística y contacto';
-        $lines[] = '- Ubicación: '.trim((string) config('services.academy.location_label', 'Playa de Zurriola, Donostia'));
-        $lines[] = '- Cómo llegar: '.trim((string) config('services.academy.getting_here', 'Llega 10–15 min antes; punto de encuentro en Zurriola junto al club.'));
+        $lines[] = '- Ubicación: '.trim((string) config('services.academy.location_label', 'Paseo Colón 41 bajo, Gros · Donostia. Clases en playa de Zurriola.'));
+        $lines[] = '- Cómo llegar: '.trim((string) config('services.academy.getting_here', 'Sede: Paseo Colón 41 bajo (Gros). El día de clase, llega 10–15 minutos antes al punto de encuentro en Zurriola.'));
         $lines[] = '- Horario: '.trim((string) config('services.academy.opening_hours', 'Variable según temporada; confirmar por WhatsApp.'));
         $email = AcademyContact::contactEmail();
         if ($email !== '') {
@@ -214,8 +220,8 @@ PROMPT;
         if ($instagram !== '') {
             $lines[] = '- Instagram: '.$instagram;
         }
-        $mapsUrl = trim((string) config('services.academy.maps_url', ''));
-        if ($mapsUrl !== '' && ! str_contains($mapsUrl, 'TuUbicacion')) {
+        $mapsUrl = AcademyLocation::mapsUrl();
+        if ($mapsUrl !== '') {
             $lines[] = '- Mapa: '.$mapsUrl;
         }
         $lines[] = '';

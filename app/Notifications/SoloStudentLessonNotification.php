@@ -28,7 +28,7 @@ class SoloStudentLessonNotification extends Notification implements ShouldQueue
             ->greeting('¡Hola ' . ($notifiable->nombre ?? $notifiable->name ?? '') . '!')
             ->line('Eres el único alumno en la clase del ' . $this->lesson->starts_at->format('d/m/Y \a \l\a\s H:i') . '.')
             ->line('Disfrutarás de una sesión particular. Coste: 2 créditos.')
-            ->salutation('San Sebastian Surf School · S4');
+            ->salutation('San Sebastián Surf School · S4');
     }
 
 }

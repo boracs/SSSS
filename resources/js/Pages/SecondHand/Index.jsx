@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "../../components/seo/SeoHead";
 import SafeImage from "../../components/SafeImage";
 import WhatsAppIcon from "../../components/icons/WhatsAppIcon";
@@ -151,7 +151,7 @@ export default function SecondHandIndex({
 
     const emptyStockWhatsapp = resolveAcademyWhatsappUrl(
         null,
-        "Hola! ¿Cuándo tendréis tablas de segunda mano disponibles?",
+        "¡Hola! ¿Cuándo tendréis tablas de segunda mano disponibles?",
         pageProps?.academyWhatsappUrl,
     );
     const browseWhatsapp = resolveAcademyWhatsappUrl(
@@ -195,14 +195,14 @@ export default function SecondHandIndex({
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <SeoHead seo={seo} />
             <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-orange-400">
-                        Tablas segunda mano · San Sebastian Surf School
+                        Tablas segunda mano · San Sebastián Surf School
                     </p>
-                    <h1 className="mt-2 text-3xl font-extrabold text-white sm:text-4xl">
+                    <h1 className="mt-2 font-heading text-3xl font-extrabold text-white sm:text-4xl">
                         Tablas de segunda mano
                     </h1>
                     <p className="mt-2 max-w-2xl text-sm text-slate-400">
@@ -328,7 +328,7 @@ export default function SecondHandIndex({
                     </div>
                 )}
             </div>
-        </Layout1>
+        </PageShell>
     );
 }
 

@@ -13,6 +13,9 @@
 - 5.8 Cuándo abrir un chat nuevo (el "circulito")
 - 5.9 El aviso de reinicio de chat + ritual "guardar y reiniciar"
 - 5.14 Las 4 terminales locales (Vite, cola, schedule, serve)
+- 5.15 Ramas Git: no «reparten archivos»; el merge casi siempre es automático
+- 5.16 El pre-vuelo: comprobar antes de actuar (checklist de la IA)
+- 5.17 Modelos vs modos: Opus, Sonnet, Grok, Composer (quién es quién)
 
 ---
 
@@ -184,4 +187,32 @@
 
 ---
 
-> **Por ampliar:** 5.15+ (cómo hacer code review, cómo leer logs, cómo testear…).
+## 5.15 Ramas Git: no «reparten archivos»
+
+- **Qué es:** una rama es una **línea de tiempo** del proyecto entero, no un cajón de archivos. `main` y `production` tienen *todos* los ficheros. Git no pide que cada rama toque cosas distintas.
+- **Por qué importa:** el miedo a los conflictos suele venir de imaginar dos personas reescribiendo el mismo archivo a ciegas. Git recuerda las dos versiones y, en la mayoría de merges, las junta solo: un archivo creado en A aparece; uno borrado en B desaparece; cambios en sitios distintos del mismo archivo se combinan.
+- **Conflicto de verdad:** solo si las dos ramas cambiaron **las mismas líneas** (o una las borró y la otra las editó). Entonces Git para y te pide elegir. Molesta, pero es mejor que pisar trabajo a ciegas.
+- **En tu proyecto:** ahora solo hay `main` (cuaderno). La rama `production` del VPS **no es un segundo sitio para desarrollar**: nace tarde, recibe merges de `main` ya probado y casi nunca diverge. El dolor de equipos (dos features largas en paralelo) no es tu flujo.
+- **Para recordar:** *rama = foto del tiempo, no dueña de archivos. Conflicto = mismas líneas a la vez. Tú evitas el lío no abriendo dos ramas de desarrollo eternas.*
+
+---
+
+## 5.16 El pre-vuelo: comprobar antes de actuar (checklist de la IA)
+
+- **Qué es:** la comprobación que hace la IA (o tú) **antes de responder o tocar archivos**: asegurarse de que tiene el mapa, los archivos reales y el estado del proyecto. Es el repaso del piloto antes de despegar, aunque el vuelo dure 5 minutos.
+- **Por qué importa:** sin pre-vuelo la IA responde de memoria → inventa rutas y dice «sí» sin cita (ver 5.11). Con pre-vuelo, sus respuestas son verificables y no pisa trabajo de la otra IA (anti-pisotón).
+- **En tu proyecto:** es el mismo principio de la «Regla de oro» de `COORDINACION.md` (nadie toca nada sin analizar antes), ahora exigido al agente Backend Senior en §6.0: 1) leer el estado compartido, 2) abrir los archivos reales implicados, 3) leer los tests del área (Pest), 4) recién entonces opinar con citas `archivo:línea`.
+- **Para recordar:** *piloto que no repasa el plan antes de despegar vuela a ciegas; IA que no lee mapa + archivos + tests antes de responder, alucina.*
+
+---
+
+> **Por ampliar:** 5.18+ (cómo hacer code review, cómo leer logs, cómo testear…).
+
+---
+
+## 5.17 Modelos vs modos: Opus, Sonnet, Grok, Composer (quién es quién)
+
+- **Qué es:** al elegir una IA en Cursor se mezclan dos cosas distintas: **modelos** (cerebros) y **modos** (formas de usarlos). Opus y Sonnet son **modelos de Anthropic** (la familia Claude): Opus es el grande y más potente (más caro y lento), Sonnet es el equilibrado (velocidad/calidad) y suele ser el modelo por defecto en Cursor. Grok es **el modelo de xAI** (empresa de Elon Musk). **Composer no es una IA**: es un **modo de Cursor** (trabajo sobre varios archivos a la vez, "modo agente"); dentro de él corre el modelo que tú elijas (Opus, Sonnet, Grok, GPT…).
+- **Por qué importa:** saber quién es quién te permite comparar de verdad (tu método 5.3). Comparar "Opus vs Grok" es comparar dos cerebros distintos con el mismo modo; "Composer vs Chat" sería comparar dos modos con el mismo cerebro. También explica la diferencia de precio/velocidad (Opus cobra más por ser más listo, no por "estar de moda").
+- **En tu proyecto:** en la verificación de la auditoría Fase 1 lanzaste el mismo prompt en dos chats de Cursor, uno con **Claude Opus** y otro con **Grok**: dos cerebros distintos ante la misma tarea, y ambos confirmaron los mismos hallazgos (0 descartados). Eso es una comparación limpia: mismo prompt + mismo contexto + modelos distintos.
+- **Para recordar:** *Opus/Sonnet = hermanos Claude (Anthropic), Grok = xAI, Composer = modo de Cursor, no un cerebro. Para comparar IAs, cambia el modelo manteniendo el modo y el prompt.*

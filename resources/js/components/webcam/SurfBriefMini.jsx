@@ -54,7 +54,7 @@ function ForecastMiniPreview({ waveM }) {
         <Link
             href={parteForecastHref}
             aria-label="Ir al forecast en la página del Parte S4"
-            className="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left shadow-inner transition hover:border-cyan-500/40 hover:ring-1 hover:ring-cyan-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            className="group relative block w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950 text-left shadow-inner transition hover:border-cyan-500/40 hover:ring-1 hover:ring-cyan-400/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-s4-cyan"
         >
             <div className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-950 to-transparent sm:w-20" />
             <div className="px-2.5 py-2 sm:px-3">
@@ -101,14 +101,13 @@ function ForecastMiniPreview({ waveM }) {
     );
 }
 
-function LevelParagraphs({ sections, signalStatus }) {
+function LevelParagraphs({ sections }) {
     if (!sections) return null;
     const hasAny = SURF_LEVELS.some((lvl) => sections[lvl.level]);
     if (!hasAny) return null;
     return (
         <SurfBriefLevelBlocks
             summarySections={sections}
-            signalStatus={signalStatus}
             showGuideLink
         />
     );
@@ -178,14 +177,19 @@ export default function SurfBriefMini({ brief }) {
                             <BookOpenCheck className="h-3 w-3" aria-hidden />
                             Resumen de expertos
                         </span>
+                    {(signalMeta || sections?.aviso) ? (
                         <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold ring-1 ${badgeTone}`}
+                            className={`inline-flex max-w-full items-center rounded-full px-2.5 py-1 text-[10px] font-bold leading-none ring-1 ${badgeTone}`}
                         >
-                            {badgeLabel}
-                            {brief.signal?.is_manual ? (
-                                <span className="ml-1 opacity-80">· S4</span>
-                            ) : null}
+                            {[
+                                badgeLabel,
+                                brief.signal?.is_manual ? "S4" : null,
+                                sections?.aviso,
+                            ]
+                                .filter(Boolean)
+                                .join(" · ")}
                         </span>
+                    ) : null}
                     </div>
                 </div>
 
@@ -234,18 +238,7 @@ export default function SurfBriefMini({ brief }) {
 
                         {expanded ? (
                             <div className="mt-1 border-t border-slate-100 pt-1">
-                                {sections?.aviso ? (
-                                    <p
-                                        className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 ring-1 ring-amber-200"
-                                        role="alert"
-                                    >
-                                        {sections.aviso}
-                                    </p>
-                                ) : null}
-                                <LevelParagraphs
-                                    sections={sections}
-                                    signalStatus={brief.signal?.status}
-                                />
+                                <LevelParagraphs sections={sections} />
                                 <div className="mt-3">
                                     <SurfBriefParteCta
                                         signalStatus={brief.signal?.status}

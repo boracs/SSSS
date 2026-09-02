@@ -7,6 +7,7 @@ const VARIANT_CLASS = {
     secondary: "s4-btn-secondary",
     onMedia: "s4-btn-on-media",
     ghost: "s4-btn-ghost",
+    accent: "s4-btn-accent",
 };
 
 const SIZE_CLASS = {
@@ -37,7 +38,21 @@ export default function S4Button({
     );
 
     if (href) {
-        if (external) {
+        const isExternal =
+            external ||
+            href.startsWith("http") ||
+            href.startsWith("mailto:") ||
+            href.startsWith("tel:");
+
+        if (isExternal) {
+            return (
+                <a href={href} className={classes} {...props}>
+                    {children}
+                </a>
+            );
+        }
+
+        if (href.startsWith("#")) {
             return (
                 <a href={href} className={classes} {...props}>
                     {children}

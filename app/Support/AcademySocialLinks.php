@@ -18,7 +18,7 @@ final class AcademySocialLinks
         if ($instagram !== null) {
             $links[] = [
                 'id' => 'instagram',
-                'label' => 'Instagram — San Sebastian Surf School',
+                'label' => 'Instagram — San Sebastián Surf School',
                 'href' => $instagram,
             ];
         }
@@ -37,7 +37,7 @@ final class AcademySocialLinks
 
             $links[] = [
                 'id' => $id,
-                'label' => "{$name} — San Sebastian Surf School",
+                'label' => "{$name} — San Sebastián Surf School",
                 'href' => $href,
             ];
         }

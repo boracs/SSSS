@@ -65,6 +65,22 @@ final class RequestPrivateLessonAction
             $participants,
             $quote,
         ) {
+            $duplicate = $this->activePrivateRequestExists($user, $guestEmail, $startsAt, $endsAt);
+            if ($duplicate !== null) {
+                return ['ok' => false, 'message' => $duplicate];
+            }
+
+            // Serializa el evaluate+create frente a otras particulares de la
+            // misma franja. Dos solapadas siguen permitidas (pool de 2 monitores).
+            Lesson::query()
+                ->where('modality', Lesson::MODALITY_PARTICULAR)
+                ->where('status', Lesson::STATUS_SCHEDULED)
+                ->where('starts_at', '<', $endsAt)
+                ->where('ends_at', '>', $startsAt)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get(['id']);
+
             // Cupo/monitor: la particular ocupa 1 plaza de agenda (un monitor
             // atiende al grupo); el nº de personas solo afecta a la tarifa.
             $evaluation = $this->availabilityService->evaluate($startsAt, $endsAt, 1, 0);
@@ -120,5 +136,45 @@ final class RequestPrivateLessonAction
                 'message' => 'Clase particular registrada. Completando pago…',
             ];
         });
+    }
+
+    /**
+     * Mismo criterio que RequestLessonAction::activeEnrollmentExists, pero
+     * la particular crea la Lesson: la clave es socio/email + franja.
+     */
+    private function activePrivateRequestExists(
+        ?User $user,
+        ?string $guestEmail,
+        $startsAt,
+        $endsAt,
+    ): ?string {
+        $activeStatuses = LessonUser::activeSeatStatuses();
+
+        $query = LessonUser::query()
+            ->whereIn('status', $activeStatuses)
+            ->whereHas('lesson', function ($lessons) use ($startsAt, $endsAt): void {
+                $lessons->where('modality', Lesson::MODALITY_PARTICULAR)
+                    ->where('status', Lesson::STATUS_SCHEDULED)
+                    ->where('starts_at', $startsAt)
+                    ->where('ends_at', $endsAt);
+            });
+
+        if ($user !== null) {
+            $exists = (clone $query)->where('user_id', $user->id)->exists();
+
+            return $exists ? 'Ya tienes una solicitud o plaza activa en esta franja.' : null;
+        }
+
+        if ($guestEmail === null || trim($guestEmail) === '') {
+            return null;
+        }
+
+        $exists = $query
+            ->whereNull('user_id')
+            ->where('is_admin_guest', false)
+            ->whereRaw('LOWER(guest_email) = ?', [mb_strtolower(trim($guestEmail))])
+            ->exists();
+
+        return $exists ? 'Ya hay una solicitud activa con ese email en esta franja.' : null;
     }
 }

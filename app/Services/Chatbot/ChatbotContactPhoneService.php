@@ -108,7 +108,7 @@ final class ChatbotContactPhoneService
         }
 
         $case = $interaction->case_reference ?? 'S4';
-        $message = "Hola, te escribimos desde San Sebastian Surf School respecto a tu caso {$case}.";
+        $message = "Hola, te escribimos desde San Sebastián Surf School respecto a tu caso {$case}.";
 
         return AcademyContact::urlForPhone($phone, $message);
     }

@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import PageShell from "@/layouts/PageShell";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
 import ContactChannelsModal from "../components/ContactChannelsModal";
+import S4Button from "@/components/S4Button";
 import {
     BarChart3,
     Camera,
@@ -14,6 +16,15 @@ import {
     Users,
     Waves,
 } from "lucide-react";
+
+const ACCENT_LG =
+    "bg-gradient-to-r from-pink-500 to-amber-400 px-6 py-3 font-bold text-white shadow-lg hover:brightness-110";
+const OUTLINE_GLASS_BLUR_LG =
+    "border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur-sm hover:bg-white/10";
+const CONTACT_TEAL =
+    "min-h-11 w-full rounded-xl bg-[#0f5f74] px-5 font-bold text-white ring-1 ring-cyan-400/30 hover:bg-[#0d5163] hover:brightness-100 sm:w-auto";
+const OUTLINE_CARD =
+    "min-h-11 w-full rounded-xl border border-white/20 bg-white/5 px-5 font-semibold text-slate-100 hover:border-cyan-400/40 hover:bg-white/10 hover:text-white sm:w-auto";
 
 const STEPS = [
     {
@@ -37,7 +48,7 @@ const BENEFITS = [
     {
         icon: Target,
         title: "Corrección precisa",
-        text: "Lo que sientes en el agua no siempre coincide con lo que haces. El video no miente: acelera tu curva de aprendizaje.",
+        text: "Lo que sientes en el agua no siempre coincide con lo que haces. El vídeo no miente: acelera tu curva de aprendizaje.",
     },
     {
         icon: TrendingUp,
@@ -69,7 +80,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
     const [contactOpen, setContactOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2a33] to-slate-950 text-white">
+        <PageShell variant="teal" withGradient>
             <SeoHead seo={seo} />
             {contactOpen ? (
                 <ContactChannelsModal
@@ -87,7 +98,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                         <Clapperboard className="h-3.5 w-3.5" />
                         Videograbaciones · San Sebastián Surf School
                     </div>
-                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Videograbaciones que convierten cada ola en{" "}
                         <span className="bg-gradient-to-r from-emerald-300 to-cyan-300 bg-clip-text text-transparent">
                             progreso real
@@ -100,19 +111,18 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                         deje huella en tu técnica y en tu confianza.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Link
-                            href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-amber-400 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:brightness-110"
-                        >
+                        <S4Button href={route("contacto")} variant="accent" size="lg" className={ACCENT_LG}>
                             <Camera className="h-4 w-4" />
                             Reservar videograbación
-                        </Link>
-                        <Link
+                        </S4Button>
+                        <S4Button
                             href={route("servicios.surf")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                            variant="secondary"
+                            size="lg"
+                            className={OUTLINE_GLASS_BLUR_LG}
                         >
                             Ver clases de surf
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </section>
@@ -121,7 +131,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                 <div className="overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-cyan-950/40">
                     <img
                         src="/img/videograbacion-analisis.png"
-                        alt="Sesión de análisis de video de surf con monitor e indicadores técnicos en pantalla"
+                        alt="Sesión de análisis de vídeo de surf con monitor e indicadores técnicos en pantalla"
                         className="h-auto w-full object-cover"
                     />
                 </div>
@@ -140,7 +150,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                             Tu surfing, bajo el microscopio del experto
                         </h2>
                         <p className="mt-4 leading-relaxed text-slate-300">
-                            La videograbación es mucho más que un video bonito. Es una herramienta de coaching de alto
+                            La videograbación es mucho más que un vídeo bonito. Es una herramienta de coaching de alto
                             rendimiento: registramos tu sesión, la proyectamos con software de análisis y un monitor S4
                             te guía sobre qué ajustar en la próxima ola.
                         </p>
@@ -182,7 +192,7 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                     <div className="overflow-hidden rounded-3xl border border-cyan-900/40 shadow-xl">
                         <img
                             src="/img/videograbacion-lab.png"
-                            alt="Laboratorio de surf: análisis de video, zona social y entrenamiento de rendimiento"
+                            alt="Laboratorio de surf: análisis de vídeo, zona social y entrenamiento de rendimiento"
                             className="h-auto w-full object-cover"
                         />
                     </div>
@@ -229,24 +239,26 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                             <BarChart3 className="h-8 w-8 text-orange-400" />
                             <h3 className="mt-3 text-xl font-bold text-white">¿Listo para dar el salto?</h3>
                             <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                                Complementa tu videograbación con clases en academía o reserva una sesión suelta. Nuestro
+                                Complementa tu videograbación con clases en academia o reserva una sesión suelta. Nuestro
                                 equipo te asesora sobre el pack que mejor encaja con tu nivel.
                             </p>
                             <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                                <button
+                                <S4Button
                                     type="button"
+                                    variant="primary"
+                                    className={CONTACT_TEAL}
                                     onClick={() => setContactOpen(true)}
-                                    className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#0f5f74] px-5 text-sm font-bold text-white ring-1 ring-cyan-400/30 transition hover:bg-[#0d5163] sm:w-auto"
                                 >
                                     <Waves className="h-4 w-4 shrink-0" aria-hidden />
                                     Contactar ahora
-                                </button>
-                                <Link
+                                </S4Button>
+                                <S4Button
                                     href={route("servicios.surf")}
-                                    className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-white/20 bg-white/5 px-5 text-sm font-semibold text-slate-100 transition hover:border-cyan-400/40 hover:bg-white/10 hover:text-white sm:w-auto"
+                                    variant="secondary"
+                                    className={OUTLINE_CARD}
                                 >
                                     Ver clases de surf
-                                </Link>
+                                </S4Button>
                             </div>
                             <p className="mt-4 text-[11px] text-slate-500">
                                 * Tarifas y packs disponibles bajo consulta. Servicio sujeto a disponibilidad
@@ -256,6 +268,6 @@ export default function ServiciosVideograbaciones({ seo = null }) {
                     </div>
                 </div>
             </section>
-        </div>
+        </PageShell>
     );
 }

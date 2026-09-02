@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import Layout1 from "@/layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import AccordionTrigger from "@/components/ui/AccordionTrigger";
 import AdminTable from "@/components/admin/ui/AdminTable";
@@ -144,6 +144,7 @@ export default function DatafonoPaymentsIndex({
     surfboards = [],
     categories = [],
     guestAllowedCategories = ["producto", "fotos", "alquiler", "clase"],
+    invoicingEnabled = false,
 }) {
     const { flash, errors } = usePage().props;
     const [cashOpen, setCashOpen] = useState(false);
@@ -264,7 +265,7 @@ export default function DatafonoPaymentsIndex({
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Pagos datáfono" />
             <div className="mx-auto max-w-7xl space-y-4 overflow-x-hidden px-3 py-5 text-slate-100 sm:px-4 sm:py-6">
                 <Breadcrumbs
@@ -726,6 +727,7 @@ export default function DatafonoPaymentsIndex({
                 surfboards={surfboards}
                 categories={categories}
                 guestAllowedCategories={guestAllowedCategories}
+                invoicingEnabled={invoicingEnabled}
                 errors={cashOpen ? errors : {}}
                 busy={busy}
                 onClose={() => setCashOpen(false)}
@@ -766,6 +768,6 @@ export default function DatafonoPaymentsIndex({
                 onClose={() => setAssignRow(null)}
                 onSubmit={submitAssign}
             />
-        </Layout1>
+        </PageShell>
     );
 }

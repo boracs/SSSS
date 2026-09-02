@@ -14,6 +14,7 @@ class BonoConsumption extends Model
         'user_id',
         'lesson_id',
         'remaining_after',
+        'units_consumed',
         'consumed_at',
     ];
 

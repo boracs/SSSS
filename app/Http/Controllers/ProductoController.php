@@ -75,6 +75,9 @@ class ProductoController extends Controller
         StorePromoBannerService $promoBanner,
     ): InertiaResponse {
         $producto = Producto::query()->with('imagenes')->findOrFail($id);
+        // Retirado del catálogo: 404 en vez de ficha 200 indexable (soft-404).
+        abort_if((bool) $producto->eliminado, 404);
+
         $page = $pageService->forInertia($producto);
 
         return Inertia::render('ProductoVer', [

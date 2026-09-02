@@ -74,6 +74,25 @@ test('tras abandonar el pago el socio puede reintentar sin choque de duplicado',
     expect(PagoCuota::query()->where('user_id', $this->user->id)->count())->toBe(1);
 });
 
+test('un pendiente con sesión Stripe viva no se purga aunque expire su ventana local', function () {
+    $pago = $this->service->createPendingPaymentForCheckout($this->user, (int) $this->plan->id);
+
+    \App\Models\PaymentWebhookIdempotency::query()->create([
+        'transaction_id' => 'cs_test_viva',
+        'payable_type' => PagoCuota::class,
+        'payable_id' => $pago->id,
+        'amount' => (int) $pago->monto_pagado_cents,
+        'status' => 'pending',
+        'checkout_url' => 'https://checkout.stripe.test/viva',
+        'expires_at' => now()->addDay(),
+    ]);
+
+    Carbon::setTestNow('2026-06-15 11:00:00');
+
+    expect($this->service->purgeExpiredPendingPayments())->toBe(0);
+    expect(PagoCuota::query()->whereKey($pago->id)->exists())->toBeTrue();
+});
+
 test('el periodo del reintento no se desplaza por el intento abandonado', function () {
     $primero = $this->service->createPendingPaymentForCheckout($this->user, (int) $this->plan->id);
     $inicioOriginal = $primero->periodo_inicio->toDateString();

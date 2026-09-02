@@ -10,9 +10,11 @@ import SurfDetailedForecastSlider from "../components/webcam/SurfDetailedForecas
 import useDetailedForecast from "../components/webcam/useDetailedForecast";
 import WeatherDetailPanel from "../components/webcam/WeatherDetailPanel";
 import ZurriolaGeoGuide from "../components/webcam/ZurriolaGeoGuide";
+import TallerGuideRail from "../components/Taller/TallerGuideRail";
 import SeoHead from "../components/seo/SeoHead";
 import SharePageButton from "../components/SharePageButton";
 import { FORECAST_GUIDE_ARTICLE_SLUG } from "../components/webcam/surfMetricHelp";
+import { surfBriefCtaForSignal } from "../components/webcam/surfBriefCta";
 
 const GIPUZKOA_WEBCAM_URL =
     "https://www.gipuzkoa.eus/es/web/hondartzak/webcams/zurriola";
@@ -26,6 +28,7 @@ export default function ServiciosWebcams({
     surfBrief,
     surfForecast,
     zurriolaGeo = null,
+    tallerGuides = [],
     seo = null,
 }) {
     const { url } = usePage();
@@ -34,6 +37,10 @@ export default function ServiciosWebcams({
         : Array.isArray(surfForecast)
           ? surfForecast
           : [];
+
+    const parteCta = surfBriefCtaForSignal(surfBrief?.signal?.status);
+    const claseCtaLabel =
+        parteCta?.tone === "primary" ? parteCta.label : "Reservar mi clase";
 
     const [weatherOpen, setWeatherOpen] = useState(false);
     const [weatherData, setWeatherData] = useState(null);
@@ -131,7 +138,18 @@ export default function ServiciosWebcams({
             <SeoHead seo={seo} />
 
             <section className="relative overflow-hidden border-b border-s4/40">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(15,95,116,0.45),_transparent_55%)]" />
+                <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_85%_60%_at_50%_-12%,rgba(15,95,116,0.55),transparent_62%)]" />
+                    <div className="absolute left-1/2 top-[-28%] h-[75%] w-[70%] -translate-x-1/2 rounded-full bg-cyan-300/[0.12] blur-3xl" />
+                    <div className="absolute inset-0 origin-top opacity-[0.28] mix-blend-screen [mask-image:linear-gradient(to_bottom,black_8%,transparent_78%)] [-webkit-mask-image:linear-gradient(to_bottom,black_8%,transparent_78%)]">
+                        <div className="absolute left-[36%] top-0 h-[170%] w-[4.5rem] origin-top -translate-x-1/2 -rotate-[20deg] bg-gradient-to-b from-cyan-50/80 via-cyan-300/25 to-transparent blur-[7px]" />
+                        <div className="absolute left-[46%] top-0 h-[180%] w-[3.75rem] origin-top -translate-x-1/2 -rotate-[8deg] bg-gradient-to-b from-white/70 via-cyan-200/22 to-transparent blur-[5px]" />
+                        <div className="absolute left-[54%] top-0 h-[175%] w-[3.25rem] origin-top -translate-x-1/2 rotate-[3deg] bg-gradient-to-b from-cyan-100/65 via-teal-200/18 to-transparent blur-[6px]" />
+                        <div className="absolute left-[63%] top-0 h-[160%] w-[2.75rem] origin-top -translate-x-1/2 rotate-[14deg] bg-gradient-to-b from-cyan-200/50 via-cyan-400/14 to-transparent blur-[8px]" />
+                        <div className="absolute left-[28%] top-0 h-[150%] w-[2.5rem] origin-top -translate-x-1/2 -rotate-[28deg] bg-gradient-to-b from-teal-100/35 via-transparent to-transparent blur-[9px]" />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-s4-deep/55 via-s4-deep/20 to-transparent" />
+                </div>
                 <div className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
                     <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-cyan-200">
                         <Radio className="h-3.5 w-3.5" />
@@ -150,18 +168,33 @@ export default function ServiciosWebcams({
             {/* 1) Webcam primero */}
             <section id="webcam-directo" className="mx-auto min-w-0 max-w-6xl scroll-mt-24 px-4 pt-6 sm:px-6 sm:pt-8">
                 <div className="mb-2 flex flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                            <h2 className="font-heading text-xl font-bold tracking-tight text-white sm:text-2xl">
-                                Señal en directo
-                            </h2>
-                            <span className="hidden text-slate-600 sm:inline" aria-hidden>
-                                ·
-                            </span>
-                            <p className="text-xs text-slate-400 sm:text-sm">
-                                Señal en directo · puedes ir unos segundos atrás. Zoom para la rompiente.
-                            </p>
-                        </div>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                        <h2 className="font-heading text-xl font-bold tracking-tight text-white sm:text-2xl">
+                            Señal en directo
+                        </h2>
+                        <button
+                            type="button"
+                            onClick={toggleWeatherDetail}
+                            aria-expanded={weatherOpen}
+                            aria-controls={WEATHER_PANEL_ID}
+                            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-3.5 py-1.5 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20"
+                        >
+                            {weatherOpen ? (
+                                <CloudSun className="h-4 w-4" aria-hidden />
+                            ) : (
+                                <Sun className="h-4 w-4" aria-hidden />
+                            )}
+                            {weatherLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                            ) : null}
+                            {weatherOpen ? "Ocultar tiempo" : "Ver tiempo"}
+                            {!weatherOpen &&
+                            weatherData?.hourly?.[0]?.temperature_c != null ? (
+                                <span>
+                                    · {Math.round(weatherData.hourly[0].temperature_c)}°
+                                </span>
+                            ) : null}
+                        </button>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                         <SharePageButton
@@ -185,34 +218,6 @@ export default function ServiciosWebcams({
                     </div>
                 </div>
 
-                <ZurriolaWebcamPlayer />
-
-                <div className="mt-3 flex justify-start sm:mt-4">
-                    <button
-                        type="button"
-                        onClick={toggleWeatherDetail}
-                        aria-expanded={weatherOpen}
-                        aria-controls={WEATHER_PANEL_ID}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-sm font-medium text-amber-300 transition hover:bg-amber-500/20"
-                    >
-                        {weatherOpen ? (
-                            <CloudSun className="h-4 w-4" aria-hidden />
-                        ) : (
-                            <Sun className="h-4 w-4" aria-hidden />
-                        )}
-                        {weatherLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        ) : null}
-                        {weatherOpen ? "Ocultar tiempo" : "Ver tiempo"}
-                        {!weatherOpen &&
-                        weatherData?.hourly?.[0]?.temperature_c != null ? (
-                            <span className="hidden sm:inline">
-                                · {Math.round(weatherData.hourly[0].temperature_c)}°
-                            </span>
-                        ) : null}
-                    </button>
-                </div>
-
                 <WeatherDetailPanel
                     panelId={WEATHER_PANEL_ID}
                     open={weatherOpen}
@@ -220,6 +225,8 @@ export default function ServiciosWebcams({
                     loading={weatherLoading}
                     error={weatherError}
                 />
+
+                <ZurriolaWebcamPlayer />
             </section>
 
             {/* 2) Forecast justo debajo */}
@@ -249,6 +256,7 @@ export default function ServiciosWebcams({
                     updatedAtHuman={surfBrief?.generated_at_human}
                     signal={surfBrief?.signal ?? null}
                     reactions={surfBrief?.reactions ?? null}
+                    hideCta
                     onOpenFullForecast={openFullForecast}
                     onOpenDetailedTimeline={openDetailedTimeline}
                 />
@@ -279,7 +287,22 @@ export default function ServiciosWebcams({
                 />
 
                 <SurfBriefCard brief={surfBrief} />
+
+                {/* Único CTA primario de la página (AP-8): del parte a las clases. */}
+                <div className="flex flex-col gap-4 rounded-2xl border border-cyan-400/20 bg-cyan-500/5 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+                    <p className="font-heading text-lg font-bold tracking-tight text-white sm:text-xl">
+                        ¿Hoy es tu día? Reserva tu clase de surf
+                    </p>
+                    <Link
+                        href={route("servicios.surf")}
+                        className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-xl bg-cyan-400 px-6 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 sm:w-auto"
+                    >
+                        {claseCtaLabel}
+                    </Link>
+                </div>
             </section>
+
+            <TallerGuideRail articles={tallerGuides} />
 
             <ZurriolaGeoGuide facts={zurriolaGeo} />
         </div>

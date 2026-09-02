@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-08-26 · ¿Cada rama toca archivos distintos? ¿Los conflictos son un infierno?
+
+- **Tema:** una rama es una línea de tiempo del repo entero, no un cajón. Git mezcla solo en la mayoría de merges; conflicto solo si las mismas líneas chocan. En este proyecto no hace falta dos ramas de desarrollo eternas: `main` es el cuaderno; `production` (cuando exista el VPS) solo recibe lo ya probado.
+- **Entradas guardadas:** 05 **§5.15**; glosario rama / merge / conflicto (Cursor).
+
+---
+
+## 2026-08-26 · ¿Funciones o triggers en MySQL para “eficienciar” la BD?
+
+- **Tema:** tablas y filas no piden triggers. Lo que acelera es índice + consultas (`with()`, `WHERE` con índice) + transacción corta. La reacción “pasó X → haz Y” ya está en Events/Jobs de Laravel.
+- **Entradas guardadas:** 01 **§1.8**; glosario índice + función/procedimiento SQL (Cursor).
+
+---
+
 ## 2026-08-25 · ¿Borrar el original y dejar solo el thumb?
 
 - **Tema:** ahorro de disco sí, pero no a costa de la ficha/lightbox. Sustituir el RAW del móvil por un máster web (~1600 px); thumb aparte para cards.

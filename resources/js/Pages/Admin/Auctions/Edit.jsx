@@ -1,6 +1,6 @@
 import React from "react";
 import { Head, router } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 
 function Field({ label, error, children }) {
@@ -14,7 +14,7 @@ function Field({ label, error, children }) {
 }
 
 const inputCls =
-    "h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20";
+    "h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder-slate-500 outline-none focus:border-s4-cyan/50 focus:ring-2 focus:ring-s4-cyan/20";
 
 export default function AdminAuctionsEdit({ auction, statuses = [], categories = [] }) {
     const [processing, setProcessing] = React.useState(false);
@@ -58,7 +58,7 @@ export default function AdminAuctionsEdit({ auction, statuses = [], categories =
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title={`Editar: ${auction.title}`} />
             <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
                 <div className="mb-6 flex items-center justify-between">
@@ -144,6 +144,6 @@ export default function AdminAuctionsEdit({ auction, statuses = [], categories =
                     </button>
                 </form>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

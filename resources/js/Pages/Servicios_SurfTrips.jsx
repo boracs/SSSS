@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
+import S4Button from "@/components/S4Button";
 import {
     MapPin,
     Clock,
@@ -18,6 +19,11 @@ import {
     ShieldCheck,
     Timer,
 } from "lucide-react";
+
+const ACCENT_LG =
+    "bg-gradient-to-r from-teal-500 to-cyan-400 px-6 py-3 font-bold text-slate-900 shadow-lg hover:brightness-110";
+const OUTLINE_GLASS_BLUR_LG =
+    "border border-white/20 bg-white/5 px-6 py-3 font-semibold text-white backdrop-blur-sm hover:bg-white/10";
 
 const HORARIO = "Salida excursión de surf · 4 horas · 09:00–13:00";
 
@@ -195,7 +201,7 @@ export default function ServiciosSurfTrips({ seo = null }) {
                         <Compass className="h-3.5 w-3.5" />
                         Surf trips · San Sebastián Surf School
                     </div>
-                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Surf trips desde{" "}
                         <span className="bg-gradient-to-r from-teal-300 to-cyan-300 bg-clip-text text-transparent">
                             Guipúzcoa
@@ -208,19 +214,18 @@ export default function ServiciosSurfTrips({ seo = null }) {
                         monitor y opción de menú gastronómico al terminar.
                     </p>
                     <div className="mt-8 flex flex-wrap gap-3">
-                        <Link
-                            href={route("contacto")}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-500 to-cyan-400 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg transition hover:brightness-110"
-                        >
+                        <S4Button href={route("contacto")} variant="accent" size="lg" className={ACCENT_LG}>
                             <Waves className="h-4 w-4" />
                             Reservar mi trip
-                        </Link>
-                        <Link
+                        </S4Button>
+                        <S4Button
                             href={route("servicios.surf")}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/10"
+                            variant="secondary"
+                            size="lg"
+                            className={OUTLINE_GLASS_BLUR_LG}
                         >
                             Ver clases de surf
-                        </Link>
+                        </S4Button>
                     </div>
                 </div>
             </section>

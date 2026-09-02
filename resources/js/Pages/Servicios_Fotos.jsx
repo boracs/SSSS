@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
 import SeoHead from "../components/seo/SeoHead";
+import S4Button from "@/components/S4Button";
 import {
     Camera,
     CheckCircle2,
@@ -9,6 +10,11 @@ import {
     Aperture,
     X,
 } from "lucide-react";
+
+const ACCENT_SUBMIT =
+    "w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-400 font-bold text-white disabled:opacity-60";
+const RESERVE_PILL =
+    "rounded-full bg-fuchsia-500/15 font-semibold text-fuchsia-200 ring-1 ring-fuchsia-400/30 hover:bg-fuchsia-500/25";
 
 function formatPrice(euros) {
     const n = Number(euros);
@@ -67,14 +73,10 @@ const SessionCard = ({ session, onReserve }) => {
                             : ""}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => onReserve(session)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-4 py-2 text-sm font-semibold text-fuchsia-200 ring-1 ring-fuchsia-400/30 transition hover:bg-fuchsia-500/25"
-                >
+                <S4Button type="button" variant="secondary" size="sm" className={RESERVE_PILL} onClick={() => onReserve(session)}>
                     Reservar
                     <ArrowRight className="h-3.5 w-3.5" />
-                </button>
+                </S4Button>
             </div>
         </div>
     );
@@ -170,7 +172,7 @@ export default function ServiciosFotos({ seo = null, sessions = [] }) {
                         <Aperture className="h-3.5 w-3.5" />
                         Fotografía · San Sebastián Surf School
                     </div>
-                    <h1 className="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
+                    <h1 className="max-w-3xl font-heading text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl lg:text-6xl">
                         Captura tu mejor ola y{" "}
                         <span className="bg-gradient-to-r from-fuchsia-300 to-pink-300 bg-clip-text text-transparent">
                             llévate el recuerdo
@@ -286,7 +288,7 @@ export default function ServiciosFotos({ seo = null, sessions = [] }) {
                         </label>
 
                         <label className="block text-sm text-slate-300">
-                            Nº de personas / alumnos
+                            N.º de personas / alumnos
                             <input
                                 type="number"
                                 min={1}
@@ -380,13 +382,9 @@ export default function ServiciosFotos({ seo = null, sessions = [] }) {
                             </div>
                         ) : null}
 
-                        <button
-                            type="submit"
-                            disabled={busy}
-                            className="w-full rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-400 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60"
-                        >
+                        <S4Button type="submit" variant="accent" disabled={busy} className={ACCENT_SUBMIT}>
                             {busy ? "Redirigiendo al pago…" : "Pagar y reservar"}
-                        </button>
+                        </S4Button>
                     </form>
                 </div>
             ) : null}

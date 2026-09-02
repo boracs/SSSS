@@ -21,12 +21,15 @@ class PasswordController extends Controller
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
+        // Invalida las demás sesiones del usuario (móvil, otros navegadores...).
+        // Debe ir ANTES de cambiar el password: verifica el password actual contra
+        // el hash todavía vigente en el guard; si se llama después, compara la
+        // contraseña antigua contra el hash nuevo y siempre falla.
+        Auth::logoutOtherDevices($validated['current_password']);
+
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
-
-        // Invalida las demás sesiones del usuario (móvil, otros navegadores...).
-        Auth::logoutOtherDevices($validated['current_password']);
 
         return back();
     }

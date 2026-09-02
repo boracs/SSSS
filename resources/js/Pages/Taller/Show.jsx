@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Contenedor_productos from "../../layouts/Contenedor_productos";
 import SeoHead from "../../components/seo/SeoHead";
 import {
@@ -55,7 +55,7 @@ export default function Show({
     );
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <ReadingProgressBar />
 
             <SeoHead seo={seo} />
@@ -197,6 +197,6 @@ export default function Show({
                     />
                 </motion.div>
             </TallerPageShell>
-        </Layout1>
+        </PageShell>
     );
 }

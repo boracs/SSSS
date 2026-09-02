@@ -79,7 +79,6 @@ final class PublicSitemapService
             'Disallow: /academia',
             'Disallow: /bonos',
             'Disallow: /taquilla',
-            'Disallow: /comparador-surf',
             'Disallow: /subastas',
             'Disallow: /webhooks',
             'Disallow: /asignar-taquilla',

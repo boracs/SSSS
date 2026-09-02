@@ -21,7 +21,7 @@
     "modalities": ["iniciacion", "intermedio", "avanzado", "grupal", "particular", "semanal", "vip"],
     "duration_hours_marketing": 1.5,
     "includes": ["tabla", "neopreno"],
-    "meeting_point": "Playa de Zurriola, junto al club (llegar 10–15 min antes).",
+    "meeting_point": "Sede: Paseo Colón 41 bajo (Gros). Clases en playa de Zurriola (llegar 10–15 min antes).",
     "capacity_per_monitor": 6,
     "capacity_note": "Grupos de 7 o más requieren segundo monitor / cupo extra aprobado por la escuela.",
     "online_deposit_eur_source": "config:services.academy.class_reservation_deposit_eur",

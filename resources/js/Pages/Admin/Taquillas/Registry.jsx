@@ -73,7 +73,7 @@ function adminDisplayName(authUser) {
     const nombre = String(authUser?.nombre || "").trim();
     const apellido = String(authUser?.apellido || "").trim();
     const full = `${nombre} ${apellido}`.trim();
-    return full || String(authUser?.name || "el equipo de Mas Que Surf").trim();
+    return full || String(authUser?.name || "el equipo de San Sebastián Surf School").trim();
 }
 
 function formatAmountEuros(amount) {
@@ -132,18 +132,18 @@ function taquillaAvailabilityLabel(data) {
 
 function buildTaquillaContactMessage(row, adminName) {
     const nombre = firstName(row?.user);
-    const admin = adminName || "el equipo de Mas Que Surf";
-    const locker = row?.numeroTaquilla ? ` nº ${row.numeroTaquilla}` : "";
+    const admin = adminName || "el equipo de San Sebastián Surf School";
+    const locker = row?.numeroTaquilla ? ` n.º ${row.numeroTaquilla}` : "";
     const plan = shortPlanName(row?.plan);
     const importe = formatAmountEuros(row?.amount);
     const fecha = paidAtLabel(row);
     const disponibilidad = taquillaAvailabilityLabel(row);
     const estado = statusLabel(row?.status);
 
-    const subject = "Tu taquilla en Mas Que Surf — registro de pago";
+    const subject = "Tu taquilla en San Sebastián Surf School — registro de pago";
     const body = `Buenos días, ${nombre}.
 
-Soy ${admin}, del equipo de Mas Que Surf. Te escribo sobre el pago de tu taquilla${locker}.
+Soy ${admin}, del equipo de San Sebastián Surf School. Te escribo sobre el pago de tu taquilla${locker}.
 
 Estado: ${estado}.
 Importe: ${importe} · Fecha: ${fecha} · Plan: ${plan}.
@@ -153,7 +153,7 @@ Cualquier duda, aquí nos tienes. ¡Gracias, ${nombre}!
 
 Un saludo,
 ${admin}
-Mas Que Surf`;
+San Sebastián Surf School`;
 
     return { subject, body };
 }
@@ -487,7 +487,7 @@ export default function Registry({ pagos }) {
                         onKeyDown={(e) => {
                             if (e.key === "Enter") applyFilters({ search });
                         }}
-                        placeholder="Buscar por nombre o nº taquilla…"
+                        placeholder="Buscar por nombre o n.º de taquilla…"
                         className="min-w-0 flex-1 rounded-xl border border-gray-600 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-500 sm:max-w-xs"
                     />
                     <button

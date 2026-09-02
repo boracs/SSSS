@@ -49,6 +49,8 @@ Si doc ≠ código → gana el código. Si las dos IAs contradicen → gana lo v
 | 10 | Ticket mostrador (datáfono) | `node scripts/deepseek-ask.mjs --topic ticket` (modal + backend datáfono) · Cursor: `MostradorTicketModal.jsx` + `DatafonoPayment*` |
 | 11 | Teoría / profesor / cuaderno | `docs/aprendizaje/` (`INDICE.md` + temas 01–06). Reasonix: `/profesor-aprendizaje`. Ambos canales pueden **leer y guardar**. |
 | 12 | Despliegue / runtime / túnel / cola / cron | `docs/taller-prompts/AGENTE-DESPLIEGUE-OPS.md` + `docs/EN-EL-MOMENTO-DE-DESPLEGAR.md` + `.cursor/rules/tunnel-share-modes.mdc` (Reasonix: `/despliegue-ops`) |
+| 13 | Backend (auditar/planificar/criticar) | `docs/taller-prompts/AGENTE-BACKEND-SENIOR.md` (Reasonix: consulta; **implementar → Cursor** + `sovereign-architect-protocol`) |
+| 14 | Frontend (React/Inertia, ingeniería) | `docs/taller-prompts/AGENTE-MARKETING-DISENO.md` (S14 crítica) + `.cursor/rules/ui-admin-s4.mdc` (Cursor ejecuta) |
 
 **Regla de tokens:** nunca volcar todos los `.md`. Solo el/los de la fila del tema.
 

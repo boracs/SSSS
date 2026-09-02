@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Layout1 from '../layouts/Layout1';
+import PageShell from "@/layouts/PageShell";
 import { Link, useForm } from '@inertiajs/react';
 import { toast } from 'react-toastify';
 import ProductTagSelector from '../components/ProductTagSelector';
@@ -47,7 +47,7 @@ const CrearProducto = ({ productTagOptions = [] }) => {
   };
 
   return (
-    <Layout1>
+    <PageShell variant="light">
       <div className="max-w-md mx-auto p-4 border rounded-lg shadow-sm bg-white mb-12 mt-12">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-xl font-semibold">Crear Nuevo Producto</h2>
@@ -172,7 +172,7 @@ const CrearProducto = ({ productTagOptions = [] }) => {
           </div>
         </form>
       </div>
-    </Layout1>
+    </PageShell>
   );
 };
 

@@ -34,6 +34,24 @@ class LessonUser extends Model
     public const BALANCE_PENDING = 'pending';
     public const BALANCE_CONFIRMED = 'confirmed';
 
+    /**
+     * Estados que ocupan plaza y por tanto compiten por la unicidad de la
+     * inscripción. El índice `lesson_user_active_enrollment_unique` replica
+     * exactamente esta lista: cambiar una sin la otra rompe la red de BD.
+     *
+     * @return list<string>
+     */
+    public static function activeSeatStatuses(): array
+    {
+        return [
+            self::STATUS_PENDING,
+            self::STATUS_PENDING_EXTRA_MONITOR,
+            self::STATUS_CONFIRMED,
+            self::STATUS_ENROLLED,
+            self::STATUS_ATTENDED,
+        ];
+    }
+
     protected $fillable = [
         'lesson_id',
         'user_id',

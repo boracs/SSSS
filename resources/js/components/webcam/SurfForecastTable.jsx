@@ -1,14 +1,14 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-    ArrowRight,
     ArrowUp,
     CalendarDays,
+    CalendarRange,
     ChevronLeft,
     ChevronRight,
     Clock,
-    CloudSun,
     Gauge,
+    Star,
     TrendingDown,
     TrendingUp,
     Waves,
@@ -531,6 +531,7 @@ export default function SurfForecastTable({
     updatedAtHuman,
     signal = null,
     reactions = null,
+    hideCta = false,
     onOpenFullForecast = null,
     onOpenDetailedTimeline = null,
 }) {
@@ -595,71 +596,81 @@ export default function SurfForecastTable({
 
     return (
         <div className="rounded-3xl border border-cyan-500/20 bg-slate-900/60 p-3 shadow-xl backdrop-blur-sm sm:p-5 md:p-7">
-            <div className="mb-3 flex flex-col gap-3 sm:mb-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                <div className="flex min-w-0 flex-col gap-2">
+            {onOpenDetailedTimeline || onOpenFullForecast ? (
+                <div className="mb-4 rounded-2xl border border-cyan-400/40 bg-cyan-500/15 p-3 ring-1 ring-cyan-300/25 sm:p-4">
+                    <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-200">
+                        Solo en S4 · estrellas por nivel
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        {onOpenDetailedTimeline ? (
+                            <button
+                                type="button"
+                                onClick={() => onOpenDetailedTimeline()}
+                                title="Oleaje, sol, temperatura y probabilidad de lluvia cada 2 horas, con estrellas por nivel"
+                                className="inline-flex min-h-11 w-full flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+                            >
+                                <Star className="h-4 w-4 fill-slate-950" aria-hidden="true" />
+                                Ver forecast ampliado
+                            </button>
+                        ) : null}
+                        {onOpenFullForecast ? (
+                            <button
+                                type="button"
+                                onClick={() => onOpenFullForecast()}
+                                title="Mejor momento de cada día, con estrellas por nivel"
+                                className="inline-flex min-h-11 w-full flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/30 transition hover:bg-cyan-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-200"
+                            >
+                                <CalendarRange className="h-4 w-4" aria-hidden="true" />
+                                Ver resumen por día
+                            </button>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
+
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 sm:mb-4">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200 sm:px-3 sm:text-xs">
                         <CalendarDays className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">Previsión {days.length} días · Zurriola</span>
+                        <span className="truncate">{days.length} días - Zurriola</span>
                     </div>
                     {updatedAtHuman ? (
-                        <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-200">
+                        <span className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-200">
                             <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
                             Parte actualizado {updatedAtHuman}
                         </span>
                     ) : null}
                 </div>
-
-                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:items-end">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                <div className="md:hidden">
+                    <div
+                        className="inline-flex rounded-lg border border-white/10 bg-slate-950/70 p-0.5"
+                        role="group"
+                        aria-label="Densidad de la previsión"
+                    >
                         <button
                             type="button"
-                            onClick={() => onOpenDetailedTimeline?.()}
-                            title="Oleaje, sol, temperatura y probabilidad de lluvia cada 2 horas"
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-500 sm:w-auto sm:px-3.5 sm:text-sm"
+                            aria-pressed={compact}
+                            onClick={() => setMobileDensity("compact")}
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                                compact
+                                    ? "bg-cyan-500/25 text-cyan-100"
+                                    : "text-slate-400 hover:text-slate-200"
+                            }`}
                         >
-                            <CloudSun className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-                            <span className="truncate">Ver forecast ampliado</span>
+                            Compacto
                         </button>
                         <button
                             type="button"
-                            onClick={() => onOpenFullForecast?.()}
-                            className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-cyan-600 px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-cyan-500 sm:w-auto sm:px-4 sm:text-sm"
+                            aria-pressed={!compact}
+                            onClick={() => setMobileDensity("comfy")}
+                            className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
+                                !compact
+                                    ? "bg-cyan-500/25 text-cyan-100"
+                                    : "text-slate-400 hover:text-slate-200"
+                            }`}
                         >
-                            <span className="truncate">Ver resumen por día</span>
-                            <ArrowRight className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+                            Cómodo
                         </button>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 md:hidden">
-                        <div
-                            className="inline-flex rounded-lg border border-white/10 bg-slate-950/70 p-0.5"
-                            role="group"
-                            aria-label="Densidad de la previsión"
-                        >
-                            <button
-                                type="button"
-                                aria-pressed={compact}
-                                onClick={() => setMobileDensity("compact")}
-                                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                                    compact
-                                        ? "bg-cyan-500/25 text-cyan-100"
-                                        : "text-slate-400 hover:text-slate-200"
-                                }`}
-                            >
-                                Compacto
-                            </button>
-                            <button
-                                type="button"
-                                aria-pressed={!compact}
-                                onClick={() => setMobileDensity("comfy")}
-                                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition ${
-                                    !compact
-                                        ? "bg-cyan-500/25 text-cyan-100"
-                                        : "text-slate-400 hover:text-slate-200"
-                                }`}
-                            >
-                                Cómodo
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -814,6 +825,7 @@ export default function SurfForecastTable({
                 updatedAtHuman={updatedAtHuman}
                 signal={signal}
                 reactions={reactions}
+                hideCta={hideCta}
             />
         </div>
     );

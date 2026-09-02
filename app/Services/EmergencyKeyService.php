@@ -33,6 +33,10 @@ class EmergencyKeyService
 
     public function requestCode(User $user): EmergencyKeyRevealDto
     {
+        if (! $user->hasPhysicalLocker()) {
+            throw EmergencyKeyNotEligibleException::notPhysicalLocker();
+        }
+
         if (! $this->canRequest($user)) {
             throw EmergencyKeyNotEligibleException::notSocio();
         }
@@ -43,6 +47,10 @@ class EmergencyKeyService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($this->hasRequestedToday($user)) {
+                throw EmergencyKeyNotEligibleException::dailyLimit();
+            }
+
             if (! $settings->is_active) {
                 throw EmergencyKeyNotEligibleException::lockInactive();
             }
@@ -52,6 +60,7 @@ class EmergencyKeyService
 
             EmergencyKeyRequest::query()->create([
                 'user_id'             => $user->id,
+                'locker_number'       => (int) $user->numeroTaquilla,
                 'requested_at'        => $requestedAt,
                 'resolved_code_shown' => $code,
             ]);
@@ -63,6 +72,17 @@ class EmergencyKeyService
                 requestedAt: $requestedAt->toIso8601String(),
             );
         });
+    }
+
+    private function hasRequestedToday(User $user): bool
+    {
+        $dayStart = Carbon::now()->timezone((string) config('app.timezone'))->startOfDay();
+
+        return EmergencyKeyRequest::query()
+            ->where('user_id', $user->id)
+            ->where('requested_at', '>=', $dayStart)
+            ->lockForUpdate()
+            ->exists();
     }
 
     public function updateLockCode(string $code): void

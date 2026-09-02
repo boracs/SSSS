@@ -22,7 +22,7 @@ export default function Edit({ mustVerifyEmail, status }) {
         <>
             <Head title="Mi perfil" />
 
-            <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
+            <div className="s4-surface-light min-h-screen px-4 py-10 sm:px-6">
                 <div className="mx-auto w-full max-w-3xl space-y-6">
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div className="flex items-start gap-4">

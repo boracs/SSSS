@@ -143,7 +143,7 @@ function formatCountdown(createdAt) {
     return `Expira en ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function ReservationReceiptLink({ row, darkUi = false }) {
+function ReservationReceiptLink({ row }) {
     const isPaid = row?.payment_status === "confirmed" || row?.status === "confirmed";
     if (!row?.receipt_url || !isPaid) {
         return null;
@@ -154,19 +154,14 @@ function ReservationReceiptLink({ row, darkUi = false }) {
             href={row.receipt_url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`w-full rounded-lg px-4 py-2 text-center text-sm font-semibold sm:w-auto ${
-                darkUi
-                    ? "bg-emerald-900/40 text-emerald-200 ring-1 ring-emerald-500/30 hover:bg-emerald-900/60"
-                    : "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100"
-            }`}
+            className="w-full rounded-lg bg-emerald-50 px-4 py-2 text-center text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-100 sm:w-auto"
         >
             Ver recibo de pago
         </a>
     );
 }
 
-/** Señal/depósito y precio total (clases y alquileres), desde buildReservationRows. */
-function ReservationPriceLines({ row, dark = false }) {
+function ReservationPriceLines({ row }) {
     const total = row.total_price != null && Number(row.total_price) > 0 ? Number(row.total_price) : null;
     const deposit =
         row.deposit_amount != null && Number(row.deposit_amount) > 0
@@ -176,34 +171,24 @@ function ReservationPriceLines({ row, dark = false }) {
               : null;
     if (total == null && deposit == null) return null;
     return (
-        <div
-            className={
-                dark
-                    ? "mt-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-slate-300"
-                    : "mt-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-800"
-            }
-        >
+        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-sm text-slate-800">
             <p>
                 {deposit != null ? (
                     <>
-                        <span className={`font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
-                            Compromiso / señal:
-                        </span>{" "}
+                        <span className="font-semibold text-slate-900">Compromiso / señal:</span>{" "}
                         {formatEurEs(deposit)} €
                     </>
                 ) : null}
                 {deposit != null && total != null ? <span className="text-slate-500"> · </span> : null}
                 {total != null ? (
                     <>
-                        <span className={`font-semibold ${dark ? "text-white" : "text-slate-900"}`}>
-                            Precio total:
-                        </span>{" "}
+                        <span className="font-semibold text-slate-900">Precio total:</span>{" "}
                         {formatEurEs(total)} €
                     </>
                 ) : null}
             </p>
             {deposit != null && total != null && total > deposit + 0.001 ? (
-                <p className={`mt-1 text-xs ${dark ? "text-slate-500" : "text-slate-600"}`}>
+                <p className="mt-1 text-xs text-slate-600">
                     Puedes formalizar la reserva abonando la señal; el resto se gestiona según la escuela o las
                     condiciones del alquiler.
                 </p>
@@ -212,24 +197,14 @@ function ReservationPriceLines({ row, dark = false }) {
     );
 }
 
-function selfTabClass(active, darkUi) {
-    if (!darkUi) {
-        return active ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700";
-    }
-    return active
-        ? "bg-cyan-600 text-white shadow-md shadow-cyan-950/30"
-        : "bg-white/10 text-slate-300 ring-1 ring-white/10 hover:bg-white/15";
+function selfTabClass(active) {
+    return active ? "bg-sky-600 text-white" : "bg-slate-100 text-slate-700";
 }
 
-function reservationCardClass(darkUi, expired = false) {
-    if (!darkUi) {
-        return expired
-            ? "rounded-xl border border-slate-300 bg-white p-4 shadow-none"
-            : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-md";
-    }
+function reservationCardClass(_darkUi, expired = false) {
     return expired
-        ? "rounded-xl border border-white/5 bg-slate-900/40 p-4 opacity-60"
-        : "rounded-xl border border-white/10 bg-slate-900/70 p-4 transition hover:border-cyan-500/20";
+        ? "rounded-xl border border-slate-300 bg-white p-4 shadow-none"
+        : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-md";
 }
 
 /** Datos siempre desde props Inertia; en admin, calendario/stats vía GET admin/vips/{id}/analisis + target_user_id (no /mis-reservas). */
@@ -417,7 +392,7 @@ function MyReservationsView() {
                 className={`mx-auto max-w-6xl space-y-5 p-4 sm:p-6 ${
                     isAdminView
                         ? "border-l-4 border-blue-500 bg-slate-50/90"
-                        : "min-h-screen bg-gradient-to-b from-slate-950 via-[#0a2233] to-slate-950"
+                        : "min-h-screen s4-surface-light"
                 }`}
             >
                 {isAdminView && !adminAnalysisReady ? (
@@ -503,11 +478,11 @@ function MyReservationsView() {
                 ) : null}
 
                 <div className="space-y-1">
-                    <h1 className={`text-2xl font-bold ${darkUi ? "text-white" : "text-slate-900"}`}>
+                    <h1 className="text-2xl font-bold text-slate-900">
                         {isAdminView ? "Modo análisis" : "Mis Reservas"}
                     </h1>
                     {darkUi ? (
-                        <p className="text-sm text-slate-400">
+                        <p className="text-sm text-slate-600">
                             Clases y alquileres en un solo sitio — próximas citas, pagos y historial.
                         </p>
                     ) : null}
@@ -543,14 +518,14 @@ function MyReservationsView() {
                             <button
                                 type="button"
                                 onClick={() => selectTab(TAB_CLASSES)}
-                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selfTabClass(tab === TAB_CLASSES, darkUi)}`}
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selfTabClass(tab === TAB_CLASSES)}`}
                             >
                                 {isVip ? "Mis Clases" : "Clases"}
                             </button>
                             <button
                                 type="button"
                                 onClick={() => selectTab(TAB_RENTALS)}
-                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selfTabClass(tab === TAB_RENTALS, darkUi)}`}
+                                className={`rounded-full px-4 py-2 text-sm font-semibold transition ${selfTabClass(tab === TAB_RENTALS)}`}
                             >
                                 Alquileres
                             </button>
@@ -566,7 +541,7 @@ function MyReservationsView() {
                     )}
                 </div>
 
-                <p className={`max-w-3xl text-sm ${darkUi ? "text-slate-400" : "text-slate-600"}`}>
+                <p className="max-w-3xl text-sm text-slate-600">
                     {TAB_DESCRIPTIONS[tab]}
                 </p>
 
@@ -580,14 +555,8 @@ function MyReservationsView() {
                         contextMismatch={contextMismatch}
                     />
                 ) : activeRows.length === 0 ? (
-                    <div
-                        className={
-                            darkUi
-                                ? "rounded-2xl border border-white/10 bg-white/5 p-8 text-center backdrop-blur-sm"
-                                : "rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm"
-                        }
-                    >
-                        <p className={darkUi ? "text-slate-300" : "text-slate-700"}>
+                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+                        <p className="text-slate-700">
                             {isAdminView
                                 ? "Este alumno no tiene registros en esta sección."
                                 : isManagementProfile
@@ -613,11 +582,7 @@ function MyReservationsView() {
                                 )}
                                 <Link
                                     href={route("tienda")}
-                                    className={
-                                        darkUi
-                                            ? "rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-white hover:bg-white/10"
-                                            : "rounded-lg bg-slate-800 px-4 py-2 text-white"
-                                    }
+                                    className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-slate-800 hover:bg-slate-50"
                                 >
                                     Ir a tienda
                                 </Link>
@@ -628,18 +593,12 @@ function MyReservationsView() {
                     <div className="space-y-7">
                         <section className="space-y-3">
                             <p
-                                className={`text-xs font-bold uppercase tracking-wider ${darkUi ? "text-slate-500" : "text-gray-500"}`}
+                                className="text-xs font-bold uppercase tracking-wider text-gray-500"
                             >
                                 Tus Próximas Citas
                             </p>
                             {upcomingRows.length === 0 ? (
-                                <div
-                                    className={
-                                        darkUi
-                                            ? "rounded-xl border border-white/10 bg-slate-900/50 p-5 text-sm text-slate-400"
-                                            : "rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm"
-                                    }
-                                >
+                                <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm">
                                     <p>
                                         No tienes próximas reservas en esta
                                         sección.
@@ -693,26 +652,26 @@ function MyReservationsView() {
                                                         <div className="flex items-center gap-2">
                                                             {isClass ? (
                                                                 <AcademicCapIcon
-                                                                    className={`h-5 w-5 ${darkUi ? "text-cyan-400" : "text-sky-600"}`}
+                                                                    className="h-5 w-5 text-sky-600"
                                                                 />
                                                             ) : null}
                                                             {isRental ? (
                                                                 <BuildingStorefrontIcon
-                                                                    className={`h-5 w-5 ${darkUi ? "text-indigo-400" : "text-indigo-600"}`}
+                                                                    className="h-5 w-5 text-indigo-600"
                                                                 />
                                                             ) : null}
                                                             {isBono ? (
                                                                 <StarIcon
-                                                                    className={`h-5 w-5 ${darkUi ? "text-amber-400" : "text-amber-500"}`}
+                                                                    className="h-5 w-5 text-amber-500"
                                                                 />
                                                             ) : null}
                                                             <h2
-                                                                className={`text-base font-semibold ${darkUi ? "text-white" : "text-slate-900"}`}
+                                                                className="text-base font-semibold text-slate-900"
                                                             >
                                                                 {row.title}
                                                             </h2>
                                                         </div>
-                                                        <p className={`text-sm ${darkUi ? "text-slate-400" : "text-slate-600"}`}>
+                                                        <p className="text-sm text-slate-600">
                                                             {row.start_time
                                                                 ? formatDateTimeMadrid(
                                                                       row.start_time,
@@ -728,7 +687,7 @@ function MyReservationsView() {
                                                             </p>
                                                         ) : null}
                                                         {isClass ? (
-                                                            <p className={`text-sm ${darkUi ? "text-slate-400" : "text-slate-600"}`}>
+                                                            <p className="text-sm text-slate-600">
                                                                 {row.level ||
                                                                     "Iniciación"}{" "}
                                                                 ·{" "}
@@ -758,7 +717,7 @@ function MyReservationsView() {
                                                             </p>
                                                         ) : null}
                                                         {isClass || isRental ? (
-                                                            <ReservationPriceLines row={row} dark={darkUi} />
+                                                            <ReservationPriceLines row={row} />
                                                         ) : null}
                                                         {isRental &&
                                                         row.refund_pending ? (
@@ -894,7 +853,7 @@ function MyReservationsView() {
                                                                 pagando 30EUR.
                                                             </span>
                                                         ) : null}
-                                                        <ReservationReceiptLink row={row} darkUi={darkUi} />
+                                                        <ReservationReceiptLink row={row} />
                                                     </div>
                                                 ) : null}
                                             </article>
@@ -906,18 +865,12 @@ function MyReservationsView() {
 
                         <section className="space-y-3">
                             <p
-                                className={`text-xs font-bold uppercase tracking-wider ${darkUi ? "text-slate-500" : "text-gray-500"}`}
+                                className="text-xs font-bold uppercase tracking-wider text-gray-500"
                             >
                                 Historial / Pasadas
                             </p>
                             {historyRows.length === 0 ? (
-                                <div
-                                    className={
-                                        darkUi
-                                            ? "rounded-xl border border-white/10 bg-slate-900/40 p-4 text-sm text-slate-500"
-                                            : "rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500"
-                                    }
-                                >
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                                     Sin historial todavía en esta sección.
                                 </div>
                             ) : (
@@ -930,11 +883,7 @@ function MyReservationsView() {
                                         return (
                                             <article
                                                 key={`${tab}-history-${row.id}`}
-                                                className={
-                                                    darkUi
-                                                        ? "rounded-xl border border-white/5 bg-slate-900/40 p-4 opacity-75"
-                                                        : "rounded-xl border border-slate-200 bg-slate-50 p-4 opacity-70 grayscale transition-all"
-                                                }
+                                                className="rounded-xl border border-slate-200 bg-slate-50 p-4 opacity-70 grayscale transition-all"
                                             >
                                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                                     <div className="space-y-1">
@@ -949,7 +898,7 @@ function MyReservationsView() {
                                                                 <StarIcon className="h-5 w-5 text-slate-500" />
                                                             ) : null}
                                                             <h2
-                                                                className={`text-base font-semibold ${darkUi ? "text-slate-300" : "text-slate-700"}`}
+                                                                className="text-base font-semibold text-slate-700"
                                                             >
                                                                 {row.title}
                                                             </h2>
@@ -962,7 +911,7 @@ function MyReservationsView() {
                                                                 : "Sin fecha"}
                                                         </p>
                                                         {isClass || isRental ? (
-                                                            <ReservationPriceLines row={row} dark={darkUi} />
+                                                            <ReservationPriceLines row={row} />
                                                         ) : null}
                                                         {isRental &&
                                                         row.refund_pending ? (
@@ -973,7 +922,7 @@ function MyReservationsView() {
                                                         ) : null}
                                                     </div>
                                                     <div className="mt-3 flex flex-wrap gap-2">
-                                                        <ReservationReceiptLink row={row} darkUi={darkUi} />
+                                                        <ReservationReceiptLink row={row} />
                                                     </div>
                                                     <span
                                                         className={`inline-flex h-7 items-center rounded-full px-3 text-xs font-semibold ${badge.cls}`}

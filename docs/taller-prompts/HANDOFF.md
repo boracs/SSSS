@@ -8,30 +8,38 @@
 
 | Campo | Valor |
 |---|---|
-| Cerrado | 2026-08-23 (Reasonix) |
-| Canal | Reasonix |
-| Tema | Deuda técnica P3: dinero tienda → céntimos + precios bonos a config |
+| Cerrado | 2026-08-27 (Reasonix / DeepSeek) |
+| Canal | Reasonix → chat nuevo (el dueño abrirá con «sigo con la Fase 2» / «sigo con el handoff») |
+| Tema | **Auditoría backend FASE 1 (dinero/consistencia): CERRADA AL 100%.** F1–F8 + B1–B5 implementados y verificados. Siguiente: FASE 2 (nueva auditoría, mismo método). |
 
-## Hecho (esta sesión)
+## Hecho en este chat (Fase 1 completa)
 
-- **P3 dinero tienda a céntimos (HECHO, verificado):** migración `2026_08_23_110000_convert_pedidos_money_to_cents` — `pedidos.precio_total` + `pedido_producto.precio_pagado` → `precio_total_cents`/`precio_pagado_cents` (unsignedBigInteger), backfill `round(x*100)`, drop de las decimales viejas, `down()` reversible. `descuento_aplicado` NO se tocó (es porcentaje).
-  - Aplicada a BD de desarrollo `mas_que_surf` (`php artisan migrate --force`, OK).
-  - Código: `StoreOrderStockService`, `CreateStoreCheckoutAction`, `DatafonoPaymentReconciliationService` (createPaidPedido + fiscalTargets L2111), `PedidoController` (mappers con centsToEuros), `ClientPaymentHistoryService`, modelos `Pedido`/`PedidoProducto`/`Producto`/`User` (accessor `Pedido::precio_total` en euros → **API/front sin cambios**), factory + 4 seeders (CoherentDemo, ExtraPedidos, OperationalSuper, SandboxRandom).
-  - Tests: suite completa **267 passed** (1 fallo preexistente ajeno: `PasswordUpdateTest` auth — verificado con stash que falla sin mis cambios). Build OK (59.4s).
-- **P3 precios bonos 150/600 € a config (HECHO):** `config/store.php` bloque `bonos_public` (`STORE_BONO5_CENTS`=15000, `STORE_BONO10_PARTICULARES_CENTS`=60000 en `.env`); ruta `/servicios/surf` pasa `pricingLabels` con bono5/bono5PerClass/bono10Particulares; `Servicios_ClasesDeSurf.jsx` sin hardcodes (fallbacks 150/30/600 €).
-- **Instagram quitado de la lista:** `docs/TAREAS-PENDIENTES.md` — Abiertas vacía.
-- P2 carritos (`UNIQUE(user_id)`) la cerró **Cursor** hoy (2026-08-23) — no tocar.
+1. **Auditoría Fase 1** (2026-08-26, Reasonix): 6 dominios en paralelo → 0 P0 · 11 P1 · ~25 P2. Informe: `docs/taller-prompts/AUDITORIA-BACKEND-FASE1-DINERO-2026-08-26.md`.
+2. **Verificación Opus+Grok**: 0 DESCARTADO, 8 CONFIRMADO + 5 MATIZ. Correcciones aceptadas: F1/F2 causa raíz distinta; F8 = 2 rutas de cargo; B5 → P2; nuevo R5 (`Auction::toPublicArray` expone winner/payment_status).
+3. **Implementación por Cursor (lotes), cada uno verificado por Reasonix con suite completa:**
+   - F1+F2 doble cargo → invariante «1 sesión Stripe viva por payable» (`FindsOpenCheckout` + `payment_webhook_idempotency`).
+   - F3 TOCTOU inscripción → columna generada `active_enrollment_key` + UNIQUE + **bug julio encontrado**: `lesson_user.user_id` seguía NOT NULL (guest muerto); FK → SET NULL.
+   - F4 catálogo datáfono → `precio_cents` con `StoreProductPricing` + `precio_base_cents`/tachado en modal (bug activo hoy resuelto).
+   - F5+B2+B3 webhook → 503 transitorio / 200+`Log::critical` permanente (marca `ALERT_PERMANENT_FAILURE`, **pendiente dueño: canal de alerta real**); `payments:sync` + `academy:cleanup` al scheduler; API admin.
+   - F6+F7 TicketBAI → `Idempotency-Key` sha256(`s4-tbai:<session>`); cash walk-in usa `buildContactForUser` + **email obligatorio en mostrador si INVOICING_ENABLED** (decisión dueño).
+   - F8 FIFO bonos → `BonoService::lockFifoBono()` compartido por las 2 rutas de cargo.
+   - B1+B4+B5 → `payment_deadline_at` + `auctions:expire-unpaid` (5 min); `/api/taquilla` eliminada (Ziggy); `AuthController` muerto borrado.
+4. **Suite: 277 → 336 tests verdes** (1280 assertions). Migraciones aplicadas en BD local.
 
-## A medias / siguiente
+## Siguiente (chat nuevo)
 
-- **Nada pendiente del backlog** (`TAREAS-PENDIENTES.md` Abiertas vacía).
-- Candidatos futuros: **SEO Donostia** (análisis keywords + plan SEO/rebrand, `docs/COMPETENCIA_SEO_DONOSTIA.md`), `ui/accordion.tsx` Radix sin usar (posible migración futura), unificar `ContactBlock` local de `Footer.jsx` con `components/ContactBlock.jsx`.
-- Nota review de seguridad: migración no idempotente (blindar con `Schema::hasColumn()` si se re-ejecuta) y orden de despliegue = migrate antes que código.
+1. **FASE 2 — auditoría Reasonix** (mismo método AGENTE-BACKEND-SENIOR, 6 dominios en paralelo): academia/taquillas restantes, fotos, SEO backend, chatbot, rendimiento (N+1/índices). Luego verificación Cursor → implementación por lotes.
+2. **Pendientes del dueño en producción** (anotados en `TAREAS-PENDIENTES.md`): `php artisan migrate` + cron `schedule:run` activo; canal de alerta `ALERT_PERMANENT_FAILURE` (email con Mailables existentes vs panel); comprobación manual F4 (ticket mostrador con producto rebajado); SMTP real (`MAIL_MAILER=log` hoy).
+
+## Lecciones / contexto útil
+
+- Método que funcionó todo el día: Reasonix audita → Opus+Grok verifican → Cursor implementa por lotes → Reasonix verifica (suite + build) → COORDINACION.
+- Cuidado con **cruce de chats**: un prompt de lote nuevo va SOLO en chat nuevo; pegar respuestas anteriores como contexto confunde a Cursor (pasó con el raíl webcams).
+- `AGENTE-BACKEND-SENIOR.md` mejorado (B1–B7) al inicio: R4 idempotencia, R8 autorización, escalas Sev/Esfuerzo/KPI.
 
 ## Archivos clave
 
-- `database/migrations/2026_08_23_110000_convert_pedidos_money_to_cents.php`
-- `app/Models/Pedido.php` (accessor `precio_total`) · `app/Models/PedidoProducto.php`
-- `app/Services/Store/StoreOrderStockService.php` · `app/Services/Payments/DatafonoPaymentReconciliationService.php` · `app/Http/Controllers/PedidoController.php`
-- `config/store.php` (bonos_public) · `resources/js/Pages/Servicios_ClasesDeSurf.jsx`
-- `docs/TAREAS-PENDIENTES.md` · `docs/taller-prompts/COORDINACION.md`
+- `docs/taller-prompts/AUDITORIA-BACKEND-FASE1-DINERO-2026-08-26.md` — informe maestro Fase 1 (verificado §5)
+- `docs/taller-prompts/COORDINACION.md` — filas HECHO + Última actividad de cada lote
+- `docs/taller-prompts/AGENTE-BACKEND-SENIOR.md` — persona del agente (para Fase 2)
+- `docs/TAREAS-PENDIENTES.md` — 3 tareas URGENTES post-Fase 1 + backlog marketing/diseño

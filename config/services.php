@@ -179,7 +179,23 @@ return [
         'whatsapp_display' => env('ACADEMY_WHATSAPP_DISPLAY'),
         /** Email de contacto público (chatbot FAQ, marketing). */
         'contact_email' => env('ACADEMY_CONTACT_EMAIL', 'info@sansebastiansurfschool.com'),
-        'maps_url' => env('ACADEMY_MAPS_URL', 'https://maps.app.goo.gl/TuUbicacion'),
+        /** Razón social y CIF (pie legal LSSI). El IBAN no se publica. */
+        'legal_name' => env('ACADEMY_LEGAL_NAME', 'San Sebastian Surf School S.L.'),
+        'cif' => env('ACADEMY_CIF', 'B26739128'),
+        'street' => env('ACADEMY_STREET', 'Paseo Colón 41 bajo'),
+        'locality' => env('ACADEMY_LOCALITY', 'Donostia-San Sebastián'),
+        'region' => env('ACADEMY_REGION', 'Gipuzkoa'),
+        'postal_code' => env('ACADEMY_POSTAL_CODE', '20002'),
+        /** Pin de la sede (OSM nº 41). No usar ZURRIOLA_SURF_LAT/LON (parte/webcam). */
+        'latitude' => (float) env('ACADEMY_LAT', 43.325412),
+        'longitude' => (float) env('ACADEMY_LON', -1.974047),
+        'maps_query' => env('ACADEMY_MAPS_QUERY', 'Paseo Colón 41 bajo, 20002 Donostia-San Sebastián'),
+        /** Override opcional (short link). Vacío o placeholder → se genera desde maps_query. */
+        'maps_url' => env('ACADEMY_MAPS_URL'),
+        'meeting_note' => env(
+            'ACADEMY_MEETING_NOTE',
+            'El mapa marca el local. El día de clase, el punto de encuentro es la playa de Zurriola.',
+        ),
         /** Reloj de pared de la escuela (columnas naive starts_at/ends_at); independiente de APP_TIMEZONE. */
         'business_timezone' => env('ACADEMY_BUSINESS_TIMEZONE', 'Europe/Madrid'),
         /** Señal máxima para formalizar reserva de clase (el resto puede pagarse en escuela). */
@@ -197,11 +213,11 @@ return [
         /** Alumnos por monitor antes de requerir aprobación admin (7.º en adelante). */
         'standard_monitor_capacity' => (int) env('ACADEMY_STANDARD_MONITOR_CAPACITY', 6),
         /** Ubicación pública para chatbot / Gemini (editable sin tocar código). */
-        'location_label' => env('ACADEMY_LOCATION_LABEL', 'Playa de Zurriola, Donostia — instalaciones del club'),
+        'location_label' => env('ACADEMY_LOCATION_LABEL', 'Paseo Colón 41 bajo, Gros · Donostia. Clases en playa de Zurriola.'),
         /** Horario de apertura / atención (texto libre; confirmar en producción). */
         'opening_hours' => env('ACADEMY_OPENING_HOURS', 'Horario variable según temporada; confirma por WhatsApp el día de tu clase.'),
         /** Cómo llegar / punto de encuentro (texto libre). */
-        'getting_here' => env('ACADEMY_GETTING_HERE', 'Llega 10–15 minutos antes de tu clase. Punto de encuentro en Zurriola, junto a las instalaciones del club.'),
+        'getting_here' => env('ACADEMY_GETTING_HERE', 'Sede: Paseo Colón 41 bajo (Gros). El día de clase, llega 10–15 minutos antes al punto de encuentro en Zurriola.'),
         /** Instagram público (opcional). */
         'instagram_handle' => env('ACADEMY_INSTAGRAM_HANDLE', '@sansebastiansurfschool'),
         /**
@@ -225,6 +241,8 @@ return [
             'CHATBOT_KNOWLEDGE_JSON',
             resource_path('chatbot/s4-business-knowledge.json'),
         ),
+        /** Tope diario de llamadas Gemini SOLO del chatbot (no el parte Zurriola). */
+        'gemini_daily_limit' => (int) env('CHATBOT_GEMINI_DAILY_LIMIT', 200),
     ],
 
     'contact_form' => [

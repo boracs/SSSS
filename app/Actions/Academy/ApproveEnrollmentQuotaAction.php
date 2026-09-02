@@ -8,19 +8,18 @@ use App\Enums\PaymentStatus;
 use App\Models\BonoConsumption;
 use App\Models\Lesson;
 use App\Models\LessonUser;
-use App\Models\User;
-use App\Models\UserBono;
 use App\Services\AvailabilityService;
+use App\Services\BonoService;
 use App\Support\AcademyEnrollmentPolicy;
 use App\Support\BusinessDateTime;
 use App\Support\LessonBonoCreditUnits;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
 final class ApproveEnrollmentQuotaAction
 {
     public function __construct(
         private readonly AvailabilityService $availabilityService,
+        private readonly BonoService $bonoService,
     ) {}
 
     /**
@@ -100,13 +99,7 @@ final class ApproveEnrollmentQuotaAction
     /** @return array{ok: bool, message: string} */
     private function chargeVipBono(LessonUser $enrollment, Lesson $lesson, int $participantTotalAfter): array
     {
-        $bono = UserBono::query()
-            ->where('user_id', $enrollment->user_id)
-            ->where('status', UserBono::STATUS_CONFIRMED)
-            ->where('clases_restantes', '>', 0)
-            ->orderByDesc('id')
-            ->lockForUpdate()
-            ->first();
+        $bono = $this->bonoService->lockFifoBono((int) $enrollment->user_id);
 
         if ($bono === null) {
             return ['ok' => false, 'message' => 'El alumno no tiene saldo de bono VIP para confirmar esta plaza.'];
@@ -124,6 +117,7 @@ final class ApproveEnrollmentQuotaAction
             'user_id' => $enrollment->user_id,
             'lesson_id' => $lesson->id,
             'remaining_after' => (int) $bono->fresh()->clases_restantes,
+            'units_consumed' => $units,
             'consumed_at' => BusinessDateTime::now(),
         ]);
 

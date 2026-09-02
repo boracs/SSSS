@@ -13,6 +13,7 @@ import { formatClock, weatherIconMeta } from "./WeatherDetailPanel";
 import { LevelStarsStack } from "./LevelStars";
 import SurfForecastSheetFooter from "./SurfForecastSheetFooter";
 import { windArrowClass, windValueClass } from "./windArrowTone";
+import ForecastSheetFrame from "./ForecastSheetFrame";
 
 /**
  * Slider "forecast al detalle": bottom-sheet al ras inferior.
@@ -268,19 +269,6 @@ export default function SurfDetailedForecastSlider({
     }, [days.length]);
 
     useEffect(() => {
-        if (!open) return undefined;
-
-        const onKeyDown = (event) => {
-            if (event.key === "Escape") onClose?.();
-        };
-        window.addEventListener("keydown", onKeyDown);
-
-        return () => {
-            window.removeEventListener("keydown", onKeyDown);
-        };
-    }, [open, onClose]);
-
-    useEffect(() => {
         if (!open || !days.length) return undefined;
 
         dayElsRef.current = dayElsRef.current.slice(0, days.length);
@@ -296,18 +284,11 @@ export default function SurfDetailedForecastSlider({
     const activeLabel = days[activeDayIndex]?.dayLabel || days[0]?.dayLabel || "";
 
     return (
-        <div
-            id={panelId}
-            role="dialog"
-            aria-modal="false"
-            aria-label="Forecast al detalle: oleaje y tiempo cada 2 horas"
-            aria-hidden={!open}
-            className={`fixed inset-x-0 bottom-0 z-[530] flex max-h-[min(90dvh,48rem)] transform flex-col rounded-t-2xl border-t border-cyan-500/25 bg-slate-950/95 shadow-[0_-12px_40px_rgba(0,0,0,0.45)] backdrop-blur-md transition-transform duration-500 ease-in-out sm:max-h-[min(72vh,44rem)] sm:rounded-t-3xl ${
-                open
-                    ? "translate-x-0"
-                    : "pointer-events-none translate-x-full"
-            }`}
-            style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        <ForecastSheetFrame
+            open={open}
+            panelId={panelId}
+            label="Forecast al detalle: oleaje y tiempo cada 2 horas"
+            maxHeightClass="h-fit max-h-[90dvh]"
         >
             <div className="relative flex shrink-0 items-center justify-center border-b border-white/10 px-12 py-2.5 sm:px-14 sm:py-3">
                 <div className="flex min-w-0 max-w-full items-center justify-center gap-3 sm:gap-5">
@@ -326,15 +307,18 @@ export default function SurfDetailedForecastSlider({
                 </div>
                 <button
                     type="button"
-                    onClick={onClose}
+                    onClick={(event) => {
+                        event.stopPropagation();
+                        onClose?.();
+                    }}
                     aria-label="Cerrar forecast al detalle"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-white/10 p-1.5 text-slate-400 transition hover:bg-white/5 hover:text-white sm:right-4 sm:p-2"
+                    className="absolute right-2 top-1/2 flex min-h-11 min-w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 text-slate-400 transition hover:bg-white/5 hover:text-white sm:right-4"
                 >
                     <X className="h-4 w-4" aria-hidden />
                 </button>
             </div>
 
-            <div className="overflow-x-hidden overflow-y-hidden px-2 py-1.5 sm:px-5 sm:py-2">
+            <div className="min-h-0 overflow-x-hidden overflow-y-hidden px-2 py-3 sm:px-5 sm:py-3.5">
                 {loading ? (
                     <p className="mb-2 flex items-center gap-2 text-xs text-cyan-200/80">
                         <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
@@ -373,6 +357,6 @@ export default function SurfDetailedForecastSlider({
                 webcamAnchorId={webcamAnchorId}
                 sheetOpen={open}
             />
-        </div>
+        </ForecastSheetFrame>
     );
 }

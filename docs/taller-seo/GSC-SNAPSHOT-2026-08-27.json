@@ -1,0 +1,170 @@
+{
+  "$schema_interno": "snapshot-gsc-v1",
+  "meta": {
+    "titulo": "Snapshot Google Search Console — zurriolacam.com.es (webcam del dueño; NO es la app S4)",
+    "fecha_captura": "2026-08-27",
+    "fecha_correccion_propiedad": "2026-08-28",
+    "correccion_propiedad": "El snapshot original se etiquetó como S4/San Sebastián Surf School, pero el dueño confirmó el 2026-08-28 que la captura es de zurriolacam.com.es (webcam WordPress del dueño). Cualquier lectura previa como tráfico de la app S4 es INVALIDA. La app S4 aún no tiene historial GSC (se lanza ~enero).",
+    "fuente": "Captura de pantalla del informe Rendimiento de Google Search Console (aportada por el dueño)",
+    "fiabilidad_global": "media",
+    "por_que_media": "Los 4 KPIs del panel superior se leen con claridad; el filtro de consulta aparece truncado en la captura y la serie diaria del gráfico no es legible a nivel de valor.",
+    "uso_previsto": "Dar a una IA (Cursor / DeepSeek / Gemini) una idea precisa y honesta del tráfico orgánico real antes de proponer acciones SEO/GEO.",
+    "documentos_relacionados": [
+      "docs/taller-seo/KEYWORDS-CONVERSION.md",
+      "docs/taller-seo/SEO_MATRIX.md",
+      "docs/COMPETENCIA_SEO_DONOSTIA.md"
+    ]
+  },
+
+  "contexto_informe": {
+    "propiedad": "zurriolacam.com.es — webcam WP del dueño (NO la app S4; ver corrección en meta)",
+    "informe": "Rendimiento > Resultados de búsqueda",
+    "ultima_actualizacion_datos": "hace 5 horas (respecto a la captura)",
+    "granularidad_grafico": "Cada día",
+    "metricas_activas_en_grafico": [
+      "Clics totales",
+      "Impresiones totales",
+      "CTR medio",
+      "Posición media"
+    ]
+  },
+
+  "filtros_aplicados": {
+    "rango_fechas": {
+      "seleccion_ui": "3 meses",
+      "inicio_estimado": "2026-05-27",
+      "fin_estimado": "2026-08-26",
+      "dias_aprox": 92,
+      "confianza": "alta para la duración (chip '3 meses' activo), media para las fechas exactas"
+    },
+    "tipo_busqueda": {
+      "valor": "Web",
+      "implicacion": "NO incluye Imágenes, Vídeo ni Noticias. El tráfico total del sitio es mayor que estas cifras."
+    },
+    "consulta": {
+      "estado": "ACTIVO",
+      "texto_visible_en_captura": "Consulta: incluyen una mar…",
+      "interpretacion_probable": "Filtro de consultas que CONTIENEN un término de marca (p. ej. 'san sebastian surf school', 's4', 'surf school…'). El texto está cortado por el ancho del chip.",
+      "confianza": "BAJA",
+      "impacto_critico": "Si el filtro está activo, estas cifras NO son el tráfico total del sitio, sino un SUBCONJUNTO (probablemente sólo marca). Cualquier conclusión sobre volumen global sería errónea.",
+      "accion_pendiente_dueno": "Confirmar el texto exacto del filtro y, sobre todo, aportar la misma captura SIN filtro de consulta."
+    },
+    "otros_filtros": {
+      "pais": "no aplicado (visible)",
+      "dispositivo": "no aplicado (visible)",
+      "pagina": "no aplicado (visible)",
+      "apariencia_busqueda": "no aplicado (visible)"
+    }
+  },
+
+  "kpis": {
+    "clics_totales": {
+      "valor": 155,
+      "unidad": "clics",
+      "periodo": "3 meses"
+    },
+    "impresiones_totales": {
+      "valor": 393,
+      "unidad": "impresiones",
+      "periodo": "3 meses"
+    },
+    "ctr_medio": {
+      "valor": 39.4,
+      "unidad": "%",
+      "periodo": "3 meses"
+    },
+    "posicion_media": {
+      "valor": 4.9,
+      "unidad": "posición",
+      "periodo": "3 meses"
+    }
+  },
+
+  "derivadas_calculadas": {
+    "ctr_verificado": {
+      "calculo": "155 / 393",
+      "resultado": "39.44 %",
+      "coherente_con_ui": true,
+      "nota": "Los KPIs son internamente consistentes: la captura no está mezclando rangos distintos."
+    },
+    "clics_por_dia": {
+      "calculo": "155 / 92",
+      "resultado": 1.68,
+      "lectura": "Menos de 2 clics orgánicos al día en este segmento."
+    },
+    "impresiones_por_dia": {
+      "calculo": "393 / 92",
+      "resultado": 4.27,
+      "lectura": "Muy pocas impresiones: el sitio apenas aparece en resultados para este segmento."
+    }
+  },
+
+  "lectura_para_la_ia": {
+    "diagnostico_en_una_frase": "Posición 4,9 y CTR 39,4 % son EXCELENTES; el problema no es cómo rankea ni cómo convierte el snippet, sino que el volumen de impresiones (393 en 3 meses) es diminuto.",
+    "que_significa_cada_kpi": {
+      "posicion_4_9": "Cuando aparece, aparece arriba (parte baja del top 5, a menudo en primera pantalla). No hay problema de autoridad para lo que ya cubre.",
+      "ctr_39_4": "CTR altísimo, muy por encima de la media (~3–10 % en genéricas). Es la firma típica de consultas de MARCA: quien busca ya conoce el negocio y hace clic sí o sí. Refuerza la sospecha de que hay filtro de marca activo.",
+      "impresiones_393": "El cuello de botella. 393 impresiones en 92 días significa que el sitio casi no entra en la subasta de resultados para búsquedas genéricas/locales.",
+      "clics_155": "Consecuencia del punto anterior: el techo lo pone la demanda captada, no la conversión del snippet."
+    },
+    "conclusion_estrategica": "APLICA A ZURRIOLACAM (no a la app): no hay que optimizar títulos ni CTR (ya funcionan), sino ampliar cobertura sin marca. Para zurriolacam eso significa más demanda de cámara/forecast; la app S4 heredará este aprendizaje vía 301 en enero. La app S4 NO tiene datos GSC propios todavía.",
+    "riesgo_de_mala_interpretacion": "Si otra IA toma 155 clics como 'todo el tráfico del sitio', puede recomendar un rediseño SEO innecesario. Antes de eso, exigir el dato sin filtro de consulta."
+  },
+
+  "patron_del_grafico": {
+    "forma": "Serie diaria muy irregular, con picos y valles pronunciados y varios días a cero o casi cero.",
+    "posicion_media": "La línea naranja (posición) se mantiene alta y bastante estable a lo largo de todo el periodo, con huecos en los días sin impresiones.",
+    "tendencia": "No se aprecia crecimiento sostenido ni caída clara en los 3 meses; el comportamiento es plano con ruido.",
+    "estacionalidad_esperada": "Junio–agosto es temporada alta de surf en Zurriola; un tráfico plano en temporada alta confirma que el problema es de cobertura de keywords, no de demanda del mercado.",
+    "confianza": "media-baja (lectura visual de una captura de baja resolución; sin valores diarios legibles)"
+  },
+
+  "lo_que_NO_dice_esta_captura": [
+    "Tráfico total del sitio sin filtro de consulta (dato más importante que falta)",
+    "Desglose por página: qué URLs concretas reciben los clics",
+    "Desglose por consulta: las keywords reales que traen tráfico",
+    "Split marca vs no-marca (clave para saber si se capta demanda nueva)",
+    "Desglose por país y por dispositivo (móvil vs escritorio en tráfico turístico)",
+    "Comparativa con el periodo anterior o con el año anterior",
+    "Datos de Imágenes/Vídeo/Noticias (el filtro es sólo Web)",
+    "Cobertura/indexación: cuántas URLs indexables están realmente indexadas"
+  ],
+
+  "datos_a_pedir_al_dueno": [
+    {
+      "prioridad": "P0",
+      "peticion": "Misma vista de 3 meses SIN filtro de consulta (quitar el chip 'Consulta:').",
+      "por_que": "Sin esto no se puede saber el tamaño real del tráfico orgánico."
+    },
+    {
+      "prioridad": "P0",
+      "peticion": "Export CSV del informe Rendimiento (pestañas Consultas y Páginas), 3 meses, sin filtros.",
+      "por_que": "Permite mapear keywords reales contra docs/taller-seo/KEYWORDS-CONVERSION.md y detectar canibalización real."
+    },
+    {
+      "prioridad": "P1",
+      "peticion": "Comparativa 3 meses actuales vs 3 meses anteriores y vs mismo periodo del año pasado.",
+      "por_que": "Separar estacionalidad de tendencia real."
+    },
+    {
+      "prioridad": "P1",
+      "peticion": "Informe de Indexación de páginas (cuántas indexadas / excluidas y por qué).",
+      "por_que": "393 impresiones también puede ser síntoma de que muchas URLs no están indexadas."
+    },
+    {
+      "prioridad": "P2",
+      "peticion": "Desglose por dispositivo y por país.",
+      "por_que": "Público turístico: móvil y visitantes de fuera cambian el copy y el enfoque GEO."
+    }
+  ],
+
+  "advertencias_para_quien_use_este_json": [
+    "PROPIEDAD = zurriolacam.com.es (corregido 2026-08-28). NO usar estas cifras como tráfico de la app S4.",
+    "SUPERADO 2026-08-28: el dueño aportó el EXPORT COMPLETO de GSC (16 meses, sin filtro de consulta) en docs/taller-seo/data/gsc-zurriolacam-2026-08/. Este snapshot (155/393, captura filtrada ~3 meses) queda obsoleto: los números reales son ~20x mayores (home 7.295 clics / 385.031 impresiones; 'webcam zurriola' 2.427 clics / 163.169 imp / pos 4,63). Leer el plan 301 (ZURRIOLACAM-301-PLAN.md §1b) para las cifras vigentes.",
+    "Los KPIs (155 / 393 / 39,4 % / 4,9) son datos LEÍDOS DE UNA CAPTURA, no de un export CSV.",
+    "El filtro de consulta activo hace que estas cifras sean, casi con seguridad, un subconjunto de marca.",
+    "Las fechas del rango son estimadas a partir del chip '3 meses'.",
+    "NO derivar de aquí volúmenes de búsqueda ni dificultad de keyword: eso sigue pendiente de Keyword Planner (regla de docs/taller-seo/: sin volúmenes inventados).",
+    "Si aparece un snapshot posterior, este queda obsoleto: no mezclar periodos."
+  ]
+}

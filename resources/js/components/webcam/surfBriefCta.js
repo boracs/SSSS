@@ -25,22 +25,9 @@ const CTA_BY_SIGNAL = {
     },
 };
 
-/** Nivel destacado según señal (heurística monitor, no IA). */
-const RECOMMENDED_LEVEL_BY_SIGNAL = {
-    good: "iniciacion",
-    espigon: "iniciacion",
-    caution: "intermedio",
-    closed: "avanzado",
-};
-
 export function surfBriefCtaForSignal(status) {
     if (!status) return null;
     return CTA_BY_SIGNAL[status] || null;
-}
-
-export function surfBriefRecommendedLevel(status) {
-    if (!status) return null;
-    return RECOMMENDED_LEVEL_BY_SIGNAL[status] || null;
 }
 
 export const SURF_LEVEL_PREF_KEY = "s4-surf-level-pref";

@@ -49,7 +49,7 @@ export default function AcademyLocationPanel({
                         Cómo llegar
                     </h2>
                     <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                        Estamos en Zurriola, a pie de playa. Ideal para clases, club y recogida de material.
+                        Sede en Gros, Paseo Colón 41 bajo. Las clases son en Zurriola, a pocos minutos a pie.
                     </p>
                 </div>
             ) : null}

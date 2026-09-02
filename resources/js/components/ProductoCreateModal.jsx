@@ -3,7 +3,7 @@ import { ImagePlus, PackagePlus, X } from "lucide-react";
 import ProductTagSelector from "./ProductTagSelector";
 
 const inputClass =
-    "mt-0.5 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20";
+    "mt-0.5 block w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-900 outline-none transition focus:border-s4-cyan focus:ring-2 focus:ring-s4-cyan/20";
 
 const emptyCreateForm = {
     nombre: "",
@@ -278,7 +278,7 @@ const ProductoCreateModal = ({
                             name="eliminado"
                             checked={formData.eliminado}
                             onChange={handleChange}
-                            className="h-3.5 w-3.5 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                            className="h-3.5 w-3.5 rounded border-slate-300 text-cyan-600 focus:ring-s4-cyan"
                         />
                         <span className="text-xs text-slate-700">Crear como inactivo (no visible en tienda)</span>
                     </label>

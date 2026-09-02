@@ -1,6 +1,6 @@
 import React from "react";
 import { useForm, router } from "@inertiajs/react";
-import Layout1 from "../../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -22,7 +22,7 @@ function Field({ label, error, children }) {
 function Input({ className = "", ...props }) {
     return (
         <input
-            className={`h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 ${className}`}
+            className={`h-10 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 ${className}`}
             {...props}
         />
     );
@@ -31,7 +31,7 @@ function Input({ className = "", ...props }) {
 function Select({ className = "", children, ...props }) {
     return (
         <select
-            className={`h-10 w-full rounded-xl border border-white/10 bg-slate-800 px-3 text-sm text-white outline-none transition focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/20 ${className}`}
+            className={`h-10 w-full rounded-xl border border-white/10 bg-slate-800 px-3 text-sm text-white outline-none transition focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 ${className}`}
             {...props}
         >
             {children}
@@ -88,7 +88,7 @@ export default function AdminSecondHandEdit({ board, boardTypes = [] }) {
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
 
                 <div className="mb-6 flex items-center justify-between gap-4">
@@ -139,7 +139,7 @@ export default function AdminSecondHandEdit({ board, boardTypes = [] }) {
                             </Field>
                         </div>
 
-                        <Field label="Descripcion / Estado fisico" error={errors.description}>
+                        <Field label="Descripción / Estado físico" error={errors.description}>
                             <textarea value={data.description} onChange={(e) => setData("description", e.target.value)}
                                 rows={3}
                                 className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-orange-400/60 focus:ring-2 focus:ring-orange-500/20" />
@@ -193,11 +193,11 @@ export default function AdminSecondHandEdit({ board, boardTypes = [] }) {
                             </Field>
                         </div>
 
-                        <Field label="Reemplazar imagenes (opcional)" error={errors["images.0"]}>
+                        <Field label="Reemplazar imágenes (opcional)" error={errors["images.0"]}>
                             <input type="file" multiple accept="image/jpeg,image/jpg,image/png,image/webp"
                                 onChange={(e) => setData("images", Array.from(e.target.files))}
                                 className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-slate-400 file:mr-3 file:rounded-lg file:border-0 file:bg-orange-500 file:px-3 file:py-1 file:text-xs file:font-bold file:text-white" />
-                            <p className="mt-1 text-xs text-slate-500">Si subes nuevas imagenes se eliminaran las anteriores.</p>
+                            <p className="mt-1 text-xs text-slate-500">Si subes nuevas imágenes se eliminarán las anteriores.</p>
                         </Field>
                     </div>
 
@@ -216,6 +216,6 @@ export default function AdminSecondHandEdit({ board, boardTypes = [] }) {
                     </div>
                 </form>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

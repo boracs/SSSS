@@ -1,12 +1,12 @@
 import React from "react";
 import { Link } from "@inertiajs/react";
-import Layout1 from "../../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import SeoHead from "@/components/seo/SeoHead";
 import { Gavel, Key, Star, ArrowRight } from "lucide-react";
 
 export default function AuctionsAccessRequired({ seo = null }) {
     return (
-        <Layout1>
+        <PageShell variant="night">
             <SeoHead seo={seo} />
             <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0f172a] to-slate-950 px-4 py-12 sm:px-6">
                 <div className="mx-auto max-w-2xl">
@@ -14,7 +14,7 @@ export default function AuctionsAccessRequired({ seo = null }) {
                         <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/20 text-orange-300 ring-1 ring-orange-400/30">
                             <Gavel className="h-6 w-6" />
                         </div>
-                        <h1 className="text-2xl font-extrabold text-white sm:text-3xl">
+                        <h1 className="font-heading text-2xl font-extrabold text-white sm:text-3xl">
                             Subastas exclusivas para socios
                         </h1>
                         <p className="mt-4 text-sm leading-relaxed text-slate-300 sm:text-base">
@@ -63,6 +63,6 @@ export default function AuctionsAccessRequired({ seo = null }) {
                     </div>
                 </div>
             </div>
-        </Layout1>
+        </PageShell>
     );
 }

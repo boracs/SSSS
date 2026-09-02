@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, usePage } from "@inertiajs/react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import "../../css/pagina_principal.css";
 import Contenedor_productos from "../layouts/Contenedor_productos";
 import BrandLogo from "../components/BrandLogo";
@@ -16,7 +16,7 @@ import { Waves } from "lucide-react";
 const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
     const { partnerGoogleReviews } = usePage().props;
     return (
-        <Layout1 className="bg-transparent">
+        <PageShell variant="light" transparent>
             <SeoHead seo={seo} />
 
             {/* Hero a sangre — fuera del contenedor claro para que no filtre blanco */}
@@ -74,9 +74,7 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
                             <span className="font-semibold text-slate-100">
                                 San Sebastián Surf School
                             </span>
-                            {" — "}
-                            tu seguridad, nuestra técnica y material incluido en
-                            cada clase.
+                            {" — "}clases de surf en la playa de Zurriola, con material incluido y monitores titulados.
                         </p>
 
                         <ul
@@ -114,8 +112,6 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
                                 >
                                     Ver clases y tarifas
                                 </Link>
-                                <span className="text-slate-500"> · </span>
-                                Respuesta rápida en temporada
                             </p>
                         </div>
                     </div>
@@ -190,54 +186,67 @@ const Pag_principal = ({ productos = [], surfBrief, seo = null }) => {
                         <div className="grid gap-4 sm:grid-cols-3">
                             {[
                                 {
-                                    src: "/img/surf-grupo-bonos.png",
+                                    src: "/img/home-tiles/surf-grupo-bonos-800.webp",
                                     alt: "Grupo de surf en clase con bonos de San Sebastián Surf School",
                                     caption: "Clases y bonos",
+                                    href: () => route("servicios.surf"),
+                                    width: 800,
+                                    height: 436,
                                 },
                                 {
-                                    src: "/img/zona-calentamiento.png",
+                                    src: "/img/home-tiles/zona-calentamiento-800.webp",
                                     alt: "Zona de calentamiento pre-surf en instalaciones de San Sebastián Surf School",
                                     caption: "Instalaciones club",
+                                    href: () => route("nosotros"),
+                                    width: 420,
+                                    height: 301,
                                 },
                                 {
-                                    src: "/img/videograbacion-analisis.png",
+                                    src: "/img/home-tiles/videograbacion-analisis-800.webp",
                                     alt: "Análisis de técnica con videograbación",
                                     caption: "Análisis técnico",
+                                    href: () => route("servicios.videograbaciones"),
+                                    width: 800,
+                                    height: 436,
                                 },
                             ].map((img) => (
-                                <figure
+                                <Link
                                     key={img.caption}
-                                    className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+                                    href={img.href()}
+                                    aria-label={img.caption}
+                                    className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-s4-cyan/50 focus-visible:ring-offset-2"
                                 >
-                                    <div className="aspect-[4/3] overflow-hidden">
-                                        <img
-                                            src={img.src}
-                                            alt={img.alt}
-                                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                            loading="lazy"
-                                        />
-                                    </div>
-                                    <figcaption className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-s4">
-                                        {img.caption}
-                                    </figcaption>
-                                </figure>
+                                    <figure>
+                                        <div className="aspect-[4/3] overflow-hidden">
+                                            <img
+                                                src={img.src}
+                                                alt={img.alt}
+                                                width={img.width}
+                                                height={img.height}
+                                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                                loading="lazy"
+                                                decoding="async"
+                                            />
+                                        </div>
+                                        <figcaption className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-s4">
+                                            {img.caption}
+                                        </figcaption>
+                                    </figure>
+                                </Link>
                             ))}
                         </div>
                     </section>
                 </div>
 
-                {/* Ofertas (claras) → mosaico accesos (corte seco blanco → tiles) */}
+                {/* Ofertas (claras) → galería 8 experiencias (corte seco blanco → tiles) */}
                 {productos.length > 0 ? (
                     <div className="mx-auto mt-12 max-w-6xl px-4 sm:mt-14 sm:px-6 lg:px-8">
                         <Contenedor_productos productos={productos} compact />
                     </div>
                 ) : null}
-                <OpcionesIntro
-                    showHeading={false}
-                    className={productos.length > 0 ? "mt-10 sm:mt-12" : "mt-10 sm:mt-14"}
-                />
+                <OpcionesIntro />
             </div>
-        </Layout1>
+        </PageShell>
     );
 };
 

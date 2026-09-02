@@ -1,11 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Head, router } from "@inertiajs/react";
-import { Download, ExternalLink, FileText, LogOut, TriangleAlert, X } from "lucide-react";
-import Layout1 from "@/layouts/Layout1";
+import {
+    Download,
+    ExternalLink,
+    FileText,
+    LogIn,
+    LogOut,
+    TriangleAlert,
+    UserPlus,
+    X,
+} from "lucide-react";
+import PageShell from "@/layouts/PageShell";
 import WhatsAppIcon from "@/components/icons/WhatsAppIcon";
 import AccordionTrigger from "@/components/ui/AccordionTrigger";
+import LockerNumberCombobox, {
+    listAssignableLockerOptions,
+} from "@/components/admin/LockerNumberCombobox";
 import { SortableTh, compareRows } from "@/components/SortableTable";
 import { whatsappUrlFromPhone } from "@/lib/whatsapp";
+import { todayYmdInMadrid } from "@/lib/madridTime";
 import {
     useFloating,
     offset,
@@ -162,13 +175,13 @@ function buildWaLink(user) {
 
     let intro;
     if (neverPaid) {
-        intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque no encontramos ningún pago registrado para tu taquilla.`;
+        intro = `Hola ${firstName}, te escribimos desde San Sebastián Surf School porque no encontramos ningún pago registrado para tu taquilla.`;
     } else if (expired) {
-        intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque tu taquilla ha vencido el ${due}.`;
+        intro = `Hola ${firstName}, te escribimos desde San Sebastián Surf School porque tu taquilla ha vencido el ${due}.`;
     } else if (Number.isFinite(daysLeft) && daysLeft <= NOTICE_DAYS) {
-        intro = `Hola ${firstName}, te escribimos desde Mas Que Surf porque tu taquilla vence en breve, el ${due} (quedan ${daysLeft} días).`;
+        intro = `Hola ${firstName}, te escribimos desde San Sebastián Surf School porque tu taquilla vence en breve, el ${due} (quedan ${daysLeft} días).`;
     } else {
-        intro = `Hola ${firstName}, te escribimos desde Mas Que Surf sobre la vigencia de tu taquilla.`;
+        intro = `Hola ${firstName}, te escribimos desde San Sebastián Surf School sobre la vigencia de tu taquilla.`;
     }
 
     const msg = `${intro}
@@ -184,7 +197,7 @@ Si quieres renovar, por favor hazlo antes de que se venza el plazo para evitar c
 Puedes renovar tú mismo/a aquí: ${renewUrl}
 
 Un saludo,
-Mas Que Surf`;
+San Sebastián Surf School`;
 
     return whatsappUrlFromPhone(user?.telefono, msg);
 }
@@ -356,7 +369,10 @@ function BajaNoticeButton({ user, onToggle, size = "md" }) {
                     },
                 })}
             >
-                <TriangleAlert className={iconClass} strokeWidth={isMarked ? 2.25 : 1.75} />
+                <TriangleAlert
+                    className={iconClass}
+                    strokeWidth={isMarked ? 2.25 : 1.75}
+                />
             </button>
             {isMarked && open ? (
                 <div
@@ -380,6 +396,27 @@ function BajaNoticeButton({ user, onToggle, size = "md" }) {
                 </div>
             ) : null}
         </>
+    );
+}
+
+function AltaEntradaBadge({ user, size = "md" }) {
+    if (user?.estado !== "alta programada") return null;
+
+    const cuando = formatYmdEs(user.alta_programada_el);
+    const label = cuando
+        ? `Pendiente de entrada el ${cuando}`
+        : "Pendiente de entrada";
+    const sizeClass = size === "sm" ? "h-8 w-8" : "h-9 w-9";
+    const iconClass = size === "sm" ? "h-4 w-4" : "h-[1.125rem] w-[1.125rem]";
+
+    return (
+        <span
+            className={`inline-flex ${sizeClass} items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-500/10 text-emerald-300/85`}
+            aria-label={label}
+            title={label}
+        >
+            <LogIn className={iconClass} strokeWidth={2} />
+        </span>
     );
 }
 
@@ -454,6 +491,7 @@ function rowUrgency(u) {
             return "ok";
         }
     }
+    if (u?.estado === "alta programada") return "ok";
     if (u?.estado === "vencido" || u?.estado === "sin plan") return "expired";
     return "ok";
 }
@@ -471,7 +509,12 @@ function enrichUser(u) {
     const urgency = rowUrgency(u);
 
     let pct = 0;
-    if (raw !== null && raw !== undefined && raw !== "" && Number.isFinite(restantes)) {
+    if (
+        raw !== null &&
+        raw !== undefined &&
+        raw !== "" &&
+        Number.isFinite(restantes)
+    ) {
         if (restantes !== 0) {
             pct = Math.round((Math.abs(restantes) / DAYS_BAR_SCALE) * 100);
         }
@@ -487,7 +530,18 @@ function enrichUser(u) {
     return { ...u, pct, bar, urgency };
 }
 
+function formatYmdEs(ymd) {
+    if (!ymd || typeof ymd !== "string") return "";
+    const [y, m, d] = ymd.split("-");
+    if (!d) return ymd;
+    return `${d}/${m}/${y}`;
+}
+
 function daysLabel(u) {
+    if (u?.estado === "alta programada") {
+        const cuando = formatYmdEs(u.alta_programada_el);
+        return cuando ? `Entra el ${cuando}` : "Alta programada";
+    }
     const d = u.dias_restantes;
     if (d === null || d === undefined) {
         // Con backend actualizado, este caso solo ocurre para estado 'sin plan'
@@ -498,7 +552,9 @@ function daysLabel(u) {
     if (d === 0) return "Vence hoy";
     const overdue = Math.abs(Number(d));
     if (!Number.isFinite(overdue) || overdue <= 0) return "Vencido";
-    return overdue === 1 ? "Vencido hace 1 día" : `Vencido hace ${overdue} días`;
+    return overdue === 1
+        ? "Vencido hace 1 día"
+        : `Vencido hace ${overdue} días`;
 }
 
 function daysLabelClass(urgency) {
@@ -550,12 +606,146 @@ function ProgressMeter({ user, barWidthClass = "w-40" }) {
                     }
                 />
             </div>
-            <p className={`mt-1 ${daysLabelClass(urgency)}`}>{daysLabel(user)}</p>
+            <p className={`mt-1 ${daysLabelClass(urgency)}`}>
+                {daysLabel(user)}
+            </p>
         </div>
     );
 }
 
-export default function Vigencia({ usuarios = [], flash = {} }) {
+/**
+ * Ex-socios: sin plaza pero con historial (baja registrada o pagos). Desde aquí se
+ * readmite al que vuelve; el alta sella la fecha que decide si su próxima cuota
+ * encadena el periodo viejo o arranca de cero.
+ */
+function ExSociosPanel({ rows, onAlta }) {
+    if (rows.length === 0) {
+        return (
+            <p className="rounded-2xl border border-white/10 bg-slate-900/50 px-6 py-10 text-center text-sm text-slate-400">
+                Ningún ex-socio. Aquí aparecen los socios a los que se les
+                confirmó la baja o se les liberó la taquilla. Los socios nuevos
+                se dan de alta desde «Asignar taquilla».
+            </p>
+        );
+    }
+
+    const bajaLabel = (u) =>
+        u.baja_efectiva_at ? fmtDate(u.baja_efectiva_at) : "sin registrar";
+    const periodoLabel = (u) =>
+        u.ultimo_periodo_fin ? fmtDate(u.ultimo_periodo_fin) : "—";
+
+    return (
+        <>
+            <div className="space-y-2 md:hidden">
+                {rows.map((u) => (
+                    <article
+                        key={u.id}
+                        className="rounded-xl border border-white/10 bg-slate-900/70 p-3"
+                    >
+                        <p className="truncate font-semibold text-white">
+                            {u.nombre} {u.apellido}
+                        </p>
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                            {u.email || "sin email"}
+                        </p>
+                        <dl className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                                <dt className="text-slate-500">Baja</dt>
+                                <dd className="text-slate-300">
+                                    {bajaLabel(u)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-slate-500">
+                                    Fin del último periodo
+                                </dt>
+                                <dd className="text-slate-300">
+                                    {periodoLabel(u)}
+                                </dd>
+                            </div>
+                        </dl>
+                        <button
+                            type="button"
+                            onClick={() => onAlta(u)}
+                            className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-cyan-500"
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            Dar de alta
+                        </button>
+                    </article>
+                ))}
+            </div>
+
+            <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 md:block">
+                <div className="overflow-auto">
+                    <table className="min-w-full text-sm">
+                        <thead className="bg-slate-800/80 text-slate-400">
+                            <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide">
+                                    Usuario
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide">
+                                    Baja
+                                </th>
+                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide">
+                                    Fin del último periodo
+                                </th>
+                                <th className="px-3 py-2 text-right text-xs font-medium tracking-wide">
+                                    Alta
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                            {rows.map((u) => (
+                                <tr
+                                    key={u.id}
+                                    className="hover:bg-white/[0.03]"
+                                >
+                                    <td className="px-3 py-2">
+                                        <p className="font-semibold text-white">
+                                            {u.nombre} {u.apellido}
+                                            {u.is_vip ? (
+                                                <span className="ml-2 rounded-full bg-amber-900/35 px-1.5 py-0.5 text-[11px] font-medium text-amber-200 ring-1 ring-amber-600/25">
+                                                    VIP
+                                                </span>
+                                            ) : null}
+                                        </p>
+                                        <p className="text-xs text-slate-500">
+                                            {u.email || "sin email"}
+                                        </p>
+                                    </td>
+                                    <td className="px-3 py-2 text-slate-300">
+                                        {bajaLabel(u)}
+                                    </td>
+                                    <td className="px-3 py-2 text-slate-300">
+                                        {periodoLabel(u)}
+                                    </td>
+                                    <td className="px-3 py-2 text-right">
+                                        <button
+                                            type="button"
+                                            onClick={() => onAlta(u)}
+                                            className="inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-cyan-500"
+                                        >
+                                            <UserPlus className="h-3.5 w-3.5" />
+                                            Dar de alta
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </>
+    );
+}
+
+export default function Vigencia({
+    usuarios = [],
+    exSocios = [],
+    sharedLockerNumbers = [500, 600],
+    flash = {},
+}) {
     const [search, setSearch] = useState("");
     const [sortKey, setSortKey] = useState("progreso");
     const [sortDir, setSortDir] = useState("asc");
@@ -567,6 +757,11 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
     const [bajaConfirmUser, setBajaConfirmUser] = useState(null);
     const [liberarConfirmUser, setLiberarConfirmUser] = useState(null);
     const [bajaBusy, setBajaBusy] = useState(false);
+    const [tab, setTab] = useState("socios");
+    const [altaUser, setAltaUser] = useState(null);
+    const [altaNumero, setAltaNumero] = useState("");
+    const [altaEl, setAltaEl] = useState(() => todayYmdInMadrid());
+    const [altaBusy, setAltaBusy] = useState(false);
 
     // Modal unificado: preview embebido para justificante local; Stripe
     // (X-Frame-Options) solo ofrece "Abrir" en pestaña nueva + mensaje.
@@ -589,6 +784,18 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
     };
 
     const users = useMemo(() => (usuarios || []).map(enrichUser), [usuarios]);
+
+    const lockerOptions = useMemo(() => {
+        const occupied = users
+            .map((u) => Number(u.numeroTaquilla))
+            .filter((n) => Number.isFinite(n) && n > 0);
+        return listAssignableLockerOptions(occupied, sharedLockerNumbers);
+    }, [users, sharedLockerNumbers]);
+
+    const freeLockerCount = useMemo(
+        () => lockerOptions.filter((o) => o.kind === "free").length,
+        [lockerOptions],
+    );
 
     useEffect(() => {
         const message = flash?.success || flash?.error;
@@ -658,6 +865,53 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
         return base;
     }, [users, search, sortKey, sortDir]);
 
+    const filteredEx = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return exSocios;
+        return exSocios.filter(
+            (u) =>
+                `${u.nombre || ""} ${u.apellido || ""}`
+                    .toLowerCase()
+                    .includes(q) ||
+                String(u.email || "")
+                    .toLowerCase()
+                    .includes(q),
+        );
+    }, [exSocios, search]);
+
+    const openAlta = (user) => {
+        setAltaNumero("");
+        setAltaEl(todayYmdInMadrid());
+        setAltaUser(user);
+    };
+
+    const submitAlta = () => {
+        const numero = Number(altaNumero);
+        const entra = String(altaEl || "").trim();
+        if (
+            !altaUser ||
+            altaBusy ||
+            !Number.isInteger(numero) ||
+            numero < 1 ||
+            !lockerOptions.some((o) => o.n === numero) ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(entra)
+        )
+            return;
+
+        setAltaBusy(true);
+        router.post(
+            route("taquilla.usuarios.alta", altaUser.id),
+            { numero_taquilla: numero, alta_el: entra },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setAltaBusy(false);
+                    setAltaUser(null);
+                },
+            },
+        );
+    };
+
     const mobileSortValue = `${sortKey}:${sortDir}`;
 
     const handleMobileSortChange = (value) => {
@@ -693,7 +947,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
     };
 
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title="Taquillas · Vigencia" />
             <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
                 <div
@@ -714,14 +968,53 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                         </h1>
                     </header>
 
+                    <div
+                        className="flex flex-wrap items-center gap-1.5"
+                        role="tablist"
+                        aria-label="Socios o ex-socios"
+                    >
+                        {[
+                            {
+                                id: "socios",
+                                label: "Socios",
+                                count: usuarios.length,
+                            },
+                            {
+                                id: "ex",
+                                label: "Ex-socios",
+                                count: exSocios.length,
+                            },
+                        ].map((t) => (
+                            <button
+                                key={t.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={tab === t.id}
+                                onClick={() => setTab(t.id)}
+                                className={`rounded-xl px-3.5 py-2 text-sm font-semibold transition ${
+                                    tab === t.id
+                                        ? "bg-cyan-600 text-white"
+                                        : "border border-white/10 bg-slate-900/70 text-slate-300 hover:bg-slate-800"
+                                }`}
+                            >
+                                {t.label}
+                                <span className="ml-1.5 text-xs font-medium opacity-70 tabular-nums">
+                                    {t.count}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
                     <div className="flex flex-wrap items-center gap-2">
                         <input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Buscar por nombre o nº taquilla…"
-                            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 sm:max-w-sm"
+                            placeholder="Buscar por nombre o n.º de taquilla…"
+                            className="min-w-0 flex-1 rounded-xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20 sm:max-w-sm"
                         />
-                        <label className="flex items-center gap-2 md:hidden">
+                        <label
+                            className={`flex items-center gap-2 md:hidden ${tab === "socios" ? "" : "hidden"}`}
+                        >
                             <span className="sr-only">Ordenar</span>
                             <select
                                 value={
@@ -734,7 +1027,7 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                 onChange={(e) =>
                                     handleMobileSortChange(e.target.value)
                                 }
-                                className="rounded-xl border border-white/10 bg-slate-950/80 px-2.5 py-2.5 text-xs font-semibold text-slate-100 focus:border-cyan-500/50 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                                className="rounded-xl border border-white/10 bg-slate-950/80 px-2.5 py-2.5 text-xs font-semibold text-slate-100 focus:border-s4-cyan/50 focus:outline-none focus:ring-2 focus:ring-s4-cyan/20"
                                 aria-label="Ordenar socios (mismas columnas que escritorio)"
                             >
                                 {MOBILE_SORT_OPTIONS.map((opt) => (
@@ -744,420 +1037,77 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                 ))}
                             </select>
                         </label>
-                        <p className="text-xs text-slate-500">
-                            {filtered.length} socios
-                        </p>
                     </div>
 
-                    {/* Móvil */}
-                    <div className="space-y-2 md:hidden">
-                        {filtered.length === 0 ? (
-                            <p className="rounded-2xl border border-white/10 bg-slate-900/50 py-10 text-center text-sm text-slate-400">
-                                Sin socios con taquilla.
-                            </p>
-                        ) : (
-                            filtered.map((u) => {
-                                const waUrl = buildWaLink(u);
-                                const isOpen = expandedUserId === u.id;
-                                const historyRows = historyByUser[u.id] || [];
-                                const isLoading = loadingHistoryUserId === u.id;
-                                return (
-                                    <article
-                                        key={u.id}
-                                        className={`rounded-xl border border-white/10 bg-slate-900/70 p-2.5 ${cardUrgencyClass(u.urgency)}`}
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    openUserHistory(u.id)
-                                                }
-                                                aria-expanded={isOpen}
-                                                className="min-w-0 flex-1 text-left"
+                    {tab === "ex" ? (
+                        <ExSociosPanel rows={filteredEx} onAlta={openAlta} />
+                    ) : (
+                        <>
+                            {/* Móvil */}
+                            <div className="space-y-2 md:hidden">
+                                {filtered.length === 0 ? (
+                                    <p className="rounded-2xl border border-white/10 bg-slate-900/50 py-10 text-center text-sm text-slate-400">
+                                        Sin socios con taquilla.
+                                    </p>
+                                ) : (
+                                    filtered.map((u) => {
+                                        const waUrl = buildWaLink(u);
+                                        const isOpen = expandedUserId === u.id;
+                                        const historyRows =
+                                            historyByUser[u.id] || [];
+                                        const isLoading =
+                                            loadingHistoryUserId === u.id;
+                                        return (
+                                            <article
+                                                key={u.id}
+                                                className={`rounded-xl border border-white/10 bg-slate-900/70 p-2.5 ${cardUrgencyClass(u.urgency)}`}
                                             >
-                                                <div className="flex min-w-0 items-center gap-2">
-                                                    <p className="truncate font-semibold text-white">
-                                                        {u.nombre} {u.apellido}
-                                                    </p>
-                                                    <span className="shrink-0 rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-slate-300 ring-1 ring-white/10">
-                                                        #
-                                                        {u.numeroTaquilla ??
-                                                            "—"}
-                                                    </span>
-                                                </div>
-                                                <p className="mt-0.5 truncate text-xs text-slate-500">
-                                                    {u.email || "sin email"}
-                                                </p>
-                                            </button>
-                                            {/* Slots fijos: aviso | liberar | WhatsApp | expandir */}
-                                            <div className="flex shrink-0 items-center gap-1">
-                                                <div className="flex h-8 w-8 items-center justify-center">
-                                                    <BajaNoticeButton
-                                                        user={u}
-                                                        onToggle={
-                                                            setBajaConfirmUser
-                                                        }
-                                                        size="sm"
-                                                    />
-                                                </div>
-                                                <div className="flex h-8 w-8 items-center justify-center">
-                                                    {u.baja_solicitada_at ? (
-                                                        <BajaLiberarButton
-                                                            user={u}
-                                                            onLiberar={
-                                                                setLiberarConfirmUser
-                                                            }
-                                                            size="sm"
-                                                        />
-                                                    ) : (
-                                                        <span
-                                                            className="h-8 w-8"
-                                                            aria-hidden
-                                                        />
-                                                    )}
-                                                </div>
-                                                <div className="flex h-8 w-8 items-center justify-center">
-                                                    {waUrl ? (
-                                                        <a
-                                                            href={waUrl}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className={
-                                                                WA_BTN_CLASS
-                                                            }
-                                                            aria-label="WhatsApp"
-                                                            onClick={(e) =>
-                                                                e.stopPropagation()
-                                                            }
-                                                        >
-                                                            <WhatsAppIcon className="h-4 w-4" />
-                                                        </a>
-                                                    ) : (
-                                                        <span
-                                                            className="h-8 w-8"
-                                                            aria-hidden
-                                                        />
-                                                    )}
-                                                </div>
-                                                <AccordionTrigger
-                                                    open={isOpen}
-                                                    onToggle={() =>
-                                                        openUserHistory(u.id)
-                                                    }
-                                                    panelId={`vigencia-history-m-${u.id}`}
-                                                    labelOpen="Ocultar historial de pagos"
-                                                    labelClosed="Ver historial de pagos"
-                                                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-300"
-                                                    chevronClassName="h-4 w-4"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-400">
-                                            <p>
-                                                <span className="text-slate-500">
-                                                    Plan
-                                                </span>{" "}
-                                                <span className="text-slate-300">
-                                                    {planShortName(
-                                                        u.plan_vigente?.nombre,
-                                                    )}
-                                                </span>
-                                                {u.plan_vigente &&
-                                                u.plan_vigente.activo ===
-                                                    false ? (
-                                                    <InactivePlanWarningTooltip />
-                                                ) : null}
-                                            </p>
-                                            <p>
-                                                <span className="text-slate-500">
-                                                    Vence
-                                                </span>{" "}
-                                                <span className="tabular-nums text-slate-300">
-                                                    {fmtDate(u.fecha_fin)}
-                                                </span>
-                                                <ExtraDaysBadge
-                                                    days={Number(
-                                                        u.prepaid_extra_days ||
-                                                            0,
-                                                    )}
-                                                />
-                                            </p>
-                                            <p>
-                                                <span className="text-slate-500">
-                                                    Último pago
-                                                </span>{" "}
-                                                <span className="tabular-nums text-slate-300">
-                                                    {fmtDate(u.ultimo_pago)}
-                                                </span>
-                                            </p>
-                                        </div>
-                                        <div className="mt-2">
-                                            <ProgressMeter
-                                                user={u}
-                                                barWidthClass="w-full"
-                                            />
-                                        </div>
-                                        {isOpen ? (
-                                            <div
-                                                id={`vigencia-history-m-${u.id}`}
-                                                className="mt-3 border-t border-white/10 pt-3"
-                                            >
-                                                {isLoading ? (
-                                                    <p className="text-sm text-slate-400">
-                                                        Cargando historial…
-                                                    </p>
-                                                ) : historyRows.length === 0 ? (
-                                                    <p className="text-sm text-slate-400">
-                                                        Sin pagos registrados.
-                                                    </p>
-                                                ) : (
-                                                    <ul className="space-y-2">
-                                                        {historyRows.map(
-                                                            (row) => (
-                                                                <li
-                                                                    key={row.id}
-                                                                    className="rounded-xl border border-white/5 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"
-                                                                >
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <span className="font-semibold text-white">
-                                                                                {
-                                                                                    row.plan
-                                                                                }
-                                                                            </span>
-                                                                            <p className="mt-1 text-slate-400">
-                                                                                {fmtDate(
-                                                                                    row.periodo_inicio,
-                                                                                )}{" "}
-                                                                                –{" "}
-                                                                                {fmtDate(
-                                                                                    row.periodo_fin,
-                                                                                )}{" "}
-                                                                                ·{" "}
-                                                                                {paymentMethodLabel(
-                                                                                    row,
-                                                                                )}
-                                                                            </p>
-                                                                        </div>
-                                                                        <div className="flex shrink-0 flex-col items-end gap-1.5">
-                                                                            <span
-                                                                                className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${paymentStatusPill(row.status)}`}
-                                                                            >
-                                                                                {paymentStatusLabel(
-                                                                                    row.status,
-                                                                                )}
-                                                                            </span>
-                                                                            {row.proof_url ? (
-                                                                                <button
-                                                                                    type="button"
-                                                                                    className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
-                                                                                    onClick={() =>
-                                                                                        openProof(
-                                                                                            row,
-                                                                                        )
-                                                                                    }
-                                                                                    aria-label="Ver recibo"
-                                                                                    title="Ver recibo"
-                                                                                >
-                                                                                    <FileText className="h-3.5 w-3.5" />
-                                                                                </button>
-                                                                            ) : null}
-                                                                        </div>
-                                                                    </div>
-                                                                </li>
-                                                            ),
-                                                        )}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        ) : null}
-                                    </article>
-                                );
-                            })
-                        )}
-                    </div>
-
-                    {/* Escritorio */}
-                    <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 md:block">
-                        <div className="overflow-auto">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-slate-800/80 text-slate-400">
-                                    <tr>
-                                        <SortableTh
-                                            label="Usuario"
-                                            sortKey="user"
-                                            activeKey={sortKey}
-                                            activeDir={sortDir}
-                                            onSort={toggleSort}
-                                            className="px-3 py-2 text-left text-xs tracking-wide"
-                                        />
-                                        <SortableTh
-                                            label="Taquilla"
-                                            sortKey="locker"
-                                            activeKey={sortKey}
-                                            activeDir={sortDir}
-                                            onSort={toggleSort}
-                                            className="px-3 py-2 text-left text-xs tracking-wide"
-                                        />
-                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
-                                            Plan
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
-                                            Último pago
-                                        </th>
-                                        <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
-                                            Vence
-                                        </th>
-                                        <SortableTh
-                                            label="Progreso"
-                                            sortKey="progreso"
-                                            activeKey={sortKey}
-                                            activeDir={sortDir}
-                                            onSort={toggleSort}
-                                            className="px-3 py-2 text-left text-xs tracking-wide"
-                                        />
-                                        <SortableTh
-                                            label="Baja"
-                                            sortKey="baja"
-                                            activeKey={sortKey}
-                                            activeDir={sortDir}
-                                            onSort={toggleSort}
-                                            className="px-3 py-2 text-left text-xs tracking-wide"
-                                        />
-                                        <th
-                                            className="w-10 px-2 py-2"
-                                            aria-label="Historial"
-                                        />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.length === 0 ? (
-                                        <tr>
-                                            <td
-                                                colSpan={8}
-                                                className="px-3 py-10 text-center text-slate-400"
-                                            >
-                                                Sin socios con taquilla.
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filtered.map((u) => {
-                                            const isOpen =
-                                                expandedUserId === u.id;
-                                            const historyRows =
-                                                historyByUser[u.id] || [];
-                                            const isLoading =
-                                                loadingHistoryUserId === u.id;
-                                            const waUrl = buildWaLink(u);
-                                            return (
-                                                <React.Fragment key={u.id}>
-                                                    <tr
-                                                        className={`cursor-pointer border-t border-white/5 text-slate-100 hover:bg-slate-800/40 ${rowUrgencyClass(u.urgency)}`}
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <button
+                                                        type="button"
                                                         onClick={() =>
                                                             openUserHistory(
                                                                 u.id,
                                                             )
                                                         }
+                                                        aria-expanded={isOpen}
+                                                        className="min-w-0 flex-1 text-left"
                                                     >
-                                                        <td className="px-3 py-2">
-                                                            <div className="flex items-center gap-2">
-                                                                {waUrl ? (
-                                                                    <a
-                                                                        href={
-                                                                            waUrl
-                                                                        }
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className={
-                                                                            WA_BTN_CLASS
-                                                                        }
-                                                                        aria-label="WhatsApp"
-                                                                        title="WhatsApp"
-                                                                        onClick={(
-                                                                            e,
-                                                                        ) =>
-                                                                            e.stopPropagation()
-                                                                        }
-                                                                    >
-                                                                        <WhatsAppIcon className="h-3.5 w-3.5" />
-                                                                    </a>
-                                                                ) : (
-                                                                    <span className="text-[11px] text-slate-500">
-                                                                        sin tel.
-                                                                    </span>
-                                                                )}
-                                                                <div className="min-w-0">
-                                                                    <p className="truncate font-semibold text-white">
-                                                                        {
-                                                                            u.nombre
-                                                                        }{" "}
-                                                                        {
-                                                                            u.apellido
-                                                                        }
-                                                                    </p>
-                                                                    <p className="truncate text-xs text-slate-500">
-                                                                        {u.email ||
-                                                                            "sin email"}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-3 py-2 tabular-nums text-slate-300">
-                                                            #
-                                                            {u.numeroTaquilla ??
-                                                                "—"}
-                                                        </td>
-                                                        <td className="px-3 py-2 text-slate-400">
-                                                            <div className="inline-flex items-center">
-                                                                <span>
-                                                                    {planShortName(
-                                                                        u
-                                                                            .plan_vigente
-                                                                            ?.nombre,
-                                                                    )}
-                                                                </span>
-                                                                {u.plan_vigente &&
-                                                                u.plan_vigente
-                                                                    .activo ===
-                                                                    false ? (
-                                                                    <InactivePlanWarningTooltip />
-                                                                ) : null}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-3 py-2 tabular-nums text-slate-400">
-                                                            {fmtDate(
-                                                                u.ultimo_pago,
-                                                            )}
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <div className="inline-flex items-center">
-                                                                <span className="tabular-nums text-slate-400">
-                                                                    {fmtDate(
-                                                                        u.fecha_fin,
-                                                                    )}
-                                                                </span>
-                                                                <ExtraDaysBadge
-                                                                    days={Number(
-                                                                        u.prepaid_extra_days ||
-                                                                            0,
-                                                                    )}
-                                                                />
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <ProgressMeter
+                                                        <div className="flex min-w-0 items-center gap-2">
+                                                            <p className="truncate font-semibold text-white">
+                                                                {u.nombre}{" "}
+                                                                {u.apellido}
+                                                            </p>
+                                                            <span className="shrink-0 rounded-full bg-slate-800/80 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-slate-300 ring-1 ring-white/10">
+                                                                #
+                                                                {u.numeroTaquilla ??
+                                                                    "—"}
+                                                            </span>
+                                                        </div>
+                                                        <p className="mt-0.5 truncate text-xs text-slate-500">
+                                                            {u.email ||
+                                                                "sin email"}
+                                                        </p>
+                                                    </button>
+                                                    {/* Slots fijos: aviso | liberar | WhatsApp | expandir */}
+                                                    <div className="flex shrink-0 items-center gap-1">
+                                                        <div className="flex h-8 w-8 items-center justify-center">
+                                                            <BajaNoticeButton
                                                                 user={u}
+                                                                onToggle={
+                                                                    setBajaConfirmUser
+                                                                }
+                                                                size="sm"
                                                             />
-                                                        </td>
-                                                        <td className="px-3 py-2">
-                                                            <div className="inline-flex items-center gap-1.5">
-                                                                <BajaNoticeButton
+                                                        </div>
+                                                        <div className="flex h-8 w-8 items-center justify-center">
+                                                            {u.estado ===
+                                                            "alta programada" ? (
+                                                                <AltaEntradaBadge
                                                                     user={u}
-                                                                    onToggle={
-                                                                        setBajaConfirmUser
-                                                                    }
                                                                     size="sm"
                                                                 />
+                                                            ) : u.baja_solicitada_at ? (
                                                                 <BajaLiberarButton
                                                                     user={u}
                                                                     onLiberar={
@@ -1165,154 +1115,641 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                                                                     }
                                                                     size="sm"
                                                                 />
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-2 py-2 text-right">
-                                                            <AccordionTrigger
-                                                                open={isOpen}
-                                                                onToggle={() =>
-                                                                    openUserHistory(u.id)
-                                                                }
-                                                                panelId={`vigencia-history-d-${u.id}`}
-                                                                labelOpen="Ocultar historial"
-                                                                labelClosed="Ver historial de pagos"
-                                                                stopPropagation
-                                                                className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-cyan-300"
-                                                                chevronClassName={`h-4 w-4 ${isOpen ? "text-cyan-400" : ""}`}
-                                                            />
-                                                        </td>
-                                                    </tr>
-                                                    {isOpen ? (
-                                                        <tr className="border-t border-white/5 bg-slate-950/50">
-                                                            <td
-                                                                colSpan={8}
-                                                                id={`vigencia-history-d-${u.id}`}
-                                                                className="px-3 py-2.5"
-                                                            >
-                                                                {isLoading ? (
-                                                                    <p className="py-3 text-sm text-slate-400">
-                                                                        Cargando
-                                                                        historial
-                                                                        de
-                                                                        pagos…
-                                                                    </p>
-                                                                ) : historyRows.length ===
-                                                                  0 ? (
-                                                                    <p className="py-2 text-sm text-slate-400">
-                                                                        Sin
-                                                                        pagos
-                                                                        registrados
-                                                                        para
-                                                                        este
-                                                                        usuario.
-                                                                    </p>
-                                                                ) : (
-                                                                    <div className="overflow-auto">
-                                                                        <table className="min-w-full text-sm">
-                                                                            <thead className="text-slate-400">
-                                                                                <tr className="border-b border-white/5">
-                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
-                                                                                        Plan
-                                                                                    </th>
-                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
-                                                                                        Periodo
-                                                                                    </th>
-                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
-                                                                                        Estado
-                                                                                    </th>
-                                                                                    <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
-                                                                                        Método
-                                                                                    </th>
-                                                                                    <th className="w-10 px-2 py-1.5 text-right text-xs font-medium tracking-wide">
-                                                                                        <span className="sr-only">
-                                                                                            Recibo
-                                                                                        </span>
-                                                                                    </th>
-                                                                                </tr>
-                                                                            </thead>
-                                                                            <tbody>
-                                                                                {historyRows.map(
-                                                                                    (
-                                                                                        row,
-                                                                                    ) => (
-                                                                                        <tr
-                                                                                            key={
-                                                                                                row.id
-                                                                                            }
-                                                                                            className="border-t border-white/5 text-slate-300"
-                                                                                        >
-                                                                                            <td className="px-3 py-2 font-medium text-white">
-                                                                                                {
-                                                                                                    row.plan
-                                                                                                }
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 tabular-nums text-slate-400">
-                                                                                                {fmtDate(
-                                                                                                    row.periodo_inicio,
-                                                                                                )}{" "}
-                                                                                                –{" "}
-                                                                                                {fmtDate(
-                                                                                                    row.periodo_fin,
-                                                                                                )}
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2">
-                                                                                                <span
-                                                                                                    className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentStatusPill(row.status)}`}
-                                                                                                >
-                                                                                                    {paymentStatusLabel(
-                                                                                                        row.status,
-                                                                                                    )}
-                                                                                                </span>
-                                                                                            </td>
-                                                                                            <td className="px-3 py-2 text-slate-400">
-                                                                                                {paymentMethodLabel(
+                                                            ) : (
+                                                                <span
+                                                                    className="h-8 w-8"
+                                                                    aria-hidden
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <div className="flex h-8 w-8 items-center justify-center">
+                                                            {waUrl ? (
+                                                                <a
+                                                                    href={waUrl}
+                                                                    target="_blank"
+                                                                    rel="noreferrer"
+                                                                    className={
+                                                                        WA_BTN_CLASS
+                                                                    }
+                                                                    aria-label="WhatsApp"
+                                                                    onClick={(
+                                                                        e,
+                                                                    ) =>
+                                                                        e.stopPropagation()
+                                                                    }
+                                                                >
+                                                                    <WhatsAppIcon className="h-4 w-4" />
+                                                                </a>
+                                                            ) : (
+                                                                <span
+                                                                    className="h-8 w-8"
+                                                                    aria-hidden
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <AccordionTrigger
+                                                            open={isOpen}
+                                                            onToggle={() =>
+                                                                openUserHistory(
+                                                                    u.id,
+                                                                )
+                                                            }
+                                                            panelId={`vigencia-history-m-${u.id}`}
+                                                            labelOpen="Ocultar historial de pagos"
+                                                            labelClosed="Ver historial de pagos"
+                                                            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                                                            chevronClassName="h-4 w-4"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-slate-400">
+                                                    <p>
+                                                        <span className="text-slate-500">
+                                                            Plan
+                                                        </span>{" "}
+                                                        <span className="text-slate-300">
+                                                            {planShortName(
+                                                                u.plan_vigente
+                                                                    ?.nombre,
+                                                            )}
+                                                        </span>
+                                                        {u.plan_vigente &&
+                                                        u.plan_vigente
+                                                            .activo ===
+                                                            false ? (
+                                                            <InactivePlanWarningTooltip />
+                                                        ) : null}
+                                                    </p>
+                                                    <p>
+                                                        <span className="text-slate-500">
+                                                            Vence
+                                                        </span>{" "}
+                                                        <span className="tabular-nums text-slate-300">
+                                                            {fmtDate(
+                                                                u.fecha_fin,
+                                                            )}
+                                                        </span>
+                                                        <ExtraDaysBadge
+                                                            days={Number(
+                                                                u.prepaid_extra_days ||
+                                                                    0,
+                                                            )}
+                                                        />
+                                                    </p>
+                                                    <p>
+                                                        <span className="text-slate-500">
+                                                            Último pago
+                                                        </span>{" "}
+                                                        <span className="tabular-nums text-slate-300">
+                                                            {fmtDate(
+                                                                u.ultimo_pago,
+                                                            )}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                                <div className="mt-2">
+                                                    <ProgressMeter
+                                                        user={u}
+                                                        barWidthClass="w-full"
+                                                    />
+                                                </div>
+                                                {isOpen ? (
+                                                    <div
+                                                        id={`vigencia-history-m-${u.id}`}
+                                                        className="mt-3 border-t border-white/10 pt-3"
+                                                    >
+                                                        {isLoading ? (
+                                                            <p className="text-sm text-slate-400">
+                                                                Cargando
+                                                                historial…
+                                                            </p>
+                                                        ) : historyRows.length ===
+                                                          0 ? (
+                                                            <p className="text-sm text-slate-400">
+                                                                Sin pagos
+                                                                registrados.
+                                                            </p>
+                                                        ) : (
+                                                            <ul className="space-y-2">
+                                                                {historyRows.map(
+                                                                    (row) => (
+                                                                        <li
+                                                                            key={
+                                                                                row.id
+                                                                            }
+                                                                            className="rounded-xl border border-white/5 bg-slate-950/50 px-3 py-2 text-xs text-slate-300"
+                                                                        >
+                                                                            <div className="flex items-start justify-between gap-3">
+                                                                                <div className="min-w-0 flex-1">
+                                                                                    <span className="font-semibold text-white">
+                                                                                        {
+                                                                                            row.plan
+                                                                                        }
+                                                                                    </span>
+                                                                                    <p className="mt-1 text-slate-400">
+                                                                                        {fmtDate(
+                                                                                            row.periodo_inicio,
+                                                                                        )}{" "}
+                                                                                        –{" "}
+                                                                                        {fmtDate(
+                                                                                            row.periodo_fin,
+                                                                                        )}{" "}
+                                                                                        ·{" "}
+                                                                                        {paymentMethodLabel(
+                                                                                            row,
+                                                                                        )}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                                                                                    <span
+                                                                                        className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${paymentStatusPill(row.status)}`}
+                                                                                    >
+                                                                                        {paymentStatusLabel(
+                                                                                            row.status,
+                                                                                        )}
+                                                                                    </span>
+                                                                                    {row.proof_url ? (
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
+                                                                                            onClick={() =>
+                                                                                                openProof(
                                                                                                     row,
-                                                                                                )}
-                                                                                            </td>
-                                                                                            <td className="px-2 py-2 text-right">
-                                                                                                {row.proof_url ? (
-                                                                                                    <button
-                                                                                                        type="button"
-                                                                                                        className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
-                                                                                                        onClick={(
-                                                                                                            e,
-                                                                                                        ) => {
-                                                                                                            e.stopPropagation();
-                                                                                                            openProof(
-                                                                                                                row,
-                                                                                                            );
-                                                                                                        }}
-                                                                                                        aria-label="Ver recibo"
-                                                                                                        title="Ver recibo"
-                                                                                                    >
-                                                                                                        <FileText className="h-3.5 w-3.5" />
-                                                                                                    </button>
-                                                                                                ) : (
-                                                                                                    <span className="text-xs text-slate-600">
-                                                                                                        —
-                                                                                                    </span>
-                                                                                                )}
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    ),
-                                                                                )}
-                                                                            </tbody>
-                                                                        </table>
-                                                                    </div>
+                                                                                                )
+                                                                                            }
+                                                                                            aria-label="Ver recibo"
+                                                                                            title="Ver recibo"
+                                                                                        >
+                                                                                            <FileText className="h-3.5 w-3.5" />
+                                                                                        </button>
+                                                                                    ) : null}
+                                                                                </div>
+                                                                            </div>
+                                                                        </li>
+                                                                    ),
                                                                 )}
-                                                            </td>
-                                                        </tr>
-                                                    ) : null}
-                                                </React.Fragment>
-                                            );
-                                        })
-                                    )}
-                                </tbody>
-                            </table>
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                ) : null}
+                                            </article>
+                                        );
+                                    })
+                                )}
+                            </div>
+
+                            {/* Escritorio */}
+                            <div className="hidden overflow-hidden rounded-2xl border border-white/10 bg-slate-900/70 md:block">
+                                <div className="overflow-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-slate-800/80 text-slate-400">
+                                            <tr>
+                                                <SortableTh
+                                                    label="Usuario"
+                                                    sortKey="user"
+                                                    activeKey={sortKey}
+                                                    activeDir={sortDir}
+                                                    onSort={toggleSort}
+                                                    className="px-3 py-2 text-left text-xs tracking-wide"
+                                                />
+                                                <SortableTh
+                                                    label="Taquilla"
+                                                    sortKey="locker"
+                                                    activeKey={sortKey}
+                                                    activeDir={sortDir}
+                                                    onSort={toggleSort}
+                                                    className="px-3 py-2 text-left text-xs tracking-wide"
+                                                />
+                                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
+                                                    Plan
+                                                </th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
+                                                    Último pago
+                                                </th>
+                                                <th className="px-3 py-2 text-left text-xs font-medium tracking-wide text-slate-400">
+                                                    Vence
+                                                </th>
+                                                <SortableTh
+                                                    label="Progreso"
+                                                    sortKey="progreso"
+                                                    activeKey={sortKey}
+                                                    activeDir={sortDir}
+                                                    onSort={toggleSort}
+                                                    className="px-3 py-2 text-left text-xs tracking-wide"
+                                                />
+                                                <SortableTh
+                                                    label="Baja"
+                                                    sortKey="baja"
+                                                    activeKey={sortKey}
+                                                    activeDir={sortDir}
+                                                    onSort={toggleSort}
+                                                    className="px-3 py-2 text-left text-xs tracking-wide"
+                                                />
+                                                <th
+                                                    className="w-10 px-2 py-2"
+                                                    aria-label="Historial"
+                                                />
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filtered.length === 0 ? (
+                                                <tr>
+                                                    <td
+                                                        colSpan={8}
+                                                        className="px-3 py-10 text-center text-slate-400"
+                                                    >
+                                                        Sin socios con taquilla.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filtered.map((u) => {
+                                                    const isOpen =
+                                                        expandedUserId === u.id;
+                                                    const historyRows =
+                                                        historyByUser[u.id] ||
+                                                        [];
+                                                    const isLoading =
+                                                        loadingHistoryUserId ===
+                                                        u.id;
+                                                    const waUrl =
+                                                        buildWaLink(u);
+                                                    return (
+                                                        <React.Fragment
+                                                            key={u.id}
+                                                        >
+                                                            <tr
+                                                                className={`cursor-pointer border-t border-white/5 text-slate-100 hover:bg-slate-800/40 ${rowUrgencyClass(u.urgency)}`}
+                                                                onClick={() =>
+                                                                    openUserHistory(
+                                                                        u.id,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <td className="px-3 py-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {waUrl ? (
+                                                                            <a
+                                                                                href={
+                                                                                    waUrl
+                                                                                }
+                                                                                target="_blank"
+                                                                                rel="noreferrer"
+                                                                                className={
+                                                                                    WA_BTN_CLASS
+                                                                                }
+                                                                                aria-label="WhatsApp"
+                                                                                title="WhatsApp"
+                                                                                onClick={(
+                                                                                    e,
+                                                                                ) =>
+                                                                                    e.stopPropagation()
+                                                                                }
+                                                                            >
+                                                                                <WhatsAppIcon className="h-3.5 w-3.5" />
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span className="text-[11px] text-slate-500">
+                                                                                sin
+                                                                                tel.
+                                                                            </span>
+                                                                        )}
+                                                                        <div className="min-w-0">
+                                                                            <p className="truncate font-semibold text-white">
+                                                                                {
+                                                                                    u.nombre
+                                                                                }{" "}
+                                                                                {
+                                                                                    u.apellido
+                                                                                }
+                                                                            </p>
+                                                                            <p className="truncate text-xs text-slate-500">
+                                                                                {u.email ||
+                                                                                    "sin email"}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-2 tabular-nums text-slate-300">
+                                                                    #
+                                                                    {u.numeroTaquilla ??
+                                                                        "—"}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-slate-400">
+                                                                    <div className="inline-flex items-center">
+                                                                        <span>
+                                                                            {planShortName(
+                                                                                u
+                                                                                    .plan_vigente
+                                                                                    ?.nombre,
+                                                                            )}
+                                                                        </span>
+                                                                        {u.plan_vigente &&
+                                                                        u
+                                                                            .plan_vigente
+                                                                            .activo ===
+                                                                            false ? (
+                                                                            <InactivePlanWarningTooltip />
+                                                                        ) : null}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-2 tabular-nums text-slate-400">
+                                                                    {fmtDate(
+                                                                        u.ultimo_pago,
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <div className="inline-flex items-center">
+                                                                        <span className="tabular-nums text-slate-400">
+                                                                            {fmtDate(
+                                                                                u.fecha_fin,
+                                                                            )}
+                                                                        </span>
+                                                                        <ExtraDaysBadge
+                                                                            days={Number(
+                                                                                u.prepaid_extra_days ||
+                                                                                    0,
+                                                                            )}
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <ProgressMeter
+                                                                        user={u}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <div className="inline-flex items-center gap-1.5">
+                                                                        <BajaNoticeButton
+                                                                            user={
+                                                                                u
+                                                                            }
+                                                                            onToggle={
+                                                                                setBajaConfirmUser
+                                                                            }
+                                                                            size="sm"
+                                                                        />
+                                                                        <AltaEntradaBadge
+                                                                            user={
+                                                                                u
+                                                                            }
+                                                                            size="sm"
+                                                                        />
+                                                                        <BajaLiberarButton
+                                                                            user={
+                                                                                u
+                                                                            }
+                                                                            onLiberar={
+                                                                                setLiberarConfirmUser
+                                                                            }
+                                                                            size="sm"
+                                                                        />
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-2 py-2 text-right">
+                                                                    <AccordionTrigger
+                                                                        open={
+                                                                            isOpen
+                                                                        }
+                                                                        onToggle={() =>
+                                                                            openUserHistory(
+                                                                                u.id,
+                                                                            )
+                                                                        }
+                                                                        panelId={`vigencia-history-d-${u.id}`}
+                                                                        labelOpen="Ocultar historial"
+                                                                        labelClosed="Ver historial de pagos"
+                                                                        stopPropagation
+                                                                        className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-white/5 hover:text-cyan-300"
+                                                                        chevronClassName={`h-4 w-4 ${isOpen ? "text-cyan-400" : ""}`}
+                                                                    />
+                                                                </td>
+                                                            </tr>
+                                                            {isOpen ? (
+                                                                <tr className="border-t border-white/5 bg-slate-950/50">
+                                                                    <td
+                                                                        colSpan={
+                                                                            8
+                                                                        }
+                                                                        id={`vigencia-history-d-${u.id}`}
+                                                                        className="px-3 py-2.5"
+                                                                    >
+                                                                        {isLoading ? (
+                                                                            <p className="py-3 text-sm text-slate-400">
+                                                                                Cargando
+                                                                                historial
+                                                                                de
+                                                                                pagos…
+                                                                            </p>
+                                                                        ) : historyRows.length ===
+                                                                          0 ? (
+                                                                            <p className="py-2 text-sm text-slate-400">
+                                                                                Sin
+                                                                                pagos
+                                                                                registrados
+                                                                                para
+                                                                                este
+                                                                                usuario.
+                                                                            </p>
+                                                                        ) : (
+                                                                            <div className="overflow-auto">
+                                                                                <table className="min-w-full text-sm">
+                                                                                    <thead className="text-slate-400">
+                                                                                        <tr className="border-b border-white/5">
+                                                                                            <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
+                                                                                                Plan
+                                                                                            </th>
+                                                                                            <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
+                                                                                                Periodo
+                                                                                            </th>
+                                                                                            <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
+                                                                                                Estado
+                                                                                            </th>
+                                                                                            <th className="px-3 py-1.5 text-left text-xs font-medium tracking-wide">
+                                                                                                Método
+                                                                                            </th>
+                                                                                            <th className="w-10 px-2 py-1.5 text-right text-xs font-medium tracking-wide">
+                                                                                                <span className="sr-only">
+                                                                                                    Recibo
+                                                                                                </span>
+                                                                                            </th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {historyRows.map(
+                                                                                            (
+                                                                                                row,
+                                                                                            ) => (
+                                                                                                <tr
+                                                                                                    key={
+                                                                                                        row.id
+                                                                                                    }
+                                                                                                    className="border-t border-white/5 text-slate-300"
+                                                                                                >
+                                                                                                    <td className="px-3 py-2 font-medium text-white">
+                                                                                                        {
+                                                                                                            row.plan
+                                                                                                        }
+                                                                                                    </td>
+                                                                                                    <td className="px-3 py-2 tabular-nums text-slate-400">
+                                                                                                        {fmtDate(
+                                                                                                            row.periodo_inicio,
+                                                                                                        )}{" "}
+                                                                                                        –{" "}
+                                                                                                        {fmtDate(
+                                                                                                            row.periodo_fin,
+                                                                                                        )}
+                                                                                                    </td>
+                                                                                                    <td className="px-3 py-2">
+                                                                                                        <span
+                                                                                                            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${paymentStatusPill(row.status)}`}
+                                                                                                        >
+                                                                                                            {paymentStatusLabel(
+                                                                                                                row.status,
+                                                                                                            )}
+                                                                                                        </span>
+                                                                                                    </td>
+                                                                                                    <td className="px-3 py-2 text-slate-400">
+                                                                                                        {paymentMethodLabel(
+                                                                                                            row,
+                                                                                                        )}
+                                                                                                    </td>
+                                                                                                    <td className="px-2 py-2 text-right">
+                                                                                                        {row.proof_url ? (
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-cyan-300 ring-1 ring-cyan-500/25 hover:bg-cyan-500/10"
+                                                                                                                onClick={(
+                                                                                                                    e,
+                                                                                                                ) => {
+                                                                                                                    e.stopPropagation();
+                                                                                                                    openProof(
+                                                                                                                        row,
+                                                                                                                    );
+                                                                                                                }}
+                                                                                                                aria-label="Ver recibo"
+                                                                                                                title="Ver recibo"
+                                                                                                            >
+                                                                                                                <FileText className="h-3.5 w-3.5" />
+                                                                                                            </button>
+                                                                                                        ) : (
+                                                                                                            <span className="text-xs text-slate-600">
+                                                                                                                —
+                                                                                                            </span>
+                                                                                                        )}
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            ),
+                                                                                        )}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            ) : null}
+                                                        </React.Fragment>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {altaUser ? (
+                <div
+                    className="fixed inset-0 z-modal grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+                    onClick={() => !altaBusy && setAltaUser(null)}
+                >
+                    <div
+                        className="w-full max-w-md rounded-2xl border border-white/10 bg-slate-900 p-5 shadow-2xl ring-1 ring-white/5"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="alta-title"
+                    >
+                        <h3
+                            id="alta-title"
+                            className="font-heading text-lg font-bold text-white"
+                        >
+                            Dar de alta en taquilla
+                        </h3>
+                        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                            <span className="font-semibold text-slate-200">
+                                {`${altaUser.nombre || ""} ${altaUser.apellido || ""}`.trim() ||
+                                    "Este socio"}
+                            </span>{" "}
+                            vuelve al servicio. El número se reserva ya. Si
+                            eliges una fecha futura, el alta y la cuota empiezan
+                            ese día, no hoy.
+                        </p>
+                        <label
+                            htmlFor="alta-locker"
+                            className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        >
+                            Número de taquilla
+                        </label>
+                        <p className="mt-1 text-xs text-slate-500">
+                            {freeLockerCount} plazas libres · mismas que en Asignar
+                            taquilla. Las ocupadas no salen.
+                        </p>
+                        <div className="relative z-20 mt-1.5">
+                            <LockerNumberCombobox
+                                id="alta-locker"
+                                value={altaNumero}
+                                onChange={setAltaNumero}
+                                options={lockerOptions}
+                                disabled={altaBusy}
+                            />
+                        </div>
+                        <label
+                            htmlFor="alta-el"
+                            className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-400"
+                        >
+                            Día en que entra
+                        </label>
+                        <input
+                            id="alta-el"
+                            type="date"
+                            min={todayYmdInMadrid()}
+                            value={altaEl}
+                            onChange={(e) => setAltaEl(e.target.value)}
+                            disabled={altaBusy}
+                            className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-cyan-500/40 focus:ring-2 disabled:opacity-50"
+                        />
+                        <div className="relative z-0 mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={altaBusy}
+                                onClick={() => setAltaUser(null)}
+                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={
+                                    altaBusy ||
+                                    !lockerOptions.some(
+                                        (o) => o.n === Number(altaNumero),
+                                    ) ||
+                                    !/^\d{4}-\d{2}-\d{2}$/.test(
+                                        String(altaEl || ""),
+                                    )
+                                }
+                                onClick={submitAlta}
+                                className="rounded-xl bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-500 disabled:opacity-50"
+                            >
+                                {altaBusy ? "…" : "Dar de alta"}
+                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
+            ) : null}
 
             {proofModal ? (
                 <div
@@ -1536,6 +1973,6 @@ export default function Vigencia({ usuarios = [], flash = {} }) {
                     {toast}
                 </div>
             ) : null}
-        </Layout1>
+        </PageShell>
     );
 }

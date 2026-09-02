@@ -32,6 +32,16 @@ final class InitiatePaymentAction implements StartsCheckout
             'payable_id'   => $dto->payableId,
         ]);
 
+        $openUrl = $this->gateway->openCheckoutUrlFor($dto->payableType, $dto->payableId);
+        if ($openUrl !== null) {
+            Log::info('InitiatePaymentAction: reutilizada sesión de pago existente', [
+                'payable_type' => $dto->payableType,
+                'payable_id'   => $dto->payableId,
+            ]);
+
+            return $openUrl;
+        }
+
         $result = $this->gateway->createCheckoutSession($dto);
 
         try {

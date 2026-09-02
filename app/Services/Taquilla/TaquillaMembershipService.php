@@ -6,6 +6,7 @@ namespace App\Services\Taquilla;
 
 use App\DTOs\Taquilla\LockerOccupancyMapDto;
 use App\DTOs\Taquilla\LockerOccupantDto;
+use App\DTOs\Taquilla\LockerReleaseResultDto;
 use App\DTOs\Taquilla\PlanTaquillaPublicDto;
 use App\Events\Taquilla\PagoTaquillaConfirmado;
 use App\Http\Requests\Taquilla\ReassignLockerRequest;
@@ -13,6 +14,7 @@ use App\Http\Requests\Taquilla\StorePlanTaquillaRequest;
 use App\Http\Requests\Taquilla\UpdatePlanTaquillaRequest;
 use App\Http\Resources\PagoCuotaRegistryResource;
 use App\Models\PagoCuota;
+use App\Models\PaymentWebhookIdempotency;
 use App\Models\PlanTaquilla;
 use App\Models\User;
 use App\Services\Chatbot\S4BusinessContextService;
@@ -21,6 +23,7 @@ use App\Services\Payments\PaymentReceiptAccessService;
 use App\Support\MoneyCents;
 use App\Support\VipVirtualLocker;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -63,6 +66,7 @@ class TaquillaMembershipService
      */
     public function buildVigenciaPayload(): array
     {
+        $this->applyDueScheduledAltas();
         $today = now()->startOfDay();
 
         return User::query()
@@ -165,6 +169,14 @@ class TaquillaMembershipService
                     }
                 }
 
+                $altaProgramadaEl = $u->taquilla_alta_programada_at
+                    ? $u->taquilla_alta_programada_at->toDateString()
+                    : null;
+                if ($altaProgramadaEl !== null
+                    && Carbon::parse($altaProgramadaEl)->startOfDay()->greaterThan($today)) {
+                    $estado = 'alta programada';
+                }
+
                 return [
                     'id' => $u->id,
                     'nombre' => $u->nombre,
@@ -172,6 +184,7 @@ class TaquillaMembershipService
                     'email' => $u->email,
                     'telefono' => $u->telefono,
                     'numeroTaquilla' => $u->numeroTaquilla,
+                    'alta_programada_el' => $altaProgramadaEl,
                     'plan_vigente' => $u->planVigente
                         ? [
                             'id' => $u->planVigente->id,
@@ -193,6 +206,43 @@ class TaquillaMembershipService
             ->all();
     }
 
+    /**
+     * Ex-socios: sin plaza asignada pero con historial de taquilla (algún pago o una
+     * baja registrada). Es la lista corta desde la que se readmite a quien vuelve;
+     * volcar todos los usuarios registrados reventaría el payload.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function buildExSociosPayload(): array
+    {
+        return User::query()
+            ->whereNull('numeroTaquilla')
+            ->where(function ($q) {
+                $q->whereNotNull('taquilla_baja_efectiva_at')
+                    ->orWhereHas('pagosCuotas');
+            })
+            ->withMax('pagosCuotas as ultimo_periodo_fin', 'periodo_fin')
+            ->orderByDesc('taquilla_baja_efectiva_at')
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'apellido', 'email', 'telefono', 'is_vip',
+                'taquilla_baja_efectiva_at', 'taquilla_alta_at'])
+            ->map(fn (User $u): array => [
+                'id' => (int) $u->id,
+                'nombre' => (string) ($u->nombre ?? ''),
+                'apellido' => (string) ($u->apellido ?? ''),
+                'email' => (string) ($u->email ?? ''),
+                'telefono' => $u->telefono !== null ? (string) $u->telefono : null,
+                'is_vip' => (bool) $u->is_vip,
+                'baja_efectiva_at' => optional($u->taquilla_baja_efectiva_at)->toIso8601String(),
+                'alta_at' => optional($u->taquilla_alta_at)->toIso8601String(),
+                'ultimo_periodo_fin' => $u->ultimo_periodo_fin !== null
+                    ? Carbon::parse($u->ultimo_periodo_fin)->toDateString()
+                    : null,
+            ])
+            ->values()
+            ->all();
+    }
+
     public function toggleBajaSolicitada(User $user): User
     {
         return DB::transaction(function () use ($user): User {
@@ -205,7 +255,7 @@ class TaquillaMembershipService
     }
 
     /**
-     * Baja efectiva: libera la taquilla y limpia el aviso de baja.
+     * Baja efectiva pedida por el socio: libera la taquilla y limpia el aviso.
      * No toca is_vip (eso sigue en el asignador / flujo VIP).
      */
     public function confirmarBajaTaquilla(User $user): User
@@ -225,15 +275,164 @@ class TaquillaMembershipService
                 ]);
             }
 
-            $locked->numeroTaquilla = null;
-            $locked->taquilla_baja_solicitada_at = null;
-            if ((bool) $locked->is_vip) {
-                $locked->numeroTaquilla = VipVirtualLocker::defaultNumber();
-            }
-            $locked->save();
+            $this->liberarPlaza($locked, desasignarVip: false);
 
             return $locked->fresh();
         });
+    }
+
+    /**
+     * Liberar la plaza desde el asignador (impago, mudanza, decisión del club):
+     * aquí no hace falta aviso previo del socio y se puede retirar el VIP.
+     */
+    public function liberarTaquilla(User $user, bool $desasignarVip = false): LockerReleaseResultDto
+    {
+        return DB::transaction(function () use ($user, $desasignarVip): LockerReleaseResultDto {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $vipRemoved = $this->liberarPlaza($locked, $desasignarVip);
+
+            return new LockerReleaseResultDto($locked->fresh(), $vipRemoved);
+        });
+    }
+
+    /**
+     * Alta en taquilla: única puerta de entrada (asignador y panel de vigencia).
+     *
+     * La fecha de alta no es decorativa: junto con la baja efectiva decide si la
+     * siguiente cuota encadena el periodo anterior o arranca de cero.
+     *
+     * `$altaEl` futura reserva el número ya y deja el alta efectiva (y el periodo)
+     * para ese día. Hoy o null = alta inmediata, como antes.
+     */
+    public function darDeAltaTaquilla(User $user, int $numero, ?Carbon $altaEl = null): User
+    {
+        return DB::transaction(function () use ($user, $numero, $altaEl): User {
+            if (! VipVirtualLocker::allowsMultipleAssignments($numero)) {
+                $ocupante = User::query()
+                    ->where('numeroTaquilla', $numero)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($ocupante && (int) $ocupante->id !== (int) $user->id) {
+                    throw ValidationException::withMessages([
+                        'numero_taquilla' => ['Esa taquilla ya está asignada a otro usuario.'],
+                    ]);
+                }
+            }
+
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            // La taquilla virtual del VIP (#500) no cuenta como plaza: pasar de ella a
+            // una física sí es un alta. Cambiar de número físico a otro, no.
+            $yaTeniaPlaza = $locked->numeroTaquilla !== null
+                && ! VipVirtualLocker::isShared($locked->numeroTaquilla);
+            $locked->numeroTaquilla = $numero;
+
+            if (! $yaTeniaPlaza) {
+                $entrada = $altaEl?->copy()->startOfDay();
+                $hoy = now()->startOfDay();
+                if ($entrada !== null && $entrada->greaterThan($hoy)) {
+                    $locked->taquilla_alta_programada_at = $entrada->toDateString();
+                    $locked->taquilla_alta_at = null;
+                } else {
+                    $locked->taquilla_alta_at = now();
+                    $locked->taquilla_alta_programada_at = null;
+                }
+            }
+
+            try {
+                $locked->save();
+            } catch (QueryException $e) {
+                if ($this->isUniquePhysicalLockerViolation($e)) {
+                    throw ValidationException::withMessages([
+                        'numero_taquilla' => ['Esa taquilla ya está asignada a otro usuario.'],
+                    ]);
+                }
+
+                throw $e;
+            }
+
+            return $locked->fresh();
+        });
+    }
+
+    /**
+     * Sella el alta el día D (o el primero que se ejecute después).
+     *
+     * @return int filas selladas
+     */
+    public function applyDueScheduledAltas(): int
+    {
+        $hoy = now()->toDateString();
+        $ids = User::query()
+            ->whereNotNull('taquilla_alta_programada_at')
+            ->whereDate('taquilla_alta_programada_at', '<=', $hoy)
+            ->whereNotNull('numeroTaquilla')
+            ->orderBy('id')
+            ->pluck('id');
+
+        $applied = 0;
+
+        foreach ($ids as $id) {
+            $did = DB::transaction(function () use ($id): bool {
+                $locked = User::query()->whereKey($id)->lockForUpdate()->first();
+                if ($locked === null || $locked->taquilla_alta_programada_at === null) {
+                    return false;
+                }
+
+                $programada = $locked->taquilla_alta_programada_at->copy()->startOfDay();
+                if ($programada->greaterThan(now()->startOfDay())) {
+                    return false;
+                }
+
+                if (! $locked->hasPhysicalLocker()) {
+                    $locked->taquilla_alta_programada_at = null;
+                    $locked->save();
+
+                    return false;
+                }
+
+                $locked->taquilla_alta_at = $programada->copy()->setTimeFrom(now());
+                $locked->taquilla_alta_programada_at = null;
+                $locked->save();
+
+                return true;
+            });
+
+            if ($did) {
+                $applied++;
+            }
+        }
+
+        return $applied;
+    }
+
+    /**
+     * Suelta el número y sella la baja efectiva. El socio VIP conserva la taquilla
+     * virtual salvo que se le retire el VIP.
+     *
+     * La baja efectiva NO se limpia al volver a dar de alta: es el rastro que usa
+     * `createPendingPaymentForCheckout` para no cobrarle los meses que estuvo fuera.
+     *
+     * @return bool si se retiró el VIP
+     */
+    private function liberarPlaza(User $locked, bool $desasignarVip): bool
+    {
+        $vipRemoved = false;
+        $locked->numeroTaquilla = null;
+        $locked->taquilla_baja_solicitada_at = null;
+        $locked->taquilla_baja_efectiva_at = now();
+        $locked->taquilla_alta_programada_at = null;
+
+        if ($desasignarVip && (bool) $locked->is_vip) {
+            $locked->is_vip = false;
+            $vipRemoved = true;
+        } elseif ((bool) $locked->is_vip) {
+            $locked->numeroTaquilla = VipVirtualLocker::defaultNumber();
+        }
+
+        $locked->save();
+
+        return $vipRemoved;
     }
 
     /**
@@ -357,6 +556,82 @@ class TaquillaMembershipService
     }
 
     /**
+     * Cuándo empieza el periodo de la cuota nueva.
+     *
+     * Regla del club: el socio que no se da de baja sigue devengando cuota, así que
+     * su periodo encadena al anterior aunque haya dejado meses sin pagar (esa deuda
+     * es intencional, no un fallo de cálculo). El que se dio de baja —o al que el
+     * club le retiró la plaza— no debe el tiempo que estuvo fuera: su periodo
+     * arranca el día que vuelve a pagar.
+     */
+    private function resolvePeriodoInicio(User $user, ?PagoCuota $ultimoPago, Carbon $hoy): Carbon
+    {
+        if ($ultimoPago === null) {
+            return $this->pisoPeriodoPorEntrada($user, $hoy);
+        }
+
+        $encadenado = Carbon::parse($ultimoPago->periodo_fin)->addDay()->startOfDay();
+
+        if (! $this->coberturaRotaTrasUltimoPago($user, $ultimoPago)) {
+            return $encadenado;
+        }
+
+        // Hubo baja: nunca arrancar en el pasado ni antes del día de entrada
+        // programado. Si aún le queda cobertura pagada, sigue encadenando.
+        $piso = $this->pisoPeriodoPorEntrada($user, $hoy);
+
+        return $encadenado->greaterThan($piso) ? $encadenado : $piso;
+    }
+
+    /**
+     * Día más temprano en el que puede empezar una cuota nueva: hoy, o el día
+     * de entrada si el alta está programada a futuro.
+     */
+    private function pisoPeriodoPorEntrada(User $user, Carbon $hoy): Carbon
+    {
+        $entrada = $this->fechaEntradaAlta($user);
+        if ($entrada !== null && $entrada->greaterThan($hoy)) {
+            return $entrada;
+        }
+
+        return $hoy->copy();
+    }
+
+    private function fechaEntradaAlta(User $user): ?Carbon
+    {
+        if ($user->taquilla_alta_programada_at !== null) {
+            return $user->taquilla_alta_programada_at->copy()->startOfDay();
+        }
+
+        if ($user->taquilla_alta_at !== null) {
+            return $user->taquilla_alta_at->copy()->startOfDay();
+        }
+
+        return null;
+    }
+
+    /**
+     * ¿Se rompió la continuidad del socio desde su último pago?
+     *
+     * Dos señales: una baja efectiva desde que empezó ese periodo, o un alta
+     * posterior a su fin (esta segunda cubre a quien se fue antes de que se
+     * registraran las bajas y vuelve ahora).
+     */
+    private function coberturaRotaTrasUltimoPago(User $user, PagoCuota $ultimoPago): bool
+    {
+        $baja = $user->taquilla_baja_efectiva_at;
+        if ($baja !== null && $ultimoPago->periodo_inicio !== null
+            && $baja->copy()->startOfDay()->gte(Carbon::parse($ultimoPago->periodo_inicio)->startOfDay())) {
+            return true;
+        }
+
+        $alta = $this->fechaEntradaAlta($user);
+
+        return $alta !== null && $ultimoPago->periodo_fin !== null
+            && $alta->copy()->startOfDay()->gt(Carbon::parse($ultimoPago->periodo_fin)->startOfDay());
+    }
+
+    /**
      * Crea un PagoCuota pendiente listo para Stripe Checkout (sin justificante manual).
      */
     public function createPendingPaymentForCheckout(User $user, int $planId, ?string $referenciaExterna = null): PagoCuota
@@ -380,15 +655,17 @@ class TaquillaMembershipService
         // periodo del nuevo pago: se borra antes de calcular fechas.
         $this->purgeExpiredPendingPayments($user);
 
+        // Un pago rechazado no da cobertura: no puede desplazar el periodo del nuevo
+        // (los pendientes sí encadenan mientras su checkout viva; los caducados ya
+        // se han borrado en el purge de arriba).
         $ultimoPago = PagoCuota::query()
             ->where('user_id', $user->id)
+            ->whereIn('status', [PagoCuota::STATUS_PENDING, PagoCuota::STATUS_CONFIRMED])
             ->orderByDesc('periodo_fin')
             ->first();
 
         $now = now()->startOfDay();
-        $fechaInicio = $ultimoPago
-            ? Carbon::parse($ultimoPago->periodo_fin)->addDay()->startOfDay()
-            : $now;
+        $fechaInicio = $this->resolvePeriodoInicio($user, $ultimoPago, $now);
         $fechaFin = (clone $fechaInicio)->addDays((int) $plan->duracion_dias)->subDay()->endOfDay();
 
         $referencia = is_string($referenciaExterna) && trim($referenciaExterna) !== ''
@@ -397,17 +674,15 @@ class TaquillaMembershipService
 
         return DB::transaction(function () use ($user, $plan, $planCents, $fechaInicio, $fechaFin, $referencia, $planId): PagoCuota {
             try {
-                $lockedDuplicate = PagoCuota::query()
+                $existingPending = PagoCuota::query()
                     ->where('user_id', $user->id)
                     ->where('id_plan_pagado', $plan->id)
                     ->where('status', PagoCuota::STATUS_PENDING)
                     ->lockForUpdate()
-                    ->exists();
+                    ->first();
 
-                if ($lockedDuplicate) {
-                    throw ValidationException::withMessages([
-                        'plan_id' => ['Ya existe un pago pendiente para este plan.'],
-                    ]);
+                if ($existingPending !== null) {
+                    return $existingPending->loadMissing('plan');
                 }
 
                 $pago = PagoCuota::query()->create([
@@ -534,6 +809,10 @@ class TaquillaMembershipService
             foreach ($ids as $id) {
                 $locked = PagoCuota::query()->whereKey($id)->lockForUpdate()->first();
                 if ($locked === null || ! $locked->isExpiredPending()) {
+                    continue;
+                }
+
+                if (PaymentWebhookIdempotency::liveCheckoutUrlFor(PagoCuota::class, (int) $locked->id) !== null) {
                     continue;
                 }
 
@@ -922,19 +1201,43 @@ class TaquillaMembershipService
 
     public function syncUserLockerCacheFromConfirmedPayments(User $user): void
     {
-        $now = now();
         $planVigente = PagoCuota::query()
             ->where('user_id', $user->id)
             ->where('status', PagoCuota::STATUS_CONFIRMED)
-            ->where('periodo_inicio', '<=', $now)
-            ->where('periodo_fin', '>=', $now)
             ->orderByDesc('periodo_fin')
+            ->orderByDesc('id')
             ->first();
 
         $user->update([
             'fecha_vencimiento_cuota' => $planVigente?->periodo_fin,
             'id_plan_vigente' => $planVigente?->id_plan_pagado,
         ]);
+    }
+
+    /**
+     * Recalcula el caché de vigencia de todos los socios con plaza o con pagos.
+     * El panel lee pagos; tienda/llave leen `fecha_vencimiento_cuota`.
+     */
+    public function syncAllLockerExpiryCaches(): int
+    {
+        $updated = 0;
+
+        User::query()
+            ->where(function ($query): void {
+                $query->whereNotNull('numeroTaquilla')
+                    ->orWhereHas('pagosCuotas', function ($pagos): void {
+                        $pagos->where('status', PagoCuota::STATUS_CONFIRMED);
+                    });
+            })
+            ->orderBy('id')
+            ->chunkById(100, function ($users) use (&$updated): void {
+                foreach ($users as $user) {
+                    $this->syncUserLockerCacheFromConfirmedPayments($user);
+                    $updated++;
+                }
+            });
+
+        return $updated;
     }
 
     private function assignLockerToUser(
@@ -1170,5 +1473,14 @@ class TaquillaMembershipService
             'fiscal_invoice_pdf_url' => $fiscal?->pdfUrl,
             'fiscal_invoice_ready' => $fiscal?->isReady ?? false,
         ];
+    }
+
+    private function isUniquePhysicalLockerViolation(QueryException $e): bool
+    {
+        $sqlState = (string) ($e->errorInfo[0] ?? '');
+        $driverCode = (int) ($e->errorInfo[1] ?? 0);
+
+        return $sqlState === '23000' && $driverCode === 1062
+            && str_contains($e->getMessage(), 'users_physical_locker_unique');
     }
 }

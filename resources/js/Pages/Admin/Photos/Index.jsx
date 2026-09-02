@@ -289,7 +289,7 @@ export default function PhotosAdminIndex({
                             <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2.5">
                                 <input
                                     type="checkbox"
-                                    className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-500 focus:ring-2 focus:ring-cyan-500/40"
+                                    className="h-4 w-4 rounded border-slate-500 bg-slate-900 text-cyan-500 accent-cyan-500 focus:ring-2 focus:ring-s4-cyan/40"
                                     checked={form.activo}
                                     onChange={(e) =>
                                         setForm((f) => ({ ...f, activo: e.target.checked }))

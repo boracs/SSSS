@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { getCsrfFetchHeaders, syncCsrfMeta } from "@/lib/csrf.js";
-import { Head, Link, usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
+import PageShell from "@/layouts/PageShell";
+import SeoHead from "@/components/seo/SeoHead";
 import { toast } from "react-toastify";
 import Modal from "@/components/Modal";
 import {
@@ -839,7 +841,7 @@ function UploadThumb({ url, name, onSelect, isSelected }) {
     );
 }
 
-export default function AutoCoachIndex({ limits }) {
+export default function AutoCoachIndex({ limits, seo }) {
     const { csrf } = usePage().props;
     const proRef = useRef(null);
     const userRef = useRef(null);
@@ -1152,8 +1154,8 @@ export default function AutoCoachIndex({ limits }) {
     };
 
     return (
-        <div className="flex flex-1 flex-col justify-center bg-gradient-to-b from-slate-950 via-[#0a2230] to-slate-950 text-white">
-            <Head title="Comparador de maniobras | S4 AutoCoach" />
+        <PageShell variant="coach" withGradient className="flex flex-1 flex-col justify-center">
+            <SeoHead seo={seo} />
 
             <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
                 <header className="mb-8 text-center">
@@ -1163,7 +1165,7 @@ export default function AutoCoachIndex({ limits }) {
                     <p className="mt-1.5 text-[11px] leading-snug text-slate-500 sm:text-xs">
                         Herramienta gratuita de San Sebastián Surf School · Zurriola
                     </p>
-                    <h1 className="mt-2 text-3xl font-extrabold sm:text-4xl">
+                    <h1 className="mt-2 font-heading text-3xl font-extrabold sm:text-4xl">
                         Compara tu maniobra con un pro
                     </h1>
                     <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-400">
@@ -1431,6 +1433,6 @@ export default function AutoCoachIndex({ limits }) {
                 processing={deletingUploads}
                 clipCount={uploads.length}
             />
-        </div>
+        </PageShell>
     );
 }

@@ -1,12 +1,12 @@
 import React from "react";
 import { Head } from "@inertiajs/react";
-import Layout1 from "@/layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import CatalogOfferTabs from "@/components/admin/CatalogOfferTabs";
 
 /**
  * Envoltorio estándar de las pantallas admin del hub Catálogo:
- * Layout1 + fondo oscuro con blobs + CatalogOfferTabs + Breadcrumbs + cabecera + slot de toast.
+ * PageShell + fondo oscuro con blobs + CatalogOfferTabs + Breadcrumbs + cabecera + slot de toast.
  */
 export default function AdminPageShell({
     title,
@@ -21,7 +21,7 @@ export default function AdminPageShell({
     children,
 }) {
     return (
-        <Layout1>
+        <PageShell variant="slate">
             <Head title={headTitle || title} />
             <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-8 sm:px-6 lg:px-8">
                 {showBlobs ? (
@@ -66,6 +66,6 @@ export default function AdminPageShell({
             </div>
 
             {toast}
-        </Layout1>
+        </PageShell>
     );
 }

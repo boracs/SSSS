@@ -15,9 +15,9 @@ import ProductTagPills from "./ProductTagPills";
 const REPEAT_ADD_WINDOW_MS = 5000;
 
 /**
- * Card de producto tienda S4 (superficie navy única).
+ * Card de producto tienda S4.
  * @param {"full"|"compact"} [density]
- * @param {"light"|"dark"} [surface] — carousel claro (home/ficha) vs grid tienda oscura
+ * @param {"light"|"dark"} [surface] — grid/ficha claros (default) vs banda navy
  */
 const Producto = ({
     nombre,
@@ -29,7 +29,7 @@ const Producto = ({
     producto,
     density = "full",
     compact = false,
-    surface = "dark",
+    surface = "light",
 }) => {
     const isCompact = compact || density === "compact";
     const isLight = surface === "light";
@@ -138,7 +138,7 @@ const Producto = ({
                 >
                     <img
                         src={imageSrc}
-                        alt={nombre}
+                        alt=""
                         loading="lazy"
                         decoding="async"
                         onError={() => setImageSrc(demoCatalogImage(producto?.id, nombre))}

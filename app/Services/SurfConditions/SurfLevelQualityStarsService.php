@@ -55,6 +55,7 @@ final class SurfLevelQualityStarsService
         [$ini, $int, $ava] = $this->applySummerPeriod($ini, $int, $ava, $wavePeriodS, $at, $mod);
         [$ini, $int, $ava] = $this->applyLargeSwellTide($ini, $int, $ava, $energyKj, $tidePhase);
         [$ini, $int, $ava] = $this->applyClosedCap($ini, $int, $ava, $signal, $mod);
+        [$ini, $int, $ava] = $this->applyDesfaseCap($ini, $int, $ava, $energyKj);
 
         return new SurfLevelStarsDto(
             iniciacion: $this->clamp($ini),
@@ -447,6 +448,31 @@ final class SurfLevelQualityStarsService
         $ava += $adjust;
 
         return [$ini, $int, $ava];
+    }
+
+    /**
+     * Playa desfasada (≥3000 kJ): no funciona para nadie, profesionales
+     * incluidos. Va el último a propósito: ninguna regla de viento (p. ej. el
+     * sur que abre tubo desde 400 kJ, sin techo) puede rescatar estas notas.
+     *
+     * @return array{0: int, 1: int, 2: int}
+     */
+    private function applyDesfaseCap(int $ini, int $int, int $ava, int $energyKj): array
+    {
+        $variables = $this->logistics->decoded()['variables'] ?? null;
+        $cfg = is_array($variables) ? ($variables['desfase_zurriola'] ?? null) : null;
+        if (! is_array($cfg)) {
+            return [$ini, $int, $ava];
+        }
+
+        $minKj = (int) ($cfg['forbidden_min_kj'] ?? 3000);
+        if ($energyKj < $minKj) {
+            return [$ini, $int, $ava];
+        }
+
+        $cap = (int) ($cfg['forbidden_star_cap'] ?? 1);
+
+        return [min($ini, $cap), min($int, $cap), min($ava, $cap)];
     }
 
     /**

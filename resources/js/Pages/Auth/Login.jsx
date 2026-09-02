@@ -37,7 +37,7 @@ export default function Login({ status, canResetPassword }) {
         >
             {status ? (
                 <div className="mb-5 rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-4 py-3 text-center text-sm font-medium text-emerald-200">
-                    {status}
+                    Contraseña actualizada. Inicia sesión con tu nueva contraseña.
                 </div>
             ) : null}
 

@@ -118,18 +118,18 @@ function formatDateMadrid(iso) {
 function skuColorToken(sku = "") {
     if (!sku) {
         return {
-            bg: "bg-slate-900/50",
-            border: "border-slate-700/60",
-            skuText: "text-slate-400",
+            bg: "bg-slate-50",
+            border: "border-slate-200",
+            skuText: "text-slate-600",
         };
     }
     const palette = [
-        { bg: "bg-sky-950/40", border: "border-sky-500/30", skuText: "text-sky-300" },
-        { bg: "bg-emerald-950/40", border: "border-emerald-500/30", skuText: "text-emerald-300" },
-        { bg: "bg-violet-950/40", border: "border-violet-500/30", skuText: "text-violet-300" },
-        { bg: "bg-amber-950/40", border: "border-amber-500/30", skuText: "text-amber-300" },
-        { bg: "bg-rose-950/40", border: "border-rose-500/30", skuText: "text-rose-300" },
-        { bg: "bg-cyan-950/40", border: "border-cyan-500/30", skuText: "text-cyan-300" },
+        { bg: "bg-sky-50", border: "border-sky-200", skuText: "text-sky-700" },
+        { bg: "bg-emerald-50", border: "border-emerald-200", skuText: "text-emerald-700" },
+        { bg: "bg-violet-50", border: "border-violet-200", skuText: "text-violet-700" },
+        { bg: "bg-amber-50", border: "border-amber-200", skuText: "text-amber-700" },
+        { bg: "bg-rose-50", border: "border-rose-200", skuText: "text-rose-700" },
+        { bg: "bg-cyan-50", border: "border-cyan-200", skuText: "text-cyan-700" },
     ];
     const hash = Array.from(String(sku)).reduce(
         (acc, ch) => acc + ch.charCodeAt(0),
@@ -142,25 +142,25 @@ function creditConsumptionBadgeClass(units) {
     const uc = Math.max(1, Number(units || 1));
     const tone =
         uc >= 2
-            ? "bg-red-500/20 text-red-200 ring-red-400/35"
-            : "bg-amber-500/25 text-amber-100 ring-amber-400/45";
+            ? "bg-rose-50 text-rose-700 ring-rose-200"
+            : "bg-amber-50 text-amber-700 ring-amber-200";
     return `inline-flex min-w-[1.75rem] justify-center rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ${tone}`;
 }
 
 function WalletSection({ step, title, children, accent = "orange" }) {
     const ring =
         accent === "teal"
-            ? "border-teal-500/25 bg-teal-950/20"
+            ? "border-teal-200 bg-teal-50"
             : accent === "sky"
-              ? "border-sky-500/25 bg-sky-950/20"
-              : "border-orange-500/25 bg-orange-950/15";
+              ? "border-sky-200 bg-sky-50"
+              : "border-orange-200 bg-orange-50";
 
     return (
         <section className={`rounded-2xl border p-4 sm:p-5 ${ring}`}>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">
                 {step}
             </p>
-            <h4 className="mt-1 text-base font-bold text-white sm:text-lg">{title}</h4>
+            <h4 className="mt-1 text-base font-bold text-slate-900 sm:text-lg">{title}</h4>
             <div className="mt-4">{children}</div>
         </section>
     );
@@ -232,18 +232,18 @@ function BonoWallet({ performanceData = null }) {
     const progressStroke = isOverdrawn ? "#ef4444" : "#0ea5e9";
 
     return (
-        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 p-5 shadow-xl backdrop-blur-md sm:p-6">
-            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-300/30 blur-2xl" />
+        <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-sky-100/80 blur-2xl" />
 
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                         Saldo VIP
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-white sm:text-2xl">
+                    <h3 className="mt-1 text-xl font-bold text-slate-900 sm:text-2xl">
                         Saldo de Créditos VIP
                     </h3>
-                    <p className="mt-2 text-sm leading-relaxed text-gray-300">
+                    <p className="mt-2 text-sm leading-relaxed text-slate-600">
                         {resolvedPrediction
                             ? resolvedPrediction.replace(
                                   "Al ritmo actual, tus créditos durarán hasta el",
@@ -285,7 +285,7 @@ function BonoWallet({ performanceData = null }) {
                             y="60"
                             textAnchor="middle"
                             dominantBaseline="central"
-                            className={`${isOverdrawn ? "fill-red-300" : "fill-white"} font-semibold`}
+                            className={`${isOverdrawn ? "fill-rose-600" : "fill-slate-900"} font-semibold`}
                             style={{
                                 fontSize: "28px",
                                 fontFeatureSettings: '"tnum"',
@@ -296,12 +296,12 @@ function BonoWallet({ performanceData = null }) {
                         </text>
                     </svg>
                     <div className="mt-2 w-full max-w-[11rem] text-center">
-                        <p className="text-sm text-gray-300">créditos disponibles</p>
-                        <p className="mt-1 tabular-nums text-xs text-gray-500">
+                        <p className="text-sm text-slate-600">créditos disponibles</p>
+                        <p className="mt-1 tabular-nums text-xs text-slate-500">
                             de {totalPurchased} acumulados
                         </p>
                         {isOverdrawn ? (
-                            <p className="mt-1 text-xs font-semibold text-red-300">
+                            <p className="mt-1 text-xs font-semibold text-rose-700">
                                 Adelantados: {Math.abs(totalAvailable)}
                             </p>
                         ) : null}
@@ -312,15 +312,15 @@ function BonoWallet({ performanceData = null }) {
             <div className="mt-6 space-y-4">
                 {consumingTotal > 0 ? (
                     <WalletSection step="1" title="Bono en consumo ahora" accent="orange">
-                        <p className="text-sm font-semibold text-orange-200/90">{consumingName}</p>
-                        <p className="mt-3 text-2xl font-extrabold tabular-nums text-white sm:text-3xl">
+                        <p className="text-sm font-semibold text-orange-700">{consumingName}</p>
+                        <p className="mt-3 text-2xl font-extrabold tabular-nums text-slate-900 sm:text-3xl">
                             {consumingUsed}{" "}
-                            <span className="text-lg font-semibold text-gray-400 sm:text-xl">
+                            <span className="text-lg font-semibold text-slate-500 sm:text-xl">
                                 de {consumingTotal} créditos usados
                             </span>
                         </p>
                         <div
-                            className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-gray-700/80"
+                            className="mt-4 flex h-3 w-full overflow-hidden rounded-full bg-slate-200"
                             role="progressbar"
                             aria-valuemin={0}
                             aria-valuemax={consumingTotal}
@@ -341,19 +341,19 @@ function BonoWallet({ performanceData = null }) {
                             ) : null}
                         </div>
                         <div className="mt-3 flex flex-col gap-2 text-sm sm:flex-row sm:justify-between">
-                            <p className="tabular-nums text-amber-200/90">
+                            <p className="tabular-nums text-amber-700">
                                 <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-amber-500 align-middle" />
                                 {consumingUsed} consumidos en este bono
                             </p>
-                            <p className="tabular-nums text-cyan-200/90">
-                                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-cyan-400 align-middle" />
+                            <p className="tabular-nums text-sky-700">
+                                <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-sky-500 align-middle" />
                                 {consumingRemaining} disponibles aquí
                             </p>
                         </div>
                     </WalletSection>
                 ) : totalAvailable > 0 ? (
                     <WalletSection step="1" title="Bono en consumo ahora" accent="orange">
-                        <p className="text-sm leading-relaxed text-gray-300">
+                        <p className="text-sm leading-relaxed text-slate-600">
                             No hay un bono en consumo parcial. Tus créditos están en bonos en cola,
                             listos para cuando reserves la siguiente clase.
                         </p>
@@ -366,17 +366,17 @@ function BonoWallet({ performanceData = null }) {
                             {queuedBonos.map((q) => (
                                 <li
                                     key={q.id}
-                                    className="flex flex-col gap-1 rounded-xl border border-teal-500/20 bg-black/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                    className="flex flex-col gap-1 rounded-xl border border-teal-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                     <div>
-                                        <p className="font-semibold text-teal-100">{q.name}</p>
-                                        <p className="mt-0.5 text-xs text-teal-200/60">
+                                        <p className="font-semibold text-teal-800">{q.name}</p>
+                                        <p className="mt-0.5 text-xs text-teal-600">
                                             En espera · se activará cuando termines el bono actual
                                         </p>
                                     </div>
-                                    <p className="shrink-0 text-lg font-bold tabular-nums text-white sm:text-right">
+                                    <p className="shrink-0 text-lg font-bold tabular-nums text-slate-900 sm:text-right">
                                         {q.remaining_uc}{" "}
-                                        <span className="text-sm font-medium text-gray-400">
+                                        <span className="text-sm font-medium text-slate-500">
                                             crédito{q.remaining_uc === 1 ? "" : "s"}
                                         </span>
                                     </p>
@@ -384,35 +384,35 @@ function BonoWallet({ performanceData = null }) {
                             ))}
                         </ul>
                     ) : (
-                        <p className="text-sm leading-relaxed text-gray-400">
+                        <p className="text-sm leading-relaxed text-slate-600">
                             No tienes bonos en cola. Cuando compres otro pack, aparecerá aquí hasta
                             que empieces a consumirlo.
                         </p>
                     )}
                 </WalletSection>
 
-                <p className="border-t border-white/10 pt-4 text-sm text-gray-400">
+                <p className="border-t border-slate-200 pt-4 text-sm text-slate-600">
                     Total clases recibidas con S4:{" "}
-                    <span className="font-bold tabular-nums text-sky-300">{lifetimeClasses}</span>
+                    <span className="font-bold tabular-nums text-sky-700">{lifetimeClasses}</span>
                 </p>
             </div>
 
             <div className="mt-5 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
-                    <p className="text-xs text-gray-500">Total Surfeado</p>
-                    <p className="font-semibold text-gray-100">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-500">Total Surfeado</p>
+                    <p className="font-semibold text-slate-900">
                         {Number(stats.total_surfed_hours || 0).toFixed(1)} h
                     </p>
                 </div>
-                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
-                    <p className="text-xs text-gray-500">Ratio Solo/Grupal</p>
-                    <p className="font-semibold text-gray-100">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-500">Ratio Solo/Grupal</p>
+                    <p className="font-semibold text-slate-900">
                         {Number(stats.solo_ratio_percent || 0)}% solo
                     </p>
                 </div>
-                <div className="rounded-xl border border-gray-700 bg-gray-800/70 p-3">
-                    <p className="text-xs text-gray-500">Progreso de Nivel</p>
-                    <p className="font-semibold text-gray-100">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-xs text-slate-500">Progreso de Nivel</p>
+                    <p className="font-semibold text-slate-900">
                         {stats.level_progress || "Iniciación"}
                     </p>
                 </div>
@@ -819,8 +819,8 @@ function AttendanceHeatmap({
                 : "";
         const hasData = (c.entries?.length || 0) > 0;
         const heat = hasData
-            ? "bg-gray-900 border-gray-600"
-            : "bg-gray-800 border-gray-700";
+            ? "bg-slate-100 border-slate-300"
+            : "bg-white border-slate-200";
         const day = new Date(c.iso);
         const pulse = "";
         return `${base} ${outside} ${selected} ${heat} ${pulse}`;
@@ -828,7 +828,7 @@ function AttendanceHeatmap({
 
     return (
         <div
-            className="rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm"
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
         >
@@ -836,7 +836,7 @@ function AttendanceHeatmap({
                 <button
                     type="button"
                     onClick={() => goMonth(-1)}
-                    className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-200"
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
                 >
                     ◀
                 </button>
@@ -847,7 +847,7 @@ function AttendanceHeatmap({
                         animate={{ x: 0, opacity: 1 }}
                         exit={{ x: direction > 0 ? -24 : 24, opacity: 0 }}
                         transition={{ duration: 0.2 }}
-                        className="text-sm font-semibold capitalize text-white"
+                        className="text-sm font-semibold capitalize text-slate-900"
                     >
                         {monthLabel}
                     </motion.p>
@@ -855,13 +855,13 @@ function AttendanceHeatmap({
                 <button
                     type="button"
                     onClick={() => goMonth(1)}
-                    className="rounded-lg bg-gray-800 px-3 py-1 text-sm text-gray-200"
+                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
                 >
                     ▶
                 </button>
             </div>
 
-            <div className="mb-2 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+            <div className="mb-2 grid grid-cols-7 gap-2 text-center text-[11px] font-semibold uppercase tracking-wider text-slate-500">
                 {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
                     <span key={d}>{d}</span>
                 ))}
@@ -939,8 +939,8 @@ function AttendanceHeatmap({
                         <span
                             className={`absolute left-1 top-1 z-10 rounded-md px-1 py-0.5 text-[11px] tabular-nums ${
                                 c.entries?.length
-                                    ? "bg-gray-100 text-gray-900 shadow-sm"
-                                    : "text-gray-400/80"
+                                    ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
+                                    : "text-slate-500"
                             }`}
                         >
                             {c.dayNumber}
@@ -949,7 +949,7 @@ function AttendanceHeatmap({
                 ))}
             </div>
 
-            <div className="mt-4 rounded-2xl border border-gray-700 bg-gray-800/70 p-4 backdrop-blur-xl">
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={selectedDate || "empty"}
@@ -959,7 +959,7 @@ function AttendanceHeatmap({
                         transition={{ duration: 0.2 }}
                     >
                         {isLoadingMonth ? (
-                            <p className="text-sm text-gray-300">
+                            <p className="text-sm text-slate-600">
                                 Cargando actividad del mes...
                             </p>
                         ) : selectedData || selectedEntries.length > 1 ? (
@@ -979,11 +979,11 @@ function AttendanceHeatmap({
                                                         entry?.note?.text,
                                                     );
                                                 const activeCls = isPremium
-                                                    ? "border-red-600 bg-red-600 text-white"
-                                                    : "border-amber-600 bg-amber-500 text-white";
+                                                    ? "border-rose-600 bg-rose-600 text-white"
+                                                    : "border-amber-500 bg-amber-500 text-white";
                                                 const inactiveCls = isPremium
-                                                    ? "border-red-500/30 bg-red-500/15 text-red-200"
-                                                    : "border-amber-500/30 bg-amber-500/15 text-amber-100";
+                                                    ? "border-rose-200 bg-rose-50 text-rose-700"
+                                                    : "border-amber-200 bg-amber-50 text-amber-700";
                                                 return (
                                                     <button
                                                         key={`entry-${idx}`}
@@ -1007,7 +1007,7 @@ function AttendanceHeatmap({
                                                             />
                                                         ) : (
                                                             <PencilSquareIcon
-                                                                className="ml-1.5 h-4 w-4 text-gray-300"
+                                                                className="ml-1.5 h-4 w-4 text-slate-400"
                                                                 aria-hidden
                                                             />
                                                         )}
@@ -1019,11 +1019,11 @@ function AttendanceHeatmap({
                                 ) : null}
                                 {selectedData ? (
                                     <>
-                                        <p className="font-semibold text-gray-100">
+                                        <p className="font-semibold text-slate-900">
                                             {selectedData.lesson?.title ||
                                                 "Sesión"}
                                         </p>
-                                        <p className="text-sm text-gray-300">
+                                        <p className="text-sm text-slate-600">
                                             {selectedData.lesson?.starts_at
                                                 ? formatDateTimeMadrid(
                                                       selectedData.lesson
@@ -1034,44 +1034,44 @@ function AttendanceHeatmap({
                                             {selectedData.lesson?.spot ||
                                                 "Spot por confirmar"}
                                         </p>
-                                        <p className="text-sm text-gray-300">
+                                        <p className="text-sm text-slate-600">
                                             Nivel:{" "}
                                             {selectedData.lesson?.level ||
                                                 "iniciacion"}
                                         </p>
-                                        <p className="text-sm text-gray-300">
+                                        <p className="text-sm text-slate-600">
                                             Monitor:{" "}
                                             {selectedData.note?.monitor_name ||
                                                 "Por asignar"}
                                         </p>
                                         <div className="mt-2">
-                                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                                                 Crew
                                             </p>
                                             {Array.isArray(selectedData.crew) &&
                                             selectedData.crew.length > 0 ? (
-                                                <p className="text-sm text-gray-200">
+                                                <p className="text-sm text-slate-700">
                                                     {selectedData.crew
                                                         .map((c) => c.name)
                                                         .join(", ")}
                                                 </p>
                                             ) : (
-                                                <p className="text-sm text-gray-300">
+                                                <p className="text-sm text-slate-600">
                                                     Solo tú
                                                 </p>
                                             )}
                                         </div>
                                         {selectedData.note?.text ? (
-                                            <div className="mt-4 flex gap-3 rounded-xl border border-sky-500/35 bg-sky-900/25 p-4 shadow-sm ring-1 ring-sky-500/25">
+                                            <div className="mt-4 flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-4 shadow-sm ring-1 ring-sky-200">
                                                 <TrophyIcon
-                                                    className="h-8 w-8 shrink-0 text-sky-300"
+                                                    className="h-8 w-8 shrink-0 text-sky-600"
                                                     aria-hidden
                                                 />
                                                 <div className="min-w-0">
-                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-200">
+                                                    <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">
                                                         Mensaje del coach
                                                     </p>
-                                                    <p className="mt-1.5 text-sm font-medium leading-relaxed text-sky-100">
+                                                    <p className="mt-1.5 text-sm font-medium leading-relaxed text-sky-900">
                                                         {selectedData.note
                                                             .monitor_name ||
                                                             "Monitor"}
@@ -1082,7 +1082,7 @@ function AttendanceHeatmap({
                                             </div>
                                         ) : selectedData.lesson
                                               ?.monitor_note ? (
-                                            <p className="mt-3 rounded-lg bg-sky-900/25 p-3 text-xs text-sky-100 ring-1 ring-sky-500/25">
+                                            <p className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-800 ring-1 ring-sky-200">
                                                 Progreso:{" "}
                                                 {
                                                     selectedData.lesson
@@ -1094,7 +1094,7 @@ function AttendanceHeatmap({
                                 ) : null}
                             </>
                         ) : (
-                            <p className="text-sm text-gray-300">
+                            <p className="text-sm text-slate-600">
                                 Día libre. ¡Buen momento para estirar o revisar
                                 la previsión de olas!
                             </p>
@@ -1104,7 +1104,7 @@ function AttendanceHeatmap({
                 {isAdminAnalysisMode &&
                 targetUserIdForApi &&
                 typeof renderAdminFeedback === "function" ? (
-                    <div className="mt-4 border-t border-gray-700 pt-4">
+                    <div className="mt-4 border-t border-slate-200 pt-4">
                         {renderAdminFeedback(selectedData, selectedLessonId)}
                     </div>
                 ) : null}
@@ -1197,8 +1197,8 @@ export default function VipProfileDashboard({
                         : null
                 }
             />
-            <div className="lg:col-span-2 rounded-2xl border border-gray-700 bg-gray-900 p-4 shadow-sm">
-                <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            <div className="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Extracto de Movimientos de Crédito
                 </p>
                 {!historyLoaded ? (
@@ -1234,11 +1234,11 @@ export default function VipProfileDashboard({
                                     },
                                 );
                             }}
-                            className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2 text-sm font-semibold text-gray-200 shadow-sm hover:bg-gray-700"
+                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                         >
                             {historyLoading ? (
                                 <span className="inline-flex items-center gap-2">
-                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent" />
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
                                     Cargando...
                                 </span>
                             ) : (
@@ -1254,9 +1254,9 @@ export default function VipProfileDashboard({
                         className="mt-3 overflow-auto"
                     >
                         {performanceData?.latestPurchase || performanceData?.activeBono ? (
-                            <div className="mb-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/50 via-slate-900 to-teal-950/40 px-4 py-3">
+                            <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                                    <p className="text-sm font-bold leading-snug text-emerald-100">
+                                    <p className="text-sm font-bold leading-snug text-emerald-800">
                                         {(performanceData.latestPurchase?.name ||
                                             performanceData.activeBono?.last_pack_name ||
                                             "Bono VIP")}
@@ -1266,15 +1266,15 @@ export default function VipProfileDashboard({
                                         ) > 0
                                             ? ` · ${performanceData.latestPurchase?.pack_total_uc ?? performanceData.activeBono?.num_classes} créditos`
                                             : ""}
-                                        <span className="ml-1.5 font-semibold text-emerald-300/90">
+                                        <span className="ml-1.5 font-semibold text-emerald-700">
                                             (Última recarga)
                                         </span>
                                     </p>
-                                    <p className="shrink-0 text-sm tabular-nums text-emerald-100">
-                                        <span className="font-medium text-emerald-300/90">
+                                    <p className="shrink-0 text-sm tabular-nums text-emerald-800">
+                                        <span className="font-medium text-emerald-700">
                                             Saldo total disponible:
                                         </span>{" "}
-                                        <span className="text-lg font-extrabold tracking-tight text-white">
+                                        <span className="text-lg font-extrabold tracking-tight text-emerald-900">
                                             {Number(
                                                 performanceData.wallet?.total_available_uc ??
                                                     performanceData.activeBono?.remaining_uc ??
@@ -1286,8 +1286,8 @@ export default function VipProfileDashboard({
                                 </div>
                             </div>
                         ) : null}
-                        <div className="overflow-hidden rounded-xl border border-slate-700/80">
-                            <ul className="divide-y divide-slate-700/70 md:hidden">
+                        <div className="overflow-hidden rounded-xl border border-slate-200">
+                            <ul className="divide-y divide-slate-200 md:hidden">
                                 {consumptionHistoryRows.map((h) => {
                                     const tone = skuColorToken(h.bono_sku);
                                     const uc = Math.max(1, Number(h.uc_cost || 1));
@@ -1295,12 +1295,12 @@ export default function VipProfileDashboard({
                                         <li key={h.id} className={`px-3 py-3 ${tone.bg}`}>
                                             <div className="flex items-start justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <p className="text-xs text-slate-400">
+                                                    <p className="text-xs text-slate-500">
                                                         {h.lesson?.starts_at
                                                             ? formatDateMadrid(h.lesson.starts_at)
                                                             : "—"}
                                                     </p>
-                                                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-100">
+                                                    <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">
                                                         {h.lesson?.title || "Sesión"}
                                                     </p>
                                                     <p
@@ -1316,7 +1316,7 @@ export default function VipProfileDashboard({
                                                     <p className="text-[10px] uppercase tracking-wide text-slate-500">
                                                         Saldo
                                                     </p>
-                                                    <p className="-mt-0.5 text-sm font-bold tabular-nums text-teal-300">
+                                                    <p className="-mt-0.5 text-sm font-bold tabular-nums text-teal-700">
                                                         {h.remaining_after}
                                                     </p>
                                                 </div>
@@ -1326,7 +1326,7 @@ export default function VipProfileDashboard({
                                 })}
                             </ul>
                             <table className="hidden min-w-full text-sm md:table">
-                                <thead className="bg-slate-800 text-[11px] font-semibold uppercase tracking-wide text-slate-300">
+                                <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
                                     <tr>
                                         <th className="px-3 py-2.5 text-left">Fecha</th>
                                         <th className="px-3 py-2.5 text-left">Clase</th>
@@ -1335,21 +1335,21 @@ export default function VipProfileDashboard({
                                         <th className="px-3 py-2.5 text-right">Restante</th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-slate-950 text-slate-200">
+                                <tbody className="bg-white text-slate-700">
                                     {consumptionHistoryRows.map((h) => {
                                         const tone = skuColorToken(h.bono_sku);
                                         const uc = Math.max(1, Number(h.uc_cost || 1));
                                         return (
                                             <tr
                                                 key={h.id}
-                                                className={`border-t ${tone.border} ${tone.bg} hover:brightness-110`}
+                                                className={`border-t border-slate-200 ${tone.bg} hover:bg-slate-50/80`}
                                             >
-                                                <td className="whitespace-nowrap px-3 py-2.5 text-slate-300">
+                                                <td className="whitespace-nowrap px-3 py-2.5 text-slate-600">
                                                     {h.lesson?.starts_at
                                                         ? formatDateMadrid(h.lesson.starts_at)
                                                         : "—"}
                                                 </td>
-                                                <td className="min-w-0 px-3 py-2.5 font-medium text-slate-100">
+                                                <td className="min-w-0 px-3 py-2.5 font-medium text-slate-900">
                                                     <p className="truncate">{h.lesson?.title || "Sesión"}</p>
                                                     <p
                                                         className={`truncate text-[11px] font-semibold lg:hidden ${tone.skuText}`}
@@ -1367,7 +1367,7 @@ export default function VipProfileDashboard({
                                                         {uc}
                                                     </span>
                                                 </td>
-                                                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-teal-300">
+                                                <td className="px-3 py-2.5 text-right tabular-nums font-bold text-teal-700">
                                                     {h.remaining_after}
                                                 </td>
                                             </tr>

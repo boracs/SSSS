@@ -57,6 +57,10 @@
 
 | Fecha | Tema | Entrada |
 |---|---|---|
+| 2026-08-27 | 05+06 | **5.17** Modelos vs modos: Opus/Sonnet = Claude (Anthropic), Grok = xAI, Composer = modo de Cursor; glosario (Reasonix) |
+| 2026-08-26 | 05 | **5.16** El pre-vuelo: comprobar antes de actuar (checklist de la IA) (Reasonix) |
+| 2026-08-26 | 05+06 | **5.15** rama Git ≠ cajón de archivos; merge casi siempre automático; glosario rama/merge/conflicto (Cursor) |
+| 2026-08-26 | 01+06 | **1.8** funciones/triggers MySQL no aceleran el catálogo; glosario índice + función SQL (Cursor) |
 | 2026-08-25 | 02+06 | **2.11** no borrar original a cambio del thumb; glosario máster web (Cursor) |
 | 2026-08-25 | 02+06 | **2.10** miniaturas se guardan una vez (no GD por visita); glosario GD + thumbnail (Cursor) |
 | 2026-08-21 | 03+06 | **3.8** canónico = molde oficial; **3.9** trigger frontend ≠ BD; glosario (Cursor) |

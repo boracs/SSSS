@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, router, usePage } from "@inertiajs/react";
-import Layout1 from "../layouts/Layout1";
+import PageShell from "@/layouts/PageShell";
 import Contenedor_productos from "../layouts/Contenedor_productos";
 import StorePromoBanner from "../components/store/StorePromoBanner";
 import ProductImageGallery from "../components/ProductImageGallery";
 import ProductPurchaseCta from "../components/ProductPurchaseCta";
+import ProductStickyPurchaseBar from "../components/store/ProductStickyPurchaseBar";
 import ProductTagPills from "../components/ProductTagPills";
 import useInertiaFlashToast from "@/hooks/useInertiaFlashToast";
 import SeoHead from "../components/seo/SeoHead";
 import Breadcrumbs from "../components/Breadcrumbs";
+import SharePageButton from "../components/SharePageButton";
 import { toast } from "react-toastify";
 import { ChevronLeft, ChevronDown, MapPin, Package, Tag } from "lucide-react";
 import { hasStoreAccess } from "@/utils/hasStoreAccess";
@@ -92,11 +94,11 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
 
     if (!producto) {
         return (
-            <Layout1>
+            <PageShell variant="light">
                 <div className="mx-auto flex min-h-[50vh] max-w-3xl items-center justify-center px-4">
                     <p className="text-base font-medium text-slate-600">Cargando producto…</p>
                 </div>
-            </Layout1>
+            </PageShell>
         );
     }
 
@@ -194,11 +196,11 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
         ) : null;
 
     return (
-        <Layout1>
+        <PageShell variant="light">
             <SeoHead seo={seo} />
 
             <div
-                className={`s4-surface-light min-h-[70vh] overflow-x-clip ${showStickyBar ? "pb-20 lg:pb-0" : ""}`}
+                className={`min-h-[70vh] overflow-x-clip ${showStickyBar ? "pb-20 lg:pb-0" : ""}`}
             >
                 <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-4 sm:px-6 sm:py-8 lg:px-8">
                     <div className="flex items-center justify-between gap-3">
@@ -315,6 +317,16 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
                                     />
                                 </div>
 
+                                <div className="mt-3">
+                                    <SharePageButton
+                                        variant="light"
+                                        label="Compartir producto"
+                                        title={`${producto.nombre} · tienda S4`}
+                                        text="Producto de la tienda de San Sebastián Surf School (Zurriola, Donostia)."
+                                        path={route("producto.ver", producto.id)}
+                                    />
+                                </div>
+
                                 {canBuy ? (
                                     <p className="mt-6 flex items-start gap-2.5 border-t border-slate-100 pt-6 text-sm leading-relaxed text-slate-600">
                                         <MapPin
@@ -366,7 +378,7 @@ const ProductVer = ({ producto, productosRelacionados = [], storePromoSlides = [
                 inCartQty={addedQty}
                 onAddToCart={handleAgregarAlCarrito}
             />
-        </Layout1>
+        </PageShell>
     );
 };
 

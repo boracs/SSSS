@@ -65,6 +65,9 @@ final class AuctionCatalogService
             ->get()
             ->map(fn (Auction $auction) => [
                 ...$auction->toPublicArray(images: $this->catalogImages),
+                // Datos de cobro: solo en admin, nunca en el payload público.
+                'payment_status' => $auction->payment_status?->value,
+                'winner_user_id' => $auction->winner_user_id,
                 'winner_name' => $auction->winner
                     ? trim((string) $auction->winner->nombre.' '.(string) $auction->winner->apellido)
                     : null,

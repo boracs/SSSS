@@ -94,7 +94,7 @@ export default function TimePicker24h({
                     aria-required={required}
                     aria-haspopup="listbox"
                     aria-expanded={open}
-                    className={`flex w-full items-center justify-between gap-2 rounded-xl border border-gray-600 bg-gray-900 px-3 py-2 text-left text-sm text-gray-100 transition focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+                    className={`flex w-full items-center justify-between gap-2 rounded-xl border border-gray-600 bg-gray-900 px-3 py-2 text-left text-sm text-gray-100 transition focus:border-s4-cyan focus:outline-none focus:ring-2 focus:ring-s4-cyan/50 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
                 >
                     <span className="font-semibold tabular-nums">{display}</span>
                     <ClockIcon className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
